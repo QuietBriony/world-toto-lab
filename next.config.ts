@@ -1,7 +1,20 @@
 import type { NextConfig } from "next";
 
+const repositoryName = process.env.GITHUB_REPOSITORY?.split("/")[1];
+const shouldUseBasePath =
+  process.env.GITHUB_ACTIONS === "true" &&
+  repositoryName &&
+  !repositoryName.endsWith(".github.io");
+const basePath = shouldUseBasePath ? `/${repositoryName}` : "";
+
 const nextConfig: NextConfig = {
-  /* config options here */
+  output: "export",
+  trailingSlash: true,
+  images: {
+    unoptimized: true,
+  },
+  basePath,
+  assetPrefix: basePath || undefined,
 };
 
 export default nextConfig;

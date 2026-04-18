@@ -1,0 +1,46 @@
+type QueryValue = number | null | string | undefined;
+
+function appendQuery(params: URLSearchParams, key: string, value: QueryValue) {
+  if (value === null || value === undefined || value === "") {
+    return;
+  }
+
+  params.set(key, String(value));
+}
+
+export function buildHref(pathname: string, query: Record<string, QueryValue> = {}) {
+  const params = new URLSearchParams();
+
+  Object.entries(query).forEach(([key, value]) => appendQuery(params, key, value));
+
+  const queryString = params.toString();
+  return queryString ? `${pathname}?${queryString}` : pathname;
+}
+
+export function buildRoundHref(
+  pathname: string,
+  roundId?: string | null,
+  query: Record<string, QueryValue> = {},
+) {
+  return buildHref(pathname, {
+    round: roundId,
+    ...query,
+  });
+}
+
+export function getSingleSearchParam(value: string | null) {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+}
+
+export const appRoute = {
+  dashboard: "/",
+  workspace: "/workspace",
+  picks: "/picks",
+  scoutCards: "/scout-cards",
+  consensus: "/consensus",
+  edgeBoard: "/edge-board",
+  ticketGenerator: "/ticket-generator",
+  review: "/review",
+  matchEditor: "/match-editor",
+} as const;

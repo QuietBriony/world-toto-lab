@@ -1,0 +1,97 @@
+import { clamp, outcomeToEnum } from "@/lib/domain";
+import type {
+  MatchCategory,
+  Outcome,
+  ProvisionalCall,
+  RoundStatus,
+  TicketMode,
+} from "@/lib/types";
+
+function stringFromUnknown(value: FormDataEntryValue | null) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+export function stringValue(formData: FormData, key: string) {
+  return stringFromUnknown(formData.get(key));
+}
+
+export function nullableString(formData: FormData, key: string) {
+  const value = stringValue(formData, key);
+  return value.length > 0 ? value : null;
+}
+
+export function parseFloatOrNull(raw: string) {
+  if (!raw) {
+    return null;
+  }
+
+  const value = Number(raw);
+  return Number.isFinite(value) ? value : null;
+}
+
+export function parseIntOrNull(raw: string) {
+  if (!raw) {
+    return null;
+  }
+
+  const value = Number.parseInt(raw, 10);
+  return Number.isFinite(value) ? value : null;
+}
+
+export function parseProbabilityPercent(raw: string) {
+  const value = parseFloatOrNull(raw);
+  return value === null ? null : clamp(value / 100, 0, 1);
+}
+
+export function parseBoundedInt(raw: string, min: number, max: number) {
+  const value = parseIntOrNull(raw);
+  return clamp(value ?? 0, min, max);
+}
+
+export function parseRoundStatus(raw: string): RoundStatus {
+  const values: RoundStatus[] = [
+    "draft",
+    "analyzing",
+    "locked",
+    "resulted",
+    "reviewed",
+  ];
+  return values.includes(raw as RoundStatus) ? (raw as RoundStatus) : "draft";
+}
+
+export function parseCategory(raw: string): MatchCategory | null {
+  const values: MatchCategory[] = [
+    "fixed",
+    "contrarian",
+    "draw_candidate",
+    "info_wait",
+    "pass",
+  ];
+  return values.includes(raw as MatchCategory) ? (raw as MatchCategory) : null;
+}
+
+export function parseProvisionalCall(raw: string): ProvisionalCall {
+  const values: ProvisionalCall[] = [
+    "axis_1",
+    "axis_2",
+    "draw_axis",
+    "double",
+    "triple",
+  ];
+  return values.includes(raw as ProvisionalCall)
+    ? (raw as ProvisionalCall)
+    : "double";
+}
+
+export function parseTicketMode(raw: string): TicketMode {
+  const values: TicketMode[] = ["conservative", "balanced", "upset"];
+  return values.includes(raw as TicketMode) ? (raw as TicketMode) : "balanced";
+}
+
+export function parseOutcome(raw: string): Outcome | null {
+  if (raw === "1" || raw === "0" || raw === "2") {
+    return outcomeToEnum(raw);
+  }
+
+  return null;
+}
