@@ -19,7 +19,17 @@ export function ConfigurationNotice() {
           `NEXT_PUBLIC_SUPABASE_ANON_KEY` を設定してください。
         </p>
         <p>
-          初回セットアップ用 SQL は [supabase/schema.sql](/C:/workspace/world-toto-lab/supabase/schema.sql)
+          初回セットアップ用 SQL は
+          {" "}
+          <a
+            href="https://github.com/QuietBriony/world-toto-lab/blob/main/supabase/schema.sql"
+            target="_blank"
+            rel="noreferrer"
+            className="font-medium text-teal-700 underline decoration-teal-300 underline-offset-4"
+          >
+            GitHub 上の `supabase/schema.sql`
+          </a>
+          {" "}
           にまとめています。
         </p>
       </div>
