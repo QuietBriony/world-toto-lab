@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 
 import {
   Badge,
@@ -106,9 +106,15 @@ function copyText(entries: FeedbackEntry[]) {
 }
 
 export function FeedbackBoard() {
-  const entries = useSyncExternalStore(subscribe, readEntries, () => []);
+  const [entries, setEntries] = useState<FeedbackEntry[]>(() => readEntries());
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
   const [copyMessage, setCopyMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    return subscribe(() => {
+      setEntries(readEntries());
+    });
+  }, []);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -135,7 +141,9 @@ export function FeedbackBoard() {
       wantedAction,
     };
 
-    writeEntries([nextEntry, ...entries]);
+    const nextEntries = [nextEntry, ...entries];
+    setEntries(nextEntries);
+    writeEntries(nextEntries);
     event.currentTarget.reset();
     setFeedbackMessage("このブラウザにメモを追加しました。");
   };
@@ -173,6 +181,7 @@ export function FeedbackBoard() {
       return;
     }
 
+    setEntries([]);
     writeEntries([]);
   };
 
