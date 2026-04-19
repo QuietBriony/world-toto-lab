@@ -518,24 +518,6 @@ export async function createUser(input: { name: string; role?: UserRole }) {
   throwIfError("Failed to create user", result);
 }
 
-export async function updateUserName(input: { userId: string; name: string }) {
-  const supabase = requireSupabaseClient();
-  const name = input.name.trim();
-
-  if (!name) {
-    throw new Error("あだ名を空にはできません。");
-  }
-
-  const result = await supabase
-    .from("users")
-    .update({
-      name,
-    })
-    .eq("id", input.userId);
-
-  throwIfError("Failed to update user", result);
-}
-
 export async function updateUserProfile(input: {
   userId: string;
   name: string;
