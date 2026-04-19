@@ -9,6 +9,7 @@ import {
   ErrorNotice,
   LoadingNotice,
 } from "@/components/app/states";
+import { FeedbackBoard } from "@/components/feedback-board";
 import {
   Badge,
   buttonClassName,
@@ -556,6 +557,8 @@ export default function DashboardPage() {
               ))}
             </div>
           </CollapsibleSectionCard>
+
+          <FeedbackBoard />
 
           <CollapsibleSectionCard
             title="今どこまで使える？"
