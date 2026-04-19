@@ -111,6 +111,175 @@ export default function DashboardPage() {
       ) : data ? (
         <>
           <SectionCard
+            title="このサイトは何をするもの？"
+            description="友人グループで W杯toto / WINNER の見立てを共有し、入力と振り返りまで一つの流れで扱うための分析ラボです。"
+          >
+            <div className="grid gap-4 lg:grid-cols-3">
+              {[
+                {
+                  eyebrow: "Plan",
+                  title: "予想を持ち寄る",
+                  body: "Human Picks と Scout Card で、1/0/2 の予想と根拠を試合ごとに残します。",
+                },
+                {
+                  eyebrow: "Compare",
+                  title: "差分を比べる",
+                  body: "Official / Market / Model / Human の差分を、Round Detail・Consensus・Edge Board で並べて見ます。",
+                },
+                {
+                  eyebrow: "Review",
+                  title: "結果を振り返る",
+                  body: "Review で的中数、対立パターン、反省メモを残して次回に活かします。",
+                },
+              ].map((item) => (
+                <div
+                  key={item.title}
+                  className="rounded-[24px] border border-white/80 bg-white/76 p-5 shadow-[0_18px_44px_-30px_rgba(15,23,42,0.4)]"
+                >
+                  <div className="font-display text-[11px] uppercase tracking-[0.34em] text-teal-800/72">
+                    {item.eyebrow}
+                  </div>
+                  <h3 className="mt-3 font-display text-xl font-semibold tracking-[-0.05em] text-slate-950">
+                    {item.title}
+                  </h3>
+                  <p className="mt-3 text-sm leading-6 text-slate-600">{item.body}</p>
+                </div>
+              ))}
+            </div>
+          </SectionCard>
+
+          <SectionCard
+            title="最初の使い方"
+            description="初回はこの順で進めると迷いにくいです。"
+          >
+            <div className="grid gap-4 lg:grid-cols-2">
+              {[
+                {
+                  step: "01",
+                  title: "サンプル10人を作成",
+                  body: "共有メンバーを先に用意します。認証なし MVP なので、ここで作った表示名を切り替えて入力します。",
+                  tone: data.users.length > 0 ? "teal" : "amber",
+                  status: data.users.length > 0 ? "済み" : "次にやる",
+                },
+                {
+                  step: "02",
+                  title: "Round を作成",
+                  body: "Round を作ると 13 試合のプレースホルダーが自動でできます。まずは対象回を1つ作ります。",
+                  tone: data.rounds.length > 0 ? "teal" : "amber",
+                  status: data.rounds.length > 0 ? "作成可" : "作成待ち",
+                },
+                {
+                  step: "03",
+                  title: "Match Editor で試合情報を入れる",
+                  body: "Round Detail から各試合の Edit に入り、チーム名、確率、カテゴリ、メモを埋めます。",
+                  tone: "sky",
+                  status: "入力導線あり",
+                },
+                {
+                  step: "04",
+                  title: "Human Picks / Scout Cards を入力",
+                  body: "ユーザーを切り替えて 1/0/2 と根拠カードを入れます。ここが共有利用の中心です。",
+                  tone: "sky",
+                  status: "保存対応",
+                },
+                {
+                  step: "05",
+                  title: "Consensus / Edge / Tickets を見る",
+                  body: "入力が集まると、人力コンセンサス、差分、買い目候補の比較が使えるようになります。",
+                  tone: "sky",
+                  status: "集計対応",
+                },
+                {
+                  step: "06",
+                  title: "結果入力と Review",
+                  body: "試合後に結果を入れて、AI・人力・市場との差や反省ログを残します。",
+                  tone: "sky",
+                  status: "振り返り対応",
+                },
+              ].map((item) => (
+                <div
+                  key={item.step}
+                  className="grid gap-3 rounded-[24px] border border-white/80 bg-white/76 p-5 shadow-[0_18px_44px_-30px_rgba(15,23,42,0.4)] sm:grid-cols-[auto_1fr]"
+                >
+                  <div className="flex h-12 w-12 items-center justify-center rounded-[16px] border border-slate-200 bg-slate-950 text-sm font-semibold text-white">
+                    {item.step}
+                  </div>
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="font-display text-lg font-semibold tracking-[-0.04em] text-slate-950">
+                        {item.title}
+                      </h3>
+                      <Badge tone={item.tone as "amber" | "sky" | "teal"}>{item.status}</Badge>
+                    </div>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">{item.body}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </SectionCard>
+
+          <SectionCard
+            title="今どこまで使える？"
+            description="共有 MVP としてのコア機能は入っていますが、まだフルプロダクトではありません。"
+          >
+            <div className="grid gap-4 lg:grid-cols-2">
+              <div className="rounded-[24px] border border-emerald-200 bg-emerald-50/85 p-5">
+                <div className="flex items-center gap-2">
+                  <Badge tone="teal">今使える</Badge>
+                  <h3 className="font-display text-lg font-semibold tracking-[-0.04em] text-slate-950">
+                    コア MVP は使用可能
+                  </h3>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {[
+                    "Round一覧",
+                    "Round詳細",
+                    "Match Editor",
+                    "Human Picks",
+                    "Scout Card",
+                    "Consensus",
+                    "Edge Board",
+                    "Ticket Generator",
+                    "Review",
+                    "GitHub Pages公開",
+                    "Supabase保存",
+                  ].map((item) => (
+                    <Badge key={item} tone="teal">
+                      {item}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-[24px] border border-amber-200 bg-amber-50/88 p-5">
+                <div className="flex items-center gap-2">
+                  <Badge tone="amber">まだない</Badge>
+                  <h3 className="font-display text-lg font-semibold tracking-[-0.04em] text-slate-950">
+                    フル機能ではない部分
+                  </h3>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {[
+                    "認証",
+                    "権限制御",
+                    "CSV取込",
+                    "リアルタイム同期",
+                    "外部API自動取得",
+                    "精密な最適化",
+                  ].map((item) => (
+                    <Badge key={item} tone="amber">
+                      {item}
+                    </Badge>
+                  ))}
+                </div>
+                <p className="mt-4 text-sm leading-6 text-slate-600">
+                  なので答えとしては、「普通に使える共有 MVP にはなっているが、運用向けの完成版ではない」です。
+                </p>
+              </div>
+            </div>
+          </SectionCard>
+
+          <SectionCard
             className="metric-grid"
             title="Lab Frame"
             description="保存、共有、分析を一つの流れで回すための MVP です。単なる紹介ページではなく、実際の入力と集計に寄せています。"

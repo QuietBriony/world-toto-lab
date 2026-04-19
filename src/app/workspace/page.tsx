@@ -111,6 +111,100 @@ function WorkspacePageContent() {
           />
 
           <SectionCard
+            title="この Round の進め方"
+            description="Round を作った後は、だいたいこの順で使うとまとまります。"
+          >
+            <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {[
+                  {
+                    title: "1. Match Editor",
+                    body: "試合名、確率、カテゴリ、推奨候補を整える",
+                  },
+                  {
+                    title: "2. Human Picks",
+                    body: "各メンバーの 1 / 0 / 2 を入力する",
+                  },
+                  {
+                    title: "3. Scout Cards",
+                    body: "根拠スコアと drawAlert を入れる",
+                  },
+                  {
+                    title: "4. Consensus",
+                    body: "avgF / avgD と人力コンセンサスを見る",
+                  },
+                  {
+                    title: "5. Edge / Tickets",
+                    body: "差分と候補比較を並べる",
+                  },
+                  {
+                    title: "6. Review",
+                    body: "結果と反省ログを残す",
+                  },
+                ].map((item) => (
+                  <div
+                    key={item.title}
+                    className="rounded-[22px] border border-white/80 bg-white/74 p-4 shadow-[0_16px_38px_-30px_rgba(15,23,42,0.45)]"
+                  >
+                    <h3 className="font-display text-base font-semibold tracking-[-0.04em] text-slate-950">
+                      {item.title}
+                    </h3>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">{item.body}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="rounded-[24px] border border-slate-200 bg-slate-50/80 p-5">
+                <div className="flex flex-wrap gap-2">
+                  <Link
+                    href={buildRoundHref(appRoute.picks, data.round.id, {
+                      user: data.users[0]?.id,
+                    })}
+                    className={buttonClassName}
+                  >
+                    Human Picks へ
+                  </Link>
+                  <Link
+                    href={buildRoundHref(appRoute.scoutCards, data.round.id, {
+                      user: data.users[0]?.id,
+                    })}
+                    className={secondaryButtonClassName}
+                  >
+                    Scout Cards へ
+                  </Link>
+                  <Link
+                    href={buildRoundHref(appRoute.consensus, data.round.id)}
+                    className={secondaryButtonClassName}
+                  >
+                    Consensus へ
+                  </Link>
+                  <Link
+                    href={buildRoundHref(appRoute.edgeBoard, data.round.id)}
+                    className={secondaryButtonClassName}
+                  >
+                    Edge Board へ
+                  </Link>
+                  <Link
+                    href={buildRoundHref(appRoute.ticketGenerator, data.round.id)}
+                    className={secondaryButtonClassName}
+                  >
+                    Tickets へ
+                  </Link>
+                  <Link
+                    href={buildRoundHref(appRoute.review, data.round.id)}
+                    className={secondaryButtonClassName}
+                  >
+                    Review へ
+                  </Link>
+                </div>
+                <p className="mt-4 text-sm leading-6 text-slate-600">
+                  先にメンバーを作っておくと、Picks と Scout Cards の切り替えがスムーズです。
+                </p>
+              </div>
+            </div>
+          </SectionCard>
+
+          <SectionCard
             title="Round設定"
             description="予算やステータス、当日の観戦メモをここで更新します。"
           >
