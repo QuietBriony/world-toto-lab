@@ -45,6 +45,20 @@ function ReviewPageContent() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const pendingResultsCount =
     data?.round.matches.filter((match) => match.actualResult === null).length ?? 0;
+  const orderedResultMatches =
+    data?.round.matches
+      .slice()
+      .sort((left, right) => {
+        const leftDone = left.actualResult ? 1 : 0;
+        const rightDone = right.actualResult ? 1 : 0;
+
+        if (leftDone !== rightDone) {
+          return leftDone - rightDone;
+        }
+
+        return left.matchNo - right.matchNo;
+      }) ?? [];
+  const pendingMatches = orderedResultMatches.filter((match) => match.actualResult === null);
 
   const summary = data
     ? buildReviewSummary({
@@ -119,10 +133,10 @@ function ReviewPageContent() {
 
   return (
     <div className="space-y-8">
-      <PageHeader
-        eyebrow="結果と振り返り"
-        title="結果入力と反省ログ"
-        description="賞金や配当は扱わず、予想精度・方向性・一致 / 対立パターンを振り返る画面です。"
+        <PageHeader
+          eyebrow="結果と振り返り"
+          title="結果入力と反省ログ"
+          description="賞金や配当は扱わず、予想精度・方向性・一致 / 対立パターンを振り返る画面です。"
       />
 
       {!isSupabaseConfigured() ? (
@@ -154,8 +168,100 @@ function ReviewPageContent() {
           </section>
 
           <SectionCard
+            title="まず見るところ"
+            description="結果入力の残りと、今回の当たり方の特徴を先に見られます。"
+          >
+            <div className="grid gap-4 xl:grid-cols-3">
+              <div className="rounded-[24px] border border-amber-200 bg-amber-50/80 p-5">
+                <div className="flex items-center gap-2">
+                  <Badge tone={pendingResultsCount === 0 ? "teal" : "amber"}>
+                    {pendingResultsCount === 0 ? "完了" : "残件"}
+                  </Badge>
+                  <h3 className="font-display text-lg font-semibold tracking-[-0.04em] text-slate-950">
+                    先に結果を埋める
+                  </h3>
+                </div>
+                <p className="mt-3 text-sm leading-6 text-slate-600">
+                  結果が埋まるほど、下のランキングと振り返りが揃います。
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {pendingMatches.length === 0 ? (
+                    <Badge tone="positive">全試合の結果入力済み</Badge>
+                  ) : (
+                    pendingMatches.slice(0, 5).map((match) => (
+                      <Badge key={match.id} tone="amber">
+                        #{match.matchNo} {match.homeTeam} 対 {match.awayTeam}
+                      </Badge>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-[24px] border border-sky-200 bg-sky-50/80 p-5">
+                <div className="flex items-center gap-2">
+                  <Badge tone="sky">傾向</Badge>
+                  <h3 className="font-display text-lg font-semibold tracking-[-0.04em] text-slate-950">
+                    今回の見どころ
+                  </h3>
+                </div>
+                <div className="mt-4 space-y-3 text-sm leading-6 text-slate-700">
+                  <p>
+                    {summary.humanHits > summary.aiHits
+                      ? `今回は人力が AI より ${summary.humanHits - summary.aiHits} 試合多く当てています。`
+                      : summary.aiHits > summary.humanHits
+                        ? `今回は AI が人力より ${summary.aiHits - summary.humanHits} 試合多く当てています。`
+                        : "今回は AI と人力の的中数が並んでいます。"}
+                  </p>
+                  <p>一致側の的中率 {formatPercent(summary.agreementRate)}</p>
+                  <p>対立側の拾えた率 {formatPercent(summary.conflictCoverageRate)}</p>
+                  <p>引き分け警戒が効いた試合 {summary.drawAlertEffective}</p>
+                </div>
+              </div>
+
+              <div className="rounded-[24px] border border-emerald-200 bg-emerald-50/80 p-5">
+                <div className="flex items-center gap-2">
+                  <Badge tone="teal">上位</Badge>
+                  <h3 className="font-display text-lg font-semibold tracking-[-0.04em] text-slate-950">
+                    先頭メンバー
+                  </h3>
+                </div>
+                {summary.rankings[0] ? (
+                  <div className="mt-4 space-y-3">
+                    <div className="text-lg font-semibold text-slate-950">
+                      {summary.rankings[0].name}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Badge tone="teal">
+                        的中 {summary.rankings[0].hits}/{summary.rankings[0].total}
+                      </Badge>
+                      <Badge tone="slate">
+                        F方向 {formatPercent(summary.rankings[0].directionHitRate)}
+                      </Badge>
+                    </div>
+                    <p className="text-sm leading-6 text-slate-600">
+                      今回の上位メンバーです。人力側の見立てが強かったかどうかの参考になります。
+                    </p>
+                  </div>
+                ) : (
+                  <p className="mt-4 text-sm leading-6 text-slate-600">
+                    結果が入ると、ここに今回の上位メンバーが出ます。
+                  </p>
+                )}
+              </div>
+            </div>
+          </SectionCard>
+
+          <SectionCard
             title="結果入力"
-            description="試合結果をまとめて更新できます。結果がすべて入ると、そのまま振り返りが見やすくなります。"
+            description="未確定の試合が先頭です。結果がすべて入ると、そのまま振り返りが見やすくなります。"
+            actions={
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge tone={pendingResultsCount === 0 ? "teal" : "amber"}>
+                  残り {pendingResultsCount}
+                </Badge>
+                <Badge tone="slate">未確定優先表示</Badge>
+              </div>
+            }
           >
             {pendingResultsCount > 0 ? (
               <div className="rounded-3xl border border-amber-200 bg-amber-50/90 p-4 text-sm leading-6 text-amber-950">
@@ -168,13 +274,18 @@ function ReviewPageContent() {
             )}
             <form onSubmit={handleSaveResults} className="space-y-5">
               <div className="grid gap-4 md:grid-cols-3">
-                {data.round.matches.map((match) => (
+                {orderedResultMatches.map((match) => (
                   <label
                     key={match.id}
                     className="grid gap-2 rounded-3xl border border-slate-200 bg-slate-50/80 p-4 text-sm font-medium text-slate-700"
                   >
-                    <span>
-                      #{match.matchNo} {match.homeTeam} 対 {match.awayTeam}
+                    <span className="flex flex-wrap items-center gap-2">
+                      <span>
+                        #{match.matchNo} {match.homeTeam} 対 {match.awayTeam}
+                      </span>
+                      <Badge tone={match.actualResult ? "teal" : "amber"}>
+                        {match.actualResult ? "入力済み" : "未確定"}
+                      </Badge>
                     </span>
                     <select
                       name={`actualResult_${match.id}`}
