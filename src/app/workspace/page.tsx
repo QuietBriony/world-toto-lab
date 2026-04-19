@@ -184,6 +184,19 @@ function WorkspacePageContent() {
           match: (typeof data.round.matches)[number];
         } => entry.estimated !== null,
       ) ?? [];
+  const orderedOverviewMatches =
+    data?.round.matches
+      .slice()
+      .sort((left, right) => {
+        const leftReady = matchHasSetupInput(left) ? 1 : 0;
+        const rightReady = matchHasSetupInput(right) ? 1 : 0;
+
+        if (leftReady !== rightReady) {
+          return leftReady - rightReady;
+        }
+
+        return left.matchNo - right.matchNo;
+      }) ?? [];
 
   const handleSaveRound = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -772,8 +785,129 @@ function WorkspacePageContent() {
           </CollapsibleSectionCard>
 
           <SectionCard
-            title="13試合一覧"
-            description="横スクロール対応です。まず AI基準線 を見て、その横に人力上書きを重ねて読めます。差分は AI - 公式人気 です。"
+            title="13試合の確認カード"
+            description="まずはここで全体をざっと見ます。細かい数値表は下の `詳細表を開く` に残しています。"
+          >
+            <div className="grid gap-4 xl:grid-cols-2">
+              {orderedOverviewMatches.map((match) => {
+                const aiBase = aiRecommendedOutcomes(match);
+                const humanBase = humanConsensusOutcomes(match);
+                const badges = buildMatchBadges(match);
+                const overlayBadge = humanOverlayBadge(match);
+                const setupReady = matchHasSetupInput(match);
+                const strongestEdge = strongestPositiveEdge(match);
+
+                return (
+                  <article
+                    key={`overview-${match.id}`}
+                    className={
+                      setupReady
+                        ? "rounded-[24px] border border-white/80 bg-white/82 p-5 shadow-[0_20px_46px_-34px_rgba(15,23,42,0.35)]"
+                        : "rounded-[24px] border border-amber-200 bg-amber-50/80 p-5 shadow-[0_20px_46px_-34px_rgba(15,23,42,0.28)]"
+                    }
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge tone={setupReady ? "slate" : "amber"}>第{match.matchNo}試合</Badge>
+                          {!setupReady ? <Badge tone="amber">要設定</Badge> : null}
+                          {match.actualResult ? (
+                            <Badge tone="slate">
+                              結果{" "}
+                              {match.actualResult
+                                .replace("ONE", "1")
+                                .replace("DRAW", "0")
+                                .replace("TWO", "2")}
+                            </Badge>
+                          ) : null}
+                        </div>
+                        <h3 className="mt-3 font-display text-xl font-semibold tracking-[-0.05em] text-slate-950">
+                          {match.homeTeam} 対 {match.awayTeam}
+                        </h3>
+                        <p className="mt-2 text-sm leading-6 text-slate-600">
+                          {formatDateTime(match.kickoffTime)}
+                          {match.venue ? ` / ${match.venue}` : ""}
+                        </p>
+                      </div>
+
+                      <Link
+                        href={buildRoundHref(appRoute.matchEditor, data.round.id, {
+                          match: match.id,
+                        })}
+                        className={secondaryButtonClassName}
+                      >
+                        編集
+                      </Link>
+                    </div>
+
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                      <div className="rounded-[20px] border border-slate-200 bg-slate-50/85 p-4">
+                        <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                          AI基準線
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {aiBase.length === 0 ? (
+                            <Badge tone="slate">AI未設定</Badge>
+                          ) : (
+                            aiBase.map((outcome) => (
+                              <Badge key={`${match.id}-overview-ai-${outcome}`} tone="amber">
+                                {outcome}
+                              </Badge>
+                            ))
+                          )}
+                        </div>
+                        <div className="mt-2 text-sm text-slate-600">
+                          AI {formatPercent(match.modelProb1)} / {formatPercent(match.modelProb0)} /{" "}
+                          {formatPercent(match.modelProb2)}
+                        </div>
+                      </div>
+
+                      <div className="rounded-[20px] border border-slate-200 bg-slate-50/85 p-4">
+                        <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                          人力上書き
+                        </div>
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          <Badge tone={overlayBadge.tone}>{overlayBadge.label}</Badge>
+                          <Badge tone="slate">{formatOutcomeSet(humanBase)}</Badge>
+                        </div>
+                        <div className="mt-2 text-sm text-slate-600">
+                          F {formatNumber(match.consensusF, 1)} / D {formatNumber(match.consensusD, 1)} /{" "}
+                          {match.consensusCall ?? "未集計"}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {strongestEdge ? (
+                        <Badge tone="positive">
+                          差分大 {strongestEdge.outcome} {formatSignedPercent(strongestEdge.edge)}
+                        </Badge>
+                      ) : (
+                        <Badge tone="slate">差分はまだ小さめ</Badge>
+                      )}
+                      {match.category ? (
+                        <Badge tone="sky">{categoryLabel[match.category]}</Badge>
+                      ) : null}
+                      {badges.length === 0 ? (
+                        <Badge tone="slate">注記なし</Badge>
+                      ) : (
+                        badges.slice(0, 3).map((badge) => (
+                          <Badge key={`${match.id}-overview-${badge.label}`} tone={badge.tone}>
+                            {badge.label}
+                          </Badge>
+                        ))
+                      )}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </SectionCard>
+
+          <CollapsibleSectionCard
+            title="13試合の詳細表"
+            description="細かい数値を確認したいときだけ開いて使います。横スクロール対応で、差分は AI - 公式人気 です。"
+            badge={<Badge tone="slate">詳細</Badge>}
           >
             <div className="overflow-x-auto">
               <table className="min-w-[1540px] text-left text-sm">
@@ -941,7 +1075,7 @@ function WorkspacePageContent() {
                 </tbody>
               </table>
             </div>
-          </SectionCard>
+          </CollapsibleSectionCard>
         </>
       ) : null}
     </div>
