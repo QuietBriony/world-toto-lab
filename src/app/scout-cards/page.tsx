@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState, type FormEvent } from "react";
 
@@ -13,9 +14,11 @@ import { RoundNav } from "@/components/round-nav";
 import {
   Badge,
   buttonClassName,
+  CollapsibleSectionCard,
   fieldClassName,
   PageHeader,
   SectionCard,
+  secondaryButtonClassName,
   StatCard,
   textAreaClassName,
 } from "@/components/ui";
@@ -326,6 +329,11 @@ function ScoutCardsPageContent() {
             <SectionCard
               title="共有メンバーがまだありません"
               description="ダッシュボードでサンプルメンバーを作成してから利用してください。"
+              actions={
+                <Link href={`${appRoute.dashboard}#shared-members`} className={secondaryButtonClassName}>
+                  メンバー設定へ
+                </Link>
+              }
             >
               <p className="text-sm text-slate-600">
                 予想者カードは共有メンバー前提の入力画面です。
@@ -335,6 +343,11 @@ function ScoutCardsPageContent() {
             <SectionCard
               title="予想者がまだいません"
               description="ダッシュボードの共有メンバーで、少なくとも1人を予想者に変更してください。"
+              actions={
+                <Link href={`${appRoute.dashboard}#shared-members`} className={secondaryButtonClassName}>
+                  メンバー設定へ
+                </Link>
+              }
             >
               <p className="text-sm leading-6 text-slate-600">
                 ウォッチ担当はここでは入力せず、支持 / 予想画面で AI か予想者のどちらに乗るかを選びます。
@@ -345,6 +358,21 @@ function ScoutCardsPageContent() {
               <SectionCard
                 title="入力ユーザー切り替え"
                 description="予想者ごとの視点を残す前提なので、入力対象を切り替えて使います。"
+                actions={
+                  <div className="flex flex-wrap gap-2">
+                    <Link
+                      href={buildRoundHref(appRoute.picks, data.round.id, {
+                        user: activeUser.id,
+                      })}
+                      className={secondaryButtonClassName}
+                    >
+                      支持 / 予想へ
+                    </Link>
+                    <Link href={`${appRoute.dashboard}#shared-members`} className={secondaryButtonClassName}>
+                      メンバー設定へ
+                    </Link>
+                  </div>
+                }
               >
                 <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-start">
                   <div className="flex flex-wrap gap-2">
@@ -372,7 +400,11 @@ function ScoutCardsPageContent() {
                 </div>
               </SectionCard>
 
-              <SectionCard title="入力ルール" description="予想者だけが使う補助カードです。">
+              <CollapsibleSectionCard
+                title="入力ルール"
+                description="予想者だけが使う補助カードです。必要なときだけ開いて確認できます。"
+                badge={<Badge tone="slate">補足</Badge>}
+              >
                 <div className="space-y-2 text-sm leading-7 text-slate-700">
                   <p>W杯toto予想。上から重要考慮要素。</p>
                   <p>
@@ -392,7 +424,7 @@ function ScoutCardsPageContent() {
                     なら引き分け警戒を強調します。
                   </p>
                 </div>
-              </SectionCard>
+              </CollapsibleSectionCard>
 
               <section className="grid gap-4 lg:grid-cols-4">
                 <StatCard
@@ -468,9 +500,10 @@ function ScoutCardsPageContent() {
                 </div>
               </SectionCard>
 
-              <SectionCard
+              <CollapsibleSectionCard
                 title="入力のコツ"
                 description="全部を長文で書くより、数値で方向を出してから短い根拠を足すのが使いやすいです。"
+                badge={<Badge tone="sky">コツ</Badge>}
               >
                 <div className="grid gap-3 lg:grid-cols-3">
                   <div className="rounded-[22px] border border-white/80 bg-white/76 p-4 shadow-[0_16px_38px_-30px_rgba(15,23,42,0.4)]">
@@ -498,7 +531,7 @@ function ScoutCardsPageContent() {
                     </p>
                   </div>
                 </div>
-              </SectionCard>
+              </CollapsibleSectionCard>
 
               <form
                 id={formId}

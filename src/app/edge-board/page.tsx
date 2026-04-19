@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 
@@ -10,7 +11,14 @@ import {
   RoundRequiredNotice,
 } from "@/components/app/states";
 import { RoundNav } from "@/components/round-nav";
-import { Badge, PageHeader, SectionCard, StatCard } from "@/components/ui";
+import {
+  Badge,
+  CollapsibleSectionCard,
+  PageHeader,
+  SectionCard,
+  secondaryButtonClassName,
+  StatCard,
+} from "@/components/ui";
 import {
   buildEdgeRows,
   formatNumber,
@@ -18,7 +26,7 @@ import {
   formatSignedPercent,
   roundStatusLabel,
 } from "@/lib/domain";
-import { appRoute, getSingleSearchParam } from "@/lib/round-links";
+import { appRoute, buildRoundHref, getSingleSearchParam } from "@/lib/round-links";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { useRoundWorkspace } from "@/lib/use-app-data";
 
@@ -114,6 +122,22 @@ function EdgeBoardPageContent() {
           <SectionCard
             title="まず見るところ"
             description="採用候補、引き分け候補、人気薄の芽を先に見られます。細かい39 outcome はその下に残しています。"
+            actions={
+              <div className="flex flex-wrap gap-2">
+                <Link
+                  href={buildRoundHref(appRoute.ticketGenerator, data.round.id)}
+                  className={secondaryButtonClassName}
+                >
+                  候補チケットへ
+                </Link>
+                <Link
+                  href={buildRoundHref(appRoute.consensus, data.round.id)}
+                  className={secondaryButtonClassName}
+                >
+                  コンセンサスへ
+                </Link>
+              </div>
+            }
           >
             <div className="grid gap-4 xl:grid-cols-3">
               <div className="rounded-[24px] border border-emerald-200 bg-emerald-50/80 p-5">
@@ -236,9 +260,10 @@ function EdgeBoardPageContent() {
             </div>
           </SectionCard>
 
-          <SectionCard
+          <CollapsibleSectionCard
             title="差分ボード"
             description="上から 採用 → 見送り の順です。差分が +0.08 以上なら高エッジ、0 の平均Dが高い場合は引き分け補正を強めに反映します。"
+            badge={<Badge tone="slate">詳細</Badge>}
           >
             <div className="overflow-x-auto">
               <table className="min-w-[1280px] text-left text-sm">
@@ -291,7 +316,7 @@ function EdgeBoardPageContent() {
                 </tbody>
               </table>
             </div>
-          </SectionCard>
+          </CollapsibleSectionCard>
         </>
       ) : null}
     </div>

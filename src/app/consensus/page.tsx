@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   ConfigurationNotice,
   ErrorNotice,
@@ -7,7 +8,14 @@ import {
   RoundRequiredNotice,
 } from "@/components/app/states";
 import { RoundNav } from "@/components/round-nav";
-import { Badge, PageHeader, SectionCard, StatCard } from "@/components/ui";
+import {
+  Badge,
+  CollapsibleSectionCard,
+  PageHeader,
+  SectionCard,
+  secondaryButtonClassName,
+  StatCard,
+} from "@/components/ui";
 import {
   aiRecommendedOutcomes,
   buildMatchBadges,
@@ -19,7 +27,7 @@ import {
   representativeNotes,
   roundStatusLabel,
 } from "@/lib/domain";
-import { appRoute, getSingleSearchParam } from "@/lib/round-links";
+import { appRoute, buildRoundHref, getSingleSearchParam } from "@/lib/round-links";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { useRoundWorkspace } from "@/lib/use-app-data";
 import { useSearchParams } from "next/navigation";
@@ -147,6 +155,22 @@ function ConsensusPageContent() {
           <SectionCard
             title="まず見るところ"
             description="人力が大きく動かした試合から先に見られます。細かい一覧はその下に残しています。"
+            actions={
+              <div className="flex flex-wrap gap-2">
+                <Link
+                  href={buildRoundHref(appRoute.edgeBoard, data.round.id)}
+                  className={secondaryButtonClassName}
+                >
+                  差分ボードへ
+                </Link>
+                <Link
+                  href={buildRoundHref(appRoute.review, data.round.id)}
+                  className={secondaryButtonClassName}
+                >
+                  振り返りへ
+                </Link>
+              </div>
+            }
           >
             <div className="grid gap-4 xl:grid-cols-3">
               <div className="rounded-[24px] border border-rose-200 bg-rose-50/75 p-5">
@@ -259,9 +283,10 @@ function ConsensusPageContent() {
             </div>
           </SectionCard>
 
-          <SectionCard
+          <CollapsibleSectionCard
             title="コンセンサス一覧"
             description="注目順に並べています。代表メモは予想者カードの内容から重複を除いて抜粋しています。"
+            badge={<Badge tone="slate">詳細</Badge>}
           >
             <div className="overflow-x-auto">
               <table className="min-w-[1540px] text-left text-sm">
@@ -369,7 +394,7 @@ function ConsensusPageContent() {
                 </tbody>
               </table>
             </div>
-          </SectionCard>
+          </CollapsibleSectionCard>
         </>
       ) : null}
     </div>

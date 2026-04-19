@@ -14,6 +14,7 @@ import { RoundNav } from "@/components/round-nav";
 import {
   Badge,
   buttonClassName,
+  CollapsibleSectionCard,
   cx,
   fieldClassName,
   PageHeader,
@@ -466,9 +467,10 @@ function TicketGeneratorPageContent() {
             {submitError ? <p className="text-sm text-rose-700">{submitError}</p> : null}
           </SectionCard>
 
-          <SectionCard
+          <CollapsibleSectionCard
             title="モードの違い"
             description="まずはバランス、その後に本線と荒れ狙いを見比べると差が掴みやすいです。"
+            badge={<Badge tone="slate">比較</Badge>}
           >
             <div className="grid gap-4 lg:grid-cols-3">
               {ticketModeOptions.map((mode) => {
@@ -550,7 +552,7 @@ function TicketGeneratorPageContent() {
                 );
               })}
             </div>
-          </SectionCard>
+          </CollapsibleSectionCard>
 
           <SectionCard
             title={`${ticketModeLabel[selectedMode]}モードの候補一覧`}
