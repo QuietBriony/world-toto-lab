@@ -404,6 +404,80 @@ export default function DashboardPage() {
           </SectionCard>
 
           <SectionCard
+            title="運用メモと公開時の注意"
+            description="普段は畳んでおいて、必要なときだけ確認できるメモです。公開サイトとして使う前提の注意をまとめています。"
+          >
+            <div className="grid gap-3">
+              {[
+                {
+                  defaultOpen: true,
+                  eyebrow: "Storage",
+                  title: "データはどこに保存される？",
+                  summary:
+                    "GitHub の repo にメンバー情報や予想が直接書き戻るわけではありません。保存先は Supabase です。",
+                  body: "このサイトで作成したメンバー名、Round、Picks、Scout Card、Review は Supabase の DB に保存されます。GitHub Pages は画面を配信しているだけで、保存データそのものを GitHub のコード一覧に並べるものではありません。",
+                  note: "ただし今の MVP は公開サイト + 匿名アクセス前提なので、公開 URL 経由で読める前提で扱ってください。",
+                  tone: "teal" as const,
+                },
+                {
+                  defaultOpen: false,
+                  eyebrow: "Privacy",
+                  title: "名前はどう入れる？",
+                  summary:
+                    "本名や連絡先ではなく、ハンドル名やニックネーム前提で使うのが安全です。",
+                  body: "今の構成は 10 人前後の内輪共有 MVP です。Member 1、観戦会A、Briony みたいな表示名で十分で、メールアドレス、電話番号、精算メモのような個人情報は入れない運用が向いています。",
+                  note: "ちゃんと守りたい場合は、将来的に認証と権限制御を入れる前提です。",
+                  tone: "amber" as const,
+                },
+                {
+                  defaultOpen: false,
+                  eyebrow: "Scope",
+                  title: "この MVP でやらないこと",
+                  summary:
+                    "購入代行、賭け金管理、配当分配、精算は扱いません。分析と記録に限定しています。",
+                  body: "この UI は AI Base と Human Overlay を比べて、予想の根拠や振り返りを残すためのものです。金銭の受け渡しや代理購入のフローは入れていませんし、今後も別物として扱う想定です。",
+                  note: "公式サービスの利用は各自の判断で行う前提です。",
+                  tone: "sky" as const,
+                },
+              ].map((item) => (
+                <details
+                  key={item.title}
+                  open={item.defaultOpen}
+                  className="group overflow-hidden rounded-[24px] border border-white/70 bg-[linear-gradient(145deg,rgba(255,255,255,0.92),rgba(244,250,246,0.88))] shadow-[0_20px_50px_-36px_rgba(0,0,0,0.32)]"
+                >
+                  <summary className="flex cursor-pointer list-none items-start justify-between gap-4 px-5 py-4 [&::-webkit-details-marker]:hidden">
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge tone={item.tone}>{item.eyebrow}</Badge>
+                        <h3 className="font-display text-lg font-semibold tracking-[-0.04em] text-slate-950">
+                          {item.title}
+                        </h3>
+                      </div>
+                      <p className="max-w-3xl text-sm leading-6 text-slate-600">
+                        {item.summary}
+                      </p>
+                    </div>
+                    <span className="rounded-full border border-slate-200 bg-white/84 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                      Open
+                    </span>
+                  </summary>
+                  <div className="border-t border-slate-200/80 px-5 py-4">
+                    <div className="grid gap-4 lg:grid-cols-[1.3fr_0.7fr]">
+                      <p className="text-sm leading-7 text-slate-700">{item.body}</p>
+                      <div className="rounded-[20px] border border-slate-200 bg-slate-50/88 p-4 text-sm leading-7 text-slate-600">
+                        <div className="font-display text-[11px] uppercase tracking-[0.32em] text-slate-500">
+                          Note
+                        </div>
+                        <p className="mt-2">{item.note}</p>
+                      </div>
+                    </div>
+                  </div>
+                </details>
+              ))}
+            </div>
+          </SectionCard>
+
+          <SectionCard
             className="metric-grid"
             title="Lab Frame"
             description="保存、共有、分析を一つの流れで回すための MVP です。単なる紹介ページではなく、実際の入力と集計に寄せています。"
