@@ -1,19 +1,19 @@
 @import "tailwindcss";
 
 :root {
-  --background: #edf2f7;
-  --background-muted: #e6edf5;
-  --surface: rgba(255, 255, 255, 0.9);
+  --background: #081810;
+  --background-muted: #10251b;
+  --surface: rgba(251, 255, 252, 0.9);
   --surface-strong: rgba(255, 255, 255, 0.98);
   --foreground: #08111f;
-  --muted-foreground: #5f6f83;
-  --line: rgba(98, 115, 138, 0.18);
-  --accent: #0f766e;
-  --accent-strong: #115e59;
-  --positive: #16a34a;
-  --warning: #c87a10;
+  --muted-foreground: #5d6f66;
+  --line: rgba(173, 214, 192, 0.18);
+  --accent: #16803f;
+  --accent-strong: #0f5e2d;
+  --positive: #15803d;
+  --warning: #d97706;
   --danger: #e11d48;
-  --draw: #4f46e5;
+  --draw: #2563eb;
 }
 
 @theme inline {
@@ -40,7 +40,9 @@
 }
 
 html {
-  background: linear-gradient(180deg, #f8fafc 0%, #edf2f7 44%, #e4ebf2 100%);
+  background:
+    radial-gradient(circle at top, rgba(250, 204, 21, 0.08), transparent 18%),
+    linear-gradient(180deg, #07140d 0%, #0c281b 22%, #0d341f 48%, #0a2116 100%);
   scroll-behavior: smooth;
 }
 
@@ -86,15 +88,33 @@ textarea {
 }
 
 ::selection {
-  background: rgba(15, 118, 110, 0.22);
-  color: white;
+  background: rgba(245, 158, 11, 0.32);
+  color: #081810;
 }
 
 .metric-grid {
   background-image:
-    linear-gradient(rgba(15, 23, 42, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(15, 23, 42, 0.05) 1px, transparent 1px);
-  background-size: 22px 22px;
+    radial-gradient(circle at center, transparent 0, transparent 19%, rgba(255, 255, 255, 0.1) 19.6%, rgba(255, 255, 255, 0.1) 20.3%, transparent 20.8%),
+    linear-gradient(90deg, transparent 49.7%, rgba(255, 255, 255, 0.12) 49.8%, rgba(255, 255, 255, 0.12) 50.2%, transparent 50.3%),
+    linear-gradient(0deg, transparent 49.7%, rgba(255, 255, 255, 0.08) 49.8%, rgba(255, 255, 255, 0.08) 50.2%, transparent 50.3%);
+  background-size: 240px 240px, 80px 80px, 80px 80px;
+}
+
+.pitch-stripes {
+  background-image: repeating-linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.04) 0,
+    rgba(255, 255, 255, 0.04) 32px,
+    rgba(0, 0, 0, 0.04) 32px,
+    rgba(0, 0, 0, 0.04) 64px
+  );
+}
+
+.scoreboard-glow {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 24px 64px -40px rgba(0, 0, 0, 0.72),
+    0 0 24px rgba(250, 204, 21, 0.08);
 }
 
 .no-scrollbar {
