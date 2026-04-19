@@ -90,6 +90,60 @@ export const demoRoundTitle = "デモ体験ラウンド";
 export const demoRoundNotes =
   "チュートリアル用の仮ラウンドです。AI基準線、人力上書き、コンセンサス、差分、候補チケット、振り返りまで一通り入っています。金銭、配当、代理購入、精算は扱いません。";
 
+export const demoWalkthroughSteps = [
+  {
+    key: "overview",
+    title: "確認カード",
+    body: "AI基準線、人力上書き、差分大の試合を最初にざっと見ます。",
+  },
+  {
+    key: "picks",
+    title: "人力予想",
+    body: "AI本線に乗るか、0 を足すか、別筋へ振るかを実例で確認します。",
+  },
+  {
+    key: "consensus",
+    title: "コンセンサス",
+    body: "全員の上書きが、0 候補や別筋にどう集まるかを見ます。",
+  },
+  {
+    key: "review",
+    title: "振り返り",
+    body: "結果と反省ログまで見て、情報待ちカードの扱いを確認します。",
+  },
+] as const;
+
+export const demoFocusMatches = [
+  {
+    matchNo: 1,
+    label: "AI本線",
+    title: "まず #1 で AI基準線を見る",
+    body: "AI本線と人力一致が、いちばん素直に見える教材です。",
+  },
+  {
+    matchNo: 2,
+    label: "0追加",
+    title: "#2 で引き分けを足す流れを見る",
+    body: "AI が 0/2 を出している試合に、人力が 0 を重ねる見方を追えます。",
+  },
+  {
+    matchNo: 5,
+    label: "別筋",
+    title: "#5 で人気と別筋を作る",
+    body: "人気先行の 1 に対して、2 を差し込む読み替えの例です。",
+  },
+  {
+    matchNo: 11,
+    label: "情報待ち",
+    title: "#11 で例外カードを見る",
+    body: "広く持つ判断と、振り返りでの扱いがつながる試合です。",
+  },
+] as const;
+
+export function isDemoRoundTitle(title: string | null | undefined) {
+  return title === demoRoundTitle;
+}
+
 export const demoTicketSettings: GeneratorSettings = {
   budgetYen: 2000,
   humanWeight: 0.68,

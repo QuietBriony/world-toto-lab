@@ -39,6 +39,11 @@ import {
   roundStatusOptions,
 } from "@/lib/domain";
 import {
+  demoFocusMatches,
+  demoWalkthroughSteps,
+  isDemoRoundTitle,
+} from "@/lib/demo-data";
+import {
   AI_MODEL_LABEL,
   AI_MODEL_VERSION,
   canEstimateAiModel,
@@ -64,6 +69,20 @@ function errorMessage(error: unknown) {
 
 function progressValue(done: number, total: number) {
   return total > 0 ? `${done}/${total}` : "未設定";
+}
+
+function previewNotes(value: string | null | undefined, maxSentences = 2) {
+  if (!value) {
+    return null;
+  }
+
+  const sentences = value
+    .split("。")
+    .map((sentence) => sentence.trim())
+    .filter(Boolean)
+    .slice(0, maxSentences);
+
+  return sentences.length > 0 ? `${sentences.join("。")}。` : null;
 }
 
 function strongestPositiveEdge(match: {
@@ -197,6 +216,14 @@ function WorkspacePageContent() {
 
         return left.matchNo - right.matchNo;
       }) ?? [];
+  const isDemoRound = isDemoRoundTitle(data?.round.title);
+  const demoNotePreview = isDemoRound ? previewNotes(data?.round.notes) : null;
+  const demoFocusEntries = isDemoRound
+    ? demoFocusMatches.map((item) => ({
+        ...item,
+        match: data?.round.matches.find((match) => match.matchNo === item.matchNo) ?? null,
+      }))
+    : [];
 
   const handleSaveRound = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -300,9 +327,18 @@ function WorkspacePageContent() {
       <PageHeader
         eyebrow="ラウンド詳細"
         title={data?.round.title ?? "ラウンド詳細"}
-        description="13試合の分析入力状況を、AI基準線を土台にして人力上書きと差分候補まで一気に俯瞰できます。"
+        description={
+          isDemoRound
+            ? "このデモは、確認カード → 人力予想 → コンセンサス → 振り返り の順で触ると全体像をつかみやすいです。"
+            : "13試合の分析入力状況を、AI基準線を土台にして人力上書きと差分候補まで一気に俯瞰できます。"
+        }
         actions={
-          data ? <Badge tone="sky">{roundStatusLabel[data.round.status]}</Badge> : undefined
+          data ? (
+            <div className="flex flex-wrap items-center gap-2">
+              {isDemoRound ? <Badge tone="amber">デモ</Badge> : null}
+              <Badge tone="sky">{roundStatusLabel[data.round.status]}</Badge>
+            </div>
+          ) : undefined
         }
       />
 
@@ -322,6 +358,112 @@ function WorkspacePageContent() {
             roundStatus={roundStatusLabel[data.round.status]}
             currentPath={appRoute.workspace}
           />
+
+          {isDemoRound ? (
+            <SectionCard
+              title="このデモで最初に見る順番"
+              description={
+                demoNotePreview ??
+                "AI基準線と人力上書きの流れを、実データ入りの 1 ラウンドでそのまま追えます。"
+              }
+              actions={
+                <a href="#overview-cards" className={secondaryButtonClassName}>
+                  確認カードへ
+                </a>
+              }
+            >
+              <div className="grid gap-4 xl:grid-cols-[1.08fr_0.92fr]">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {demoWalkthroughSteps.map((step, index) => {
+                    const href =
+                      step.key === "overview"
+                        ? "#overview-cards"
+                        : step.key === "picks"
+                          ? buildRoundHref(appRoute.picks, data.round.id, {
+                              user: data.users[0]?.id,
+                            })
+                          : step.key === "consensus"
+                            ? buildRoundHref(appRoute.consensus, data.round.id)
+                            : buildRoundHref(appRoute.review, data.round.id);
+
+                    return (
+                      <div
+                        key={step.key}
+                        className="rounded-[22px] border border-white/80 bg-white/78 p-4 shadow-[0_16px_38px_-30px_rgba(15,23,42,0.36)]"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <div className="font-display text-[11px] uppercase tracking-[0.34em] text-teal-800/72">
+                              手順 {String(index + 1).padStart(2, "0")}
+                            </div>
+                            <h3 className="mt-3 font-display text-lg font-semibold tracking-[-0.04em] text-slate-950">
+                              {step.title}
+                            </h3>
+                          </div>
+                          {step.key === "overview" ? (
+                            <a href={href} className={secondaryButtonClassName}>
+                              開く
+                            </a>
+                          ) : (
+                            <Link href={href} className={secondaryButtonClassName}>
+                              開く
+                            </Link>
+                          )}
+                        </div>
+                        <p className="mt-3 text-sm leading-6 text-slate-600">{step.body}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="rounded-[24px] border border-slate-200 bg-slate-50/82 p-5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge tone="amber">教材</Badge>
+                    <h3 className="font-display text-lg font-semibold tracking-[-0.04em] text-slate-950">
+                      まず見る代表例
+                    </h3>
+                  </div>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <Badge tone="slate">{data.round.matches.length}試合</Badge>
+                    <Badge tone="slate">{data.users.length}人</Badge>
+                    <Badge tone="slate">{data.round.picks.length}予想</Badge>
+                    <Badge tone="slate">{data.round.scoutReports.length}根拠</Badge>
+                    <Badge tone="slate">{data.round.reviewNotes.length}振り返り</Badge>
+                  </div>
+                  <div className="mt-4 space-y-3">
+                    {demoFocusEntries.map((item) => (
+                      <div
+                        key={`demo-focus-${item.matchNo}`}
+                        className="rounded-[18px] border border-slate-200 bg-white/78 p-3"
+                      >
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge tone="sky">
+                            #{item.matchNo} {item.label}
+                          </Badge>
+                          {item.match?.actualResult ? (
+                            <Badge tone="slate">
+                              結果{" "}
+                              {item.match.actualResult
+                                .replace("ONE", "1")
+                                .replace("DRAW", "0")
+                                .replace("TWO", "2")}
+                            </Badge>
+                          ) : null}
+                        </div>
+                        <div className="mt-2 text-sm font-semibold text-slate-900">
+                          {item.title}
+                        </div>
+                        <p className="mt-1 text-sm leading-6 text-slate-600">
+                          {item.match ? `${item.match.homeTeam} 対 ${item.match.awayTeam}。` : ""}
+                          {item.body}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </SectionCard>
+          ) : null}
 
           <SectionCard
             title="進行チェック"
@@ -785,6 +927,7 @@ function WorkspacePageContent() {
           </CollapsibleSectionCard>
 
           <SectionCard
+            id="overview-cards"
             title="13試合の確認カード"
             description="まずはここで全体をざっと見ます。細かい数値表は下の `詳細表を開く` に残しています。"
           >

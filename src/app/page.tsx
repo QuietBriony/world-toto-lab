@@ -20,7 +20,7 @@ import {
   StatCard,
   textAreaClassName,
 } from "@/components/ui";
-import { demoRoundTitle } from "@/lib/demo-data";
+import { demoFocusMatches, demoRoundTitle, demoWalkthroughSteps } from "@/lib/demo-data";
 import {
   parseIntOrNull,
   parseRoundStatus,
@@ -365,34 +365,13 @@ export default function DashboardPage() {
           >
             <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
               <div className="grid gap-3 sm:grid-cols-2">
-                {[
-                  {
-                    step: "01",
-                    title: "ラウンド詳細を開く",
-                    body: "各試合の AI基準線、人力上書き、差分が同じ表で見えます。",
-                  },
-                  {
-                    step: "02",
-                    title: "人力予想を開く",
-                    body: "AI 基準線に対して、人力でどう上書きしたかを実例で追えます。",
-                  },
-                  {
-                    step: "03",
-                    title: "コンセンサス / 候補チケット",
-                    body: "人力が AI に 0 を足したか、別筋へ振ったかを集計と候補で見ます。",
-                  },
-                  {
-                    step: "04",
-                    title: "振り返りまで見る",
-                    body: "結果と反省ログまで入っているので、一連の流れを 1 ラウンドで確認できます。",
-                  },
-                ].map((item) => (
+                {demoWalkthroughSteps.map((item, index) => (
                   <div
-                    key={item.step}
+                    key={item.key}
                     className="rounded-[22px] border border-white/80 bg-white/74 p-4 shadow-[0_16px_38px_-30px_rgba(15,23,42,0.4)]"
                   >
                     <div className="font-display text-[11px] uppercase tracking-[0.34em] text-teal-800/72">
-                      手順 {item.step}
+                      手順 {String(index + 1).padStart(2, "0")}
                     </div>
                     <h3 className="mt-3 font-display text-lg font-semibold tracking-[-0.04em] text-slate-950">
                       {item.title}
@@ -415,6 +394,22 @@ export default function DashboardPage() {
                   このラウンドには試合データ、AI予測、人力予想、根拠カード、コンセンサス、候補チケット、
                   振り返りが最初から入ります。
                 </p>
+                {demoRound ? (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <Badge tone="slate">{demoRound.matchCount}試合</Badge>
+                    <Badge tone="slate">{data.users.length}人</Badge>
+                    <Badge tone="slate">{demoRound.pickCount}予想</Badge>
+                    <Badge tone="slate">{demoRound.scoutReports.length}根拠</Badge>
+                    <Badge tone="slate">{demoRound.resultedCount}結果</Badge>
+                  </div>
+                ) : null}
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {demoFocusMatches.map((item) => (
+                    <Badge key={`demo-focus-${item.matchNo}`} tone="sky">
+                      #{item.matchNo} {item.label}
+                    </Badge>
+                  ))}
+                </div>
                 {demoRound ? (
                   <div className="mt-4 flex flex-wrap gap-2">
                     <Link
