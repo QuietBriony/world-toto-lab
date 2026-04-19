@@ -865,9 +865,9 @@ export default function DashboardPage() {
               <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
                 <div className="grid gap-3">
                   <div className="rounded-[22px] border border-slate-200 bg-slate-50/90 p-4 text-sm leading-6 text-slate-600">
-                    ここで切り替えます:
-                    あだ名は各行の左側入力欄、`ウォッチ / 予想者` の切り替えはその右の選択欄です。
-                    最後に右端の `名前と役割を更新` を押すと反映されます。
+                    左側は登録済みメンバーの編集です。
+                    文字が入っている行はすでに使っているメンバーなので、名前を変えたいときだけ触ります。
+                    新しい人を増やすときは、右側の `新しいあだ名を追加` を使ってください。
                   </div>
                   {data.users.map((user) => (
                     <form
@@ -882,6 +882,9 @@ export default function DashboardPage() {
                       </div>
                       <label className="grid gap-2 text-sm font-medium text-slate-700">
                         あだ名
+                        <div className="text-xs font-normal leading-5 text-slate-500">
+                          いま登録されている名前です。変更したいときだけ直します。
+                        </div>
                         <input
                           name="memberName"
                           defaultValue={user.name}
@@ -912,27 +915,34 @@ export default function DashboardPage() {
                   ))}
                 </div>
 
-                <div className="rounded-[24px] border border-slate-200 bg-slate-50/85 p-5">
+                <div className="rounded-[24px] border border-amber-200 bg-amber-50/90 p-5 shadow-[0_18px_44px_-30px_rgba(15,23,42,0.24)]">
                   <div className="flex flex-wrap items-center gap-2">
-                    <Badge tone="amber">ニックネーム</Badge>
+                    <Badge tone="amber">ここが新規追加</Badge>
                     <h3 className="font-display text-lg font-semibold tracking-[-0.04em] text-slate-950">
-                      あだ名を追加
+                      新しいあだ名を追加
                     </h3>
                   </div>
                   <p className="mt-3 text-sm leading-6 text-slate-600">
-                    本名ではなく、観戦会で分かる呼び名だけを入れる運用が向いています。
+                    新しくメンバーを増やす場所です。右下の入力欄が空いていたら、そこに新しいあだ名を入れてください。
+                    すでに左側で文字が入っているものは登録済みです。
                   </p>
                   <form onSubmit={handleAddMember} className="mt-4 grid gap-3">
                     <label className="grid gap-2 text-sm font-medium text-slate-700">
                       あだ名
+                      <div className="text-xs font-normal leading-5 text-slate-500">
+                        ここに新しい人の呼び名を入れます
+                      </div>
                       <input
                         name="memberName"
                         className={fieldClassName}
-                        placeholder="例: ブリオニー / 青組 / さとし"
+                        placeholder="ここに新しいあだ名を入力"
                       />
                     </label>
                     <label className="grid gap-2 text-sm font-medium text-slate-700">
                       役割
+                      <div className="text-xs font-normal leading-5 text-slate-500">
+                        予想を直接入れる人なら `予想者`、見るだけなら `ウォッチ`
+                      </div>
                       <select name="memberRole" className={fieldClassName} defaultValue="member">
                         <option value="member">ウォッチとして追加</option>
                         <option value="admin">予想者として追加</option>
@@ -943,7 +953,7 @@ export default function DashboardPage() {
                       className={buttonClassName}
                       disabled={addingMember}
                     >
-                      {addingMember ? "追加中..." : "あだ名を追加"}
+                      {addingMember ? "追加中..." : "このあだ名で追加"}
                     </button>
                   </form>
                   <div className="mt-4 flex flex-wrap gap-2">
