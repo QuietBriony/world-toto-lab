@@ -746,7 +746,14 @@ export async function createDemoRound() {
 
     const workspace = await getRoundWorkspace(round.id);
     if (workspace) {
-      const allTickets = generateAllModeTickets(workspace.round.matches, demoTicketSettings);
+      const allTickets = generateAllModeTickets(
+        {
+          matches: workspace.round.matches,
+          picks: workspace.round.picks,
+          users: workspace.users,
+        },
+        demoTicketSettings,
+      );
       const maxTickets = Math.min(
         Math.max(Math.floor(demoTicketSettings.budgetYen / 100), 1),
         8,

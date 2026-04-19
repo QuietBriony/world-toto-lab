@@ -161,7 +161,7 @@ function ConsensusPageContent() {
                   href={buildRoundHref(appRoute.edgeBoard, data.round.id)}
                   className={secondaryButtonClassName}
                 >
-                  差分ボードへ
+                  優位ボードへ
                 </Link>
                 <Link
                   href={buildRoundHref(appRoute.review, data.round.id)}

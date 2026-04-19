@@ -23,9 +23,9 @@ import {
 } from "@/components/ui";
 import {
   drawPolicyLabel,
-  formatCurrency,
   formatNumber,
   formatPercent,
+  formatSignedPercent,
   roundStatusLabel,
   ticketModeLabel,
   ticketModeOptions,
@@ -39,7 +39,13 @@ import {
 import { appRoute, buildRoundHref, getSingleSearchParam } from "@/lib/round-links";
 import { replaceGeneratedTickets } from "@/lib/repository";
 import { isSupabaseConfigured } from "@/lib/supabase";
-import { generateAllModeTickets, type GeneratorSettings, type TicketPayload } from "@/lib/tickets";
+import {
+  budgetFromCandidateLimit,
+  candidateLimitFromBudget,
+  generateAllModeTickets,
+  type GeneratorSettings,
+  type TicketPayload,
+} from "@/lib/tickets";
 import type { TicketMode } from "@/lib/types";
 import { useRoundWorkspace } from "@/lib/use-app-data";
 
@@ -62,24 +68,24 @@ type ModeGuide = {
 
 const modeGuide: Record<TicketMode, ModeGuide> = {
   conservative: {
-    summary: "Model本命を大きく崩さず、外しにくい軸を優先します。",
-    fit: "まず1枚目を作るとき、寄せすぎたくないとき。",
-    emphasis: "AI本命と的中見込み",
-    caution: "高配当の跳ねはやや取りにくめです。",
+    summary: "コア候補と低リスク寄りを優先して、最初に見る順番を固めます。",
+    fit: "まず土台を作りたいとき、荒れ筋を混ぜすぎたくないとき。",
+    emphasis: "コア候補と合成確からしさ",
+    caution: "ダークホースは少なめになります。",
     tone: "teal",
   },
   balanced: {
-    summary: "初見向け。AI基準を残しつつ、人力支援と高エッジも拾います。",
-    fit: "最初の比較、迷ったときの基準作り。",
-    emphasis: "AI・人力・エッジのバランス",
-    caution: "本線よりは逆張りが少し増えます。",
+    summary: "AI・予想者・ダークホースをほどよく混ぜて、比較の基準を作ります。",
+    fit: "初見の比較、全体像を掴む最初の配分案。",
+    emphasis: "コア候補と注目配分のバランス",
+    caution: "本線だけに絞るよりはブレ幅が少し増えます。",
     tone: "sky",
   },
   upset: {
-    summary: "人気薄や逆張り候補を広めに拾い、荒れ筋を探しにいきます。",
-    fit: "差分を作りたいとき、もう一段攻めたいとき。",
-    emphasis: "逆張り度と高エッジ候補",
-    caution: "的中見込みは下がりやすいです。",
+    summary: "人気読み替えやダークホースを広めに拾い、別筋の候補を見つけにいきます。",
+    fit: "差を作りたいとき、穴候補を多めに見たいとき。",
+    emphasis: "ダークホース度と人気読み替え",
+    caution: "平均リスクは上がりやすいです。",
     tone: "amber",
   },
 };
@@ -96,18 +102,11 @@ function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "不明なエラーです。";
 }
 
-function ticketLimitFromBudget(budgetYen: number) {
-  return Math.min(Math.max(Math.floor(budgetYen / 100), 1), 8);
-}
-
 function summarizeTicketReasons(ticket: StoredTicket): ReasonChip[] {
   const counts = new Map<string, number>();
 
   for (const selection of ticket.selections) {
-    const reasons =
-      selection.reasons.length > 0
-        ? selection.reasons
-        : [selection.humanAligned ? "人力コンセンサス" : "AI本命寄り"];
+    const reasons = selection.reasons.length > 0 ? selection.reasons : ["AI本線"];
 
     for (const reason of reasons) {
       counts.set(reason, (counts.get(reason) ?? 0) + 1);
@@ -139,36 +138,41 @@ function spotlightSelections(ticket: StoredTicket) {
   return [...ticket.selections]
     .sort(
       (left, right) =>
+        right.attentionShare - left.attentionShare ||
         right.reasons.length - left.reasons.length ||
-        Math.max(right.edge, 0) - Math.max(left.edge, 0) ||
-        right.modelProbability - left.modelProbability ||
+        right.darkHorseScore - left.darkHorseScore ||
+        right.compositeAdvantage - left.compositeAdvantage ||
         left.matchNo - right.matchNo,
     )
     .slice(0, 4);
 }
 
-function selectionReasonText(ticket: StoredTicket["selections"][number]) {
-  if (ticket.reasons.length > 0) {
-    return ticket.reasons.join(" / ");
+function selectionReasonText(selection: StoredTicket["selections"][number]) {
+  if (selection.reasons.length > 0) {
+    return selection.reasons.join(" / ");
   }
 
-  return ticket.humanAligned ? "人力コンセンサス寄り" : "AI本命寄り";
+  return selection.humanAligned ? "予想者と重なる候補" : "AI本線寄り";
 }
 
-function selectionReasonTone(ticket: StoredTicket["selections"][number]) {
-  if (ticket.reasons.includes("高エッジ")) {
-    return "teal" as const;
-  }
-
-  if (ticket.reasons.includes("人気薄の分析候補")) {
+function selectionReasonTone(selection: StoredTicket["selections"][number]) {
+  if (selection.reasons.includes("ダークホース")) {
     return "amber" as const;
   }
 
-  if (ticket.reasons.includes("引き分け警戒") || ticket.outcome === "0") {
+  if (selection.reasons.includes("0警戒")) {
     return "sky" as const;
   }
 
-  return ticket.humanAligned ? ("rose" as const) : ("slate" as const);
+  if (selection.reasons.includes("予想者優位")) {
+    return "rose" as const;
+  }
+
+  if (selection.reasons.includes("コア候補") || selection.reasons.includes("合成優位")) {
+    return "teal" as const;
+  }
+
+  return selection.humanAligned ? ("sky" as const) : ("slate" as const);
 }
 
 function TicketGeneratorPageContent() {
@@ -198,11 +202,12 @@ function TicketGeneratorPageContent() {
   const lastSettings = parsedTickets[0]?.parsed.settings;
 
   const effectiveSettings: GeneratorSettings = {
-    budgetYen: lastSettings?.budgetYen ?? data?.round.budgetYen ?? 2000,
+    budgetYen: lastSettings?.budgetYen ?? data?.round.budgetYen ?? budgetFromCandidateLimit(5),
     humanWeight: lastSettings?.humanWeight ?? 0.65,
     maxContrarianMatches: lastSettings?.maxContrarianMatches ?? 3,
     includeDrawPolicy: lastSettings?.includeDrawPolicy ?? "medium",
   };
+  const effectiveCandidateLimit = candidateLimitFromBudget(effectiveSettings.budgetYen);
 
   const selectedModeTickets = ticketsByMode[selectedMode];
   const selectedHero = selectedModeTickets[0] ?? null;
@@ -222,8 +227,12 @@ function TicketGeneratorPageContent() {
 
     try {
       const formData = new FormData(event.currentTarget);
+      const candidateLimit = Math.min(
+        Math.max(parseIntOrNull(stringValue(formData, "candidateLimit")) ?? 5, 1),
+        8,
+      );
       const settings: GeneratorSettings = {
-        budgetYen: parseIntOrNull(stringValue(formData, "budgetYen")) ?? 1000,
+        budgetYen: budgetFromCandidateLimit(candidateLimit),
         humanWeight: Math.min(
           Math.max(parseFloatOrNull(stringValue(formData, "humanWeight")) ?? 0.6, 0),
           1,
@@ -239,8 +248,15 @@ function TicketGeneratorPageContent() {
             : "medium",
       };
       const focusMode = parseTicketMode(stringValue(formData, "mode"));
-      const allTickets = generateAllModeTickets(data.round.matches, settings);
-      const maxTickets = ticketLimitFromBudget(settings.budgetYen);
+      const allTickets = generateAllModeTickets(
+        {
+          matches: data.round.matches,
+          picks: data.round.picks,
+          users: data.users,
+        },
+        settings,
+      );
+      const maxTickets = candidateLimitFromBudget(settings.budgetYen);
 
       await replaceGeneratedTickets({
         roundId: data.round.id,
@@ -271,9 +287,9 @@ function TicketGeneratorPageContent() {
   return (
     <div className="space-y-8">
       <PageHeader
-        eyebrow="候補チケット"
-        title="買い目候補ジェネレーター"
-        description="スコアは厳密な確率最適化ではなく、買い目候補の並び替え用です。金銭管理や配当分配は扱いません。"
+        eyebrow="候補配分"
+        title="注目配分ジェネレーター"
+        description="金額や配当ではなく、AI・予想者・ウォッチ支持の合成優位差から、どの候補から見るかを整理します。"
       />
 
       {!isSupabaseConfigured() ? (
@@ -281,7 +297,7 @@ function TicketGeneratorPageContent() {
       ) : !roundId ? (
         <RoundRequiredNotice />
       ) : loading && !data ? (
-        <LoadingNotice title="候補チケットを読み込み中" />
+        <LoadingNotice title="候補配分を読み込み中" />
       ) : error && !data ? (
         <ErrorNotice error={error} onRetry={() => void refresh()} />
       ) : data ? (
@@ -295,7 +311,7 @@ function TicketGeneratorPageContent() {
 
           <SectionCard
             title="最初に見るポイント"
-            description="初見なら、まずはバランスで生成してから上位候補の理由を見る流れで十分です。"
+            description="初見なら、まずはバランスで生成して、上位候補の注目配分と理由タグを見る流れで十分です。"
           >
             <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
               <div className="rounded-[28px] border border-emerald-200 bg-[linear-gradient(145deg,rgba(236,253,245,0.94),rgba(239,246,255,0.92))] p-5 shadow-[0_24px_60px_-40px_rgba(15,23,42,0.45)]">
@@ -308,8 +324,7 @@ function TicketGeneratorPageContent() {
                 </h3>
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-700">
                   {modeGuide[recommendedStartMode].summary}
-                  候補一覧では「理由タグ」と「理由が出ている試合」を見れば、
-                  そのチケットがなぜ上位に来たかをすぐ追えます。
+                  上位候補では「注目配分」と「理由タグ」を見るだけで、どこから読むべきかがすぐ分かります。
                 </p>
 
                 <div className="mt-4 grid gap-3 sm:grid-cols-3">
@@ -318,8 +333,7 @@ function TicketGeneratorPageContent() {
                       Step 1
                     </p>
                     <p className="mt-2 text-sm font-medium text-slate-900">
-                      予算 {formatCurrency(effectiveSettings.budgetYen)} なら上位{" "}
-                      {ticketLimitFromBudget(effectiveSettings.budgetYen)} 枚を確認
+                      上位 {effectiveCandidateLimit} 案を比較する
                     </p>
                   </div>
                   <div className="rounded-[22px] border border-white/75 bg-white/80 p-4">
@@ -327,7 +341,7 @@ function TicketGeneratorPageContent() {
                       Step 2
                     </p>
                     <p className="mt-2 text-sm font-medium text-slate-900">
-                      まずは評価・的中見込み・逆張り度の3つだけ比較
+                      配分スコア / 合成確からしさ / 平均リスクを比べる
                     </p>
                   </div>
                   <div className="rounded-[22px] border border-white/75 bg-white/80 p-4">
@@ -351,26 +365,26 @@ function TicketGeneratorPageContent() {
                 <dl className="mt-4 grid gap-3 sm:grid-cols-2">
                   <div className="rounded-2xl border border-white/70 bg-white/90 p-3">
                     <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                      予算
+                      上位候補数
                     </dt>
                     <dd className="mt-1 text-sm font-medium text-slate-900">
-                      {formatCurrency(effectiveSettings.budgetYen)}
+                      {effectiveCandidateLimit} 案
                     </dd>
                   </div>
                   <div className="rounded-2xl border border-white/70 bg-white/90 p-3">
                     <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                      候補上限
-                    </dt>
-                    <dd className="mt-1 text-sm font-medium text-slate-900">
-                      {ticketLimitFromBudget(effectiveSettings.budgetYen)} 枚 / モード
-                    </dd>
-                  </div>
-                  <div className="rounded-2xl border border-white/70 bg-white/90 p-3">
-                    <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                      人力比重
+                      予想者比重
                     </dt>
                     <dd className="mt-1 text-sm font-medium text-slate-900">
                       {formatNumber(effectiveSettings.humanWeight, 2)}
+                    </dd>
+                  </div>
+                  <div className="rounded-2xl border border-white/70 bg-white/90 p-3">
+                    <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                      穴候補上限
+                    </dt>
+                    <dd className="mt-1 text-sm font-medium text-slate-900">
+                      {effectiveSettings.maxContrarianMatches} 試合
                     </dd>
                   </div>
                   <div className="rounded-2xl border border-white/70 bg-white/90 p-3">
@@ -393,17 +407,18 @@ function TicketGeneratorPageContent() {
 
           <SectionCard
             title="生成設定"
-            description="予算から候補枚数を 100 円単位で計算します。"
+            description="上位何案まで並べるか、どこまで穴候補を混ぜるかをここで調整します。"
           >
             <form onSubmit={handleGenerate} className="grid gap-5 md:grid-cols-2 lg:grid-cols-5">
               <label className="grid gap-2 text-sm font-medium text-slate-700">
-                予算
+                上位候補数
                 <input
-                  name="budgetYen"
+                  name="candidateLimit"
                   type="number"
-                  min={100}
-                  step={100}
-                  defaultValue={effectiveSettings.budgetYen}
+                  min={1}
+                  max={8}
+                  step={1}
+                  defaultValue={effectiveCandidateLimit}
                   className={fieldClassName}
                 />
               </label>
@@ -420,7 +435,7 @@ function TicketGeneratorPageContent() {
               </label>
 
               <label className="grid gap-2 text-sm font-medium text-slate-700">
-                人力比重
+                予想者比重
                 <input
                   name="humanWeight"
                   type="number"
@@ -433,7 +448,7 @@ function TicketGeneratorPageContent() {
               </label>
 
               <label className="grid gap-2 text-sm font-medium text-slate-700">
-                逆張り上限試合数
+                穴候補上限
                 <input
                   name="maxContrarianMatches"
                   type="number"
@@ -458,9 +473,9 @@ function TicketGeneratorPageContent() {
                 </select>
               </label>
 
-              <div className="md:col-span-2 lg:col-span-5 flex justify-end">
+              <div className="flex justify-end md:col-span-2 lg:col-span-5">
                 <button type="submit" className={buttonClassName} disabled={saving}>
-                  {saving ? "生成中..." : "候補を生成"}
+                  {saving ? "生成中..." : "配分案を更新"}
                 </button>
               </div>
             </form>
@@ -469,7 +484,7 @@ function TicketGeneratorPageContent() {
 
           <CollapsibleSectionCard
             title="モードの違い"
-            description="まずはバランス、その後に本線と荒れ狙いを見比べると差が掴みやすいです。"
+            description="まずはバランス、その後にコア重視と穴重視を見比べると差が掴みやすいです。"
             badge={<Badge tone="slate">比較</Badge>}
           >
             <div className="grid gap-4 lg:grid-cols-3">
@@ -514,24 +529,22 @@ function TicketGeneratorPageContent() {
                         <span className="font-semibold text-slate-900">向く場面:</span> {guide.fit}
                       </div>
                       <div className="rounded-2xl bg-slate-950/5 px-4 py-3">
-                        <span className="font-semibold text-slate-900">重視:</span>{" "}
-                        {guide.emphasis}
+                        <span className="font-semibold text-slate-900">重視:</span> {guide.emphasis}
                       </div>
                       <div className="rounded-2xl bg-slate-950/5 px-4 py-3">
-                        <span className="font-semibold text-slate-900">注意:</span>{" "}
-                        {guide.caution}
+                        <span className="font-semibold text-slate-900">注意:</span> {guide.caution}
                       </div>
                     </div>
 
                     {hero ? (
                       <div className="mt-4 space-y-3 border-t border-slate-200 pt-4">
                         <div className="flex flex-wrap gap-2">
-                          <Badge tone="teal">評価 {formatNumber(hero.ticketScore, 2)}</Badge>
-                          <Badge tone="amber">
-                            的中見込み {formatPercent(hero.estimatedHitProb, 1)}
+                          <Badge tone="teal">配分スコア {formatNumber(hero.ticketScore, 2)}</Badge>
+                          <Badge tone="sky">
+                            注目配分 {formatPercent(hero.parsed.attentionShare, 1)}
                           </Badge>
-                          <Badge tone="rose">
-                            逆張り度 {formatNumber(hero.contrarianScore, 2)}
+                          <Badge tone="amber">
+                            合成確からしさ {formatPercent(hero.estimatedHitProb, 1)}
                           </Badge>
                         </div>
                         <p className="text-sm leading-6 text-slate-600">{hero.parsed.comment}</p>
@@ -555,12 +568,12 @@ function TicketGeneratorPageContent() {
           </CollapsibleSectionCard>
 
           <SectionCard
-            title={`${ticketModeLabel[selectedMode]}モードの候補一覧`}
-            description={`予算 ${formatCurrency(effectiveSettings.budgetYen)} を基準に上位候補を表示しています。`}
+            title={`${ticketModeLabel[selectedMode]}モードの配分案`}
+            description={`上位 ${effectiveCandidateLimit} 案を比較して、どこから読むかの目安を表示しています。`}
           >
             <div className="space-y-4">
               {ticketsByMode[selectedMode].length === 0 ? (
-                <p className="text-sm text-slate-500">まだチケットが生成されていません。</p>
+                <p className="text-sm text-slate-500">まだ配分案が生成されていません。</p>
               ) : (
                 <>
                   <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
@@ -573,7 +586,7 @@ function TicketGeneratorPageContent() {
                       </div>
                       <p className="mt-3 text-sm leading-6 text-slate-700">
                         {modeGuide[selectedMode].summary}
-                        {selectedHero ? ` 上位候補の先頭コメントは「${selectedHero.parsed.comment}」です。` : ""}
+                        {selectedHero ? ` 先頭案のコメントは「${selectedHero.parsed.comment}」です。` : ""}
                       </p>
                       {selectedHeroReasons.length > 0 ? (
                         <div className="mt-4 flex flex-wrap gap-2">
@@ -590,7 +603,7 @@ function TicketGeneratorPageContent() {
                       <div className="flex flex-wrap items-center gap-2">
                         <Badge tone="sky">理由タグ</Badge>
                         <h3 className="font-display text-lg font-semibold tracking-[-0.05em] text-slate-950">
-                          上位候補でよく出ている理由
+                          上位案でよく出ている理由
                         </h3>
                       </div>
                       <div className="mt-4 flex flex-wrap gap-2">
@@ -606,6 +619,7 @@ function TicketGeneratorPageContent() {
                   {ticketsByMode[selectedMode].map((ticket, index) => {
                     const reasonSummary = summarizeTicketReasons(ticket.parsed);
                     const keySelections = spotlightSelections(ticket.parsed);
+                    const parsed = ticket.parsed;
 
                     return (
                       <div
@@ -616,20 +630,26 @@ function TicketGeneratorPageContent() {
                           <div className="flex items-center gap-2">
                             <Badge tone="sky">#{index + 1}</Badge>
                             <span className="text-lg font-semibold text-slate-900">
-                              評価 {formatNumber(ticket.ticketScore, 2)}
+                              配分スコア {formatNumber(ticket.ticketScore, 2)}
                             </span>
                           </div>
                           <div className="flex flex-wrap gap-2 text-sm">
+                            <Badge tone="teal">
+                              注目配分 {formatPercent(parsed.attentionShare, 1)}
+                            </Badge>
                             <Badge tone="amber">
-                              的中見込み {formatPercent(ticket.estimatedHitProb, 1)}
+                              合成確からしさ {formatPercent(ticket.estimatedHitProb, 1)}
                             </Badge>
                             <Badge tone="rose">
-                              逆張り度 {formatNumber(ticket.contrarianScore, 2)}
+                              穴候補度 {formatNumber(ticket.contrarianScore, 2)}
+                            </Badge>
+                            <Badge tone="slate">
+                              平均リスク {formatNumber(parsed.averageRiskScore, 2)}
                             </Badge>
                           </div>
                         </div>
 
-                        <p className="mt-3 text-sm leading-6 text-slate-600">{ticket.parsed.comment}</p>
+                        <p className="mt-3 text-sm leading-6 text-slate-600">{parsed.comment}</p>
 
                         <div className="mt-4 flex flex-wrap gap-2">
                           {reasonSummary.map((reason) => (
@@ -658,16 +678,20 @@ function TicketGeneratorPageContent() {
                                 {selectionReasonText(selection)}
                               </p>
                               <div className="mt-3 text-xs leading-5 text-slate-500">
-                                model {formatPercent(selection.modelProbability, 1)} / official{" "}
-                                {formatPercent(selection.officialVoteShare, 1)} / edge{" "}
-                                {formatPercent(selection.edge, 1)}
+                                合成 {formatPercent(selection.compositeProbability, 1)} / 一般人気{" "}
+                                {formatPercent(selection.crowdProbability, 1)} / 合成優位{" "}
+                                {formatSignedPercent(selection.compositeAdvantage, 1)}
+                              </div>
+                              <div className="mt-1 text-xs leading-5 text-slate-500">
+                                注目配分 {formatPercent(selection.attentionShare, 1)} / リスク{" "}
+                                {formatNumber(selection.riskScore, 2)}
                               </div>
                             </div>
                           ))}
                         </div>
 
                         <div className="mt-4 flex flex-wrap gap-2">
-                          {ticket.parsed.selections.map((selection) => (
+                          {parsed.selections.map((selection) => (
                             <div
                               key={`${ticket.id}-all-${selection.matchNo}`}
                               className="rounded-2xl bg-white px-3 py-2 text-sm text-slate-700 shadow-sm"
@@ -691,7 +715,7 @@ function TicketGeneratorPageContent() {
 
 export default function TicketGeneratorPage() {
   return (
-    <Suspense fallback={<LoadingNotice title="候補チケットを準備中" />}>
+    <Suspense fallback={<LoadingNotice title="候補配分を準備中" />}>
       <TicketGeneratorPageContent />
     </Suspense>
   );

@@ -1,9 +1,11 @@
 import type {
   MatchCategory,
   Outcome,
+  Pick,
   ProvisionalCall,
   RoundStatus,
   TicketMode,
+  User,
 } from "@/lib/types";
 
 export const OUTCOME_VALUES = ["1", "0", "2"] as const;
@@ -74,6 +76,40 @@ export type EdgeRow = {
   confidence: number | null;
   valueScore: number;
   include: boolean;
+};
+
+export type AdvantageBucket = "core" | "focus" | "darkhorse" | "watch";
+
+export type AdvantageRow = EdgeRow & {
+  crowdProbability: number | null;
+  crowdSource: "market" | "official" | null;
+  aiAdvantage: number | null;
+  aiProbability: number | null;
+  attentionShare: number;
+  bucket: AdvantageBucket;
+  compositeAdvantage: number | null;
+  compositeProbability: number | null;
+  darkHorseScore: number;
+  matchId: string;
+  predictorAdvantage: number | null;
+  predictorPickCount: number;
+  predictorProbability: number | null;
+  riskScore: number;
+  watcherAdvantage: number | null;
+  watcherProbability: number | null;
+  watcherSupportCount: number;
+};
+
+export const advantageBucketLabel: Record<AdvantageBucket, string> = {
+  core: "コア候補",
+  focus: "注目候補",
+  darkhorse: "ダークホース",
+  watch: "監視候補",
+};
+
+export const crowdSourceLabel: Record<"market" | "official", string> = {
+  market: "市場",
+  official: "公式人気",
 };
 
 const outcomeEnumMap: Record<OutcomeValue, Outcome> = {
@@ -290,6 +326,167 @@ export function getEdge(match: MatchLike, outcome: OutcomeValue): number | null 
   }
 
   return model - official;
+}
+
+function crowdBucket(match: MatchLike): "market" | "official" | null {
+  return match.marketProb1 !== null || match.marketProb0 !== null || match.marketProb2 !== null
+    ? "market"
+    : match.officialVote1 !== null ||
+        match.officialVote0 !== null ||
+        match.officialVote2 !== null
+      ? "official"
+      : null;
+}
+
+function normalizedEntropy(values: number[]) {
+  const total = values.reduce((sum, value) => sum + value, 0);
+  if (total <= 0) {
+    return 0;
+  }
+
+  const activeValues = values.filter((value) => value > 0);
+  if (activeValues.length <= 1) {
+    return 0;
+  }
+
+  const entropy = activeValues.reduce((sum, value) => {
+    const probability = value / total;
+    return sum - probability * Math.log2(probability);
+  }, 0);
+
+  return clamp(entropy / Math.log2(OUTCOME_VALUES.length), 0, 1);
+}
+
+function probabilityFromCounts(
+  counts: Record<OutcomeValue, number>,
+  outcome: OutcomeValue,
+) {
+  const total = counts["1"] + counts["0"] + counts["2"];
+  return total > 0 ? counts[outcome] / total : null;
+}
+
+function countsForRole(
+  picks: Pick[],
+  usersById: Map<string, User>,
+  matchId: string,
+  role: "admin" | "member",
+) {
+  const counts: Record<OutcomeValue, number> = {
+    "1": 0,
+    "0": 0,
+    "2": 0,
+  };
+
+  picks.forEach((pick) => {
+    if (pick.matchId !== matchId) {
+      return;
+    }
+
+    const roleValue = pick.user?.role ?? usersById.get(pick.userId)?.role ?? "member";
+    if (roleValue !== role) {
+      return;
+    }
+
+    const outcome = enumToOutcome(pick.pick);
+    if (!outcome) {
+      return;
+    }
+
+    counts[outcome] += 1;
+  });
+
+  return counts;
+}
+
+function maxKnownProbability(values: Array<number | null>) {
+  const known = values.filter((value): value is number => value !== null);
+  if (known.length === 0) {
+    return null;
+  }
+
+  return Math.max(...known);
+}
+
+function sumWeightedProbabilities(
+  values: Array<{
+    probability: number | null;
+    weight: number;
+  }>,
+) {
+  const available = values.filter((value) => value.probability !== null);
+  if (available.length === 0) {
+    return null;
+  }
+
+  const totalWeight = available.reduce((sum, value) => sum + value.weight, 0);
+  if (totalWeight <= 0) {
+    return null;
+  }
+
+  return (
+    available.reduce(
+      (sum, value) => sum + (value.probability ?? 0) * value.weight,
+      0,
+    ) / totalWeight
+  );
+}
+
+function matchRiskScore(input: {
+  compositeTop: number | null;
+  confidence: number | null;
+  disagreementScore: number | null;
+  exceptionCount: number | null;
+  predictorEntropy: number;
+  watcherEntropy: number;
+  category: MatchCategory | null;
+}) {
+  const uncertainty = 1 - clamp(input.compositeTop ?? 0.42, 0, 1);
+  const confidenceRisk = 1 - clamp(input.confidence ?? 0.55, 0, 1);
+  const disagreementRisk = clamp((input.disagreementScore ?? 0) / 2.5, 0, 1);
+  const exceptionRisk = clamp((input.exceptionCount ?? 0) / 3, 0, 1);
+  const categoryBump =
+    input.category === "info_wait"
+      ? 0.18
+      : input.category === "draw_candidate"
+        ? 0.1
+        : input.category === "contrarian"
+          ? 0.05
+          : input.category === "pass"
+            ? 0.08
+            : 0;
+
+  return clamp(
+    uncertainty * 0.32 +
+      confidenceRisk * 0.18 +
+      input.predictorEntropy * 0.16 +
+      input.watcherEntropy * 0.1 +
+      disagreementRisk * 0.14 +
+      exceptionRisk * 0.1 +
+      categoryBump,
+    0,
+    1,
+  );
+}
+
+function advantageBucket(input: {
+  attentionShare: number;
+  darkHorseScore: number;
+  include: boolean;
+  riskScore: number;
+}) {
+  if (!input.include) {
+    return "watch" as const;
+  }
+
+  if (input.darkHorseScore >= 0.06) {
+    return "darkhorse" as const;
+  }
+
+  if (input.attentionShare >= 0.16 && input.riskScore <= 0.5) {
+    return "core" as const;
+  }
+
+  return "focus" as const;
 }
 
 export function computeDirectionScore(input: {
@@ -644,6 +841,178 @@ export function buildEdgeRows(matches: MatchLike[]): EdgeRow[] {
   );
 
   return rows.sort((left, right) => right.valueScore - left.valueScore);
+}
+
+export function buildAdvantageRows(input: {
+  matches: Array<MatchLike & { id: string }>;
+  picks: Pick[];
+  users: User[];
+}): AdvantageRow[] {
+  const usersById = new Map(input.users.map((user) => [user.id, user]));
+
+  const rows = input.matches.flatMap((match) => {
+    const bucket = crowdBucket(match);
+    const predictorCounts = countsForRole(input.picks, usersById, match.id, "admin");
+    const watcherCounts = countsForRole(input.picks, usersById, match.id, "member");
+    const predictorEntropy = normalizedEntropy(Object.values(predictorCounts));
+    const watcherEntropy = normalizedEntropy(Object.values(watcherCounts));
+
+    const compositeProbabilities = OUTCOME_VALUES.map((outcome) => {
+      const crowdProbability = bucket ? getProbability(match, bucket, outcome) : null;
+      const aiProbability = getProbability(match, "model", outcome);
+      const predictorProbability = probabilityFromCounts(predictorCounts, outcome);
+      const watcherProbability = probabilityFromCounts(watcherCounts, outcome);
+
+      return sumWeightedProbabilities([
+        { probability: aiProbability, weight: 0.52 },
+        { probability: predictorProbability, weight: 0.33 },
+        { probability: watcherProbability, weight: 0.15 },
+        { probability: crowdProbability, weight: 0.06 },
+      ]);
+    });
+
+    const matchRisk = matchRiskScore({
+      compositeTop: maxKnownProbability(compositeProbabilities),
+      confidence: match.confidence,
+      disagreementScore: match.disagreementScore,
+      exceptionCount: match.exceptionCount,
+      predictorEntropy,
+      watcherEntropy,
+      category: match.category,
+    });
+
+    return OUTCOME_VALUES.map((outcome, index) => {
+      const crowdProbability = bucket ? getProbability(match, bucket, outcome) : null;
+      const aiProbability = getProbability(match, "model", outcome);
+      const predictorProbability = probabilityFromCounts(predictorCounts, outcome);
+      const watcherProbability = probabilityFromCounts(watcherCounts, outcome);
+      const compositeProbability = compositeProbabilities[index];
+      const aiAdvantage =
+        aiProbability !== null && crowdProbability !== null
+          ? aiProbability - crowdProbability
+          : null;
+      const predictorAdvantage =
+        predictorProbability !== null && crowdProbability !== null
+          ? predictorProbability - crowdProbability
+          : null;
+      const watcherAdvantage =
+        watcherProbability !== null && crowdProbability !== null
+          ? watcherProbability - crowdProbability
+          : null;
+      const compositeAdvantage =
+        compositeProbability !== null && crowdProbability !== null
+          ? compositeProbability - crowdProbability
+          : null;
+      const positiveComposite = Math.max(compositeAdvantage ?? 0, 0);
+      const confidenceWeight = 0.55 + clamp(match.confidence ?? 0.55, 0, 1) * 0.45;
+      const darkHorseScore = clamp(
+        positiveComposite *
+          1.6 *
+          Math.max(1 - (crowdProbability ?? 0.33), 0.08) *
+          confidenceWeight *
+          (1 - matchRisk * 0.45) +
+          Math.max(predictorAdvantage ?? 0, 0) * 0.18 +
+          Math.max(watcherAdvantage ?? 0, 0) * 0.12,
+        0,
+        1,
+      );
+      const officialVoteShare = getProbability(match, "official", outcome);
+      const modelProbability = aiProbability;
+      const marketProbability = getProbability(match, "market", outcome);
+      const valueScore =
+        positiveComposite * (1.1 - matchRisk * 0.35) +
+        darkHorseScore * 0.55 +
+        Math.max(aiAdvantage ?? 0, 0) * 0.22 +
+        Math.max(predictorAdvantage ?? 0, 0) * 0.18;
+      const include =
+        positiveComposite >= 0.04 ||
+        darkHorseScore >= 0.035 ||
+        (outcome === "0" &&
+          compositeProbability !== null &&
+          crowdProbability !== null &&
+          compositeProbability >= crowdProbability &&
+          (match.consensusD ?? 0) >= 1.2);
+
+      return {
+        matchNo: match.matchNo,
+        fixture: `${match.homeTeam} 対 ${match.awayTeam}`,
+        outcome,
+        modelProbability,
+        officialVoteShare,
+        marketProbability,
+        edge: aiAdvantage,
+        humanConsensus: outcomeSupportLabel(match, outcome),
+        confidence: match.confidence,
+        valueScore,
+        include,
+        crowdProbability,
+        crowdSource: bucket,
+        aiAdvantage,
+        aiProbability,
+        attentionShare: 0,
+        bucket: "watch",
+        compositeAdvantage,
+        compositeProbability,
+        darkHorseScore,
+        matchId: match.id,
+        predictorAdvantage,
+        predictorPickCount: predictorCounts[outcome],
+        predictorProbability,
+        riskScore: matchRisk,
+        watcherAdvantage,
+        watcherProbability,
+        watcherSupportCount: watcherCounts[outcome],
+      };
+    });
+  });
+
+  const includedRows = rows.filter((row) => row.include);
+  const attentionTotal = includedRows.reduce((sum, row) => {
+    return (
+      sum +
+      Math.max(row.compositeAdvantage ?? 0, 0) * (0.8 - row.riskScore * 0.22) +
+      row.darkHorseScore * 0.55 +
+      Math.max(row.predictorAdvantage ?? 0, 0) * 0.18 +
+      Math.max(row.watcherAdvantage ?? 0, 0) * 0.12
+    );
+  }, 0);
+
+  return rows
+    .map((row) => {
+      const rawAttention =
+        Math.max(row.compositeAdvantage ?? 0, 0) * (0.8 - row.riskScore * 0.22) +
+        row.darkHorseScore * 0.55 +
+        Math.max(row.predictorAdvantage ?? 0, 0) * 0.18 +
+        Math.max(row.watcherAdvantage ?? 0, 0) * 0.12;
+      const attentionShare =
+        row.include && attentionTotal > 0 ? rawAttention / attentionTotal : 0;
+
+      return {
+        ...row,
+        attentionShare,
+        bucket: advantageBucket({
+          attentionShare,
+          darkHorseScore: row.darkHorseScore,
+          include: row.include,
+          riskScore: row.riskScore,
+        }),
+      };
+    })
+    .sort((left, right) => {
+      if (left.include !== right.include) {
+        return left.include ? -1 : 1;
+      }
+
+      if (right.attentionShare !== left.attentionShare) {
+        return right.attentionShare - left.attentionShare;
+      }
+
+      if (right.darkHorseScore !== left.darkHorseScore) {
+        return right.darkHorseScore - left.darkHorseScore;
+      }
+
+      return right.valueScore - left.valueScore;
+    });
 }
 
 export function actualIncludesOutcome(match: MatchLike, outcomes: OutcomeValue[]) {

@@ -27,7 +27,6 @@ import {
   buildMatchBadges,
   favoriteOutcomeForBucket,
   categoryLabel,
-  formatCurrency,
   formatDateTime,
   formatNumber,
   formatOutcomeSet,
@@ -61,6 +60,7 @@ import { fixtureImportTemplate, parseFixtureImportText } from "@/lib/fixture-imp
 import { appRoute, buildRoundHref, getSingleSearchParam } from "@/lib/round-links";
 import { bulkUpdateRoundMatches, estimateRoundAiModel, updateRound } from "@/lib/repository";
 import { isSupabaseConfigured } from "@/lib/supabase";
+import { budgetFromCandidateLimit, candidateLimitFromBudget } from "@/lib/tickets";
 import { useRoundWorkspace } from "@/lib/use-app-data";
 import { filterPredictors } from "@/lib/users";
 
@@ -239,11 +239,13 @@ function WorkspacePageContent() {
 
     try {
       const formData = new FormData(event.currentTarget);
+      const candidateLimit = parseIntOrNull(stringValue(formData, "candidateLimit"));
       await updateRound({
         roundId: data.round.id,
         title: stringValue(formData, "title") || "無題のラウンド",
         status: parseRoundStatus(stringValue(formData, "status")),
-        budgetYen: parseIntOrNull(stringValue(formData, "budgetYen")),
+        budgetYen:
+          candidateLimit !== null ? budgetFromCandidateLimit(candidateLimit) : null,
         notes: nullableString(formData, "notes"),
       });
       await refresh();
@@ -607,7 +609,7 @@ function WorkspacePageContent() {
 
               <div className="rounded-[24px] border border-emerald-200 bg-emerald-50/70 p-5">
                 <div className="flex items-center gap-2">
-                  <Badge tone="positive">差分大</Badge>
+                  <Badge tone="positive">優位差大</Badge>
                   <h3 className="font-display text-lg font-semibold tracking-[-0.04em] text-slate-950">
                     AIが強めに見ている試合
                   </h3>
@@ -615,7 +617,7 @@ function WorkspacePageContent() {
                 <div className="mt-4 space-y-3">
                   {aiGapMatches.length === 0 ? (
                     <p className="text-sm leading-6 text-slate-600">
-                      公式人気と AI が両方入ると、ここに差分の大きい試合が出ます。
+                      一般人気と AI が両方入ると、ここに優位差の大きい試合が出ます。
                     </p>
                   ) : (
                     aiGapMatches.map(({ match, strongestEdge }) => (
@@ -686,7 +688,7 @@ function WorkspacePageContent() {
 
           <SectionCard
             title="ラウンド設定"
-            description="予算やステータス、当日の観戦メモをここで更新します。"
+            description="候補上限やステータス、当日の観戦メモをここで更新します。"
           >
             <form
               key={data.round.updatedAt}
@@ -718,20 +720,21 @@ function WorkspacePageContent() {
               </label>
 
               <label className="grid gap-2 text-sm font-medium text-slate-700">
-                予算
+                上位候補数
                 <input
-                  name="budgetYen"
+                  name="candidateLimit"
                   type="number"
-                  min={0}
-                  step={100}
-                  defaultValue={data.round.budgetYen ?? ""}
+                  min={1}
+                  max={8}
+                  step={1}
+                  defaultValue={candidateLimitFromBudget(data.round.budgetYen ?? 500)}
                   className={fieldClassName}
                 />
               </label>
 
               <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-950/5 p-4 text-sm text-slate-600">
-                候補チケットの枚数は 100円単位の予算から計算します。
-                現在の設定: {formatCurrency(data.round.budgetYen)}
+                候補配分は、ここで決めた上位候補数をもとに並びます。
+                現在の設定: {candidateLimitFromBudget(data.round.budgetYen ?? 500)} 案
               </div>
 
               <label className="grid gap-2 text-sm font-medium text-slate-700 md:col-span-2">
@@ -1025,10 +1028,10 @@ function WorkspacePageContent() {
                     <div className="mt-4 flex flex-wrap gap-2">
                       {strongestEdge ? (
                         <Badge tone="positive">
-                          差分大 {strongestEdge.outcome} {formatSignedPercent(strongestEdge.edge)}
+                          優位差大 {strongestEdge.outcome} {formatSignedPercent(strongestEdge.edge)}
                         </Badge>
                       ) : (
-                        <Badge tone="slate">差分はまだ小さめ</Badge>
+                        <Badge tone="slate">優位差はまだ小さめ</Badge>
                       )}
                       {match.category ? (
                         <Badge tone="sky">{categoryLabel[match.category]}</Badge>
@@ -1051,7 +1054,7 @@ function WorkspacePageContent() {
 
           <CollapsibleSectionCard
             title="13試合の詳細表"
-            description="細かい数値を確認したいときだけ開いて使います。横スクロール対応で、差分は AI - 公式人気 です。"
+            description="細かい数値を確認したいときだけ開いて使います。横スクロール対応で、優位差は AI - 公式人気 です。"
             badge={<Badge tone="slate">詳細</Badge>}
           >
             <div className="overflow-x-auto">
@@ -1070,7 +1073,7 @@ function WorkspacePageContent() {
                     <th className="px-3 py-3">人力F</th>
                     <th className="px-3 py-3">人力D</th>
                     <th className="px-3 py-3">人力上書き</th>
-                    <th className="px-3 py-3">差分 1/0/2</th>
+                    <th className="px-3 py-3">優位差 1/0/2</th>
                     <th className="px-3 py-3">カテゴリ</th>
                     <th className="px-3 py-3">注記</th>
                     <th className="px-3 py-3">結果</th>

@@ -30,7 +30,6 @@ import {
   nullableString,
 } from "@/lib/forms";
 import {
-  formatCurrency,
   formatDateTime,
   formatPercent,
   formatSignedPercent,
@@ -47,6 +46,7 @@ import {
   deleteUserIfInactive,
   updateUserProfile,
 } from "@/lib/repository";
+import { budgetFromCandidateLimit, candidateLimitFromBudget } from "@/lib/tickets";
 import {
   nextPredictorLineName,
   parseUserRole,
@@ -104,10 +104,12 @@ export default function DashboardPage() {
 
     try {
       const formData = new FormData(event.currentTarget);
+      const candidateLimit = parseIntOrNull(stringValue(formData, "candidateLimit"));
       const roundId = await createRound({
         title: stringValue(formData, "title") || "新規ラウンド",
         status: parseRoundStatus(stringValue(formData, "status")),
-        budgetYen: parseIntOrNull(stringValue(formData, "budgetYen")),
+        budgetYen:
+          candidateLimit !== null ? budgetFromCandidateLimit(candidateLimit) : null,
         notes: nullableString(formData, "notes"),
       });
 
@@ -470,7 +472,7 @@ export default function DashboardPage() {
                   </h3>
                 </div>
                 <p className="mt-3 text-sm leading-6 text-slate-600">
-                  このラウンドには試合データ、AI予測、予想者ライン、支持入力、予想者カード、コンセンサス、候補チケット、
+                  このラウンドには試合データ、AI予測、予想者ライン、支持入力、予想者カード、コンセンサス、候補配分、
                   振り返りが最初から入ります。
                 </p>
                 {demoRound ? (
@@ -539,8 +541,8 @@ export default function DashboardPage() {
                 },
                 {
                   eyebrow: "比較",
-                  title: "差分を比べる",
-                  body: "公式人気 / 市場 / AI / 人力 の差分を、ラウンド詳細・コンセンサス・差分ボードで並べて見ます。",
+                  title: "優位差を比べる",
+                  body: "一般人気 / AI / 予想者 / ウォッチ支持のズレを、ラウンド詳細・コンセンサス・優位ボードで並べて見ます。",
                 },
                 {
                   eyebrow: "振り返り",
@@ -602,8 +604,8 @@ export default function DashboardPage() {
                 },
                 {
                   step: "05",
-                  title: "コンセンサス / 差分 / 候補チケットを見る",
-                  body: "入力が集まると、人力コンセンサス、差分、買い目候補の比較が使えるようになります。",
+                  title: "コンセンサス / 優位 / 候補配分を見る",
+                  body: "入力が集まると、人力コンセンサス、優位差、候補配分の比較が使えるようになります。",
                   tone: "sky",
                   status: "集計対応",
                 },
@@ -660,8 +662,8 @@ export default function DashboardPage() {
                     "人力予想",
                     "根拠カード",
                     "コンセンサス",
-                    "差分ボード",
-                    "候補チケット",
+                    "優位ボード",
+                    "候補配分",
                     "振り返り",
                     "GitHub Pages公開",
                     "Supabase保存",
@@ -895,7 +897,7 @@ export default function DashboardPage() {
                 <ul className="mt-4 space-y-2 text-sm leading-7 text-slate-700">
                   <li>デモラウンドには試合情報、AI確率、予想者ライン、支持入力、予想者カード、レビューが最初から入っています。</li>
                   <li>新規ラウンドでも、試合編集に入れた日時、会場、ステージ、公式人気、市場、AI確率は各画面に反映されます。</li>
-                  <li>AI分析として見えているのは、いまは `1 / 0 / 2` の確率と、そこから作る AI基準線・差分計算です。</li>
+                  <li>AI分析として見えているのは、いまは `1 / 0 / 2` の確率と、そこから作る AI基準線・優位差計算です。</li>
                 </ul>
               </div>
 
@@ -1136,19 +1138,20 @@ export default function DashboardPage() {
               </label>
 
               <label className="grid gap-2 text-sm font-medium text-slate-700">
-                予算（円）
+                上位候補数
                 <input
-                  name="budgetYen"
+                  name="candidateLimit"
                   type="number"
-                  min={0}
-                  step={100}
+                  min={1}
+                  max={8}
+                  step={1}
                   className={fieldClassName}
-                  placeholder="2000"
+                  placeholder="5"
                 />
               </label>
 
               <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-950/5 p-4 text-sm text-slate-600">
-                金銭、配当、代理購入、精算は扱いません。ここでの予算は候補チケットの枚数目安にだけ使います。
+                金銭、配当、代理購入、精算は扱いません。ここでの上位候補数は、候補配分画面で何案まで並べるかの目安です。
               </div>
 
               <label className="grid gap-2 text-sm font-medium text-slate-700 md:col-span-2">
@@ -1232,10 +1235,10 @@ export default function DashboardPage() {
                       <div className="rounded-3xl border border-white/60 bg-white/80 p-4">
                         <div className="flex items-center justify-between gap-3">
                           <h3 className="text-sm font-semibold text-slate-900">
-                            AI差分が大きい試合トップ3
+                            AI優位差が大きい試合トップ3
                           </h3>
                           <span className="text-xs text-slate-500">
-                            予算 {formatCurrency(round.budgetYen)}
+                            候補上限 {candidateLimitFromBudget(round.budgetYen ?? 500)} 案
                           </span>
                         </div>
                         <div className="mt-3 space-y-2">

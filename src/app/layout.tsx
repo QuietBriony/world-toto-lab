@@ -80,7 +80,7 @@ export default function RootLayout({
                 <div className="grid gap-3 lg:max-w-xl lg:grid-cols-[1fr_auto] lg:items-end">
                   <p className="text-sm leading-6 text-emerald-50/78">
                     友人グループで W杯toto/WINNER の見立てを持ち寄り、
-                    人力コンセンサスとモデル差分を振り返るための MVP です。
+                    人力コンセンサスとモデル優位差を振り返るための MVP です。
                   </p>
                   <div className="rounded-[20px] border border-white/12 bg-[linear-gradient(180deg,rgba(2,8,6,0.88),rgba(12,19,14,0.94))] px-4 py-3 text-right shadow-[0_20px_50px_-36px_rgba(0,0,0,0.8)]">
                     <div className="font-display text-[11px] uppercase tracking-[0.32em] text-emerald-100/52">

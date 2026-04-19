@@ -655,7 +655,7 @@ function PicksPageContent() {
 
               <SectionCard
                 title="AI と予想者を見比べる"
-                description="ウォッチ担当は、ここで AI と予想者の差分を見てから支持先を決められます。"
+                description="ウォッチ担当は、ここで AI と予想者のズレを見てから支持先を決められます。"
               >
                 {predictorSummaries.length === 0 ? (
                   <div className="rounded-[22px] border border-amber-200 bg-amber-50/90 p-4 text-sm leading-6 text-amber-950">
@@ -890,7 +890,7 @@ function PicksPageContent() {
                           1
                         </div>
                         <p className="mt-3 text-sm leading-6 text-slate-600">
-                          上の比較カードで、AI と予想者の差分を先にざっと見ます。
+                          上の比較カードで、AI と予想者のズレを先にざっと見ます。
                         </p>
                       </div>
                       <div className="rounded-[22px] border border-white/80 bg-white/76 p-4 shadow-[0_16px_38px_-30px_rgba(15,23,42,0.4)]">
@@ -970,7 +970,7 @@ function PicksPageContent() {
                             {activeUserIsPredictor ? "自分の予想" : "予想者比較"}
                           </th>
                           <th className="px-3 py-3">
-                            {activeUserIsPredictor ? "AIとの差分" : "支持先"}
+                            {activeUserIsPredictor ? "AIとのズレ" : "支持先"}
                           </th>
                           <th className="px-3 py-3">
                             {activeUserIsPredictor ? "全体の重なり" : "採用された予想"}

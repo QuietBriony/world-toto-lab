@@ -88,13 +88,13 @@ type DemoReviewNoteInsert = {
 
 export const demoRoundTitle = "デモ体験ラウンド";
 export const demoRoundNotes =
-  "チュートリアル用の仮ラウンドです。AI基準線、人力上書き、コンセンサス、差分、候補チケット、振り返りまで一通り入っています。金銭、配当、代理購入、精算は扱いません。";
+  "チュートリアル用の仮ラウンドです。AI基準線、人力上書き、コンセンサス、優位差、候補配分、振り返りまで一通り入っています。金銭、配当、代理購入、精算は扱いません。";
 
 export const demoWalkthroughSteps = [
   {
     key: "overview",
     title: "確認カード",
-    body: "AI基準線、人力上書き、差分大の試合を最初にざっと見ます。",
+    body: "AI基準線、人力上書き、優位差の大きい試合を最初にざっと見ます。",
   },
   {
     key: "picks",
@@ -802,7 +802,7 @@ export function buildDemoReviewNotes(
       round_id: roundId,
       match_id: null,
       user_id: reporterA,
-      note: "このデモラウンドは、AI基準線 -> 人力上書き -> コンセンサス -> 候補チケット -> 振り返り の順で触ると全体像が掴みやすいです。",
+      note: "このデモラウンドは、AI基準線 -> 人力上書き -> コンセンサス -> 候補配分 -> 振り返り の順で触ると全体像が掴みやすいです。",
     },
   ] satisfies DemoReviewNoteInsert[];
 }
