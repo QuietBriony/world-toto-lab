@@ -417,6 +417,78 @@ export function aiRecommendedOutcomes(match: MatchLike): OutcomeValue[] {
   return favorite ? [favorite] : [];
 }
 
+export function formatOutcomeSet(values: OutcomeValue[]) {
+  return values.length > 0 ? values.join(" / ") : "—";
+}
+
+function sameOutcomeSet(left: OutcomeValue[], right: OutcomeValue[]) {
+  return (
+    left.length === right.length &&
+    left.every((outcome) => right.includes(outcome))
+  );
+}
+
+export function singlePickOverlayBadge(
+  match: MatchLike,
+  pick: OutcomeValue | null | undefined,
+): Badge {
+  const aiSet = aiRecommendedOutcomes(match);
+
+  if (!pick) {
+    return { label: "未入力", tone: "slate" };
+  }
+
+  if (aiSet.length === 0) {
+    return { label: "AI未設定", tone: "slate" };
+  }
+
+  if (aiSet.includes(pick)) {
+    return {
+      label: aiSet.length === 1 ? "AI本線に乗る" : "AI候補に乗る",
+      tone: "teal",
+    };
+  }
+
+  if (pick === "0" && !aiSet.includes("0")) {
+    return { label: "0で上書き", tone: "lime" };
+  }
+
+  return { label: "AIと別筋", tone: "rose" };
+}
+
+export function humanOverlayBadge(match: MatchLike): Badge {
+  const aiSet = aiRecommendedOutcomes(match);
+  const humanSet = humanConsensusOutcomes(match);
+
+  if (aiSet.length === 0 && humanSet.length === 0) {
+    return { label: "未集計", tone: "slate" };
+  }
+
+  if (aiSet.length === 0) {
+    return { label: "AI未設定", tone: "slate" };
+  }
+
+  if (humanSet.length === 0) {
+    return { label: "人力未集計", tone: "slate" };
+  }
+
+  if (sameOutcomeSet(aiSet, humanSet)) {
+    return { label: "AIをそのまま採用", tone: "teal" };
+  }
+
+  const overlap = aiSet.some((outcome) => humanSet.includes(outcome));
+
+  if (overlap) {
+    if (humanSet.includes("0") && !aiSet.includes("0")) {
+      return { label: "AIに0を追加", tone: "lime" };
+    }
+
+    return { label: "AIに人力を追加", tone: "sky" };
+  }
+
+  return { label: "AIと別筋", tone: "rose" };
+}
+
 export function outcomeSupportLabel(match: MatchLike, outcome: OutcomeValue) {
   return humanConsensusOutcomes(match).includes(outcome)
     ? "人力支援あり"

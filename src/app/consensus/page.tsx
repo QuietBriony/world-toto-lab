@@ -9,8 +9,13 @@ import {
 import { RoundNav } from "@/components/round-nav";
 import { Badge, PageHeader, SectionCard } from "@/components/ui";
 import {
+  aiRecommendedOutcomes,
   buildMatchBadges,
+  formatOutcomeSet,
   formatNumber,
+  formatPercent,
+  humanConsensusOutcomes,
+  humanOverlayBadge,
   representativeNotes,
   roundStatusLabel,
 } from "@/lib/domain";
@@ -30,7 +35,7 @@ function ConsensusPageContent() {
       <PageHeader
         eyebrow="Human Consensus Board"
         title="人力コンセンサス集計"
-        description="avgF / medianF / avgD と、人間の割れ具合や引き分け警報を一覧できます。"
+        description="AI 基準線に対して、人力がどこをそのまま採用し、どこに別筋を重ねたかを一覧できます。"
       />
 
       {!isSupabaseConfigured() ? (
@@ -52,17 +57,19 @@ function ConsensusPageContent() {
 
           <SectionCard
             title="Consensus Board"
-            description="代表メモは HumanScoutReport の根拠から重複を除いて抜粋しています。"
+            description="代表メモは HumanScoutReport の根拠から重複を除いて抜粋しています。AI Base と Human Overlay を並べて差分を見ます。"
           >
             <div className="overflow-x-auto">
-              <table className="min-w-[1180px] text-left text-sm">
+              <table className="min-w-[1540px] text-left text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 text-slate-500">
                     <th className="px-3 py-3">Match</th>
+                    <th className="px-3 py-3">AI Base</th>
+                    <th className="px-3 py-3">Human Overlay</th>
+                    <th className="px-3 py-3">重なり方</th>
                     <th className="px-3 py-3">avgF</th>
                     <th className="px-3 py-3">medianF</th>
                     <th className="px-3 py-3">avgD</th>
-                    <th className="px-3 py-3">consensusCall</th>
                     <th className="px-3 py-3">disagreementScore</th>
                     <th className="px-3 py-3">exceptionCount</th>
                     <th className="px-3 py-3">代表的な根拠メモ</th>
@@ -74,6 +81,9 @@ function ConsensusPageContent() {
                     const reports = data.round.scoutReports.filter(
                       (report) => report.matchId === match.id,
                     );
+                    const aiBase = aiRecommendedOutcomes(match);
+                    const humanSet = humanConsensusOutcomes(match);
+                    const overlayBadge = humanOverlayBadge(match);
                     const notes = representativeNotes(reports);
                     const badges = buildMatchBadges(match).filter((badge) =>
                       ["AIと人間対立", "引き分け警報", "例外多発"].includes(badge.label),
@@ -85,6 +95,35 @@ function ConsensusPageContent() {
                           <div className="font-semibold text-slate-900">
                             #{match.matchNo} {match.homeTeam} vs {match.awayTeam}
                           </div>
+                        </td>
+                        <td className="px-3 py-4">
+                          <div className="flex flex-wrap gap-2">
+                            {aiBase.length === 0 ? (
+                              <Badge tone="slate">AI未設定</Badge>
+                            ) : (
+                              aiBase.map((outcome) => (
+                                <Badge key={`${match.id}-ai-${outcome}`} tone="amber">
+                                  {outcome}
+                                </Badge>
+                              ))
+                            )}
+                          </div>
+                          <div className="mt-2 text-xs text-slate-500">
+                            Model {formatPercent(match.modelProb1)} /{" "}
+                            {formatPercent(match.modelProb0)} /{" "}
+                            {formatPercent(match.modelProb2)}
+                          </div>
+                        </td>
+                        <td className="px-3 py-4">
+                          <div className="font-medium text-slate-800">
+                            {formatOutcomeSet(humanSet)}
+                          </div>
+                          <div className="text-xs text-slate-500">
+                            {match.consensusCall ?? "未集計"}
+                          </div>
+                        </td>
+                        <td className="px-3 py-4">
+                          <Badge tone={overlayBadge.tone}>{overlayBadge.label}</Badge>
                         </td>
                         <td className="px-3 py-4">{formatNumber(match.consensusF, 1)}</td>
                         <td className="px-3 py-4">
@@ -98,9 +137,6 @@ function ConsensusPageContent() {
                           )}
                         </td>
                         <td className="px-3 py-4">{formatNumber(match.consensusD, 1)}</td>
-                        <td className="px-3 py-4 font-medium text-slate-800">
-                          {match.consensusCall ?? "未集計"}
-                        </td>
                         <td className="px-3 py-4">
                           {formatNumber(match.disagreementScore, 2)}
                         </td>

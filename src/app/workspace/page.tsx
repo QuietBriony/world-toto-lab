@@ -27,9 +27,11 @@ import {
   formatCurrency,
   formatDateTime,
   formatNumber,
+  formatOutcomeSet,
   formatPercent,
   formatSignedPercent,
   humanConsensusOutcomes,
+  humanOverlayBadge,
   roundStatusLabel,
   roundStatusOptions,
 } from "@/lib/domain";
@@ -87,7 +89,7 @@ function WorkspacePageContent() {
       <PageHeader
         eyebrow="Round Detail"
         title={data?.round.title ?? "Round Detail"}
-        description="13試合の分析入力状況と、AI候補・人力コンセンサス・エッジ候補を俯瞰できます。"
+        description="13試合の分析入力状況を、AI Base を土台にして Human Overlay と Edge 候補まで一気に俯瞰できます。"
         actions={
           data ? <Badge tone="sky">{roundStatusLabel[data.round.status]}</Badge> : undefined
         }
@@ -123,7 +125,7 @@ function WorkspacePageContent() {
                   },
                   {
                     title: "2. Human Picks",
-                    body: "各メンバーの 1 / 0 / 2 を入力する",
+                    body: "AI Base を見てから各メンバーの 1 / 0 / 2 を上書きする",
                   },
                   {
                     title: "3. Scout Cards",
@@ -131,7 +133,7 @@ function WorkspacePageContent() {
                   },
                   {
                     title: "4. Consensus",
-                    body: "avgF / avgD と人力コンセンサスを見る",
+                    body: "AI Base に対して人力がどう重なったかを見る",
                   },
                   {
                     title: "5. Edge / Tickets",
@@ -274,10 +276,10 @@ function WorkspacePageContent() {
 
           <SectionCard
             title="13試合一覧"
-            description="横スクロール対応です。Edge は Model - Official で表示しています。"
+            description="横スクロール対応です。まず AI Base を見て、その横に Human Overlay を重ねて読めます。Edge は Model - Official です。"
           >
             <div className="overflow-x-auto">
-              <table className="min-w-[1440px] text-left text-sm">
+              <table className="min-w-[1540px] text-left text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 text-slate-500">
                     <th className="px-3 py-3">No.</th>
@@ -288,11 +290,11 @@ function WorkspacePageContent() {
                     <th className="px-3 py-3">Official 1/0/2</th>
                     <th className="px-3 py-3">Market 1/0/2</th>
                     <th className="px-3 py-3">Model 1/0/2</th>
-                    <th className="px-3 py-3">Edge 1/0/2</th>
+                    <th className="px-3 py-3">AI Base</th>
                     <th className="px-3 py-3">Human F</th>
                     <th className="px-3 py-3">Human D</th>
-                    <th className="px-3 py-3">Human Consensus</th>
-                    <th className="px-3 py-3">AI Recommended</th>
+                    <th className="px-3 py-3">Human Overlay</th>
+                    <th className="px-3 py-3">Edge 1/0/2</th>
                     <th className="px-3 py-3">Category</th>
                     <th className="px-3 py-3">Badges</th>
                     <th className="px-3 py-3">Actual</th>
@@ -301,7 +303,9 @@ function WorkspacePageContent() {
                 </thead>
                 <tbody>
                   {data.round.matches.map((match) => {
+                    const aiBase = aiRecommendedOutcomes(match);
                     const badges = buildMatchBadges(match);
+                    const overlayBadge = humanOverlayBadge(match);
 
                     return (
                       <tr key={match.id} className="border-b border-slate-100 align-top">
@@ -325,6 +329,35 @@ function WorkspacePageContent() {
                         <td className="px-3 py-4 font-medium text-slate-700">
                           {formatPercent(match.modelProb1)} / {formatPercent(match.modelProb0)} /{" "}
                           {formatPercent(match.modelProb2)}
+                        </td>
+                        <td className="px-3 py-4">
+                          <div className="flex flex-wrap gap-2">
+                            {aiBase.length === 0 ? (
+                              <Badge tone="slate">AI未設定</Badge>
+                            ) : (
+                              aiBase.map((outcome) => (
+                                <Badge key={`${match.id}-ai-${outcome}`} tone="amber">
+                                  {outcome}
+                                </Badge>
+                              ))
+                            )}
+                          </div>
+                          <div className="mt-2 text-xs text-slate-500">
+                            conf {match.confidence !== null ? match.confidence.toFixed(2) : "—"}
+                          </div>
+                        </td>
+                        <td className="px-3 py-4">{formatNumber(match.consensusF, 1)}</td>
+                        <td className="px-3 py-4">{formatNumber(match.consensusD, 1)}</td>
+                        <td className="px-3 py-4">
+                          <div className="font-medium text-slate-800">
+                            {formatOutcomeSet(humanConsensusOutcomes(match))}
+                          </div>
+                          <div className="mt-1">
+                            <Badge tone={overlayBadge.tone}>{overlayBadge.label}</Badge>
+                          </div>
+                          <div className="mt-2 text-xs text-slate-500">
+                            {match.consensusCall ?? "未集計"}
+                          </div>
                         </td>
                         <td className="px-3 py-4">
                           <div className="space-y-1">
@@ -356,24 +389,6 @@ function WorkspacePageContent() {
                                 </div>
                               );
                             })}
-                          </div>
-                        </td>
-                        <td className="px-3 py-4">{formatNumber(match.consensusF, 1)}</td>
-                        <td className="px-3 py-4">{formatNumber(match.consensusD, 1)}</td>
-                        <td className="px-3 py-4">
-                          <div className="font-medium text-slate-800">
-                            {match.consensusCall ?? "未集計"}
-                          </div>
-                          <div className="text-xs text-slate-500">
-                            {humanConsensusOutcomes(match).join(" / ") || "—"}
-                          </div>
-                        </td>
-                        <td className="px-3 py-4">
-                          <div className="font-medium text-slate-800">
-                            {aiRecommendedOutcomes(match).join(" / ") || "—"}
-                          </div>
-                          <div className="text-xs text-slate-500">
-                            conf {match.confidence !== null ? match.confidence.toFixed(2) : "—"}
                           </div>
                         </td>
                         <td className="px-3 py-4 text-slate-600">

@@ -89,7 +89,7 @@ export default function DashboardPage() {
       <PageHeader
         eyebrow="World Toto Lab"
         title="W杯totoの予想・分析・記録ダッシュボード"
-        description="GitHub Pages で配信する静的フロントエンドから、Supabase に予想・入力・集計データを保存する MVP です。"
+        description="AI Base を先に見て、その上に人力の別予想をかぶせながら、入力と集計と振り返りを回す MVP です。"
         actions={
           <div className="flex flex-wrap gap-3">
             <a href="#create-round" className={buttonClassName}>
@@ -112,14 +112,14 @@ export default function DashboardPage() {
         <>
           <SectionCard
             title="このサイトは何をするもの？"
-            description="友人グループで W杯toto / WINNER の見立てを共有し、入力と振り返りまで一つの流れで扱うための分析ラボです。"
+            description="友人グループで W杯toto / WINNER の見立てを共有し、AI Base と人力 Overlay を一つの流れで扱う分析ラボです。"
           >
             <div className="grid gap-4 lg:grid-cols-3">
               {[
                 {
                   eyebrow: "Plan",
                   title: "予想を持ち寄る",
-                  body: "Human Picks と Scout Card で、1/0/2 の予想と根拠を試合ごとに残します。",
+                  body: "まず AI Base を見てから、Human Picks と Scout Card で 1/0/2 の予想と根拠を重ねます。",
                 },
                 {
                   eyebrow: "Compare",
