@@ -20,6 +20,7 @@ import {
   textAreaClassName,
 } from "@/components/ui";
 import {
+  categoryLabel,
   categoryOptions,
   enumToOutcome,
   formatDateTime,
@@ -41,7 +42,7 @@ import { isSupabaseConfigured } from "@/lib/supabase";
 import { useRoundWorkspace } from "@/lib/use-app-data";
 
 function errorMessage(error: unknown) {
-  return error instanceof Error ? error.message : "Unknown error";
+  return error instanceof Error ? error.message : "不明なエラーです。";
 }
 
 function percentInput(value: number | null) {
@@ -74,8 +75,8 @@ function MatchEditorPageContent() {
       await updateMatch({
         roundId: data.round.id,
         matchId: match.id,
-        homeTeam: stringValue(formData, "homeTeam") || "TBD Home",
-        awayTeam: stringValue(formData, "awayTeam") || "TBD Away",
+        homeTeam: stringValue(formData, "homeTeam") || "仮ホーム",
+        awayTeam: stringValue(formData, "awayTeam") || "仮アウェイ",
         kickoffTime: (() => {
           const value = stringValue(formData, "kickoffTime");
           return value ? new Date(value).toISOString() : null;
@@ -112,14 +113,14 @@ function MatchEditorPageContent() {
   return (
     <div className="space-y-8">
       <PageHeader
-        eyebrow={match ? `Match ${match.matchNo}` : "Match Editor"}
-        title={match ? `${match.homeTeam} vs ${match.awayTeam}` : "Match Editor"}
+        eyebrow={match ? `第${match.matchNo}試合` : "試合編集"}
+        title={match ? `${match.homeTeam} 対 ${match.awayTeam}` : "試合編集"}
         description={
           match
-            ? `Kickoff ${formatDateTime(match.kickoffTime)} / 現在結果 ${
+            ? `開始 ${formatDateTime(match.kickoffTime)} / 現在結果 ${
                 enumToOutcome(match.actualResult) ?? "—"
               }`
-            : "Round から対象試合を選んで編集します。"
+            : "ラウンドから対象試合を選んで編集します。"
         }
       />
 
@@ -128,7 +129,7 @@ function MatchEditorPageContent() {
       ) : !roundId ? (
         <RoundRequiredNotice />
       ) : loading && !data ? (
-        <LoadingNotice title="Match Editor を読み込み中" />
+        <LoadingNotice title="試合編集を読み込み中" />
       ) : error && !data ? (
         <ErrorNotice error={error} onRetry={() => void refresh()} />
       ) : data ? (
@@ -143,13 +144,13 @@ function MatchEditorPageContent() {
           {!match ? (
             <SectionCard
               title="対象試合が選ばれていません"
-              description="Round Detail から Edit を押して対象試合を選んでください。"
+              description="ラウンド詳細から「編集」を押して対象試合を選んでください。"
               actions={
                 <Link
                   href={buildRoundHref(appRoute.workspace, data.round.id)}
                   className={secondaryButtonClassName}
                 >
-                  Round Detail へ戻る
+                  ラウンド詳細へ戻る
                 </Link>
               }
             >
@@ -159,7 +160,7 @@ function MatchEditorPageContent() {
             </SectionCard>
           ) : (
             <SectionCard
-              title="Match Editor"
+              title="試合編集"
               description="確率は 0〜1 保存ですが、画面では % 入力です。"
             >
               <form
@@ -168,17 +169,17 @@ function MatchEditorPageContent() {
                 className="grid gap-5 lg:grid-cols-2"
               >
                 <label className="grid gap-2 text-sm font-medium text-slate-700">
-                  Home Team
+                  ホームチーム
                   <input name="homeTeam" defaultValue={match.homeTeam} className={fieldClassName} />
                 </label>
 
                 <label className="grid gap-2 text-sm font-medium text-slate-700">
-                  Away Team
+                  アウェイチーム
                   <input name="awayTeam" defaultValue={match.awayTeam} className={fieldClassName} />
                 </label>
 
                 <label className="grid gap-2 text-sm font-medium text-slate-700">
-                  Kickoff
+                  試合開始
                   <input
                     name="kickoffTime"
                     type="datetime-local"
@@ -192,17 +193,17 @@ function MatchEditorPageContent() {
                 </label>
 
                 <label className="grid gap-2 text-sm font-medium text-slate-700">
-                  Venue
+                  会場
                   <input name="venue" defaultValue={match.venue ?? ""} className={fieldClassName} />
                 </label>
 
                 <label className="grid gap-2 text-sm font-medium text-slate-700">
-                  Stage
+                  ステージ
                   <input name="stage" defaultValue={match.stage ?? ""} className={fieldClassName} />
                 </label>
 
                 <label className="grid gap-2 text-sm font-medium text-slate-700">
-                  Confidence
+                  信頼度
                   <input
                     name="confidence"
                     type="number"
@@ -216,15 +217,15 @@ function MatchEditorPageContent() {
 
                 <div className="grid gap-3 rounded-3xl border border-slate-200 bg-slate-950/5 p-4 lg:col-span-2 lg:grid-cols-3">
                   {[
-                    ["officialVote1", "Official 1", percentInput(match.officialVote1)],
-                    ["officialVote0", "Official 0", percentInput(match.officialVote0)],
-                    ["officialVote2", "Official 2", percentInput(match.officialVote2)],
-                    ["marketProb1", "Market 1", percentInput(match.marketProb1)],
-                    ["marketProb0", "Market 0", percentInput(match.marketProb0)],
-                    ["marketProb2", "Market 2", percentInput(match.marketProb2)],
-                    ["modelProb1", "Model 1", percentInput(match.modelProb1)],
-                    ["modelProb0", "Model 0", percentInput(match.modelProb0)],
-                    ["modelProb2", "Model 2", percentInput(match.modelProb2)],
+                    ["officialVote1", "公式 1", percentInput(match.officialVote1)],
+                    ["officialVote0", "公式 0", percentInput(match.officialVote0)],
+                    ["officialVote2", "公式 2", percentInput(match.officialVote2)],
+                    ["marketProb1", "市場 1", percentInput(match.marketProb1)],
+                    ["marketProb0", "市場 0", percentInput(match.marketProb0)],
+                    ["marketProb2", "市場 2", percentInput(match.marketProb2)],
+                    ["modelProb1", "AI 1", percentInput(match.modelProb1)],
+                    ["modelProb0", "AI 0", percentInput(match.modelProb0)],
+                    ["modelProb2", "AI 2", percentInput(match.modelProb2)],
                   ].map(([name, label, value]) => (
                     <label key={name} className="grid gap-2 text-sm font-medium text-slate-700">
                       {label}
@@ -242,7 +243,7 @@ function MatchEditorPageContent() {
                 </div>
 
                 <label className="grid gap-2 text-sm font-medium text-slate-700">
-                  Category
+                  カテゴリ
                   <select
                     name="category"
                     className={fieldClassName}
@@ -251,14 +252,14 @@ function MatchEditorPageContent() {
                     <option value="">未設定</option>
                     {categoryOptions.map((category) => (
                       <option key={category} value={category}>
-                        {category}
+                        {categoryLabel[category]}
                       </option>
                     ))}
                   </select>
                 </label>
 
                 <label className="grid gap-2 text-sm font-medium text-slate-700">
-                  Recommended Outcomes
+                  AI推奨候補
                   <input
                     name="recommendedOutcomes"
                     defaultValue={match.recommendedOutcomes ?? ""}
@@ -268,7 +269,7 @@ function MatchEditorPageContent() {
                 </label>
 
                 <label className="grid gap-2 text-sm font-medium text-slate-700 lg:col-span-2">
-                  Tactical Note
+                  戦術メモ
                   <textarea
                     name="tacticalNote"
                     defaultValue={match.tacticalNote ?? ""}
@@ -277,7 +278,7 @@ function MatchEditorPageContent() {
                 </label>
 
                 <label className="grid gap-2 text-sm font-medium text-slate-700">
-                  Injury Note
+                  負傷情報メモ
                   <textarea
                     name="injuryNote"
                     defaultValue={match.injuryNote ?? ""}
@@ -286,7 +287,7 @@ function MatchEditorPageContent() {
                 </label>
 
                 <label className="grid gap-2 text-sm font-medium text-slate-700">
-                  Motivation Note
+                  モチベーションメモ
                   <textarea
                     name="motivationNote"
                     defaultValue={match.motivationNote ?? ""}
@@ -295,7 +296,7 @@ function MatchEditorPageContent() {
                 </label>
 
                 <label className="grid gap-2 text-sm font-medium text-slate-700 lg:col-span-2">
-                  Admin Note
+                  運営メモ
                   <textarea
                     name="adminNote"
                     defaultValue={match.adminNote ?? ""}
@@ -304,15 +305,15 @@ function MatchEditorPageContent() {
                 </label>
 
                 <div className="rounded-3xl border border-dashed border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-900 lg:col-span-2">
-                  現在の表示: Official {formatPercent(match.officialVote1)} /{" "}
-                  {formatPercent(match.officialVote0)} / {formatPercent(match.officialVote2)}、 Model{" "}
+                  現在の表示: 公式 {formatPercent(match.officialVote1)} /{" "}
+                  {formatPercent(match.officialVote0)} / {formatPercent(match.officialVote2)}、 AI{" "}
                   {formatPercent(match.modelProb1)} / {formatPercent(match.modelProb0)} /{" "}
                   {formatPercent(match.modelProb2)}
                 </div>
 
                 <div className="flex justify-end lg:col-span-2">
                   <button type="submit" className={buttonClassName} disabled={saving}>
-                    {saving ? "Saving..." : "Save Match"}
+                    {saving ? "保存中..." : "試合を保存"}
                   </button>
                 </div>
               </form>
@@ -327,7 +328,7 @@ function MatchEditorPageContent() {
 
 export default function MatchEditorPage() {
   return (
-    <Suspense fallback={<LoadingNotice title="Match Editor を準備中" />}>
+    <Suspense fallback={<LoadingNotice title="試合編集を準備中" />}>
       <MatchEditorPageContent />
     </Suspense>
   );

@@ -15,12 +15,12 @@ const monoFont = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "World Toto Lab",
-    template: "%s | World Toto Lab",
+    default: "ワールドtotoラボ",
+    template: "%s | ワールドtotoラボ",
   },
   description:
     "W杯toto/WINNERを友人グループで分析・投票・記録・振り返りするためのダッシュボード。",
-  applicationName: "World Toto Lab",
+  applicationName: "ワールドtotoラボ",
 };
 
 const complianceNotes = [
@@ -55,10 +55,10 @@ export default function RootLayout({
               <div className="flex flex-col gap-4 rounded-[28px] border border-white/12 bg-[linear-gradient(135deg,rgba(6,24,16,0.88),rgba(12,48,31,0.86))] px-4 py-4 shadow-[0_30px_90px_-48px_rgba(0,0,0,0.7)] ring-1 ring-white/5 lg:flex-row lg:items-end lg:justify-between">
                 <div className="space-y-4">
                   <div className="flex flex-wrap items-center gap-2">
-                    <Badge tone="teal">Matchday Lab</Badge>
-                    <Badge tone="amber">Toto Analysis</Badge>
+                    <Badge tone="teal">試合ラボ</Badge>
+                    <Badge tone="amber">toto分析</Badge>
                     <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/6 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.28em] text-emerald-50/78">
-                      Shared MVP
+                      共有MVP
                     </span>
                   </div>
                   <div className="grid gap-3 lg:grid-cols-[auto_1fr] lg:items-end">
@@ -67,7 +67,7 @@ export default function RootLayout({
                     </div>
                     <div>
                       <p className="font-display text-[11px] font-medium uppercase tracking-[0.4em] text-emerald-100/62">
-                        World Toto Lab
+                        ワールドtotoラボ
                       </p>
                       <h1 className="max-w-3xl text-2xl font-semibold tracking-[-0.04em] text-white sm:text-3xl lg:text-[2.25rem]">
                         予想票と試合感を並べて読む、
@@ -84,13 +84,13 @@ export default function RootLayout({
                   </p>
                   <div className="rounded-[20px] border border-white/12 bg-[linear-gradient(180deg,rgba(2,8,6,0.88),rgba(12,19,14,0.94))] px-4 py-3 text-right shadow-[0_20px_50px_-36px_rgba(0,0,0,0.8)]">
                     <div className="font-display text-[11px] uppercase tracking-[0.32em] text-emerald-100/52">
-                      Scoreboard
+                      進行メモ
                     </div>
                     <div className="font-display text-xl font-semibold tracking-[-0.05em] text-white">
-                      13 Match
+                      13試合
                     </div>
                     <div className="mt-1 font-mono text-xs uppercase tracking-[0.22em] text-amber-300/88">
-                      AI Base / Human Overlay
+                      AI基準線 / 人力上書き
                     </div>
                   </div>
                 </div>
@@ -125,7 +125,7 @@ export default function RootLayout({
               <div className="flex flex-col gap-4 rounded-[26px] border border-white/12 bg-[linear-gradient(135deg,rgba(6,24,16,0.84),rgba(15,40,29,0.86))] px-5 py-4 shadow-[0_24px_80px_-46px_rgba(0,0,0,0.6)] sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <div className="font-display text-[11px] uppercase tracking-[0.38em] text-emerald-100/52">
-                    Shared Usage Notice
+                    共有利用時の注意
                   </div>
                   <p className="mt-2 max-w-2xl leading-6 text-emerald-50/74">
                     このアプリは公式サービスの代替ではなく、分析・投票・記録・振り返りのための共有 UI です。

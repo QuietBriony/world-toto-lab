@@ -42,7 +42,7 @@ const scoreOptions = {
 };
 
 function errorMessage(error: unknown) {
-  return error instanceof Error ? error.message : "Unknown error";
+  return error instanceof Error ? error.message : "不明なエラーです。";
 }
 
 function ScoutCardsPageContent() {
@@ -188,7 +188,7 @@ function ScoutCardsPageContent() {
   return (
     <div className="space-y-8">
       <PageHeader
-        eyebrow="Human Scout Card"
+        eyebrow="根拠カード"
         title="人力スコアリングカード"
         description="W杯toto予想の根拠を、試合ごとに点数化して残します。方向スコア F は保存時に自動計算されます。"
       />
@@ -198,7 +198,7 @@ function ScoutCardsPageContent() {
       ) : !roundId ? (
         <RoundRequiredNotice />
       ) : loading && !data ? (
-        <LoadingNotice title="Scout Cards を読み込み中" />
+        <LoadingNotice title="根拠カードを読み込み中" />
       ) : error && !data ? (
         <ErrorNotice error={error} onRetry={() => void refresh()} />
       ) : data ? (
@@ -214,10 +214,10 @@ function ScoutCardsPageContent() {
           {data.users.length === 0 || !activeUser ? (
             <SectionCard
               title="共有メンバーがまだありません"
-              description="Dashboard でサンプルメンバーを作成してから利用してください。"
+              description="ダッシュボードでサンプルメンバーを作成してから利用してください。"
             >
               <p className="text-sm text-slate-600">
-                Scout Card は共有メンバー前提の入力画面です。
+                根拠カードは共有メンバー前提の入力画面です。
               </p>
             </SectionCard>
           ) : (
@@ -277,10 +277,10 @@ function ScoutCardsPageContent() {
                         <div className="flex flex-wrap items-center justify-between gap-3">
                           <div>
                             <div className="text-xs uppercase tracking-[0.22em] text-slate-400">
-                              Match {match.matchNo}
+                              第{match.matchNo}試合
                             </div>
                             <div className="text-lg font-semibold text-slate-900">
-                              {match.homeTeam} vs {match.awayTeam}
+                              {match.homeTeam} 対 {match.awayTeam}
                             </div>
                           </div>
                           <div className="text-sm text-slate-500">
@@ -420,7 +420,7 @@ function ScoutCardsPageContent() {
 
                 <div className="flex justify-end">
                   <button type="submit" className={buttonClassName} disabled={saving}>
-                    {saving ? "Saving..." : "Save Scout Cards"}
+                    {saving ? "保存中..." : "カードを保存"}
                   </button>
                 </div>
               </form>
@@ -435,7 +435,7 @@ function ScoutCardsPageContent() {
 
 export default function ScoutCardsPage() {
   return (
-    <Suspense fallback={<LoadingNotice title="Scout Cards を準備中" />}>
+    <Suspense fallback={<LoadingNotice title="根拠カードを準備中" />}>
       <ScoutCardsPageContent />
     </Suspense>
   );

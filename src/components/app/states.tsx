@@ -39,7 +39,7 @@ export function ConfigurationNotice() {
 
 export function LoadingNotice({
   description = "最新データを読み込んでいます。",
-  title = "Loading",
+  title = "読み込み中",
 }: {
   description?: string;
   title?: string;
@@ -65,7 +65,7 @@ export function ErrorNotice({
       actions={
         onRetry ? (
           <button type="button" className={buttonClassName} onClick={onRetry}>
-            Retry
+            再読み込み
           </button>
         ) : null
       }
@@ -78,16 +78,16 @@ export function ErrorNotice({
 export function RoundRequiredNotice() {
   return (
     <SectionCard
-      title="Round を選択してください"
-      description="この画面は URL の `?round=` で対象 Round を切り替えます。"
+      title="ラウンドを選択してください"
+      description="この画面は URL の `?round=` で対象ラウンドを切り替えます。"
       actions={
         <Link href={appRoute.dashboard} className={secondaryButtonClassName}>
-          Dashboard へ
+          ダッシュボードへ
         </Link>
       }
     >
       <p className="text-sm text-slate-600">
-        まず Dashboard で Round を作成し、そこから各画面へ移動してください。
+        まずダッシュボードでラウンドを作成し、そこから各画面へ移動してください。
       </p>
     </SectionCard>
   );

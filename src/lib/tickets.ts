@@ -107,7 +107,7 @@ function buildSelection(match: MatchLike, outcome: OutcomeValue): TicketSelectio
 
   return {
     matchNo: match.matchNo,
-    fixture: `${match.homeTeam} vs ${match.awayTeam}`,
+    fixture: `${match.homeTeam} 対 ${match.awayTeam}`,
     outcome,
     modelProbability,
     officialVoteShare,

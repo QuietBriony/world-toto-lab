@@ -43,29 +43,29 @@ export function RoundNav({
     items ??
     (roundId
       ? [
-          { href: buildRoundHref(appRoute.workspace, roundId), label: "Round Detail" },
+          { href: buildRoundHref(appRoute.workspace, roundId), label: "ラウンド詳細" },
           {
             href: buildRoundHref(appRoute.picks, roundId, { user: userId }),
-            label: "Human Picks",
+            label: "人力予想",
           },
           {
             href: buildRoundHref(appRoute.scoutCards, roundId, { user: userId }),
-            label: "Scout Cards",
+            label: "根拠カード",
           },
-          { href: buildRoundHref(appRoute.consensus, roundId), label: "Consensus" },
-          { href: buildRoundHref(appRoute.edgeBoard, roundId), label: "Edge Board" },
+          { href: buildRoundHref(appRoute.consensus, roundId), label: "コンセンサス" },
+          { href: buildRoundHref(appRoute.edgeBoard, roundId), label: "差分ボード" },
           {
             href: buildRoundHref(appRoute.ticketGenerator, roundId),
-            label: "Tickets",
+            label: "候補チケット",
           },
-          { href: buildRoundHref(appRoute.review, roundId), label: "Review" },
+          { href: buildRoundHref(appRoute.review, roundId), label: "振り返り" },
         ]
       : []);
   const activePathname = currentPath ?? pathname;
 
   return (
     <nav
-      aria-label="Round navigation"
+      aria-label="ラウンド内の移動"
       className={cx(
         "rounded-[28px] border border-white/70 bg-white/88 p-3 shadow-[0_24px_80px_-40px_rgba(15,23,42,0.35)] backdrop-blur-xl sm:p-4",
         className,
@@ -75,10 +75,10 @@ export function RoundNav({
         <div className="flex flex-wrap items-center gap-3">
           <div>
             <p className="text-xs font-medium uppercase tracking-[0.28em] text-teal-700/70">
-              Round Workspace
+              ラウンド画面
             </p>
             <p className="text-base font-semibold tracking-tight text-slate-900">
-              {roundTitle ?? "Round navigation"}
+              {roundTitle ?? "ラウンドメニュー"}
             </p>
           </div>
           {roundStatus ? <Badge tone="info">{roundStatus}</Badge> : null}
@@ -95,7 +95,7 @@ export function RoundNav({
                   : "border-slate-200 bg-white text-slate-600 hover:border-teal-200 hover:bg-teal-50 hover:text-teal-900",
               )}
             >
-              Dashboard
+              ダッシュボード
             </Link>
 
             {resolvedItems.map((item) => {

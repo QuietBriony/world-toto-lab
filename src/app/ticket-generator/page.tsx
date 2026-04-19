@@ -18,6 +18,7 @@ import {
   SectionCard,
 } from "@/components/ui";
 import {
+  drawPolicyLabel,
   formatCurrency,
   formatNumber,
   formatPercent,
@@ -51,7 +52,7 @@ function parseStoredTicket(raw: string): StoredTicket | null {
 }
 
 function errorMessage(error: unknown) {
-  return error instanceof Error ? error.message : "Unknown error";
+  return error instanceof Error ? error.message : "不明なエラーです。";
 }
 
 function TicketGeneratorPageContent() {
@@ -141,7 +142,7 @@ function TicketGeneratorPageContent() {
   return (
     <div className="space-y-8">
       <PageHeader
-        eyebrow="Ticket Generator"
+        eyebrow="候補チケット"
         title="買い目候補ジェネレーター"
         description="スコアは厳密な確率最適化ではなく、買い目候補の並び替え用です。金銭管理や配当分配は扱いません。"
       />
@@ -151,7 +152,7 @@ function TicketGeneratorPageContent() {
       ) : !roundId ? (
         <RoundRequiredNotice />
       ) : loading && !data ? (
-        <LoadingNotice title="Ticket Generator を読み込み中" />
+        <LoadingNotice title="候補チケットを読み込み中" />
       ) : error && !data ? (
         <ErrorNotice error={error} onRetry={() => void refresh()} />
       ) : data ? (
@@ -165,11 +166,11 @@ function TicketGeneratorPageContent() {
 
           <SectionCard
             title="生成設定"
-            description="予算から maxTickets を 100 円単位で計算します。"
+            description="予算から候補枚数を 100 円単位で計算します。"
           >
             <form onSubmit={handleGenerate} className="grid gap-5 md:grid-cols-2 lg:grid-cols-5">
               <label className="grid gap-2 text-sm font-medium text-slate-700">
-                Budget
+                予算
                 <input
                   name="budgetYen"
                   type="number"
@@ -181,18 +182,18 @@ function TicketGeneratorPageContent() {
               </label>
 
               <label className="grid gap-2 text-sm font-medium text-slate-700">
-                Mode
+                モード
                 <select name="mode" defaultValue={selectedMode} className={fieldClassName}>
                   {ticketModeOptions.map((mode) => (
                     <option key={mode} value={mode}>
-                      {mode}
+                      {ticketModeLabel[mode]}
                     </option>
                   ))}
                 </select>
               </label>
 
               <label className="grid gap-2 text-sm font-medium text-slate-700">
-                Human Weight
+                人力比重
                 <input
                   name="humanWeight"
                   type="number"
@@ -205,7 +206,7 @@ function TicketGeneratorPageContent() {
               </label>
 
               <label className="grid gap-2 text-sm font-medium text-slate-700">
-                Max Contrarian Matches
+                逆張り上限試合数
                 <input
                   name="maxContrarianMatches"
                   type="number"
@@ -218,21 +219,21 @@ function TicketGeneratorPageContent() {
               </label>
 
               <label className="grid gap-2 text-sm font-medium text-slate-700">
-                Draw Policy
+                引き分け方針
                 <select
                   name="includeDrawPolicy"
                   defaultValue={lastSettings?.includeDrawPolicy ?? "medium"}
                   className={fieldClassName}
                 >
-                  <option value="low">low</option>
-                  <option value="medium">medium</option>
-                  <option value="high">high</option>
+                  <option value="low">{drawPolicyLabel.low}</option>
+                  <option value="medium">{drawPolicyLabel.medium}</option>
+                  <option value="high">{drawPolicyLabel.high}</option>
                 </select>
               </label>
 
               <div className="md:col-span-2 lg:col-span-5 flex justify-end">
                 <button type="submit" className={buttonClassName} disabled={saving}>
-                  {saving ? "Generating..." : "Generate Tickets"}
+                  {saving ? "生成中..." : "候補を生成"}
                 </button>
               </div>
             </form>
@@ -251,12 +252,12 @@ function TicketGeneratorPageContent() {
                   {hero ? (
                     <div className="space-y-3">
                       <div className="flex flex-wrap gap-2">
-                        <Badge tone="teal">Score {formatNumber(hero.ticketScore, 2)}</Badge>
+                        <Badge tone="teal">評価 {formatNumber(hero.ticketScore, 2)}</Badge>
                         <Badge tone="amber">
-                          Hit {formatPercent(hero.estimatedHitProb, 1)}
+                          的中見込み {formatPercent(hero.estimatedHitProb, 1)}
                         </Badge>
                         <Badge tone="rose">
-                          Contrarian {formatNumber(hero.contrarianScore, 2)}
+                          逆張り度 {formatNumber(hero.contrarianScore, 2)}
                         </Badge>
                       </div>
                       <div className="space-y-2 text-sm text-slate-700">
@@ -297,15 +298,15 @@ function TicketGeneratorPageContent() {
                       <div className="flex items-center gap-2">
                         <Badge tone="sky">#{index + 1}</Badge>
                         <span className="text-lg font-semibold text-slate-900">
-                          Score {formatNumber(ticket.ticketScore, 2)}
+                          評価 {formatNumber(ticket.ticketScore, 2)}
                         </span>
                       </div>
                       <div className="flex flex-wrap gap-2 text-sm">
                         <Badge tone="amber">
-                          Hit {formatPercent(ticket.estimatedHitProb, 1)}
+                          的中見込み {formatPercent(ticket.estimatedHitProb, 1)}
                         </Badge>
                         <Badge tone="rose">
-                          Contrarian {formatNumber(ticket.contrarianScore, 2)}
+                          逆張り度 {formatNumber(ticket.contrarianScore, 2)}
                         </Badge>
                       </div>
                     </div>
@@ -335,7 +336,7 @@ function TicketGeneratorPageContent() {
 
 export default function TicketGeneratorPage() {
   return (
-    <Suspense fallback={<LoadingNotice title="Ticket Generator を準備中" />}>
+    <Suspense fallback={<LoadingNotice title="候補チケットを準備中" />}>
       <TicketGeneratorPageContent />
     </Suspense>
   );

@@ -41,7 +41,7 @@ import { isSupabaseConfigured } from "@/lib/supabase";
 import { useRoundWorkspace } from "@/lib/use-app-data";
 
 function errorMessage(error: unknown) {
-  return error instanceof Error ? error.message : "Unknown error";
+  return error instanceof Error ? error.message : "不明なエラーです。";
 }
 
 function buildDraftPickValues(input: {
@@ -145,7 +145,7 @@ function PicksPageContent() {
   return (
     <div className="space-y-8">
       <PageHeader
-        eyebrow="Human Picks"
+        eyebrow="人力予想"
         title="人力予想入力"
         description="AIの基準線を先に見て、その上に自分や全体の別予想を重ねていく入力画面です。"
       />
@@ -155,7 +155,7 @@ function PicksPageContent() {
       ) : !roundId ? (
         <RoundRequiredNotice />
       ) : loading && !data ? (
-        <LoadingNotice title="Human Picks を読み込み中" />
+        <LoadingNotice title="人力予想を読み込み中" />
       ) : error && !data ? (
         <ErrorNotice error={error} onRetry={() => void refresh()} />
       ) : data ? (
@@ -171,10 +171,10 @@ function PicksPageContent() {
           {data.users.length === 0 || !activeUser ? (
             <SectionCard
               title="共有メンバーがまだありません"
-              description="Dashboard でサンプルメンバーを作成してから利用してください。"
+              description="ダッシュボードでサンプルメンバーを作成してから利用してください。"
             >
               <p className="text-sm text-slate-600">
-                Human Picks は共有メンバー前提の入力画面です。
+                人力予想は共有メンバー前提の入力画面です。
               </p>
             </SectionCard>
           ) : (
@@ -200,23 +200,23 @@ function PicksPageContent() {
 
               <SectionCard
                 title="AIを土台にして入れる"
-                description="この画面では、まず Model の AI 推奨を見てから、人力でそのまま乗るか、0 を足すか、別筋へ振るかを決めます。"
+                description="この画面では、まず AI の推奨を見てから、人力でそのまま乗るか、0 を足すか、別筋へ振るかを決めます。"
               >
                 <div className="grid gap-4 lg:grid-cols-3">
                   <div className="rounded-[22px] border border-white/80 bg-white/72 p-4 shadow-[0_16px_38px_-30px_rgba(15,23,42,0.4)]">
                     <div className="font-display text-[11px] uppercase tracking-[0.34em] text-amber-800/75">
-                      AI Base
+                      AI基準線
                     </div>
                     <h3 className="mt-3 font-display text-lg font-semibold tracking-[-0.04em] text-slate-950">
                       まず AI 本線を見る
                     </h3>
                     <p className="mt-2 text-sm leading-6 text-slate-600">
-                      Model の 1 / 0 / 2 と推奨候補を基準線にします。ここが最初の叩き台です。
+                      AI の 1 / 0 / 2 と推奨候補を基準線にします。ここが最初の叩き台です。
                     </p>
                   </div>
                   <div className="rounded-[22px] border border-white/80 bg-white/72 p-4 shadow-[0_16px_38px_-30px_rgba(15,23,42,0.4)]">
                     <div className="font-display text-[11px] uppercase tracking-[0.34em] text-sky-800/75">
-                      Human Overlay
+                      人力上書き
                     </div>
                     <h3 className="mt-3 font-display text-lg font-semibold tracking-[-0.04em] text-slate-950">
                       人力で別筋をかぶせる
@@ -227,7 +227,7 @@ function PicksPageContent() {
                   </div>
                   <div className="rounded-[22px] border border-white/80 bg-white/72 p-4 shadow-[0_16px_38px_-30px_rgba(15,23,42,0.4)]">
                     <div className="font-display text-[11px] uppercase tracking-[0.34em] text-teal-800/75">
-                      Team Signal
+                      全体シグナル
                     </div>
                     <h3 className="mt-3 font-display text-lg font-semibold tracking-[-0.04em] text-slate-950">
                       全体の重なりを見る
@@ -310,7 +310,7 @@ function PicksPageContent() {
                             ? formatPercent(agreementMatches.length / agreementBase.length)
                             : "—"
                         }
-                        hint="多数派の人力予想と Model 本命の一致率"
+                        hint="多数派の人力予想と AI 本命の一致率"
                       />
 
                       <SectionCard
@@ -327,13 +327,13 @@ function PicksPageContent() {
                             <table className="min-w-[1120px] text-left text-sm">
                               <thead>
                                 <tr className="border-b border-slate-200 text-slate-500">
-                                  <th className="px-3 py-3">No.</th>
-                                  <th className="px-3 py-3">Match</th>
+                                  <th className="px-3 py-3">番号</th>
+                                  <th className="px-3 py-3">番号</th>
                                   <th className="px-3 py-3">AI基準線</th>
-                                  <th className="px-3 py-3">My Overlay</th>
+                                  <th className="px-3 py-3">自分の上書き</th>
                                   <th className="px-3 py-3">AIとの差分</th>
                                   <th className="px-3 py-3">全体の重なり</th>
-                                  <th className="px-3 py-3">Note</th>
+                                  <th className="px-3 py-3">メモ</th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -364,10 +364,10 @@ function PicksPageContent() {
                                       </td>
                                       <td className="px-3 py-4">
                                         <div className="font-medium text-slate-900">
-                                          {match.homeTeam} vs {match.awayTeam}
+                                          {match.homeTeam} 対 {match.awayTeam}
                                         </div>
                                         <div className="text-xs text-slate-500">
-                                          Round #{match.matchNo} /{" "}
+                                          第{match.matchNo}試合 /{" "}
                                           {match.consensusCall ?? "人力コンセンサス集計前"}
                                         </div>
                                       </td>
@@ -377,19 +377,19 @@ function PicksPageContent() {
                                             <Badge tone="slate">AI未設定</Badge>
                                           ) : (
                                             aiBase.map((outcome) => (
-                                              <Badge key={`${match.id}-ai-${outcome}`} tone="amber">
+                                                <Badge key={`${match.id}-ai-${outcome}`} tone="amber">
                                                 AI {outcome}
                                               </Badge>
                                             ))
                                           )}
                                         </div>
                                         <div className="mt-2 text-xs text-slate-500">
-                                          Model {formatPercent(match.modelProb1)} /{" "}
+                                          AI {formatPercent(match.modelProb1)} /{" "}
                                           {formatPercent(match.modelProb0)} /{" "}
                                           {formatPercent(match.modelProb2)}
                                         </div>
                                         <div className="text-xs text-slate-500">
-                                          conf{" "}
+                                          信頼度{" "}
                                           {match.confidence !== null
                                             ? match.confidence.toFixed(2)
                                             : "—"}
@@ -426,7 +426,7 @@ function PicksPageContent() {
                                             {overlayBadge.label}
                                           </Badge>
                                           <Badge tone="slate">
-                                            Human {formatOutcomeSet(humanConsensusOutcomes(match))}
+                                            人力 {formatOutcomeSet(humanConsensusOutcomes(match))}
                                           </Badge>
                                         </div>
                                         <div className="mt-2">
@@ -455,7 +455,7 @@ function PicksPageContent() {
 
                           <div className="flex justify-end">
                             <button type="submit" className={buttonClassName} disabled={saving}>
-                              {saving ? "Saving..." : "Save Picks"}
+                              {saving ? "保存中..." : "予想を保存"}
                             </button>
                           </div>
                         </form>
@@ -472,16 +472,16 @@ function PicksPageContent() {
                         <div className="overflow-x-auto">
                           <table className="min-w-[1280px] text-left text-sm">
                             <thead>
-                              <tr className="border-b border-slate-200 text-slate-500">
-                                <th className="px-3 py-3">No.</th>
-                                <th className="px-3 py-3">Match</th>
-                                <th className="px-3 py-3">AI Base</th>
+                                <tr className="border-b border-slate-200 text-slate-500">
+                                  <th className="px-3 py-3">試合</th>
+                                  <th className="px-3 py-3">試合</th>
+                                  <th className="px-3 py-3">AI基準線</th>
                                 {data.users.map((user) => (
                                   <th key={user.id} className="px-3 py-3">
                                     {user.name}
                                   </th>
                                 ))}
-                                <th className="px-3 py-3">Human Overlay</th>
+                                  <th className="px-3 py-3">人力上書き</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -497,10 +497,10 @@ function PicksPageContent() {
                                     </td>
                                     <td className="px-3 py-4">
                                       <div className="font-medium text-slate-900">
-                                        {match.homeTeam} vs {match.awayTeam}
+                                        {match.homeTeam} 対 {match.awayTeam}
                                       </div>
                                       <div className="text-xs text-slate-500">
-                                        Human{" "}
+                                        人力{" "}
                                         {majorityHumanOutcome(picksByMatch.get(match.id) ?? []) ??
                                           "—"}
                                       </div>
@@ -521,7 +521,7 @@ function PicksPageContent() {
                                         )}
                                       </div>
                                       <div className="mt-2 text-xs text-slate-500">
-                                        {formatPercent(match.modelProb1)} /{" "}
+                                        AI {formatPercent(match.modelProb1)} /{" "}
                                         {formatPercent(match.modelProb0)} /{" "}
                                         {formatPercent(match.modelProb2)}
                                       </div>
@@ -574,7 +574,7 @@ function PicksPageContent() {
 
 export default function PicksPage() {
   return (
-    <Suspense fallback={<LoadingNotice title="Human Picks を準備中" />}>
+    <Suspense fallback={<LoadingNotice title="人力予想を準備中" />}>
       <PicksPageContent />
     </Suspense>
   );

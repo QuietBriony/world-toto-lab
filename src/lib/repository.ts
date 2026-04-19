@@ -309,7 +309,7 @@ function deriveRoundSummary(
       return {
         matchId: match.id,
         matchNo: match.matchNo,
-        fixture: `${match.homeTeam} vs ${match.awayTeam}`,
+        fixture: `${match.homeTeam} 対 ${match.awayTeam}`,
         edge: Math.max(...edges),
       };
     })
@@ -337,9 +337,9 @@ function placeholderMatches(roundId: string) {
   return Array.from({ length: 13 }, (_, index) => ({
     round_id: roundId,
     match_no: index + 1,
-    home_team: `Team ${index + 1}A`,
-    away_team: `Team ${index + 1}B`,
-    stage: "Group Stage",
+    home_team: `チーム ${index + 1}A`,
+    away_team: `チーム ${index + 1}B`,
+    stage: "グループステージ",
   }));
 }
 

@@ -39,7 +39,7 @@ import { isSupabaseConfigured } from "@/lib/supabase";
 import { useDashboardData } from "@/lib/use-app-data";
 
 function errorMessage(error: unknown) {
-  return error instanceof Error ? error.message : "Unknown error";
+  return error instanceof Error ? error.message : "不明なエラーです。";
 }
 
 export default function DashboardPage() {
@@ -70,7 +70,7 @@ export default function DashboardPage() {
     try {
       const formData = new FormData(event.currentTarget);
       const roundId = await createRound({
-        title: stringValue(formData, "title") || "New Round",
+        title: stringValue(formData, "title") || "新規ラウンド",
         status: parseRoundStatus(stringValue(formData, "status")),
         budgetYen: parseIntOrNull(stringValue(formData, "budgetYen")),
         notes: nullableString(formData, "notes"),
@@ -106,16 +106,16 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8">
       <PageHeader
-        eyebrow="World Toto Lab"
+        eyebrow="ワールドtotoラボ"
         title="W杯totoの予想・分析・記録ダッシュボード"
-        description="AI Base を先に見て、その上に人力の別予想をかぶせながら、入力と集計と振り返りを回す MVP です。"
+        description="AI基準線を先に見て、その上に人力の別予想をかぶせながら、入力と集計と振り返りを回す MVP です。"
         actions={
           <div className="flex flex-wrap gap-3">
             <a href="#create-round" className={buttonClassName}>
-              Roundを作成
+              ラウンドを作成
             </a>
             <a href="#round-list" className={secondaryButtonClassName}>
-              Round一覧へ
+              ラウンド一覧へ
             </a>
           </div>
         }
@@ -124,14 +124,14 @@ export default function DashboardPage() {
       {!isSupabaseConfigured() ? (
         <ConfigurationNotice />
       ) : loading && !data ? (
-        <LoadingNotice title="Dashboard を読み込み中" />
+        <LoadingNotice title="ダッシュボードを読み込み中" />
       ) : error && !data ? (
         <ErrorNotice error={error} onRetry={() => void refresh()} />
       ) : data ? (
         <>
           <SectionCard
-            title="迷ったらこの Demo Round から"
-            description="保存済みのデモ Round を 1 つ置いて、開くと『AI Base と Human Overlay がどういうことか』をそのまま追えるようにしています。"
+            title="迷ったらこのデモラウンドから"
+            description="保存済みのデモラウンドを 1 つ置いて、開くと『AI基準線と人力上書きがどういうことか』をそのまま追えるようにしています。"
             actions={
               <button
                 type="button"
@@ -140,10 +140,10 @@ export default function DashboardPage() {
                 disabled={busy === "demo"}
               >
                 {busy === "demo"
-                  ? "Preparing..."
+                  ? "準備中..."
                   : demoRound
-                    ? "Demo Round を開く"
-                    : "Demo Round を作成"}
+                    ? "デモラウンドを開く"
+                    : "デモラウンドを作成"}
               </button>
             }
           >
@@ -152,23 +152,23 @@ export default function DashboardPage() {
                 {[
                   {
                     step: "01",
-                    title: "Round Detail を開く",
-                    body: "各試合の AI Base、Human Overlay、Edge が同じ表で見えます。",
+                    title: "ラウンド詳細を開く",
+                    body: "各試合の AI基準線、人力上書き、差分が同じ表で見えます。",
                   },
                   {
                     step: "02",
-                    title: "Human Picks を開く",
+                    title: "人力予想を開く",
                     body: "AI 基準線に対して、人力でどう上書きしたかを実例で追えます。",
                   },
                   {
                     step: "03",
-                    title: "Consensus / Tickets",
+                    title: "コンセンサス / 候補チケット",
                     body: "人力が AI に 0 を足したか、別筋へ振ったかを集計と候補で見ます。",
                   },
                   {
                     step: "04",
-                    title: "Review まで見る",
-                    body: "結果と反省ログまで入っているので、一連の流れを 1 Round で確認できます。",
+                    title: "振り返りまで見る",
+                    body: "結果と反省ログまで入っているので、一連の流れを 1 ラウンドで確認できます。",
                   },
                 ].map((item) => (
                   <div
@@ -196,8 +196,8 @@ export default function DashboardPage() {
                   </h3>
                 </div>
                 <p className="mt-3 text-sm leading-6 text-slate-600">
-                  この Round には試合データ、AI 予測、人力 Picks、Scout Card、Consensus、Ticket
-                  Generator、Review が最初から入ります。
+                  このラウンドには試合データ、AI予測、人力予想、根拠カード、コンセンサス、候補チケット、
+                  振り返りが最初から入ります。
                 </p>
                 {demoRound ? (
                   <div className="mt-4 flex flex-wrap gap-2">
@@ -205,7 +205,7 @@ export default function DashboardPage() {
                       href={buildRoundHref(appRoute.workspace, demoRound.id)}
                       className={secondaryButtonClassName}
                     >
-                      Round Detail
+                      ラウンド詳細
                     </Link>
                     <Link
                       href={buildRoundHref(appRoute.picks, demoRound.id, {
@@ -213,19 +213,19 @@ export default function DashboardPage() {
                       })}
                       className={secondaryButtonClassName}
                     >
-                      Human Picks
+                      人力予想
                     </Link>
                     <Link
                       href={buildRoundHref(appRoute.consensus, demoRound.id)}
                       className={secondaryButtonClassName}
                     >
-                      Consensus
+                      コンセンサス
                     </Link>
                     <Link
                       href={buildRoundHref(appRoute.review, demoRound.id)}
                       className={secondaryButtonClassName}
                     >
-                      Review
+                      振り返り
                     </Link>
                   </div>
                 ) : null}
@@ -236,24 +236,24 @@ export default function DashboardPage() {
 
           <SectionCard
             title="このサイトは何をするもの？"
-            description="友人グループで W杯toto / WINNER の見立てを共有し、AI Base と人力 Overlay を一つの流れで扱う分析ラボです。"
+            description="友人グループで W杯toto / WINNER の見立てを共有し、AI基準線と人力上書きを一つの流れで扱う分析ラボです。"
           >
             <div className="grid gap-4 lg:grid-cols-3">
               {[
                 {
-                  eyebrow: "Plan",
+                  eyebrow: "入力",
                   title: "予想を持ち寄る",
-                  body: "まず AI Base を見てから、Human Picks と Scout Card で 1/0/2 の予想と根拠を重ねます。",
+                  body: "まず AI基準線 を見てから、人力予想と根拠カードで 1/0/2 の予想と根拠を重ねます。",
                 },
                 {
-                  eyebrow: "Compare",
+                  eyebrow: "比較",
                   title: "差分を比べる",
-                  body: "Official / Market / Model / Human の差分を、Round Detail・Consensus・Edge Board で並べて見ます。",
+                  body: "公式人気 / 市場 / AI / 人力 の差分を、ラウンド詳細・コンセンサス・差分ボードで並べて見ます。",
                 },
                 {
-                  eyebrow: "Review",
+                  eyebrow: "振り返り",
                   title: "結果を振り返る",
-                  body: "Review で的中数、対立パターン、反省メモを残して次回に活かします。",
+                  body: "振り返りで的中数、対立パターン、反省メモを残して次回に活かします。",
                 },
               ].map((item) => (
                 <div
@@ -287,35 +287,35 @@ export default function DashboardPage() {
                 },
                 {
                   step: "02",
-                  title: "Round を作成",
-                  body: "Round を作ると 13 試合のプレースホルダーが自動でできます。まずは対象回を1つ作ります。",
+                  title: "ラウンドを作成",
+                  body: "ラウンドを作ると 13 試合のプレースホルダーが自動でできます。まずは対象回を1つ作ります。",
                   tone: data.rounds.length > 0 ? "teal" : "amber",
                   status: data.rounds.length > 0 ? "作成可" : "作成待ち",
                 },
                 {
                   step: "03",
-                  title: "Match Editor で試合情報を入れる",
-                  body: "Round Detail から各試合の Edit に入り、チーム名、確率、カテゴリ、メモを埋めます。",
+                  title: "試合編集で試合情報を入れる",
+                  body: "ラウンド詳細から各試合の編集に入り、チーム名、確率、カテゴリ、メモを埋めます。",
                   tone: "sky",
                   status: "入力導線あり",
                 },
                 {
                   step: "04",
-                  title: "Human Picks / Scout Cards を入力",
+                  title: "人力予想 / 根拠カードを入力",
                   body: "ユーザーを切り替えて 1/0/2 と根拠カードを入れます。ここが共有利用の中心です。",
                   tone: "sky",
                   status: "保存対応",
                 },
                 {
                   step: "05",
-                  title: "Consensus / Edge / Tickets を見る",
+                  title: "コンセンサス / 差分 / 候補チケットを見る",
                   body: "入力が集まると、人力コンセンサス、差分、買い目候補の比較が使えるようになります。",
                   tone: "sky",
                   status: "集計対応",
                 },
                 {
                   step: "06",
-                  title: "結果入力と Review",
+                  title: "結果入力と振り返り",
                   body: "試合後に結果を入れて、AI・人力・市場との差や反省ログを残します。",
                   tone: "sky",
                   status: "振り返り対応",
@@ -356,15 +356,15 @@ export default function DashboardPage() {
                 </div>
                 <div className="mt-4 flex flex-wrap gap-2">
                   {[
-                    "Round一覧",
-                    "Round詳細",
-                    "Match Editor",
-                    "Human Picks",
-                    "Scout Card",
-                    "Consensus",
-                    "Edge Board",
-                    "Ticket Generator",
-                    "Review",
+                    "ラウンド一覧",
+                    "ラウンド詳細",
+                    "試合編集",
+                    "人力予想",
+                    "根拠カード",
+                    "コンセンサス",
+                    "差分ボード",
+                    "候補チケット",
+                    "振り返り",
                     "GitHub Pages公開",
                     "Supabase保存",
                   ].map((item) => (
@@ -411,31 +411,31 @@ export default function DashboardPage() {
               {[
                 {
                   defaultOpen: true,
-                  eyebrow: "Storage",
+                  eyebrow: "保存先",
                   title: "データはどこに保存される？",
                   summary:
                     "GitHub の repo にメンバー情報や予想が直接書き戻るわけではありません。保存先は Supabase です。",
-                  body: "このサイトで作成したメンバー名、Round、Picks、Scout Card、Review は Supabase の DB に保存されます。GitHub Pages は画面を配信しているだけで、保存データそのものを GitHub のコード一覧に並べるものではありません。",
+                  body: "このサイトで作成したメンバー名、ラウンド、人力予想、根拠カード、振り返りメモは Supabase の DB に保存されます。GitHub Pages は画面を配信しているだけで、保存データそのものを GitHub のコード一覧に並べるものではありません。",
                   note: "ただし今の MVP は公開サイト + 匿名アクセス前提なので、公開 URL 経由で読める前提で扱ってください。",
                   tone: "teal" as const,
                 },
                 {
                   defaultOpen: false,
-                  eyebrow: "Privacy",
+                  eyebrow: "公開範囲",
                   title: "名前はどう入れる？",
                   summary:
                     "本名や連絡先ではなく、ハンドル名やニックネーム前提で使うのが安全です。",
-                  body: "今の構成は 10 人前後の内輪共有 MVP です。Member 1、観戦会A、Briony みたいな表示名で十分で、メールアドレス、電話番号、精算メモのような個人情報は入れない運用が向いています。",
+                  body: "今の構成は 10 人前後の内輪共有 MVP です。メンバー1、観戦会A、Briony みたいな表示名で十分で、メールアドレス、電話番号、精算メモのような個人情報は入れない運用が向いています。",
                   note: "ちゃんと守りたい場合は、将来的に認証と権限制御を入れる前提です。",
                   tone: "amber" as const,
                 },
                 {
                   defaultOpen: false,
-                  eyebrow: "Scope",
+                  eyebrow: "対象外",
                   title: "この MVP でやらないこと",
                   summary:
                     "購入代行、賭け金管理、配当分配、精算は扱いません。分析と記録に限定しています。",
-                  body: "この UI は AI Base と Human Overlay を比べて、予想の根拠や振り返りを残すためのものです。金銭の受け渡しや代理購入のフローは入れていませんし、今後も別物として扱う想定です。",
+                  body: "この UI は AI基準線と人力上書きを比べて、予想の根拠や振り返りを残すためのものです。金銭の受け渡しや代理購入のフローは入れていませんし、今後も別物として扱う想定です。",
                   note: "公式サービスの利用は各自の判断で行う前提です。",
                   tone: "sky" as const,
                 },
@@ -458,7 +458,7 @@ export default function DashboardPage() {
                       </p>
                     </div>
                     <span className="rounded-full border border-slate-200 bg-white/84 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                      Open
+                      開く
                     </span>
                   </summary>
                   <div className="border-t border-slate-200/80 px-5 py-4">
@@ -466,7 +466,7 @@ export default function DashboardPage() {
                       <p className="text-sm leading-7 text-slate-700">{item.body}</p>
                       <div className="rounded-[20px] border border-slate-200 bg-slate-50/88 p-4 text-sm leading-7 text-slate-600">
                         <div className="font-display text-[11px] uppercase tracking-[0.32em] text-slate-500">
-                          Note
+                          補足
                         </div>
                         <p className="mt-2">{item.note}</p>
                       </div>
@@ -479,25 +479,25 @@ export default function DashboardPage() {
 
           <SectionCard
             className="metric-grid"
-            title="Lab Frame"
+            title="このラボでできること"
             description="保存、共有、分析を一つの流れで回すための MVP です。単なる紹介ページではなく、実際の入力と集計に寄せています。"
           >
             <div className="grid gap-4 lg:grid-cols-3">
               {[
                 {
-                  kicker: "Collect",
+                  kicker: "集める",
                   title: "人力の見立てを集める",
-                  body: "Picks と Scout Card で、試合ごとの理由つき入力を共有します。",
+                  body: "人力予想と根拠カードで、試合ごとの理由つき入力を共有します。",
                 },
                 {
-                  kicker: "Compare",
+                  kicker: "比べる",
                   title: "モデル差分を並べる",
-                  body: "Official / Market / Model / Human を同じ面で比較できます。",
+                  body: "公式人気 / 市場 / AI / 人力 を同じ面で比較できます。",
                 },
                 {
-                  kicker: "Review",
+                  kicker: "残す",
                   title: "反省を次回に残す",
-                  body: "Review で的中率だけでなく一致・対立パターンも振り返ります。",
+                  body: "振り返りで的中率だけでなく一致・対立パターンも振り返ります。",
                 },
               ].map((item) => (
                 <div
@@ -518,7 +518,7 @@ export default function DashboardPage() {
 
           <section className="grid gap-4 md:grid-cols-4">
             <StatCard
-              label="Round数"
+              label="ラウンド数"
               value={`${data.rounds.length}`}
               hint="開催回の下書きからレビュー済みまでを一覧表示"
             />
@@ -535,7 +535,7 @@ export default function DashboardPage() {
             <StatCard
               label="結果確定"
               value={`${data.rounds.reduce((sum, round) => sum + round.resultedCount, 0)}`}
-              hint="actualResult が入っている試合数"
+              hint="結果が入力されている試合数"
             />
           </section>
 
@@ -550,14 +550,14 @@ export default function DashboardPage() {
                   onClick={handleCreateSampleUsers}
                   disabled={busy === "members"}
                 >
-                  {busy === "members" ? "Creating..." : "サンプル10人を作成"}
+                  {busy === "members" ? "作成中..." : "サンプル10人を作成"}
                 </button>
               ) : null
             }
           >
             {data.users.length === 0 ? (
               <p className="text-sm text-slate-600">
-                Human Picks / Scout Card を使う前に、まず共有メンバーを作成してください。
+                人力予想 / 根拠カードを使う前に、まず共有メンバーを作成してください。
               </p>
             ) : (
               <div className="flex flex-wrap gap-2">
@@ -572,32 +572,32 @@ export default function DashboardPage() {
 
           <SectionCard
             id="create-round"
-            title="Roundを作成"
-            description="Round 作成時に 13 試合ぶんのプレースホルダーも自動で作成します。"
+            title="ラウンドを作成"
+            description="ラウンド作成時に 13 試合ぶんのプレースホルダーも自動で作成します。"
           >
             <form onSubmit={handleCreateRound} className="grid gap-5 md:grid-cols-2">
               <label className="grid gap-2 text-sm font-medium text-slate-700">
-                Title
+                ラウンド名
                 <input
                   name="title"
                   className={fieldClassName}
-                  placeholder="World Cup Sample Round"
+                  placeholder="W杯サンプル回"
                 />
               </label>
 
               <label className="grid gap-2 text-sm font-medium text-slate-700">
-                Status
+                ステータス
                 <select name="status" className={fieldClassName} defaultValue="draft">
                   {roundStatusOptions.map((status) => (
                     <option key={status} value={status}>
-                      {status}
+                      {roundStatusLabel[status]}
                     </option>
                   ))}
                 </select>
               </label>
 
               <label className="grid gap-2 text-sm font-medium text-slate-700">
-                Budget (JPY)
+                予算（円）
                 <input
                   name="budgetYen"
                   type="number"
@@ -609,16 +609,15 @@ export default function DashboardPage() {
               </label>
 
               <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-950/5 p-4 text-sm text-slate-600">
-                金銭、配当、代理購入、精算は扱いません。ここでの予算は Ticket
-                Generator の候補数目安にだけ使います。
+                金銭、配当、代理購入、精算は扱いません。ここでの予算は候補チケットの枚数目安にだけ使います。
               </div>
 
               <label className="grid gap-2 text-sm font-medium text-slate-700 md:col-span-2">
-                Notes
+                メモ
                 <textarea
                   name="notes"
                   className={textAreaClassName}
-                  placeholder="この Round で気にしたいテーマ、友人会の着眼点など"
+                  placeholder="このラウンドで気にしたいテーマ、友人会の着眼点など"
                 />
               </label>
 
@@ -628,7 +627,7 @@ export default function DashboardPage() {
                   className={buttonClassName}
                   disabled={busy === "round"}
                 >
-                  {busy === "round" ? "Creating..." : "Create Round"}
+                  {busy === "round" ? "作成中..." : "ラウンドを作成"}
                 </button>
               </div>
             </form>
@@ -640,18 +639,18 @@ export default function DashboardPage() {
               <SectionCard
                 key={round.id}
                 title={round.title}
-                description={round.notes ?? "Roundメモはまだありません。"}
+                description={round.notes ?? "ラウンドメモはまだありません。"}
                 actions={
                   <div className="flex items-center gap-2">
                     {round.title === demoRoundTitle ? (
-                      <Badge tone="amber">Demo</Badge>
+                      <Badge tone="amber">デモ</Badge>
                     ) : null}
                     <Badge tone="sky">{roundStatusLabel[round.status]}</Badge>
                     <Link
                       href={buildRoundHref(appRoute.workspace, round.id)}
                       className={secondaryButtonClassName}
                     >
-                      Round Detail
+                      ラウンド詳細
                     </Link>
                   </div>
                 }

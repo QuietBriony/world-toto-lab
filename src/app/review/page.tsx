@@ -33,7 +33,7 @@ import { isSupabaseConfigured } from "@/lib/supabase";
 import { useRoundWorkspace } from "@/lib/use-app-data";
 
 function errorMessage(error: unknown) {
-  return error instanceof Error ? error.message : "Unknown error";
+  return error instanceof Error ? error.message : "不明なエラーです。";
 }
 
 function ReviewPageContent() {
@@ -118,7 +118,7 @@ function ReviewPageContent() {
   return (
     <div className="space-y-8">
       <PageHeader
-        eyebrow="Results & Review"
+        eyebrow="結果と振り返り"
         title="結果入力と反省ログ"
         description="賞金や配当は扱わず、予想精度・方向性・一致 / 対立パターンを振り返る画面です。"
       />
@@ -128,7 +128,7 @@ function ReviewPageContent() {
       ) : !roundId ? (
         <RoundRequiredNotice />
       ) : loading && !data ? (
-        <LoadingNotice title="Review を読み込み中" />
+        <LoadingNotice title="振り返りを読み込み中" />
       ) : error && !data ? (
         <ErrorNotice error={error} onRetry={() => void refresh()} />
       ) : data && summary ? (
@@ -159,7 +159,7 @@ function ReviewPageContent() {
                     className="grid gap-2 rounded-3xl border border-slate-200 bg-slate-50/80 p-4 text-sm font-medium text-slate-700"
                   >
                     <span>
-                      #{match.matchNo} {match.homeTeam} vs {match.awayTeam}
+                      #{match.matchNo} {match.homeTeam} 対 {match.awayTeam}
                     </span>
                     <select
                       name={`actualResult_${match.id}`}
@@ -177,7 +177,7 @@ function ReviewPageContent() {
 
               <div className="grid gap-4 md:grid-cols-[1fr_auto]">
                 <label className="grid gap-2 text-sm font-medium text-slate-700">
-                  Round Status
+                  ラウンドのステータス
                   <select
                     name="status"
                     defaultValue={data.round.status}
@@ -185,7 +185,7 @@ function ReviewPageContent() {
                   >
                     {roundStatusOptions.map((status) => (
                       <option key={status} value={status}>
-                        {status}
+                        {roundStatusLabel[status]}
                       </option>
                     ))}
                   </select>
@@ -197,7 +197,7 @@ function ReviewPageContent() {
                     className={buttonClassName}
                     disabled={savingResults}
                   >
-                    {savingResults ? "Saving..." : "Save Results"}
+                    {savingResults ? "保存中..." : "結果を保存"}
                   </button>
                 </div>
               </div>
@@ -209,9 +209,9 @@ function ReviewPageContent() {
               <table className="min-w-[640px] text-left text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 text-slate-500">
-                    <th className="px-3 py-3">Rank</th>
-                    <th className="px-3 py-3">User</th>
-                    <th className="px-3 py-3">Hits</th>
+                    <th className="px-3 py-3">順位</th>
+                    <th className="px-3 py-3">メンバー</th>
+                    <th className="px-3 py-3">的中数</th>
                     <th className="px-3 py-3">F方向的中率</th>
                   </tr>
                 </thead>
@@ -246,23 +246,23 @@ function ReviewPageContent() {
             />
           </section>
 
-          <SectionCard title="反省ログ" description="試合単位でもRound単位でもメモを残せます。">
+          <SectionCard title="反省ログ" description="試合単位でもラウンド単位でもメモを残せます。">
             <div className="grid gap-6 lg:grid-cols-[1fr_1.15fr]">
               <form onSubmit={handleAddNote} className="space-y-4">
                 <label className="grid gap-2 text-sm font-medium text-slate-700">
-                  Match
+                  試合
                   <select name="matchId" className={fieldClassName} defaultValue="">
-                    <option value="">Round全体メモ</option>
+                    <option value="">ラウンド全体メモ</option>
                     {data.round.matches.map((match) => (
                       <option key={match.id} value={match.id}>
-                        #{match.matchNo} {match.homeTeam} vs {match.awayTeam}
+                        #{match.matchNo} {match.homeTeam} 対 {match.awayTeam}
                       </option>
                     ))}
                   </select>
                 </label>
 
                 <label className="grid gap-2 text-sm font-medium text-slate-700">
-                  User
+                  記録者
                   <select name="userId" className={fieldClassName} defaultValue="">
                     <option value="">記録者なし</option>
                     {data.users.map((user) => (
@@ -274,7 +274,7 @@ function ReviewPageContent() {
                 </label>
 
                 <label className="grid gap-2 text-sm font-medium text-slate-700">
-                  Note
+                  メモ
                   <textarea
                     name="note"
                     className={textAreaClassName}
@@ -284,7 +284,7 @@ function ReviewPageContent() {
 
                 <div className="flex justify-end">
                   <button type="submit" className={buttonClassName} disabled={savingNote}>
-                    {savingNote ? "Saving..." : "Add Review Note"}
+                    {savingNote ? "保存中..." : "振り返りメモを追加"}
                   </button>
                 </div>
               </form>
@@ -299,12 +299,12 @@ function ReviewPageContent() {
                       className="rounded-3xl border border-slate-200 bg-slate-50/80 p-4"
                     >
                       <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                        <span>{note.user?.name ?? "system"}</span>
+                        <span>{note.user?.name ?? "システム"}</span>
                         <span>•</span>
                         <span>
                           {note.match
-                            ? `#${note.match.matchNo} ${note.match.homeTeam} vs ${note.match.awayTeam}`
-                            : "Round全体"}
+                            ? `#${note.match.matchNo} ${note.match.homeTeam} 対 ${note.match.awayTeam}`
+                            : "ラウンド全体"}
                         </span>
                       </div>
                       <p className="mt-2 text-sm leading-7 text-slate-700">{note.note}</p>
@@ -323,7 +323,7 @@ function ReviewPageContent() {
 
 export default function ReviewPage() {
   return (
-    <Suspense fallback={<LoadingNotice title="Review を準備中" />}>
+    <Suspense fallback={<LoadingNotice title="振り返りを準備中" />}>
       <ReviewPageContent />
     </Suspense>
   );

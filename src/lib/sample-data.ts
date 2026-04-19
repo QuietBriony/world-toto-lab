@@ -1,1 +1,4 @@
-export const defaultMemberNames = Array.from({ length: 10 }, (_, index) => `Member ${index + 1}`);
+export const defaultMemberNames = Array.from(
+  { length: 10 },
+  (_, index) => `メンバー ${index + 1}`,
+);

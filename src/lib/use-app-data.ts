@@ -18,7 +18,7 @@ function messageFromError(error: unknown) {
     return error.message;
   }
 
-  return "Unknown error";
+  return "不明なエラーです。";
 }
 
 function useAsyncResource<T>(
@@ -84,13 +84,13 @@ export function useDashboardData() {
 export function useRoundWorkspace(roundId: string | null) {
   const loader = useCallback(async () => {
     if (!roundId) {
-      throw new Error("Round is not selected.");
+      throw new Error("ラウンドが選択されていません。");
     }
 
     const workspace = await getRoundWorkspace(roundId);
 
     if (!workspace) {
-      throw new Error("Selected round was not found.");
+      throw new Error("選択したラウンドが見つかりません。");
     }
 
     return workspace;

@@ -89,11 +89,11 @@ const enumOutcomeMap: Record<Outcome, OutcomeValue> = {
 };
 
 export const roundStatusLabel: Record<RoundStatus, string> = {
-  draft: "Draft",
-  analyzing: "Analyzing",
-  locked: "Locked",
-  resulted: "Resulted",
-  reviewed: "Reviewed",
+  draft: "下書き",
+  analyzing: "分析中",
+  locked: "確定前",
+  resulted: "結果入力済み",
+  reviewed: "振り返り済み",
 };
 
 export const roundStatusOptions: RoundStatus[] = [
@@ -127,6 +127,12 @@ export const ticketModeLabel: Record<TicketMode, string> = {
 };
 
 export const ticketModeOptions: TicketMode[] = ["conservative", "balanced", "upset"];
+
+export const drawPolicyLabel: Record<DrawPolicy, string> = {
+  low: "低め",
+  medium: "標準",
+  high: "強め",
+};
 
 export const provisionalCallLabel: Record<ProvisionalCall, string> = {
   axis_1: "1軸",
@@ -195,7 +201,7 @@ export function formatCurrency(value: number | null | undefined): string {
 
 export function formatDateTime(value: Date | string | null | undefined): string {
   if (!value) {
-    return "TBD";
+    return "未定";
   }
 
   const date = typeof value === "string" ? new Date(value) : value;
@@ -620,7 +626,7 @@ export function buildEdgeRows(matches: MatchLike[]): EdgeRow[] {
 
       return {
         matchNo: match.matchNo,
-        fixture: `${match.homeTeam} vs ${match.awayTeam}`,
+        fixture: `${match.homeTeam} 対 ${match.awayTeam}`,
         outcome,
         modelProbability,
         officialVoteShare,

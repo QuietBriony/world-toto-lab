@@ -33,9 +33,9 @@ function ConsensusPageContent() {
   return (
     <div className="space-y-8">
       <PageHeader
-        eyebrow="Human Consensus Board"
+        eyebrow="人力コンセンサス"
         title="人力コンセンサス集計"
-        description="AI 基準線に対して、人力がどこをそのまま採用し、どこに別筋を重ねたかを一覧できます。"
+        description="AI基準線に対して、人力がどこをそのまま採用し、どこに別筋を重ねたかを一覧できます。"
       />
 
       {!isSupabaseConfigured() ? (
@@ -43,7 +43,7 @@ function ConsensusPageContent() {
       ) : !roundId ? (
         <RoundRequiredNotice />
       ) : loading && !data ? (
-        <LoadingNotice title="Consensus を読み込み中" />
+        <LoadingNotice title="コンセンサスを読み込み中" />
       ) : error && !data ? (
         <ErrorNotice error={error} onRetry={() => void refresh()} />
       ) : data ? (
@@ -56,22 +56,22 @@ function ConsensusPageContent() {
           />
 
           <SectionCard
-            title="Consensus Board"
-            description="代表メモは HumanScoutReport の根拠から重複を除いて抜粋しています。AI Base と Human Overlay を並べて差分を見ます。"
+            title="コンセンサス一覧"
+            description="代表メモは根拠カードの内容から重複を除いて抜粋しています。AI基準線と人力上書きを並べて差分を見ます。"
           >
             <div className="overflow-x-auto">
               <table className="min-w-[1540px] text-left text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 text-slate-500">
-                    <th className="px-3 py-3">Match</th>
-                    <th className="px-3 py-3">AI Base</th>
-                    <th className="px-3 py-3">Human Overlay</th>
+                    <th className="px-3 py-3">試合</th>
+                    <th className="px-3 py-3">AI基準線</th>
+                    <th className="px-3 py-3">人力上書き</th>
                     <th className="px-3 py-3">重なり方</th>
-                    <th className="px-3 py-3">avgF</th>
-                    <th className="px-3 py-3">medianF</th>
-                    <th className="px-3 py-3">avgD</th>
-                    <th className="px-3 py-3">disagreementScore</th>
-                    <th className="px-3 py-3">exceptionCount</th>
+                    <th className="px-3 py-3">平均F</th>
+                    <th className="px-3 py-3">中央値F</th>
+                    <th className="px-3 py-3">平均D</th>
+                    <th className="px-3 py-3">ばらつき</th>
+                    <th className="px-3 py-3">例外数</th>
                     <th className="px-3 py-3">代表的な根拠メモ</th>
                     <th className="px-3 py-3">バッジ</th>
                   </tr>
@@ -93,7 +93,7 @@ function ConsensusPageContent() {
                       <tr key={match.id} className="border-b border-slate-100 align-top">
                         <td className="px-3 py-4">
                           <div className="font-semibold text-slate-900">
-                            #{match.matchNo} {match.homeTeam} vs {match.awayTeam}
+                            #{match.matchNo} {match.homeTeam} 対 {match.awayTeam}
                           </div>
                         </td>
                         <td className="px-3 py-4">
@@ -109,7 +109,7 @@ function ConsensusPageContent() {
                             )}
                           </div>
                           <div className="mt-2 text-xs text-slate-500">
-                            Model {formatPercent(match.modelProb1)} /{" "}
+                            AI {formatPercent(match.modelProb1)} /{" "}
                             {formatPercent(match.modelProb0)} /{" "}
                             {formatPercent(match.modelProb2)}
                           </div>
@@ -185,7 +185,7 @@ function ConsensusPageContent() {
 
 export default function ConsensusPage() {
   return (
-    <Suspense fallback={<LoadingNotice title="Consensus を準備中" />}>
+    <Suspense fallback={<LoadingNotice title="コンセンサスを準備中" />}>
       <ConsensusPageContent />
     </Suspense>
   );

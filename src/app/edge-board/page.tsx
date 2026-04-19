@@ -30,9 +30,9 @@ function EdgeBoardPageContent() {
   return (
     <div className="space-y-8">
       <PageHeader
-        eyebrow="Edge Board"
+        eyebrow="差分ボード"
         title="39 outcome を一覧化"
-        description="valueScore は MVP 用の簡易指標です。高エッジ、引き分け警戒、人力支援を重ねて Include / Exclude を判断します。"
+        description="valueScore は MVP 用の簡易指標です。高エッジ、引き分け警戒、人力支援を重ねて採用 / 見送りを判断します。"
       />
 
       {!isSupabaseConfigured() ? (
@@ -40,7 +40,7 @@ function EdgeBoardPageContent() {
       ) : !roundId ? (
         <RoundRequiredNotice />
       ) : loading && !data ? (
-        <LoadingNotice title="Edge Board を読み込み中" />
+        <LoadingNotice title="差分ボードを読み込み中" />
       ) : error && !data ? (
         <ErrorNotice error={error} onRetry={() => void refresh()} />
       ) : data ? (
@@ -53,23 +53,23 @@ function EdgeBoardPageContent() {
           />
 
           <SectionCard
-            title="Edge Board"
-            description="edge が +0.08 以上なら高エッジ、0 の avgD が高い場合は drawBonus を強めに反映します。"
+            title="差分ボード"
+            description="差分が +0.08 以上なら高エッジ、0 の平均Dが高い場合は引き分け補正を強めに反映します。"
           >
             <div className="overflow-x-auto">
               <table className="min-w-[1280px] text-left text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 text-slate-500">
-                    <th className="px-3 py-3">Match</th>
-                    <th className="px-3 py-3">Outcome</th>
-                    <th className="px-3 py-3">Model</th>
-                    <th className="px-3 py-3">Official</th>
-                    <th className="px-3 py-3">Market</th>
-                    <th className="px-3 py-3">Edge</th>
-                    <th className="px-3 py-3">Human Consensus</th>
-                    <th className="px-3 py-3">Confidence</th>
-                    <th className="px-3 py-3">Value Score</th>
-                    <th className="px-3 py-3">Decision</th>
+                    <th className="px-3 py-3">試合</th>
+                    <th className="px-3 py-3">候補</th>
+                    <th className="px-3 py-3">AI</th>
+                    <th className="px-3 py-3">公式人気</th>
+                    <th className="px-3 py-3">市場</th>
+                    <th className="px-3 py-3">差分</th>
+                    <th className="px-3 py-3">人力コンセンサス</th>
+                    <th className="px-3 py-3">信頼度</th>
+                    <th className="px-3 py-3">評価値</th>
+                    <th className="px-3 py-3">判定</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -99,7 +99,7 @@ function EdgeBoardPageContent() {
                       <td className="px-3 py-4">{formatNumber(row.valueScore, 3)}</td>
                       <td className="px-3 py-4">
                         <Badge tone={row.include ? "teal" : "slate"}>
-                          {row.include ? "Include" : "Exclude"}
+                          {row.include ? "採用" : "見送り"}
                         </Badge>
                       </td>
                     </tr>
@@ -116,7 +116,7 @@ function EdgeBoardPageContent() {
 
 export default function EdgeBoardPage() {
   return (
-    <Suspense fallback={<LoadingNotice title="Edge Board を準備中" />}>
+    <Suspense fallback={<LoadingNotice title="差分ボードを準備中" />}>
       <EdgeBoardPageContent />
     </Suspense>
   );
