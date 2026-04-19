@@ -13,9 +13,11 @@ import { RoundNav } from "@/components/round-nav";
 import {
   Badge,
   buttonClassName,
+  cx,
   fieldClassName,
   PageHeader,
   SectionCard,
+  secondaryButtonClassName,
   StatCard,
 } from "@/components/ui";
 import {
@@ -74,6 +76,31 @@ function buildDraftPickIdentity(input: {
   ].join("|");
 }
 
+function quickPickButtonClassName(input: {
+  active: boolean;
+  suggested?: boolean;
+  tone: "draw" | "neutral" | "side";
+}) {
+  return cx(
+    "inline-flex h-11 min-w-11 items-center justify-center rounded-2xl border px-3 text-sm font-semibold transition hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-4",
+    input.active
+      ? "border-emerald-600 bg-emerald-700 text-white shadow-[0_20px_40px_-28px_rgba(4,120,87,0.68)] focus-visible:ring-emerald-500/20"
+      : "bg-white/92 text-slate-700 focus-visible:ring-emerald-500/15",
+    input.tone === "draw"
+      ? input.active
+        ? ""
+        : "border-sky-200 hover:border-sky-300 hover:bg-sky-50"
+      : input.tone === "side"
+        ? input.active
+          ? ""
+          : "border-emerald-200 hover:border-emerald-300 hover:bg-emerald-50/60"
+        : input.active
+          ? ""
+          : "border-slate-200 hover:border-slate-300 hover:bg-slate-50",
+    input.suggested && !input.active && "ring-1 ring-amber-300/70",
+  );
+}
+
 function PicksPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -121,6 +148,19 @@ function PicksPageContent() {
       : 0;
   const pendingPickCount = data ? Math.max(data.round.matches.length - filledPickCount, 0) : 0;
   const formId = activeUser ? `picks-form-${activeUser.id}` : "picks-form";
+  const orderedMatches =
+    data?.round.matches
+      .slice()
+      .sort((left, right) => {
+        const leftFilled = resolvedDraftPickValues[left.id] ? 1 : 0;
+        const rightFilled = resolvedDraftPickValues[right.id] ? 1 : 0;
+
+        if (leftFilled !== rightFilled) {
+          return leftFilled - rightFilled;
+        }
+
+        return left.matchNo - right.matchNo;
+      }) ?? [];
 
   useEffect(() => {
     if (!hasVisibleUnsavedChanges) {
@@ -135,6 +175,31 @@ function PicksPageContent() {
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [hasVisibleUnsavedChanges]);
+
+  const applyAiPrimaryToPending = () => {
+    if (!data) {
+      return;
+    }
+
+    const nextValues = { ...resolvedDraftPickValues };
+
+    data.round.matches.forEach((match) => {
+      if (nextValues[match.id]) {
+        return;
+      }
+
+      const aiPrimary = favoriteOutcomeForBucket(match, "model");
+      if (aiPrimary) {
+        nextValues[match.id] = aiPrimary;
+      }
+    });
+
+    setDraftPickState({
+      identity: draftPickIdentity,
+      values: nextValues,
+    });
+    setHasUnsavedChanges(true);
+  };
 
   const handleSwitchUser = (userId: string) => {
     if (
@@ -222,21 +287,29 @@ function PicksPageContent() {
                 title="入力ユーザー切り替え"
                 description="認証はないMVPなので、見るユーザーを切り替えて AI 基準線への上書きを入力します。"
               >
-                <div className="flex flex-wrap gap-2">
-                  {data.users.map((user) => (
-                    <button
-                      type="button"
-                      key={user.id}
-                      onClick={() => handleSwitchUser(user.id)}
-                      className={user.id === activeUser.id ? buttonClassName : fieldClassName}
-                    >
-                      {user.name}
-                    </button>
-                  ))}
+                <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-start">
+                  <div className="flex flex-wrap gap-2">
+                    {data.users.map((user) => (
+                      <button
+                        type="button"
+                        key={user.id}
+                        onClick={() => handleSwitchUser(user.id)}
+                        className={user.id === activeUser.id ? buttonClassName : fieldClassName}
+                      >
+                        {user.name}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="rounded-[22px] border border-slate-200 bg-slate-50/85 p-4 text-sm text-slate-600">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge tone="sky">いま入力中</Badge>
+                      <span className="font-semibold text-slate-900">{activeUser.name}</span>
+                    </div>
+                    <p className="mt-2 leading-6">
+                      先に保存してから切り替えると、入力の取りこぼしを防げます。
+                    </p>
+                  </div>
                 </div>
-                <p className="text-xs text-slate-500">
-                  先に保存してから切り替えると、入力の取りこぼしを防げます。
-                </p>
               </SectionCard>
 
               <SectionCard
@@ -356,13 +429,61 @@ function PicksPageContent() {
 
                       <SectionCard
                         className="lg:col-span-4"
+                        title="すばやく入力する"
+                        description="未入力の試合が先頭に出ます。まず AI 本命を流し込んで、必要な試合だけ人力でずらす使い方がいちばん速いです。"
+                        actions={
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Badge tone={pendingPickCount === 0 ? "teal" : "amber"}>
+                              未入力 {pendingPickCount}
+                            </Badge>
+                            <button
+                              type="button"
+                              className={secondaryButtonClassName}
+                              onClick={applyAiPrimaryToPending}
+                            >
+                              未入力にAI本命を入れる
+                            </button>
+                          </div>
+                        }
+                      >
+                        <div className="grid gap-3 lg:grid-cols-3">
+                          <div className="rounded-[22px] border border-white/80 bg-white/76 p-4 shadow-[0_16px_38px_-30px_rgba(15,23,42,0.4)]">
+                            <div className="font-display text-[11px] uppercase tracking-[0.34em] text-amber-800/75">
+                              1
+                            </div>
+                            <p className="mt-3 text-sm leading-6 text-slate-600">
+                              まず `未入力にAI本命を入れる` で叩き台を作ります。
+                            </p>
+                          </div>
+                          <div className="rounded-[22px] border border-white/80 bg-white/76 p-4 shadow-[0_16px_38px_-30px_rgba(15,23,42,0.4)]">
+                            <div className="font-display text-[11px] uppercase tracking-[0.34em] text-sky-800/75">
+                              2
+                            </div>
+                            <p className="mt-3 text-sm leading-6 text-slate-600">
+                              0 を足したい試合や逆張りしたい試合だけ、ボタンで 1 / 0 / 2 を直します。
+                            </p>
+                          </div>
+                          <div className="rounded-[22px] border border-white/80 bg-white/76 p-4 shadow-[0_16px_38px_-30px_rgba(15,23,42,0.4)]">
+                            <div className="font-display text-[11px] uppercase tracking-[0.34em] text-teal-800/75">
+                              3
+                            </div>
+                            <p className="mt-3 text-sm leading-6 text-slate-600">
+                              保存してから全員の分布を見ると、どこを人力で動かしたかがはっきり見えます。
+                            </p>
+                          </div>
+                        </div>
+                      </SectionCard>
+
+                      <SectionCard
+                        className="lg:col-span-4"
                         title={`${activeUser.name} の上書き入力表`}
-                        description="AI 基準線を見ながら、13試合をまとめて保存します。"
+                        description="未入力の試合から順に並べています。AI 基準線を見ながら、ボタンで 1 / 0 / 2 をすばやく入れられます。"
                         actions={
                           <div className="flex flex-wrap items-center gap-2">
                             <Badge tone={pendingPickCount === 0 ? "teal" : "amber"}>
                               入力 {filledPickCount}/{data.round.matches.length}
                             </Badge>
+                            <Badge tone="slate">未入力優先表示</Badge>
                             {hasVisibleUnsavedChanges ? (
                               <Badge tone="rose">未保存あり</Badge>
                             ) : (
@@ -400,7 +521,7 @@ function PicksPageContent() {
                                 </tr>
                               </thead>
                               <tbody>
-                                {data.round.matches.map((match) => {
+                                {orderedMatches.map((match) => {
                                   const existing = pickByMatchUser.get(
                                     `${match.id}:${activeUser.id}`,
                                   );
@@ -459,26 +580,71 @@ function PicksPageContent() {
                                         </div>
                                       </td>
                                       <td className="px-3 py-4">
-                                        <select
+                                        <input
+                                          type="hidden"
                                           name={`pick_${match.id}`}
                                           value={currentPick}
-                                          className={fieldClassName}
-                                          onChange={(event) => {
-                                            setDraftPickState({
-                                              identity: draftPickIdentity,
-                                              values: {
-                                                ...resolvedDraftPickValues,
-                                                [match.id]:
-                                                  event.target.value as OutcomeValue | "",
-                                              },
-                                            });
-                                          }}
-                                        >
-                                          <option value="">未入力</option>
-                                          <option value="1">1</option>
-                                          <option value="0">0</option>
-                                          <option value="2">2</option>
-                                        </select>
+                                        />
+                                        <div className="flex flex-wrap gap-2">
+                                          {(["1", "0", "2"] as const).map((outcome) => {
+                                            const aiPrimary =
+                                              favoriteOutcomeForBucket(match, "model");
+
+                                            return (
+                                              <button
+                                                key={`${match.id}-${outcome}`}
+                                                type="button"
+                                                className={quickPickButtonClassName({
+                                                  active: currentPick === outcome,
+                                                  suggested: aiPrimary === outcome,
+                                                  tone:
+                                                    outcome === "0"
+                                                      ? "draw"
+                                                      : outcome === "1"
+                                                        ? "side"
+                                                        : "neutral",
+                                                })}
+                                                onClick={() => {
+                                                  setDraftPickState({
+                                                    identity: draftPickIdentity,
+                                                    values: {
+                                                      ...resolvedDraftPickValues,
+                                                      [match.id]: outcome,
+                                                    },
+                                                  });
+                                                  setHasUnsavedChanges(true);
+                                                }}
+                                              >
+                                                {outcome}
+                                              </button>
+                                            );
+                                          })}
+                                          <button
+                                            type="button"
+                                            className={cx(
+                                              "inline-flex h-11 items-center justify-center rounded-2xl border px-3 text-xs font-semibold text-slate-500 transition hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-slate-300/35",
+                                              !currentPick && "border-slate-400 bg-slate-100 text-slate-700",
+                                              currentPick && "border-slate-200 bg-white/92",
+                                            )}
+                                            onClick={() => {
+                                              setDraftPickState({
+                                                identity: draftPickIdentity,
+                                                values: {
+                                                  ...resolvedDraftPickValues,
+                                                  [match.id]: "",
+                                                },
+                                              });
+                                              setHasUnsavedChanges(true);
+                                            }}
+                                          >
+                                            消す
+                                          </button>
+                                        </div>
+                                        <div className="mt-2 text-xs text-slate-500">
+                                          {favoriteOutcomeForBucket(match, "model")
+                                            ? `AI本命 ${favoriteOutcomeForBucket(match, "model")}`
+                                            : "AI本命なし"}
+                                        </div>
                                       </td>
                                       <td className="px-3 py-4">
                                         <Badge tone={pickBadge.tone}>{pickBadge.label}</Badge>
