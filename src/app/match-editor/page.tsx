@@ -52,6 +52,58 @@ function percentInput(value: number | null) {
   return value === null ? "" : (value * 100).toFixed(1);
 }
 
+function buildProbabilityDraft(match: {
+  marketProb0: number | null;
+  marketProb1: number | null;
+  marketProb2: number | null;
+  modelProb0: number | null;
+  modelProb1: number | null;
+  modelProb2: number | null;
+  officialVote0: number | null;
+  officialVote1: number | null;
+  officialVote2: number | null;
+}) {
+  return {
+    official: [
+      percentInput(match.officialVote1),
+      percentInput(match.officialVote0),
+      percentInput(match.officialVote2),
+    ],
+    market: [
+      percentInput(match.marketProb1),
+      percentInput(match.marketProb0),
+      percentInput(match.marketProb2),
+    ],
+    model: [
+      percentInput(match.modelProb1),
+      percentInput(match.modelProb0),
+      percentInput(match.modelProb2),
+    ],
+  };
+}
+
+function parsePercentDraft(value: string) {
+  if (!value.trim()) {
+    return null;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function summarizePercentGroup(values: string[]) {
+  const parsed = values.map((value) => parsePercentDraft(value)).filter((value): value is number => value !== null);
+  const total = parsed.reduce((sum, value) => sum + value, 0);
+  const allFilled = values.every((value) => value.trim().length > 0);
+  const closeToHundred = Math.abs(total - 100) <= 1;
+
+  return {
+    allFilled,
+    closeToHundred,
+    total,
+  };
+}
+
 function MatchEditorPageContent() {
   const searchParams = useSearchParams();
   const roundId = getSingleSearchParam(searchParams.get("round"));
@@ -59,6 +111,12 @@ function MatchEditorPageContent() {
   const { data, error, loading, refresh } = useRoundWorkspace(roundId);
   const [saving, setSaving] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [probabilityDraftState, setProbabilityDraftState] = useState({
+    matchId: "",
+    market: ["", "", ""],
+    model: ["", "", ""],
+    official: ["", "", ""],
+  });
 
   const match = data?.round.matches.find((entry) => entry.id === matchId) ?? null;
   const orderedMatches = data?.round.matches.slice().sort((left, right) => left.matchNo - right.matchNo) ?? [];
@@ -94,6 +152,28 @@ function MatchEditorPageContent() {
       ].filter(Boolean).length
     : 0;
   const formId = match ? `match-editor-form-${match.id}` : "match-editor-form";
+  const probabilityDraft =
+    match && probabilityDraftState.matchId === match.id
+      ? probabilityDraftState
+      : {
+          matchId: match?.id ?? "",
+          ...buildProbabilityDraft(
+            match ?? {
+              officialVote1: null,
+              officialVote0: null,
+              officialVote2: null,
+              marketProb1: null,
+              marketProb0: null,
+              marketProb2: null,
+              modelProb1: null,
+              modelProb0: null,
+              modelProb2: null,
+            },
+          ),
+        };
+  const officialSummary = summarizePercentGroup(probabilityDraft.official);
+  const marketSummary = summarizePercentGroup(probabilityDraft.market);
+  const modelSummary = summarizePercentGroup(probabilityDraft.model);
 
   const handleSave = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -352,9 +432,62 @@ function MatchEditorPageContent() {
                 badge={<Badge tone="sky">詳細</Badge>}
                 defaultOpen={!hasOfficialInputs && !hasMarketInputs && !hasAiInputs}
               >
+                <div className="grid gap-4 md:grid-cols-3">
+                  {[
+                    {
+                      key: "official",
+                      summary: officialSummary,
+                      title: "公式人気",
+                    },
+                    {
+                      key: "market",
+                      summary: marketSummary,
+                      title: "市場",
+                    },
+                    {
+                      key: "model",
+                      summary: modelSummary,
+                      title: "AI",
+                    },
+                  ].map((group) => (
+                    <div
+                      key={`summary-${group.key}`}
+                      className="rounded-[22px] border border-slate-200 bg-white/82 p-4"
+                    >
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge
+                          tone={
+                            !group.summary.allFilled
+                              ? "amber"
+                              : group.summary.closeToHundred
+                                ? "teal"
+                                : "rose"
+                          }
+                        >
+                          {!group.summary.allFilled
+                            ? "未入力あり"
+                            : group.summary.closeToHundred
+                              ? "合計OK"
+                              : "要確認"}
+                        </Badge>
+                        <h3 className="text-sm font-semibold text-slate-900">{group.title}</h3>
+                      </div>
+                      <p className="mt-2 text-sm leading-6 text-slate-600">
+                        合計 {group.summary.total.toFixed(1)}%
+                        {!group.summary.allFilled
+                          ? " / 3項目そろうと確認しやすいです。"
+                          : group.summary.closeToHundred
+                            ? " / ほぼ100%です。"
+                            : " / 100%から少しずれています。"}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+
                 <div className="grid gap-4 xl:grid-cols-3">
                   {[
                     {
+                      key: "official",
                       title: "公式人気",
                       tone: hasOfficialInputs ? "teal" : "amber",
                       rows: [
@@ -364,6 +497,7 @@ function MatchEditorPageContent() {
                       ],
                     },
                     {
+                      key: "market",
                       title: "市場",
                       tone: hasMarketInputs ? "teal" : "amber",
                       rows: [
@@ -373,6 +507,7 @@ function MatchEditorPageContent() {
                       ],
                     },
                     {
+                      key: "model",
                       title: "AI",
                       tone: hasAiInputs ? "teal" : "amber",
                       rows: [
@@ -406,6 +541,27 @@ function MatchEditorPageContent() {
                               step={0.1}
                               defaultValue={value}
                               className={fieldClassName}
+                              onChange={(event) => {
+                                const nextValue = event.target.value;
+                                setProbabilityDraftState((current) => {
+                                  const source =
+                                    current.matchId === match.id ? current : probabilityDraft;
+                                  const nextGroup = [...source[group.key as "official" | "market" | "model"]];
+                                  const index =
+                                    String(name).endsWith("1")
+                                      ? 0
+                                      : String(name).endsWith("0")
+                                        ? 1
+                                        : 2;
+                                  nextGroup[index] = nextValue;
+
+                                  return {
+                                    ...source,
+                                    matchId: match.id,
+                                    [group.key]: nextGroup,
+                                  };
+                                });
+                              }}
                             />
                           </label>
                         ))}
