@@ -179,11 +179,45 @@ export function FeedbackBoard() {
   return (
     <CollapsibleSectionCard
       title="触ってみての改善メモ"
-      description="一旦ここで締めたあとに、気づいたことを残しておける控えです。保存先はこのブラウザ内だけです。"
+      description="一旦ここで締めたあとに、気づいたことを残しておける控えです。保存先はこのブラウザ内だけなので、最後にコピーして管理者へ渡します。"
       defaultOpen={false}
       badge={<Badge tone="rose">要望メモ</Badge>}
     >
-      <div className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
+      <div className="grid gap-5">
+        <div className="grid gap-3 rounded-[24px] border border-sky-200 bg-sky-50/80 p-4 sm:grid-cols-3">
+          {[
+            {
+              step: "01",
+              title: "ここに入れる",
+              body: "どこで詰まったかと、やりたかったことを短く残します。",
+            },
+            {
+              step: "02",
+              title: "一覧をコピー",
+              body: "メモが溜まったら、一覧をまとめてコピーします。",
+            },
+            {
+              step: "03",
+              title: "管理者へ送る",
+              body: "コピーした内容を、管理者やこの開発チャットへ貼って伝えます。",
+            },
+          ].map((item) => (
+            <div
+              key={item.step}
+              className="rounded-[18px] border border-white/75 bg-white/82 p-4"
+            >
+              <div className="font-display text-[11px] uppercase tracking-[0.32em] text-sky-800/70">
+                手順 {item.step}
+              </div>
+              <h3 className="mt-3 font-display text-lg font-semibold tracking-[-0.04em] text-slate-950">
+                {item.title}
+              </h3>
+              <p className="mt-2 text-sm leading-6 text-slate-600">{item.body}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
         <div className="rounded-[24px] border border-white/80 bg-white/78 p-5 shadow-[0_18px_44px_-30px_rgba(15,23,42,0.38)]">
           <div className="flex flex-wrap items-center gap-2">
             <Badge tone="sky">入力</Badge>
@@ -230,7 +264,7 @@ export function FeedbackBoard() {
                 className={secondaryButtonClassName}
                 onClick={() => void handleCopy()}
               >
-                一覧をコピー
+                一覧をコピーして送る
               </button>
             </div>
             {feedbackMessage ? (
@@ -239,6 +273,9 @@ export function FeedbackBoard() {
             {copyMessage ? (
               <p className="text-sm text-slate-600">{copyMessage}</p>
             ) : null}
+            <p className="text-sm leading-6 text-slate-500">
+              コピー後は、管理者かこの開発チャットにそのまま貼り付けてください。
+            </p>
           </form>
         </div>
 
@@ -290,9 +327,10 @@ export function FeedbackBoard() {
           )}
 
           <p className="mt-4 text-sm leading-6 text-slate-500">
-            このメモ欄はブラウザ内保存だけです。共有保存や公開送信はしません。
+            このメモ欄はブラウザ内保存だけです。共有保存や自動送信はしません。
           </p>
         </div>
+      </div>
       </div>
     </CollapsibleSectionCard>
   );
