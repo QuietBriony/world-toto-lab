@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState, type FormEvent } from "react";
 
@@ -47,6 +48,10 @@ import { replacePicks } from "@/lib/repository";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import type { Pick, User } from "@/lib/types";
 import { useRoundWorkspace } from "@/lib/use-app-data";
+import {
+  buildMemberUsageMap,
+  describeRoundMemberStatus,
+} from "@/lib/member-usage";
 import {
   filterPredictors,
   isPredictorRole,
@@ -290,6 +295,18 @@ function PicksPageContent() {
     });
     return map;
   }, [data]);
+  const roundMemberUsageMap = useMemo(() => {
+    if (!data) {
+      return new Map();
+    }
+
+    return buildMemberUsageMap({
+      users: data.users,
+      picks: data.round.picks,
+      scoutReports: data.round.scoutReports,
+      reviewNotes: data.round.reviewNotes,
+    });
+  }, [data]);
 
   const filledPickCount =
     data && activeUser
@@ -526,6 +543,11 @@ function PicksPageContent() {
             <SectionCard
               title="共有メンバーがまだありません"
               description="ダッシュボードでサンプルメンバーを作成してから利用してください。"
+              actions={
+                <Link href={`${appRoute.dashboard}#shared-members`} className={secondaryButtonClassName}>
+                  メンバー設定へ
+                </Link>
+              }
             >
               <p className="text-sm text-slate-600">
                 支持 / 予想は共有メンバー前提の入力画面です。
@@ -536,18 +558,62 @@ function PicksPageContent() {
               <SectionCard
                 title="入力ユーザー切り替え"
                 description="予想者は直接予想し、ウォッチ担当は AI か予想者のどちらに乗るかを選びます。"
+                actions={
+                  <Link href={`${appRoute.dashboard}#shared-members`} className={secondaryButtonClassName}>
+                    メンバー設定へ
+                  </Link>
+                }
               >
                 <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-start">
-                  <div className="flex flex-wrap gap-2">
+                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                     {data.users.map((user) => (
-                      <button
-                        type="button"
-                        key={user.id}
-                        onClick={() => handleSwitchUser(user.id)}
-                        className={user.id === activeUser.id ? buttonClassName : fieldClassName}
-                      >
-                        {user.name} / {userRoleLabel[user.role]}
-                      </button>
+                      (() => {
+                        const isActive = user.id === activeUser.id;
+                        const status = describeRoundMemberStatus(
+                          roundMemberUsageMap.get(user.id) ?? {
+                            canQuickDelete: true,
+                            hasDirectInput: false,
+                            isEmpty: true,
+                            pickCount: 0,
+                            reviewNoteCount: 0,
+                            scoutReportCount: 0,
+                            supportRefCount: 0,
+                            userId: user.id,
+                          },
+                          data.round.matches.length,
+                        );
+
+                        return (
+                          <button
+                            type="button"
+                            key={user.id}
+                            onClick={() => handleSwitchUser(user.id)}
+                            className={cx(
+                              "grid gap-3 rounded-[22px] border p-4 text-left transition focus-visible:outline-none focus-visible:ring-4",
+                              isActive
+                                ? "border-emerald-500 bg-[linear-gradient(135deg,rgba(10,65,37,0.96),rgba(17,122,73,0.9))] text-white shadow-[0_22px_40px_-28px_rgba(4,120,87,0.68)] focus-visible:ring-emerald-500/20"
+                                : "border-slate-200 bg-white/92 text-slate-800 hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 focus-visible:ring-slate-300/35",
+                            )}
+                          >
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <span className={cx("font-semibold", isActive ? "text-white" : "text-slate-900")}>
+                                {user.name}
+                              </span>
+                              <Badge tone={isActive ? "default" : user.role === "admin" ? "teal" : "slate"}>
+                                {userRoleLabel[user.role]}
+                              </Badge>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Badge tone={isActive && status.tone === "slate" ? "default" : status.tone}>
+                                {status.label}
+                              </Badge>
+                              <span className={cx("text-xs leading-5", isActive ? "text-white/80" : "text-slate-500")}>
+                                {status.detail}
+                              </span>
+                            </div>
+                          </button>
+                        );
+                      })()
                     ))}
                   </div>
                   <div className="rounded-[22px] border border-slate-200 bg-slate-50/85 p-4 text-sm text-slate-600">
@@ -557,11 +623,31 @@ function PicksPageContent() {
                       <Badge tone={activeUserIsPredictor ? "teal" : "slate"}>
                         {userRoleLabel[activeUser.role]}
                       </Badge>
+                      {(() => {
+                        const status = describeRoundMemberStatus(
+                          roundMemberUsageMap.get(activeUser.id) ?? {
+                            canQuickDelete: true,
+                            hasDirectInput: false,
+                            isEmpty: true,
+                            pickCount: 0,
+                            reviewNoteCount: 0,
+                            scoutReportCount: 0,
+                            supportRefCount: 0,
+                            userId: activeUser.id,
+                          },
+                          data.round.matches.length,
+                        );
+
+                        return <Badge tone={status.tone}>{status.label}</Badge>;
+                      })()}
                     </div>
                     <p className="mt-2 leading-6">
                       {activeUserIsPredictor
                         ? "この人は AI に対する人力ラインを作る役です。"
                         : "この人は AI か予想者のどちらを支持するかを選ぶ役です。"}
+                    </p>
+                    <p className="mt-2 leading-6">
+                      あだ名の追加や `予想者 / ウォッチ` の切り替えは `メンバー設定へ` から戻れます。
                     </p>
                   </div>
                 </div>

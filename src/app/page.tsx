@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 
 import {
   ConfigurationNotice,
@@ -14,6 +14,7 @@ import {
   Badge,
   buttonClassName,
   CollapsibleSectionCard,
+  cx,
   fieldClassName,
   PageHeader,
   secondaryButtonClassName,
@@ -43,10 +44,20 @@ import {
   createRound,
   createSampleUsers,
   createUser,
+  deleteUserIfInactive,
   updateUserProfile,
 } from "@/lib/repository";
-import { parseUserRole, userRoleDescription, userRoleLabel } from "@/lib/users";
+import {
+  nextPredictorLineName,
+  parseUserRole,
+  userRoleDescription,
+  userRoleLabel,
+} from "@/lib/users";
 import { isSupabaseConfigured } from "@/lib/supabase";
+import {
+  buildMemberUsageMap,
+  describeMemberInventoryStatus,
+} from "@/lib/member-usage";
 import { useDashboardData } from "@/lib/use-app-data";
 
 function errorMessage(error: unknown) {
@@ -68,6 +79,8 @@ export default function DashboardPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [addingMember, setAddingMember] = useState(false);
   const [savingMemberId, setSavingMemberId] = useState<string | null>(null);
+  const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
+  const [duplicatingPredictorId, setDuplicatingPredictorId] = useState<string | null>(null);
   const [memberActionError, setMemberActionError] = useState<string | null>(null);
 
   const handleCreateSampleUsers = async () => {
@@ -150,6 +163,50 @@ export default function DashboardPage() {
     }
   };
 
+  const handleDeleteMember = async (userId: string, name: string) => {
+    if (!window.confirm(`「${name}」を整理します。空きアカウントだけ削除されます。続けますか？`)) {
+      return;
+    }
+
+    setRemovingMemberId(userId);
+    setMemberActionError(null);
+
+    try {
+      await deleteUserIfInactive(userId);
+      await refresh();
+    } catch (nextError) {
+      setMemberActionError(errorMessage(nextError));
+    } finally {
+      setRemovingMemberId(null);
+    }
+  };
+
+  const handleAddPredictorLine = async (userId: string) => {
+    if (!data) {
+      return;
+    }
+
+    const sourceUser = data.users.find((user) => user.id === userId);
+    if (!sourceUser) {
+      return;
+    }
+
+    setDuplicatingPredictorId(userId);
+    setMemberActionError(null);
+
+    try {
+      await createUser({
+        name: nextPredictorLineName(data.users, sourceUser.name),
+        role: "admin",
+      });
+      await refresh();
+    } catch (nextError) {
+      setMemberActionError(errorMessage(nextError));
+    } finally {
+      setDuplicatingPredictorId(null);
+    }
+  };
+
   const handleOpenDemo = async () => {
     setBusy("demo");
     setActionError(null);
@@ -206,6 +263,24 @@ export default function DashboardPage() {
         })
         .slice(0, 8)
     : [];
+  const memberUsageMap = useMemo(() => {
+    if (!data) {
+      return new Map();
+    }
+
+    return buildMemberUsageMap({
+      users: data.users,
+      picks: data.rounds.flatMap((round) => round.picks),
+      scoutReports: data.rounds.flatMap((round) => round.scoutReports),
+      reviewNotes: data.rounds.flatMap((round) => round.reviewNotes),
+    });
+  }, [data]);
+  const emptyMemberCount =
+    data?.users.filter((user) => memberUsageMap.get(user.id)?.isEmpty).length ?? 0;
+  const predictorCount =
+    data?.users.filter((user) => user.role === "admin").length ?? 0;
+  const watcherCount =
+    data?.users.filter((user) => user.role === "member").length ?? 0;
 
   return (
     <div className="space-y-8">
@@ -843,7 +918,7 @@ export default function DashboardPage() {
           <SectionCard
             id="shared-members"
             title="共有メンバー"
-            description="認証なし MVP なので、ここであだ名と役割を決めます。各行で `あだ名` と `役割` を変えて、右端のボタンで更新します。"
+            description="認証なし MVP なので、ここであだ名と役割を決めます。空きアカウントはここから整理できて、入力ありの人は簡単削除しないようにしています。"
             actions={
               data.users.length === 0 ? (
                 <button
@@ -864,54 +939,111 @@ export default function DashboardPage() {
             ) : (
               <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
                 <div className="grid gap-3">
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <StatCard label="予想者" value={`${predictorCount}`} compact />
+                    <StatCard label="ウォッチ" value={`${watcherCount}`} compact />
+                    <StatCard label="空きアカウント" value={`${emptyMemberCount}`} compact />
+                  </div>
                   <div className="rounded-[22px] border border-slate-200 bg-slate-50/90 p-4 text-sm leading-6 text-slate-600">
                     左側は登録済みメンバーの編集です。
-                    文字が入っている行はすでに使っているメンバーなので、名前を変えたいときだけ触ります。
-                    新しい人を増やすときは、右側の `新しいあだ名を追加` を使ってください。
+                    名前や役割を変えたいときは各行を更新します。
+                    `空き` はここからすぐ整理できて、入力ありの人は内容を消してからでないと消えません。
                   </div>
                   {data.users.map((user) => (
-                    <form
-                      key={user.id}
-                      onSubmit={(event) => void handleSaveMember(event, user.id)}
-                      className="grid gap-3 rounded-[22px] border border-white/80 bg-white/76 p-4 shadow-[0_16px_38px_-30px_rgba(15,23,42,0.4)] sm:grid-cols-[auto_1fr_200px_auto]"
-                    >
-                      <div className="flex items-center">
-                        <Badge tone={user.role === "admin" ? "teal" : "slate"}>
-                          {userRoleLabel[user.role]}
-                        </Badge>
-                      </div>
-                      <label className="grid gap-2 text-sm font-medium text-slate-700">
-                        あだ名
-                        <div className="text-xs font-normal leading-5 text-slate-500">
-                          いま登録されている名前です。変更したいときだけ直します。
-                        </div>
-                        <input
-                          name="memberName"
-                          defaultValue={user.name}
-                          className={fieldClassName}
-                          placeholder="ブリオニー / 観戦会A / 友人B"
-                        />
-                      </label>
-                      <label className="grid gap-2 text-sm font-medium text-slate-700">
-                        役割
-                        <select
-                          name="memberRole"
-                          defaultValue={user.role}
-                          className={fieldClassName}
-                          title={userRoleDescription[user.role]}
+                    (() => {
+                      const usageSummary = memberUsageMap.get(user.id);
+                      const inventoryStatus = usageSummary
+                        ? describeMemberInventoryStatus(usageSummary)
+                        : null;
+
+                      return (
+                        <form
+                          key={user.id}
+                          onSubmit={(event) => void handleSaveMember(event, user.id)}
+                          className="grid gap-3 rounded-[22px] border border-white/80 bg-white/76 p-4 shadow-[0_16px_38px_-30px_rgba(15,23,42,0.4)] xl:grid-cols-[auto_1.05fr_190px_250px_auto]"
                         >
-                          <option value="admin">予想者</option>
-                          <option value="member">ウォッチ</option>
-                        </select>
-                      </label>
-                      <button
-                        type="submit"
-                        className={secondaryButtonClassName}
-                        disabled={savingMemberId === user.id}
-                      >
-                        {savingMemberId === user.id ? "更新中..." : "名前と役割を更新"}
-                      </button>
-                    </form>
+                          <div className="flex items-center">
+                            <Badge tone={user.role === "admin" ? "teal" : "slate"}>
+                              {userRoleLabel[user.role]}
+                            </Badge>
+                          </div>
+                          <label className="grid gap-2 text-sm font-medium text-slate-700">
+                            あだ名
+                            <div className="text-xs font-normal leading-5 text-slate-500">
+                              いま登録されている名前です。変更したいときだけ直します。
+                            </div>
+                            <input
+                              name="memberName"
+                              defaultValue={user.name}
+                              className={fieldClassName}
+                              placeholder="ブリオニー / 観戦会A / 友人B"
+                            />
+                          </label>
+                          <label className="grid gap-2 text-sm font-medium text-slate-700">
+                            役割
+                            <select
+                              name="memberRole"
+                              defaultValue={user.role}
+                              className={fieldClassName}
+                              title={userRoleDescription[user.role]}
+                            >
+                              <option value="admin">予想者</option>
+                              <option value="member">ウォッチ</option>
+                            </select>
+                          </label>
+                          <div className="grid gap-2 text-sm text-slate-700">
+                            <span className="font-medium">状態</span>
+                            <div className="flex flex-wrap gap-2">
+                              {inventoryStatus ? (
+                                <Badge tone={inventoryStatus.tone}>{inventoryStatus.label}</Badge>
+                              ) : null}
+                              {usageSummary && usageSummary.supportRefCount > 0 ? (
+                                <Badge tone="sky">支持参照 {usageSummary.supportRefCount}</Badge>
+                              ) : null}
+                            </div>
+                            <div className="text-xs leading-5 text-slate-500">
+                              {inventoryStatus?.detail ?? "状態を確認中です。"}
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap items-start justify-start gap-2 xl:justify-end">
+                            <button
+                              type="submit"
+                              className={secondaryButtonClassName}
+                              disabled={savingMemberId === user.id}
+                            >
+                              {savingMemberId === user.id ? "更新中..." : "名前と役割を更新"}
+                            </button>
+                            {user.role === "admin" ? (
+                              <button
+                                type="button"
+                                className={secondaryButtonClassName}
+                                disabled={duplicatingPredictorId === user.id}
+                                onClick={() => void handleAddPredictorLine(user.id)}
+                              >
+                                {duplicatingPredictorId === user.id ? "追加中..." : "別ライン追加"}
+                              </button>
+                            ) : null}
+                            {usageSummary?.canQuickDelete ? (
+                              <button
+                                type="button"
+                                className={cx(
+                                  secondaryButtonClassName,
+                                  "border-rose-200 text-rose-700 hover:border-rose-300 hover:bg-rose-50",
+                                )}
+                                disabled={removingMemberId === user.id}
+                                onClick={() => void handleDeleteMember(user.id, user.name)}
+                              >
+                                {removingMemberId === user.id ? "整理中..." : "空きを削除"}
+                              </button>
+                            ) : (
+                              <div className="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-medium text-slate-500">
+                                入力ありはここでは消しません
+                              </div>
+                            )}
+                          </div>
+                        </form>
+                      );
+                    })()
                   ))}
                 </div>
 
@@ -925,6 +1057,10 @@ export default function DashboardPage() {
                   <p className="mt-3 text-sm leading-6 text-slate-600">
                     新しくメンバーを増やす場所です。右下の入力欄が空いていたら、そこに新しいあだ名を入れてください。
                     すでに左側で文字が入っているものは登録済みです。
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                    同じ予想者で複数ラインを出したいときは、左側の `別ライン追加` を使うと
+                    `hazi 2` のように増やせます。
                   </p>
                   <form onSubmit={handleAddMember} className="mt-4 grid gap-3">
                     <label className="grid gap-2 text-sm font-medium text-slate-700">
@@ -962,6 +1098,10 @@ export default function DashboardPage() {
                         {user.name} / {userRoleLabel[user.role]}
                       </Badge>
                     ))}
+                  </div>
+                  <div className="mt-4 rounded-[20px] border border-white/70 bg-white/70 p-4 text-sm leading-6 text-slate-600">
+                    `空きアカウント` は左側で `空きを削除` できます。支持/予想ページにも状態表示を出しているので、
+                    誰が `入力済 / 未入力 / 空き` か見ながら整理できます。
                   </div>
                 </div>
               </div>

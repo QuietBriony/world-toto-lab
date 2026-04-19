@@ -32,3 +32,19 @@ export function filterWatchers<T extends { role: UserRole }>(users: T[]) {
   return users.filter((user) => !isPredictorRole(user.role));
 }
 
+export function nextPredictorLineName(users: Array<Pick<User, "name">>, baseName: string) {
+  const matched = baseName.trim().match(/^(.*?)(?:\s+(\d+))?$/);
+  const normalizedBase = matched?.[1]?.trim() || baseName.trim();
+  const taken = new Set(users.map((user) => user.name.trim()));
+
+  if (!taken.has(normalizedBase)) {
+    return normalizedBase;
+  }
+
+  let index = 2;
+  while (taken.has(`${normalizedBase} ${index}`)) {
+    index += 1;
+  }
+
+  return `${normalizedBase} ${index}`;
+}

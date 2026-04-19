@@ -147,6 +147,7 @@ export type DashboardRoundSummary = Round & {
   matches: Match[];
   picks: Pick[];
   scoutReports: HumanScoutReport[];
+  reviewNotes: ReviewNote[];
   matchCount: number;
   pickCount: number;
   resultedCount: number;

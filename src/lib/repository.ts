@@ -327,6 +327,7 @@ function deriveRoundSummary(
   matches: Match[],
   picks: Pick[],
   scoutReports: HumanScoutReport[],
+  reviewNotes: ReviewNote[],
 ): DashboardRoundSummary {
   const topEdges = matches
     .map((match) => {
@@ -355,6 +356,7 @@ function deriveRoundSummary(
     matches,
     picks,
     scoutReports,
+    reviewNotes,
     matchCount: matches.length,
     pickCount: picks.length,
     resultedCount,
@@ -380,13 +382,14 @@ async function deleteRoundCascade(roundId: string) {
 
 export async function listDashboardData(): Promise<DashboardData> {
   const supabase = requireSupabaseClient();
-  const [usersResult, roundsResult, matchesResult, picksResult, reportsResult] =
+  const [usersResult, roundsResult, matchesResult, picksResult, reportsResult, notesResult] =
     await Promise.all([
       supabase.from("users").select("*").order("role").order("name"),
       supabase.from("rounds").select("*").order("created_at", { ascending: false }),
       supabase.from("matches").select("*").order("round_id").order("match_no"),
       supabase.from("picks").select("*"),
       supabase.from("human_scout_reports").select("*"),
+      supabase.from("review_notes").select("*"),
     ]);
 
   throwIfError("Failed to load users", usersResult);
@@ -394,6 +397,7 @@ export async function listDashboardData(): Promise<DashboardData> {
   throwIfError("Failed to load matches", matchesResult);
   throwIfError("Failed to load picks", picksResult);
   throwIfError("Failed to load scout reports", reportsResult);
+  throwIfError("Failed to load review notes", notesResult);
 
   const users = sortUsers((usersResult.data as UserRow[]).map(mapUser));
   const rounds = (roundsResult.data as RoundRow[]).map(mapRound);
@@ -402,10 +406,12 @@ export async function listDashboardData(): Promise<DashboardData> {
   const scoutReports = (reportsResult.data as HumanScoutReportRow[]).map((row) =>
     mapScoutReport(row),
   );
+  const reviewNotes = (notesResult.data as ReviewNoteRow[]).map((row) => mapReviewNote(row));
 
   const matchesByRound = groupByRoundId(matches);
   const picksByRound = groupByRoundId(picks);
   const reportsByRound = groupByRoundId(scoutReports);
+  const notesByRound = groupByRoundId(reviewNotes);
 
   return {
     users,
@@ -415,6 +421,7 @@ export async function listDashboardData(): Promise<DashboardData> {
         matchesByRound.get(round.id) ?? [],
         picksByRound.get(round.id) ?? [],
         reportsByRound.get(round.id) ?? [],
+        notesByRound.get(round.id) ?? [],
       ),
     ),
   };
@@ -539,6 +546,50 @@ export async function updateUserProfile(input: {
     .eq("id", input.userId);
 
   throwIfError("Failed to update user profile", result);
+}
+
+export async function deleteUserIfInactive(userId: string) {
+  const supabase = requireSupabaseClient();
+  const [picksResult, reportsResult, notesResult, supportRefsResult] = await Promise.all([
+    supabase.from("picks").select("id", { count: "exact", head: true }).eq("user_id", userId),
+    supabase
+      .from("human_scout_reports")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId),
+    supabase
+      .from("review_notes")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId),
+    supabase
+      .from("picks")
+      .select("id", { count: "exact", head: true })
+      .like("note", `[[support:predictor:${userId}]]%`),
+  ]);
+
+  throwIfError("Failed to inspect user picks", picksResult);
+  throwIfError("Failed to inspect user scout reports", reportsResult);
+  throwIfError("Failed to inspect user review notes", notesResult);
+  throwIfError("Failed to inspect user support references", supportRefsResult);
+
+  const pickCount = picksResult.count ?? 0;
+  const scoutReportCount = reportsResult.count ?? 0;
+  const reviewNoteCount = notesResult.count ?? 0;
+  const supportRefCount = supportRefsResult.count ?? 0;
+
+  if (pickCount > 0 || scoutReportCount > 0 || reviewNoteCount > 0) {
+    throw new Error(
+      "このメンバーには入力データがあります。内容を消してからでないと整理できません。",
+    );
+  }
+
+  if (supportRefCount > 0) {
+    throw new Error(
+      "このメンバーは支持先として使われています。先に支持先を変えてから整理してください。",
+    );
+  }
+
+  const result = await supabase.from("users").delete().eq("id", userId);
+  throwIfError("Failed to delete user", result);
 }
 
 export async function createRound(input: {
