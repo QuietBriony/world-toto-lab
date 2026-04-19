@@ -82,6 +82,7 @@ GitHub Pages は静的配信なので、build 後に増える Round を動的ル
 ### 2. Round Detail
 
 - 13 試合の一覧
+- 試合日程のまとめ貼り付け入力
 - Official / Market / Model の 1/0/2 比較
 - Edge 1/0/2
 - Human F / D / Human Consensus
@@ -94,6 +95,7 @@ GitHub Pages は静的配信なので、build 後に増える Round を動的ル
 ### 3. Match Editor
 
 - 試合基本情報
+- キックオフ予定が入った試合は Dashboard の「今後の試合予定」に表示
 - 公式投票率、外部市場確率、モデル確率
 - confidence / category / recommendedOutcomes
 - tactical / injury / motivation / admin note
@@ -272,8 +274,9 @@ F = ① + ② + ③ + ④ + M
 
 - 認証
 - 権限制御つきの共有
+- AI 確率の自動投入
+- 外部 API からの試合予定自動取得
 - CSV Import
-- 外部 API 自動取得
 - リアルタイム同期
   - 現状は保存後の再取得と定期再取得で追従します
 - 高度な Ticket 最適化

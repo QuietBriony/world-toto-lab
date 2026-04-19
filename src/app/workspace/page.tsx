@@ -14,6 +14,7 @@ import { RoundNav } from "@/components/round-nav";
 import {
   Badge,
   buttonClassName,
+  CollapsibleSectionCard,
   fieldClassName,
   PageHeader,
   secondaryButtonClassName,
@@ -43,8 +44,9 @@ import {
   parseRoundStatus,
   stringValue,
 } from "@/lib/forms";
+import { fixtureImportTemplate, parseFixtureImportText } from "@/lib/fixture-import";
 import { appRoute, buildRoundHref, getSingleSearchParam } from "@/lib/round-links";
-import { updateRound } from "@/lib/repository";
+import { bulkUpdateRoundMatches, updateRound } from "@/lib/repository";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { useRoundWorkspace } from "@/lib/use-app-data";
 
@@ -62,6 +64,9 @@ function WorkspacePageContent() {
   const { data, error, loading, refresh } = useRoundWorkspace(roundId);
   const [saving, setSaving] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [bulkSaving, setBulkSaving] = useState(false);
+  const [bulkError, setBulkError] = useState<string | null>(null);
+  const [bulkSuccess, setBulkSuccess] = useState<string | null>(null);
   const progress = data
     ? deriveRoundProgressSummary({
         matches: data.round.matches,
@@ -96,6 +101,49 @@ function WorkspacePageContent() {
       setSubmitError(errorMessage(nextError));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleBulkImport = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!data) {
+      return;
+    }
+
+    setBulkSaving(true);
+    setBulkError(null);
+    setBulkSuccess(null);
+
+    try {
+      const formData = new FormData(event.currentTarget);
+      const importedText = stringValue(formData, "fixtureImport");
+      const parsed = parseFixtureImportText(importedText);
+
+      if (parsed.rows.length === 0) {
+        throw new Error(parsed.warnings[0] ?? "読み込める試合日程がありませんでした。");
+      }
+
+      if (parsed.rows.some((row) => row.matchNo < 1 || row.matchNo > data.round.matches.length)) {
+        throw new Error(`試合番号は 1 から ${data.round.matches.length} の範囲で入れてください。`);
+      }
+
+      await bulkUpdateRoundMatches({
+        roundId: data.round.id,
+        rows: parsed.rows,
+      });
+
+      await refresh();
+
+      setBulkSuccess(
+        parsed.warnings.length > 0
+          ? `${parsed.rows.length} 試合を反映しました。注意: ${parsed.warnings.join(" / ")}`
+          : `${parsed.rows.length} 試合をまとめて反映しました。`,
+      );
+    } catch (nextError) {
+      setBulkError(errorMessage(nextError));
+    } finally {
+      setBulkSaving(false);
     }
   };
 
@@ -294,6 +342,60 @@ function WorkspacePageContent() {
             </form>
             {submitError ? <p className="text-sm text-rose-700">{submitError}</p> : null}
           </SectionCard>
+
+          <CollapsibleSectionCard
+            title="試合日程をまとめて入れる"
+            description="FIFA公式日程や手元の表から、13試合ぶんをまとめて貼り付けできます。ホーム / アウェイ / 日時 / 会場 / ステージを一気に反映します。"
+            badge={<Badge tone="amber">時短入力</Badge>}
+          >
+            <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
+              <form onSubmit={handleBulkImport} className="space-y-4">
+                <label className="grid gap-2 text-sm font-medium text-slate-700">
+                  貼り付け用テキスト
+                  <textarea
+                    name="fixtureImport"
+                    className={textAreaClassName}
+                    placeholder={fixtureImportTemplate}
+                  />
+                </label>
+                <p className="text-sm leading-6 text-slate-600">
+                  使える形式: `番号 / 開始日時 / ホーム / アウェイ / 会場 / ステージ / メモ`
+                  をタブ区切り、`|` 区切り、またはカンマ区切りで貼れます。番号を省くと上から順に 1, 2, 3... と入ります。
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <button type="submit" className={buttonClassName} disabled={bulkSaving}>
+                    {bulkSaving ? "反映中..." : "日程をまとめて反映"}
+                  </button>
+                  <a
+                    href="https://www.fifa.com/en/tournaments/mens/worldcup/canadamexicousa2026/articles/match-schedule-fixtures-results-teams-stadiums"
+                    target="_blank"
+                    rel="noreferrer"
+                    className={secondaryButtonClassName}
+                  >
+                    FIFA公式日程を見る
+                  </a>
+                </div>
+                {bulkError ? <p className="text-sm text-rose-700">{bulkError}</p> : null}
+                {bulkSuccess ? <p className="text-sm text-emerald-700">{bulkSuccess}</p> : null}
+              </form>
+
+              <div className="space-y-4 rounded-[24px] border border-slate-200 bg-slate-50/85 p-5">
+                <div>
+                  <h3 className="font-display text-lg font-semibold tracking-[-0.04em] text-slate-950">
+                    貼り付けのコツ
+                  </h3>
+                  <p className="mt-3 text-sm leading-6 text-slate-600">
+                    まず FIFA公式の日程ページやスプレッドシートから 13 行を持ってきて、ここに貼るのがいちばん速いです。
+                  </p>
+                </div>
+                <ul className="space-y-2 text-sm leading-7 text-slate-700">
+                  <li>日時は `2026-06-11 19:00` のように入れると読み取りやすいです。</li>
+                  <li>会場やステージが空でも反映できます。後で試合編集で追記できます。</li>
+                  <li>AI確率までは自動で入りません。日程を入れた後に、必要な試合だけ AI 1/0/2 を足してください。</li>
+                </ul>
+              </div>
+            </div>
+          </CollapsibleSectionCard>
 
           <SectionCard
             title="13試合一覧"

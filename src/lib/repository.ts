@@ -795,6 +795,64 @@ export async function updateMatch(input: {
   throwIfError("Failed to update match", result);
 }
 
+export async function bulkUpdateRoundMatches(input: {
+  roundId: string;
+  rows: Array<{
+    adminNote: string | null;
+    awayTeam: string;
+    homeTeam: string;
+    kickoffTime: string | null;
+    matchNo: number;
+    stage: string | null;
+    venue: string | null;
+  }>;
+}) {
+  const supabase = requireSupabaseClient();
+  const matchesResult = await supabase
+    .from("matches")
+    .select("id, match_no, home_team, away_team, kickoff_time, venue, stage, admin_note")
+    .eq("round_id", input.roundId);
+
+  throwIfError("Failed to load matches for bulk update", matchesResult);
+
+  const existingByMatchNo = new Map(
+    ((matchesResult.data as Array<{
+      admin_note: string | null;
+      away_team: string;
+      home_team: string;
+      id: string;
+      kickoff_time: string | null;
+      match_no: number;
+      stage: string | null;
+      venue: string | null;
+    }>) ?? []).map((row) => [row.match_no, row]),
+  );
+
+  const results = await Promise.all(
+    input.rows.map((row) => {
+      const current = existingByMatchNo.get(row.matchNo);
+      if (!current) {
+        throw new Error(`第${row.matchNo}試合が見つかりませんでした。`);
+      }
+
+      return supabase
+        .from("matches")
+        .update({
+          home_team: row.homeTeam,
+          away_team: row.awayTeam,
+          kickoff_time: row.kickoffTime ?? current.kickoff_time,
+          venue: row.venue ?? current.venue,
+          stage: row.stage ?? current.stage,
+          admin_note: row.adminNote ?? current.admin_note,
+        })
+        .eq("id", current.id)
+        .eq("round_id", input.roundId);
+    }),
+  );
+
+  results.forEach((result) => throwIfError("Failed to bulk update matches", result));
+}
+
 export async function replacePicks(input: {
   roundId: string;
   userId: string;
