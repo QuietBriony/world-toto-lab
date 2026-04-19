@@ -1,6 +1,16 @@
 import { computeConsensus, getEdge } from "@/lib/domain";
+import {
+  buildDemoMatchRows,
+  buildDemoPickRows,
+  buildDemoReviewNotes,
+  buildDemoScoutReportRows,
+  demoRoundNotes,
+  demoRoundTitle,
+  demoTicketSettings,
+} from "@/lib/demo-data";
 import { defaultMemberNames } from "@/lib/sample-data";
 import { requireSupabaseClient } from "@/lib/supabase";
+import { generateAllModeTickets } from "@/lib/tickets";
 import type {
   DashboardData,
   DashboardRoundSummary,
@@ -333,6 +343,11 @@ function placeholderMatches(roundId: string) {
   }));
 }
 
+async function deleteRoundCascade(roundId: string) {
+  const supabase = requireSupabaseClient();
+  await supabase.from("rounds").delete().eq("id", roundId);
+}
+
 export async function listDashboardData(): Promise<DashboardData> {
   const supabase = requireSupabaseClient();
   const [usersResult, roundsResult, matchesResult, picksResult, reportsResult] =
@@ -488,6 +503,160 @@ export async function createRound(input: {
   }
 
   return round.id;
+}
+
+export async function createDemoRound() {
+  const supabase = requireSupabaseClient();
+  const existingResult = await supabase
+    .from("rounds")
+    .select("id")
+    .eq("title", demoRoundTitle)
+    .order("created_at", { ascending: false })
+    .limit(1);
+
+  throwIfError("Failed to check existing demo round", existingResult);
+
+  const existingRoundId = (existingResult.data as Array<{ id: string }>)[0]?.id;
+  if (existingRoundId) {
+    return existingRoundId;
+  }
+
+  await createSampleUsers();
+
+  const usersResult = await supabase.from("users").select("*").order("role").order("name");
+  throwIfError("Failed to load users for demo round", usersResult);
+
+  const users = (usersResult.data as UserRow[]).map(mapUser);
+  if (users.length === 0) {
+    throw new Error("No users are available for the demo round.");
+  }
+
+  const roundResult = await supabase
+    .from("rounds")
+    .insert({
+      title: demoRoundTitle,
+      status: "reviewed",
+      budget_yen: demoTicketSettings.budgetYen,
+      notes: demoRoundNotes,
+    })
+    .select("*")
+    .single();
+
+  throwIfError("Failed to create demo round", roundResult);
+
+  const round = roundResult.data as RoundRow;
+
+  try {
+    const matchesResult = await supabase
+      .from("matches")
+      .insert(buildDemoMatchRows(round.id))
+      .select("*")
+      .order("match_no");
+
+    throwIfError("Failed to create demo matches", matchesResult);
+
+    const matches = (matchesResult.data as MatchRow[]).map(mapMatch);
+    const userIds = users.map((user) => user.id);
+    const pickRows = buildDemoPickRows(round.id, matches, userIds);
+    const scoutRows = buildDemoScoutReportRows(round.id, matches, userIds);
+
+    const [picksResult, reportsResult] = await Promise.all([
+      supabase.from("picks").insert(pickRows),
+      supabase.from("human_scout_reports").insert(scoutRows),
+    ]);
+
+    throwIfError("Failed to create demo picks", picksResult);
+    throwIfError("Failed to create demo scout reports", reportsResult);
+
+    const scoutRowsByMatch = new Map<string, typeof scoutRows>();
+    scoutRows.forEach((report) => {
+      const current = scoutRowsByMatch.get(report.match_id) ?? [];
+      current.push(report);
+      scoutRowsByMatch.set(report.match_id, current);
+    });
+
+    const consensusUpdates = matches.map((match) => {
+      const reports = scoutRowsByMatch.get(match.id) ?? [];
+      const summary = computeConsensus(
+        reports.map((report) => ({
+          directionScoreF: report.direction_score_f,
+          drawAlert: report.draw_alert,
+          exceptionFlag: report.exception_flag,
+          noteAvailability: report.note_availability,
+          noteConditions: report.note_conditions,
+          noteDrawAlert: report.note_draw_alert,
+          noteMicro: report.note_micro,
+          noteStrengthForm: report.note_strength_form,
+          noteTacticalMatchup: report.note_tactical_matchup,
+        })),
+      );
+
+      return {
+        id: match.id,
+        round_id: round.id,
+        consensus_f: summary.avgF,
+        consensus_d: summary.avgD,
+        consensus_call: summary.consensusCall,
+        disagreement_score: summary.disagreementScore,
+        exception_count: summary.exceptionCount,
+      };
+    });
+
+    const consensusResults = await Promise.all(
+      consensusUpdates.map((entry) =>
+        supabase
+          .from("matches")
+          .update({
+            consensus_f: entry.consensus_f,
+            consensus_d: entry.consensus_d,
+            consensus_call: entry.consensus_call,
+            disagreement_score: entry.disagreement_score,
+            exception_count: entry.exception_count,
+          })
+          .eq("id", entry.id)
+          .eq("round_id", round.id),
+      ),
+    );
+    consensusResults.forEach((result) => throwIfError("Failed to save demo consensus", result));
+
+    const workspace = await getRoundWorkspace(round.id);
+    if (workspace) {
+      const allTickets = generateAllModeTickets(workspace.round.matches, demoTicketSettings);
+      const maxTickets = Math.min(
+        Math.max(Math.floor(demoTicketSettings.budgetYen / 100), 1),
+        8,
+      );
+      const ticketRows = (["conservative", "balanced", "upset"] as const).flatMap((mode) =>
+        allTickets[mode].slice(0, maxTickets).map((ticket) => ({
+          round_id: round.id,
+          mode,
+          ticket_json: JSON.stringify({
+            ...ticket,
+            settings: demoTicketSettings,
+          }),
+          ticket_score: ticket.ticketScore,
+          estimated_hit_prob: ticket.estimatedHitProb,
+          contrarian_score: ticket.contrarianScore,
+        })),
+      );
+
+      if (ticketRows.length > 0) {
+        const ticketsResult = await supabase.from("generated_tickets").insert(ticketRows);
+        throwIfError("Failed to save demo tickets", ticketsResult);
+      }
+    }
+
+    const notesResult = await supabase
+      .from("review_notes")
+      .insert(buildDemoReviewNotes(round.id, matches, userIds));
+
+    throwIfError("Failed to save demo review notes", notesResult);
+
+    return round.id;
+  } catch (error) {
+    await deleteRoundCascade(round.id);
+    throw error;
+  }
 }
 
 export async function updateRound(input: {

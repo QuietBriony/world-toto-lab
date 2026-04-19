@@ -19,6 +19,7 @@ import {
   StatCard,
   textAreaClassName,
 } from "@/components/ui";
+import { demoRoundTitle } from "@/lib/demo-data";
 import {
   parseIntOrNull,
   parseRoundStatus,
@@ -33,7 +34,7 @@ import {
   roundStatusOptions,
 } from "@/lib/domain";
 import { appRoute, buildRoundHref } from "@/lib/round-links";
-import { createRound, createSampleUsers } from "@/lib/repository";
+import { createDemoRound, createRound, createSampleUsers } from "@/lib/repository";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { useDashboardData } from "@/lib/use-app-data";
 
@@ -44,7 +45,7 @@ function errorMessage(error: unknown) {
 export default function DashboardPage() {
   const router = useRouter();
   const { data, error, loading, refresh } = useDashboardData();
-  const [busy, setBusy] = useState<"members" | "round" | null>(null);
+  const [busy, setBusy] = useState<"demo" | "members" | "round" | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const handleCreateSampleUsers = async () => {
@@ -84,6 +85,24 @@ export default function DashboardPage() {
     }
   };
 
+  const handleOpenDemo = async () => {
+    setBusy("demo");
+    setActionError(null);
+
+    try {
+      const roundId = await createDemoRound();
+      await refresh();
+      router.push(buildRoundHref(appRoute.workspace, roundId));
+    } catch (nextError) {
+      setActionError(errorMessage(nextError));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const demoRound =
+    data?.rounds.find((round) => round.title === demoRoundTitle) ?? null;
+
   return (
     <div className="space-y-8">
       <PageHeader
@@ -110,6 +129,111 @@ export default function DashboardPage() {
         <ErrorNotice error={error} onRetry={() => void refresh()} />
       ) : data ? (
         <>
+          <SectionCard
+            title="迷ったらこの Demo Round から"
+            description="保存済みのデモ Round を 1 つ置いて、開くと『AI Base と Human Overlay がどういうことか』をそのまま追えるようにしています。"
+            actions={
+              <button
+                type="button"
+                className={buttonClassName}
+                onClick={handleOpenDemo}
+                disabled={busy === "demo"}
+              >
+                {busy === "demo"
+                  ? "Preparing..."
+                  : demoRound
+                    ? "Demo Round を開く"
+                    : "Demo Round を作成"}
+              </button>
+            }
+          >
+            <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
+              <div className="grid gap-3 sm:grid-cols-2">
+                {[
+                  {
+                    step: "01",
+                    title: "Round Detail を開く",
+                    body: "各試合の AI Base、Human Overlay、Edge が同じ表で見えます。",
+                  },
+                  {
+                    step: "02",
+                    title: "Human Picks を開く",
+                    body: "AI 基準線に対して、人力でどう上書きしたかを実例で追えます。",
+                  },
+                  {
+                    step: "03",
+                    title: "Consensus / Tickets",
+                    body: "人力が AI に 0 を足したか、別筋へ振ったかを集計と候補で見ます。",
+                  },
+                  {
+                    step: "04",
+                    title: "Review まで見る",
+                    body: "結果と反省ログまで入っているので、一連の流れを 1 Round で確認できます。",
+                  },
+                ].map((item) => (
+                  <div
+                    key={item.step}
+                    className="rounded-[22px] border border-white/80 bg-white/74 p-4 shadow-[0_16px_38px_-30px_rgba(15,23,42,0.4)]"
+                  >
+                    <div className="font-display text-[11px] uppercase tracking-[0.34em] text-teal-800/72">
+                      Step {item.step}
+                    </div>
+                    <h3 className="mt-3 font-display text-lg font-semibold tracking-[-0.04em] text-slate-950">
+                      {item.title}
+                    </h3>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">{item.body}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="rounded-[24px] border border-slate-200 bg-slate-50/85 p-5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge tone={demoRound ? "teal" : "amber"}>
+                    {demoRound ? "保存済み" : "未作成"}
+                  </Badge>
+                  <h3 className="font-display text-lg font-semibold tracking-[-0.04em] text-slate-950">
+                    {demoRoundTitle}
+                  </h3>
+                </div>
+                <p className="mt-3 text-sm leading-6 text-slate-600">
+                  この Round には試合データ、AI 予測、人力 Picks、Scout Card、Consensus、Ticket
+                  Generator、Review が最初から入ります。
+                </p>
+                {demoRound ? (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <Link
+                      href={buildRoundHref(appRoute.workspace, demoRound.id)}
+                      className={secondaryButtonClassName}
+                    >
+                      Round Detail
+                    </Link>
+                    <Link
+                      href={buildRoundHref(appRoute.picks, demoRound.id, {
+                        user: data.users[0]?.id,
+                      })}
+                      className={secondaryButtonClassName}
+                    >
+                      Human Picks
+                    </Link>
+                    <Link
+                      href={buildRoundHref(appRoute.consensus, demoRound.id)}
+                      className={secondaryButtonClassName}
+                    >
+                      Consensus
+                    </Link>
+                    <Link
+                      href={buildRoundHref(appRoute.review, demoRound.id)}
+                      className={secondaryButtonClassName}
+                    >
+                      Review
+                    </Link>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+            {actionError ? <p className="text-sm text-rose-700">{actionError}</p> : null}
+          </SectionCard>
+
           <SectionCard
             title="このサイトは何をするもの？"
             description="友人グループで W杯toto / WINNER の見立てを共有し、AI Base と人力 Overlay を一つの流れで扱う分析ラボです。"
@@ -370,7 +494,6 @@ export default function DashboardPage() {
                 ))}
               </div>
             )}
-            {actionError ? <p className="text-sm text-rose-700">{actionError}</p> : null}
           </SectionCard>
 
           <SectionCard
@@ -446,6 +569,9 @@ export default function DashboardPage() {
                 description={round.notes ?? "Roundメモはまだありません。"}
                 actions={
                   <div className="flex items-center gap-2">
+                    {round.title === demoRoundTitle ? (
+                      <Badge tone="amber">Demo</Badge>
+                    ) : null}
                     <Badge tone="sky">{roundStatusLabel[round.status]}</Badge>
                     <Link
                       href={buildRoundHref(appRoute.workspace, round.id)}
