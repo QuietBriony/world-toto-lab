@@ -843,7 +843,7 @@ export default function DashboardPage() {
           <SectionCard
             id="shared-members"
             title="共有メンバー"
-            description="認証なし MVP なので、ここであだ名と役割を決めます。予想者は AI と比べる人、ウォッチは支持先を選ぶ人という前提です。"
+            description="認証なし MVP なので、ここであだ名と役割を決めます。各行で `あだ名` と `役割` を変えて、右端のボタンで更新します。"
             actions={
               data.users.length === 0 ? (
                 <button
@@ -864,38 +864,49 @@ export default function DashboardPage() {
             ) : (
               <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
                 <div className="grid gap-3">
+                  <div className="rounded-[22px] border border-slate-200 bg-slate-50/90 p-4 text-sm leading-6 text-slate-600">
+                    ここで切り替えます:
+                    あだ名は各行の左側入力欄、`ウォッチ / 予想者` の切り替えはその右の選択欄です。
+                    最後に右端の `名前と役割を更新` を押すと反映されます。
+                  </div>
                   {data.users.map((user) => (
                     <form
                       key={user.id}
                       onSubmit={(event) => void handleSaveMember(event, user.id)}
-                      className="grid gap-3 rounded-[22px] border border-white/80 bg-white/76 p-4 shadow-[0_16px_38px_-30px_rgba(15,23,42,0.4)] sm:grid-cols-[auto_1fr_180px_auto]"
+                      className="grid gap-3 rounded-[22px] border border-white/80 bg-white/76 p-4 shadow-[0_16px_38px_-30px_rgba(15,23,42,0.4)] sm:grid-cols-[auto_1fr_200px_auto]"
                     >
                       <div className="flex items-center">
                         <Badge tone={user.role === "admin" ? "teal" : "slate"}>
                           {userRoleLabel[user.role]}
                         </Badge>
                       </div>
-                      <input
-                        name="memberName"
-                        defaultValue={user.name}
-                        className={fieldClassName}
-                        placeholder="ブリオニー / 観戦会A / 友人B"
-                      />
-                      <select
-                        name="memberRole"
-                        defaultValue={user.role}
-                        className={fieldClassName}
-                        title={userRoleDescription[user.role]}
-                      >
-                        <option value="admin">予想者</option>
-                        <option value="member">ウォッチ</option>
-                      </select>
+                      <label className="grid gap-2 text-sm font-medium text-slate-700">
+                        あだ名
+                        <input
+                          name="memberName"
+                          defaultValue={user.name}
+                          className={fieldClassName}
+                          placeholder="ブリオニー / 観戦会A / 友人B"
+                        />
+                      </label>
+                      <label className="grid gap-2 text-sm font-medium text-slate-700">
+                        役割
+                        <select
+                          name="memberRole"
+                          defaultValue={user.role}
+                          className={fieldClassName}
+                          title={userRoleDescription[user.role]}
+                        >
+                          <option value="admin">予想者</option>
+                          <option value="member">ウォッチ</option>
+                        </select>
+                      </label>
                       <button
                         type="submit"
                         className={secondaryButtonClassName}
                         disabled={savingMemberId === user.id}
                       >
-                        {savingMemberId === user.id ? "更新中..." : "更新"}
+                        {savingMemberId === user.id ? "更新中..." : "名前と役割を更新"}
                       </button>
                     </form>
                   ))}
@@ -912,15 +923,21 @@ export default function DashboardPage() {
                     本名ではなく、観戦会で分かる呼び名だけを入れる運用が向いています。
                   </p>
                   <form onSubmit={handleAddMember} className="mt-4 grid gap-3">
-                    <input
-                      name="memberName"
-                      className={fieldClassName}
-                      placeholder="例: ブリオニー / 青組 / さとし"
-                    />
-                    <select name="memberRole" className={fieldClassName} defaultValue="member">
-                      <option value="member">ウォッチとして追加</option>
-                      <option value="admin">予想者として追加</option>
-                    </select>
+                    <label className="grid gap-2 text-sm font-medium text-slate-700">
+                      あだ名
+                      <input
+                        name="memberName"
+                        className={fieldClassName}
+                        placeholder="例: ブリオニー / 青組 / さとし"
+                      />
+                    </label>
+                    <label className="grid gap-2 text-sm font-medium text-slate-700">
+                      役割
+                      <select name="memberRole" className={fieldClassName} defaultValue="member">
+                        <option value="member">ウォッチとして追加</option>
+                        <option value="admin">予想者として追加</option>
+                      </select>
+                    </label>
                     <button
                       type="submit"
                       className={buttonClassName}
