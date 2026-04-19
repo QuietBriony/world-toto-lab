@@ -66,6 +66,52 @@ function progressValue(done: number, total: number) {
   return total > 0 ? `${done}/${total}` : "未設定";
 }
 
+function strongestPositiveEdge(match: {
+  modelProb0: number | null;
+  modelProb1: number | null;
+  modelProb2: number | null;
+  officialVote0: number | null;
+  officialVote1: number | null;
+  officialVote2: number | null;
+}) {
+  const candidates = [
+    {
+      edge:
+        match.modelProb1 !== null && match.officialVote1 !== null
+          ? match.modelProb1 - match.officialVote1
+          : null,
+      outcome: "1",
+    },
+    {
+      edge:
+        match.modelProb0 !== null && match.officialVote0 !== null
+          ? match.modelProb0 - match.officialVote0
+          : null,
+      outcome: "0",
+    },
+    {
+      edge:
+        match.modelProb2 !== null && match.officialVote2 !== null
+          ? match.modelProb2 - match.officialVote2
+          : null,
+      outcome: "2",
+    },
+  ].filter(
+    (
+      candidate,
+    ): candidate is {
+      edge: number;
+      outcome: "1" | "0" | "2";
+    } => candidate.edge !== null && candidate.edge > 0,
+  );
+
+  if (candidates.length === 0) {
+    return null;
+  }
+
+  return candidates.sort((left, right) => right.edge - left.edge)[0];
+}
+
 function WorkspacePageContent() {
   const searchParams = useSearchParams();
   const roundId = getSingleSearchParam(searchParams.get("round"));
@@ -93,6 +139,35 @@ function WorkspacePageContent() {
     data?.round.matches.filter(
       (match) => match.modelProb1 === null && match.modelProb0 === null && match.modelProb2 === null,
     ).length ?? 0;
+  const setupPendingMatches = data?.round.matches.filter((match) => !matchHasSetupInput(match)) ?? [];
+  const aiGapMatches =
+    data?.round.matches
+      .map((match) => {
+        const strongestEdge = strongestPositiveEdge(match);
+        return strongestEdge ? { match, strongestEdge } : null;
+      })
+      .filter(
+        (
+          entry,
+        ): entry is {
+          match: (typeof data.round.matches)[number];
+          strongestEdge: NonNullable<ReturnType<typeof strongestPositiveEdge>>;
+        } => entry !== null,
+      )
+      .sort((left, right) => right.strongestEdge.edge - left.strongestEdge.edge)
+      .slice(0, 4) ?? [];
+  const drawWatchMatches =
+    data?.round.matches
+      .filter((match) => {
+        const aiBase = aiRecommendedOutcomes(match);
+        const humanBase = humanConsensusOutcomes(match);
+        return (
+          match.category === "draw_candidate" ||
+          aiBase.includes("0") ||
+          humanBase.includes("0")
+        );
+      })
+      .slice(0, 4) ?? [];
   const aiPreviewMatches =
     data?.round.matches
       .filter((match) => canEstimateAiModel(match))
@@ -331,6 +406,123 @@ function WorkspacePageContent() {
                 <p className="mt-4 text-sm leading-6 text-slate-600">
                   基本の順番: 試合設定 → 人力予想 → 根拠カード → コンセンサス → 差分 / 候補チケット → 振り返り
                 </p>
+              </div>
+            </div>
+          </SectionCard>
+
+          <SectionCard
+            title="まず見るところ"
+            description="細かい表を見る前に、設定不足と注目試合だけ先に拾えます。"
+          >
+            <div className="grid gap-4 xl:grid-cols-3">
+              <div className="rounded-[24px] border border-amber-200 bg-amber-50/75 p-5">
+                <div className="flex items-center gap-2">
+                  <Badge tone="amber">要設定</Badge>
+                  <h3 className="font-display text-lg font-semibold tracking-[-0.04em] text-slate-950">
+                    まず埋める試合
+                  </h3>
+                </div>
+                <p className="mt-3 text-sm leading-6 text-slate-600">
+                  日時、人気、AIの土台が足りない試合です。
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {setupPendingMatches.length === 0 ? (
+                    <Badge tone="positive">全試合ひと通り設定済み</Badge>
+                  ) : (
+                    setupPendingMatches.slice(0, 5).map((match) => (
+                      <Badge key={match.id} tone="amber">
+                        #{match.matchNo} {match.homeTeam} 対 {match.awayTeam}
+                      </Badge>
+                    ))
+                  )}
+                </div>
+                <div className="mt-4">
+                  <Link
+                    href={buildRoundHref(appRoute.matchEditor, data.round.id, {
+                      match: setupPendingMatches[0]?.id ?? data.round.matches[0]?.id,
+                    })}
+                    className={secondaryButtonClassName}
+                  >
+                    試合編集へ
+                  </Link>
+                </div>
+              </div>
+
+              <div className="rounded-[24px] border border-emerald-200 bg-emerald-50/70 p-5">
+                <div className="flex items-center gap-2">
+                  <Badge tone="positive">差分大</Badge>
+                  <h3 className="font-display text-lg font-semibold tracking-[-0.04em] text-slate-950">
+                    AIが強めに見ている試合
+                  </h3>
+                </div>
+                <div className="mt-4 space-y-3">
+                  {aiGapMatches.length === 0 ? (
+                    <p className="text-sm leading-6 text-slate-600">
+                      公式人気と AI が両方入ると、ここに差分の大きい試合が出ます。
+                    </p>
+                  ) : (
+                    aiGapMatches.map(({ match, strongestEdge }) => (
+                      <div
+                        key={match.id}
+                        className="rounded-[18px] border border-emerald-200 bg-white/75 p-3"
+                      >
+                        <div className="text-sm font-semibold text-slate-900">
+                          #{match.matchNo} {match.homeTeam} 対 {match.awayTeam}
+                        </div>
+                        <div className="mt-1 text-sm text-slate-700">
+                          {strongestEdge.outcome} が {formatSignedPercent(strongestEdge.edge)}
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <Badge tone="amber">
+                            AI基準線 {formatOutcomeSet(aiRecommendedOutcomes(match))}
+                          </Badge>
+                          <Badge tone="slate">
+                            人力 {formatOutcomeSet(humanConsensusOutcomes(match))}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-[24px] border border-sky-200 bg-sky-50/70 p-5">
+                <div className="flex items-center gap-2">
+                  <Badge tone="sky">0候補</Badge>
+                  <h3 className="font-display text-lg font-semibold tracking-[-0.04em] text-slate-950">
+                    引き分けを見たい試合
+                  </h3>
+                </div>
+                <div className="mt-4 space-y-3">
+                  {drawWatchMatches.length === 0 ? (
+                    <p className="text-sm leading-6 text-slate-600">
+                      カテゴリや AI で引き分け寄りになる試合があると、ここに出ます。
+                    </p>
+                  ) : (
+                    drawWatchMatches.map((match) => (
+                      <div
+                        key={match.id}
+                        className="rounded-[18px] border border-sky-200 bg-white/75 p-3"
+                      >
+                        <div className="text-sm font-semibold text-slate-900">
+                          #{match.matchNo} {match.homeTeam} 対 {match.awayTeam}
+                        </div>
+                        <div className="mt-1 text-sm text-slate-700">
+                          AI {formatOutcomeSet(aiRecommendedOutcomes(match))} / 人力{" "}
+                          {formatOutcomeSet(humanConsensusOutcomes(match))}
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {match.category ? (
+                            <Badge tone="sky">{categoryLabel[match.category]}</Badge>
+                          ) : null}
+                          {match.consensusCall ? (
+                            <Badge tone="slate">{match.consensusCall}</Badge>
+                          ) : null}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
             </div>
           </SectionCard>
