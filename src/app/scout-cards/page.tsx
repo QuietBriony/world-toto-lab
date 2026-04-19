@@ -1,8 +1,7 @@
 "use client";
 
-import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { Suspense, useState, type FormEvent } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState, type FormEvent } from "react";
 
 import {
   ConfigurationNotice,
@@ -12,10 +11,12 @@ import {
 } from "@/components/app/states";
 import { RoundNav } from "@/components/round-nav";
 import {
+  Badge,
   buttonClassName,
   fieldClassName,
   PageHeader,
   SectionCard,
+  StatCard,
   textAreaClassName,
 } from "@/components/ui";
 import {
@@ -45,13 +46,61 @@ function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "不明なエラーです。";
 }
 
+function reportHasMeaningfulInput(
+  report:
+    | {
+        drawAlert: number;
+        exceptionFlag: boolean;
+        exceptionNote: string | null;
+        noteAvailability: string | null;
+        noteConditions: string | null;
+        noteDrawAlert: string | null;
+        noteMicro: string | null;
+        noteStrengthForm: string | null;
+        noteTacticalMatchup: string | null;
+        provisionalCall: string;
+        scoreAvailability: number;
+        scoreConditions: number;
+        scoreMicro: number;
+        scoreStrengthForm: number;
+        scoreTacticalMatchup: number;
+      }
+    | undefined,
+) {
+  if (!report) {
+    return false;
+  }
+
+  return (
+    report.scoreStrengthForm !== 0 ||
+    report.scoreAvailability !== 0 ||
+    report.scoreConditions !== 0 ||
+    report.scoreTacticalMatchup !== 0 ||
+    report.scoreMicro !== 0 ||
+    report.drawAlert !== 0 ||
+    report.provisionalCall !== "double" ||
+    report.exceptionFlag ||
+    Boolean(
+      report.noteStrengthForm ||
+        report.noteAvailability ||
+        report.noteConditions ||
+        report.noteTacticalMatchup ||
+        report.noteMicro ||
+        report.noteDrawAlert ||
+        report.exceptionNote,
+    )
+  );
+}
+
 function ScoutCardsPageContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const roundId = getSingleSearchParam(searchParams.get("round"));
   const requestedUserId = getSingleSearchParam(searchParams.get("user"));
   const { data, error, loading, refresh } = useRoundWorkspace(roundId);
   const [saving, setSaving] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   const activeUser =
     data?.users.find((user) => user.id === requestedUserId) ?? data?.users[0] ?? null;
@@ -60,6 +109,65 @@ function ScoutCardsPageContent() {
       .filter((report) => report.userId === activeUser?.id)
       .map((report) => [report.matchId, report]),
   );
+  const completedReportCount =
+    data?.round.matches.filter((match) => reportHasMeaningfulInput(reportByMatch.get(match.id)))
+      .length ?? 0;
+  const pendingReportCount = data ? Math.max(data.round.matches.length - completedReportCount, 0) : 0;
+  const drawAlertCount =
+    data?.round.matches.filter((match) => (reportByMatch.get(match.id)?.drawAlert ?? 0) >= 1)
+      .length ?? 0;
+  const exceptionCount =
+    data?.round.matches.filter((match) => reportByMatch.get(match.id)?.exceptionFlag).length ?? 0;
+  const orderedMatches =
+    data?.round.matches
+      .slice()
+      .sort((left, right) => {
+        const leftDone = reportHasMeaningfulInput(reportByMatch.get(left.id)) ? 1 : 0;
+        const rightDone = reportHasMeaningfulInput(reportByMatch.get(right.id)) ? 1 : 0;
+
+        if (leftDone !== rightDone) {
+          return leftDone - rightDone;
+        }
+
+        const leftDraw = reportByMatch.get(left.id)?.drawAlert ?? 0;
+        const rightDraw = reportByMatch.get(right.id)?.drawAlert ?? 0;
+        if (leftDraw !== rightDraw) {
+          return rightDraw - leftDraw;
+        }
+
+        return left.matchNo - right.matchNo;
+      }) ?? [];
+  const focusMatches = orderedMatches.slice(0, 4);
+  const formId = activeUser ? `scout-form-${activeUser.id}` : "scout-form";
+
+  useEffect(() => {
+    if (!hasUnsavedChanges) {
+      return;
+    }
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hasUnsavedChanges]);
+
+  const handleSwitchUser = (userId: string) => {
+    if (
+      hasUnsavedChanges &&
+      !window.confirm("未保存の変更があります。保存せずにユーザーを切り替えますか？")
+    ) {
+      return;
+    }
+
+    router.push(
+      buildRoundHref(appRoute.scoutCards, data?.round.id ?? roundId, {
+        user: userId,
+      }),
+    );
+  };
 
   const handleSave = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -177,6 +285,7 @@ function ScoutCardsPageContent() {
         userId: activeUser.id,
         reports,
       });
+      setHasUnsavedChanges(false);
       await refresh();
     } catch (nextError) {
       setSubmitError(errorMessage(nextError));
@@ -226,18 +335,28 @@ function ScoutCardsPageContent() {
                 title="入力ユーザー切り替え"
                 description="メンバーごとの視点を残す前提なので、入力対象を切り替えて使います。"
               >
-                <div className="flex flex-wrap gap-2">
-                  {data.users.map((user) => (
-                    <Link
-                      key={user.id}
-                      href={buildRoundHref(appRoute.scoutCards, data.round.id, {
-                        user: user.id,
-                      })}
-                      className={user.id === activeUser.id ? buttonClassName : fieldClassName}
-                    >
-                      {user.name}
-                    </Link>
-                  ))}
+                <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-start">
+                  <div className="flex flex-wrap gap-2">
+                    {data.users.map((user) => (
+                      <button
+                        type="button"
+                        key={user.id}
+                        onClick={() => handleSwitchUser(user.id)}
+                        className={user.id === activeUser.id ? buttonClassName : fieldClassName}
+                      >
+                        {user.name}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="rounded-[22px] border border-slate-200 bg-slate-50/85 p-4 text-sm text-slate-600">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge tone="sky">いま入力中</Badge>
+                      <span className="font-semibold text-slate-900">{activeUser.name}</span>
+                    </div>
+                    <p className="mt-2 leading-6">
+                      保存してから切り替えると、根拠メモの取りこぼしを防げます。
+                    </p>
+                  </div>
                 </div>
               </SectionCard>
 
@@ -263,14 +382,126 @@ function ScoutCardsPageContent() {
                 </div>
               </SectionCard>
 
-              <form onSubmit={handleSave} className="space-y-6">
-                {data.round.matches.map((match) => {
+              <section className="grid gap-4 lg:grid-cols-4">
+                <StatCard
+                  label="入力済みカード"
+                  value={`${completedReportCount}/${data.round.matches.length}`}
+                  hint={`${activeUser.name} が根拠を入れた試合数`}
+                />
+                <StatCard
+                  label="未入力"
+                  value={`${pendingReportCount}`}
+                  hint="まずここから埋めると進めやすいです"
+                />
+                <StatCard
+                  label="引き分け警戒あり"
+                  value={`${drawAlertCount}`}
+                  hint="D が 1 以上の試合数"
+                />
+                <StatCard
+                  label="例外フラグ"
+                  value={`${exceptionCount}`}
+                  hint="通常判断から外して見たい試合数"
+                />
+              </section>
+
+              <SectionCard
+                title="先に見る 4 試合"
+                description="未入力の試合が先頭です。まずここから順に埋めると、全体を速く回せます。"
+                actions={
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge tone={pendingReportCount === 0 ? "teal" : "amber"}>
+                      未入力 {pendingReportCount}
+                    </Badge>
+                    <button
+                      type="submit"
+                      form={formId}
+                      className={buttonClassName}
+                      disabled={saving}
+                    >
+                      {saving ? "保存中..." : "カードを保存"}
+                    </button>
+                  </div>
+                }
+              >
+                <div className="grid gap-3 lg:grid-cols-2">
+                  {focusMatches.map((match) => {
+                    const report = reportByMatch.get(match.id);
+                    const isFilled = reportHasMeaningfulInput(report);
+
+                    return (
+                      <div
+                        key={match.id}
+                        className="rounded-[22px] border border-white/80 bg-white/76 p-4 shadow-[0_16px_38px_-30px_rgba(15,23,42,0.4)]"
+                      >
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge tone={isFilled ? "teal" : "amber"}>
+                            {isFilled ? "入力あり" : "未入力"}
+                          </Badge>
+                          <Badge tone="slate">第{match.matchNo}試合</Badge>
+                        </div>
+                        <h3 className="mt-3 font-display text-lg font-semibold tracking-[-0.04em] text-slate-950">
+                          {match.homeTeam} 対 {match.awayTeam}
+                        </h3>
+                        <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-500">
+                          <span>F {report?.directionScoreF ?? 0}</span>
+                          <span>D {report?.drawAlert ?? 0}</span>
+                          <span>
+                            仮結論 {report ? provisionalCallLabel[report.provisionalCall] : "未入力"}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </SectionCard>
+
+              <SectionCard
+                title="入力のコツ"
+                description="全部を長文で書くより、数値で方向を出してから短い根拠を足すのが使いやすいです。"
+              >
+                <div className="grid gap-3 lg:grid-cols-3">
+                  <div className="rounded-[22px] border border-white/80 bg-white/76 p-4 shadow-[0_16px_38px_-30px_rgba(15,23,42,0.4)]">
+                    <div className="font-display text-[11px] uppercase tracking-[0.34em] text-amber-800/75">
+                      1
+                    </div>
+                    <p className="mt-3 text-sm leading-6 text-slate-600">
+                      まず ①〜⑤ をざっくり入れて F の向きを決めます。
+                    </p>
+                  </div>
+                  <div className="rounded-[22px] border border-white/80 bg-white/76 p-4 shadow-[0_16px_38px_-30px_rgba(15,23,42,0.4)]">
+                    <div className="font-display text-[11px] uppercase tracking-[0.34em] text-sky-800/75">
+                      2
+                    </div>
+                    <p className="mt-3 text-sm leading-6 text-slate-600">
+                      引き分けを見たい試合だけ D を上げて、仮結論で整理します。
+                    </p>
+                  </div>
+                  <div className="rounded-[22px] border border-white/80 bg-white/76 p-4 shadow-[0_16px_38px_-30px_rgba(15,23,42,0.4)]">
+                    <div className="font-display text-[11px] uppercase tracking-[0.34em] text-teal-800/75">
+                      3
+                    </div>
+                    <p className="mt-3 text-sm leading-6 text-slate-600">
+                      迷う試合だけ理由を短く残せば、後で見返しやすくなります。
+                    </p>
+                  </div>
+                </div>
+              </SectionCard>
+
+              <form
+                id={formId}
+                onSubmit={handleSave}
+                onChange={() => setHasUnsavedChanges(true)}
+                className="space-y-6"
+              >
+                {orderedMatches.map((match, index) => {
                   const report = reportByMatch.get(match.id);
+                  const isFilled = reportHasMeaningfulInput(report);
 
                   return (
                     <details
                       key={match.id}
-                      open={match.matchNo <= 2}
+                      open={index < 3 && !isFilled}
                       className="overflow-hidden rounded-[30px] border border-white/60 bg-white/85 shadow-[0_20px_50px_rgba(15,23,42,0.08)]"
                     >
                       <summary className="cursor-pointer list-none px-5 py-4">
@@ -283,9 +514,16 @@ function ScoutCardsPageContent() {
                               {match.homeTeam} 対 {match.awayTeam}
                             </div>
                           </div>
-                          <div className="text-sm text-slate-500">
-                            現在のF {report?.directionScoreF ?? 0} / 仮結論{" "}
-                            {report ? provisionalCallLabel[report.provisionalCall] : "未入力"}
+                          <div className="flex flex-wrap items-center gap-2 text-sm text-slate-500">
+                            <Badge tone={isFilled ? "teal" : "amber"}>
+                              {isFilled ? "入力あり" : "未入力"}
+                            </Badge>
+                            <span>F {report?.directionScoreF ?? 0}</span>
+                            <span>D {report?.drawAlert ?? 0}</span>
+                            <span>
+                              仮結論{" "}
+                              {report ? provisionalCallLabel[report.provisionalCall] : "未入力"}
+                            </span>
                           </div>
                         </div>
                       </summary>
