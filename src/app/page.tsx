@@ -208,7 +208,7 @@ export default function DashboardPage() {
       <PageHeader
         eyebrow="ワールドtotoラボ"
         title="W杯totoの予想・分析・記録ダッシュボード"
-        description="AI基準線を先に見て、その上に人力の別予想をかぶせながら、入力と集計と振り返りを回す MVP です。"
+        description="まず AI基準線 を見て、人力で上書きし、最後に振り返るための共有 MVP です。"
         actions={
           <div className="flex flex-wrap gap-3">
             {!data || data.users.length === 0 ? (
@@ -251,7 +251,7 @@ export default function DashboardPage() {
         <>
           <SectionCard
             title="まずここから始める"
-            description="初回セットアップ、デモ体験、続きから再開の 3 本だけ先に見えるようにしています。"
+            description="初回セットアップ、デモ体験、続きから再開だけを先に見えるようにしています。"
           >
             <div className="grid gap-4 lg:grid-cols-3">
               <div className="rounded-[24px] border border-white/80 bg-white/76 p-5 shadow-[0_18px_44px_-30px_rgba(15,23,42,0.4)]">
@@ -347,7 +347,7 @@ export default function DashboardPage() {
 
           <SectionCard
             title="迷ったらこのデモラウンドから"
-            description="保存済みのデモラウンドを 1 つ置いて、開くと『AI基準線と人力上書きがどういうことか』をそのまま追えるようにしています。"
+            description="保存済みの 1 ラウンドを置いてあるので、開くだけで全体の流れを追えます。"
             actions={
               <button
                 type="button"
@@ -453,7 +453,7 @@ export default function DashboardPage() {
           <CollapsibleSectionCard
             title="このサイトは何をするもの？"
             description="友人グループで W杯toto / WINNER の見立てを共有し、AI基準線と人力上書きを一つの流れで扱う分析ラボです。"
-            defaultOpen
+            defaultOpen={false}
             badge={<Badge tone="teal">全体像</Badge>}
           >
             <div className="grid gap-4 lg:grid-cols-3">
@@ -493,6 +493,7 @@ export default function DashboardPage() {
           <CollapsibleSectionCard
             title="最初の使い方"
             description="初回はこの順で進めると迷いにくいです。"
+            defaultOpen={false}
             badge={<Badge tone="sky">チュートリアル</Badge>}
           >
             <div className="grid gap-4 lg:grid-cols-2">
@@ -564,6 +565,7 @@ export default function DashboardPage() {
           <CollapsibleSectionCard
             title="今どこまで使える？"
             description="共有 MVP としてのコア機能は入っていますが、まだフルプロダクトではありません。"
+            defaultOpen={false}
             badge={<Badge tone="amber">到達点</Badge>}
           >
             <div className="grid gap-4 lg:grid-cols-2">
@@ -623,14 +625,16 @@ export default function DashboardPage() {
             </div>
           </CollapsibleSectionCard>
 
-          <SectionCard
+          <CollapsibleSectionCard
             title="運用メモと公開時の注意"
-            description="普段は畳んでおいて、必要なときだけ確認できるメモです。公開サイトとして使う前提の注意をまとめています。"
+            description="公開サイトとして使う前提の注意を、必要なときだけ開けるようにまとめています。"
+            defaultOpen={false}
+            badge={<Badge tone="slate">注意</Badge>}
           >
             <div className="grid gap-3">
               {[
                 {
-                  defaultOpen: true,
+                  defaultOpen: false,
                   eyebrow: "保存先",
                   title: "データはどこに保存される？",
                   summary:
@@ -709,46 +713,7 @@ export default function DashboardPage() {
                 </details>
               ))}
             </div>
-          </SectionCard>
-
-          <SectionCard
-            className="metric-grid"
-            title="このラボでできること"
-            description="保存、共有、分析を一つの流れで回すための MVP です。単なる紹介ページではなく、実際の入力と集計に寄せています。"
-          >
-            <div className="grid gap-4 lg:grid-cols-3">
-              {[
-                {
-                  kicker: "集める",
-                  title: "人力の見立てを集める",
-                  body: "人力予想と根拠カードで、試合ごとの理由つき入力を共有します。",
-                },
-                {
-                  kicker: "比べる",
-                  title: "モデル差分を並べる",
-                  body: "公式人気 / 市場 / AI / 人力 を同じ面で比較できます。",
-                },
-                {
-                  kicker: "残す",
-                  title: "反省を次回に残す",
-                  body: "振り返りで的中率だけでなく一致・対立パターンも振り返ります。",
-                },
-              ].map((item) => (
-                <div
-                  key={item.kicker}
-                  className="rounded-[24px] border border-white/70 bg-white/72 p-4 shadow-[0_18px_44px_-30px_rgba(15,23,42,0.42)]"
-                >
-                  <div className="font-display text-[11px] uppercase tracking-[0.34em] text-teal-800/72">
-                    {item.kicker}
-                  </div>
-                  <h3 className="mt-3 font-display text-xl font-semibold tracking-[-0.05em] text-slate-950">
-                    {item.title}
-                  </h3>
-                  <p className="mt-3 text-sm leading-6 text-slate-600">{item.body}</p>
-                </div>
-              ))}
-            </div>
-          </SectionCard>
+          </CollapsibleSectionCard>
 
           <section className="grid gap-4 md:grid-cols-4">
             <StatCard
@@ -840,7 +805,7 @@ export default function DashboardPage() {
           <CollapsibleSectionCard
             title="試合データとAI分析の入り方"
             description="今どこまで自動で出ていて、どこから先が手入力かを先に分かるようにしています。"
-            defaultOpen
+            defaultOpen={false}
             badge={<Badge tone="sky">データ状況</Badge>}
           >
             <div className="grid gap-4 lg:grid-cols-2">
