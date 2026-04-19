@@ -38,7 +38,13 @@ import {
   roundStatusLabel,
   roundStatusOptions,
 } from "@/lib/domain";
-import { canEstimateAiModel } from "@/lib/ai-estimator";
+import {
+  AI_MODEL_LABEL,
+  AI_MODEL_VERSION,
+  canEstimateAiModel,
+  describeAiEstimator,
+  estimateAiModel,
+} from "@/lib/ai-estimator";
 import { deriveRoundProgressSummary, matchHasSetupInput } from "@/lib/round-progress";
 import {
   nullableString,
@@ -87,6 +93,22 @@ function WorkspacePageContent() {
     data?.round.matches.filter(
       (match) => match.modelProb1 === null && match.modelProb0 === null && match.modelProb2 === null,
     ).length ?? 0;
+  const aiPreviewMatches =
+    data?.round.matches
+      .filter((match) => canEstimateAiModel(match))
+      .slice(0, 4)
+      .map((match) => ({
+        estimated: estimateAiModel(match),
+        match,
+      }))
+      .filter(
+        (
+          entry,
+        ): entry is {
+          estimated: NonNullable<ReturnType<typeof estimateAiModel>>;
+          match: (typeof data.round.matches)[number];
+        } => entry.estimated !== null,
+      ) ?? [];
 
   const handleSaveRound = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -158,7 +180,7 @@ function WorkspacePageContent() {
     }
   };
 
-  const handleEstimateAi = async () => {
+  const handleEstimateAi = async (overwriteExisting = false) => {
     if (!data) {
       return;
     }
@@ -169,12 +191,13 @@ function WorkspacePageContent() {
 
     try {
       const result = await estimateRoundAiModel({
+        overwriteExisting,
         roundId: data.round.id,
       });
       await refresh();
       setAiSuccess(
         result.updatedCount > 0
-          ? `${result.updatedCount} 試合の AI確率を試算しました。`
+          ? `${result.updatedCount} 試合の AI確率を${overwriteExisting ? "再" : ""}試算しました。`
           : "試算できる試合がありませんでした。先に公式人気か市場確率を入れてください。",
       );
     } catch (nextError) {
@@ -467,6 +490,13 @@ function WorkspacePageContent() {
                     これは外部モデルではなく、`公式人気 + 市場確率 + カテゴリ補正` から作る暫定の AI基準線です。
                     人力の前段でたたき台を作る用途として使う想定です。
                   </p>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <Badge tone="slate">{AI_MODEL_LABEL}</Badge>
+                    <Badge tone="slate">{AI_MODEL_VERSION}</Badge>
+                    <span className="text-xs text-slate-500">
+                      ロジック更新後に再試算して育てていけます
+                    </span>
+                  </div>
                   <div className="mt-4 flex flex-wrap gap-2">
                     <button
                       type="button"
@@ -475,6 +505,14 @@ function WorkspacePageContent() {
                       disabled={estimatingAi}
                     >
                       {estimatingAi ? "AI試算中..." : "AI未設定を試算する"}
+                    </button>
+                    <button
+                      type="button"
+                      className={secondaryButtonClassName}
+                      onClick={() => void handleEstimateAi(true)}
+                      disabled={estimatingAi}
+                    >
+                      既存AIも再試算
                     </button>
                     <Link
                       href={buildRoundHref(appRoute.matchEditor, data.round.id, {
@@ -500,6 +538,43 @@ function WorkspacePageContent() {
                   <li>`固定寄り` や `引き分け候補` などのカテゴリも少しだけ反映します。</li>
                   <li>本番用の予測モデルではないので、最後は試合編集で微調整してください。</li>
                 </ul>
+                <div className="rounded-[20px] border border-slate-200 bg-white/80 p-4">
+                  <div className="flex items-center gap-2">
+                    <Badge tone="sky">プレビュー</Badge>
+                    <h4 className="text-sm font-semibold text-slate-900">いま試算できる試合</h4>
+                  </div>
+                  <div className="mt-3 space-y-3">
+                    {aiPreviewMatches.length === 0 ? (
+                      <p className="text-sm leading-6 text-slate-600">
+                        公式人気か市場確率を入れると、ここに試算プレビューが出ます。
+                      </p>
+                    ) : (
+                      aiPreviewMatches.map(({ match, estimated }) => (
+                        <div
+                          key={match.id}
+                          className="rounded-[18px] border border-slate-200 bg-slate-50/85 p-3"
+                        >
+                          <div className="text-sm font-semibold text-slate-900">
+                            #{match.matchNo} {match.homeTeam} 対 {match.awayTeam}
+                          </div>
+                          <div className="mt-2 text-sm text-slate-700">
+                            AI {formatPercent(estimated.modelProb1)} /{" "}
+                            {formatPercent(estimated.modelProb0)} /{" "}
+                            {formatPercent(estimated.modelProb2)} | 候補{" "}
+                            {estimated.recommendedOutcomes ?? "—"}
+                          </div>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {describeAiEstimator(match).map((note) => (
+                              <Badge key={`${match.id}-${note}`} tone="slate">
+                                {note}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           </CollapsibleSectionCard>

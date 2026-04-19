@@ -25,6 +25,9 @@ const priorTriplet: ProbabilityTriplet = {
   "2": 0.36,
 };
 
+export const AI_MODEL_VERSION = "v0.2";
+export const AI_MODEL_LABEL = "App Heuristic";
+
 function normalizeTriplet(input: Partial<Record<OutcomeValue, number | null>>) {
   const values = {
     "1": Math.max(input["1"] ?? 0, 0),
@@ -108,6 +111,50 @@ export function canEstimateAiModel(input: EstimatorInput) {
         "2": input.marketProb2,
       }),
   );
+}
+
+export function describeAiEstimator(input: EstimatorInput) {
+  const notes: string[] = [];
+  const hasOfficial = Boolean(
+    normalizeTriplet({
+      "1": input.officialVote1,
+      "0": input.officialVote0,
+      "2": input.officialVote2,
+    }),
+  );
+  const hasMarket = Boolean(
+    normalizeTriplet({
+      "1": input.marketProb1,
+      "0": input.marketProb0,
+      "2": input.marketProb2,
+    }),
+  );
+
+  if (hasOfficial && hasMarket) {
+    notes.push("公式人気と市場確率を両方使う");
+  } else if (hasMarket) {
+    notes.push("市場確率を主材料に使う");
+  } else if (hasOfficial) {
+    notes.push("公式人気を主材料に使う");
+  }
+
+  if (input.category === "fixed") {
+    notes.push("固定寄り補正あり");
+  }
+
+  if (input.category === "draw_candidate") {
+    notes.push("引き分け候補補正あり");
+  }
+
+  if (input.category === "contrarian") {
+    notes.push("逆張り補正あり");
+  }
+
+  if (input.category === "info_wait") {
+    notes.push("情報待ちなので保守寄り");
+  }
+
+  return notes.length > 0 ? notes : ["基本配合のみ"];
 }
 
 export function estimateAiModel(input: EstimatorInput) {
