@@ -1,3 +1,4 @@
+import { canEstimateAiModel, estimateAiModel } from "@/lib/ai-estimator";
 import { computeConsensus, getEdge } from "@/lib/domain";
 import {
   buildDemoMatchRows,
@@ -851,6 +852,71 @@ export async function bulkUpdateRoundMatches(input: {
   );
 
   results.forEach((result) => throwIfError("Failed to bulk update matches", result));
+}
+
+export async function estimateRoundAiModel(input: {
+  overwriteExisting?: boolean;
+  roundId: string;
+}) {
+  const supabase = requireSupabaseClient();
+  const matchesResult = await supabase.from("matches").select("*").eq("round_id", input.roundId);
+
+  throwIfError("Failed to load matches for AI estimation", matchesResult);
+
+  const matches = (matchesResult.data as MatchRow[]).map(mapMatch);
+  const targetMatches = matches.filter((match) => {
+    const hasExistingModel =
+      match.modelProb1 !== null || match.modelProb0 !== null || match.modelProb2 !== null;
+
+    if (hasExistingModel && !input.overwriteExisting) {
+      return false;
+    }
+
+    return canEstimateAiModel(match);
+  });
+
+  const updates = targetMatches
+    .map((match) => {
+      const estimated = estimateAiModel(match);
+      if (!estimated) {
+        return null;
+      }
+
+      return {
+        matchId: match.id,
+        estimated,
+      };
+    })
+    .filter(
+      (
+        entry,
+      ): entry is {
+        estimated: NonNullable<ReturnType<typeof estimateAiModel>>;
+        matchId: string;
+      } => entry !== null,
+    );
+
+  const results = await Promise.all(
+    updates.map((entry) =>
+      supabase
+        .from("matches")
+        .update({
+          model_prob_1: entry.estimated.modelProb1,
+          model_prob_0: entry.estimated.modelProb0,
+          model_prob_2: entry.estimated.modelProb2,
+          recommended_outcomes: entry.estimated.recommendedOutcomes,
+        })
+        .eq("id", entry.matchId)
+        .eq("round_id", input.roundId),
+    ),
+  );
+
+  results.forEach((result) => throwIfError("Failed to save estimated AI model", result));
+
+  return {
+    skippedCount: matches.length - updates.length,
+    updatedCount: updates.length,
+  };
 }
 
 export async function replacePicks(input: {

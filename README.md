@@ -83,6 +83,7 @@ GitHub Pages は静的配信なので、build 後に増える Round を動的ル
 
 - 13 試合の一覧
 - 試合日程のまとめ貼り付け入力
+- 公式人気 / 市場確率からの AI まとめ試算
 - Official / Market / Model の 1/0/2 比較
 - Edge 1/0/2
 - Human F / D / Human Consensus
@@ -274,7 +275,7 @@ F = ① + ② + ③ + ④ + M
 
 - 認証
 - 権限制御つきの共有
-- AI 確率の自動投入
+- 外部モデルとの連携による AI 確率の自動投入
 - 外部 API からの試合予定自動取得
 - CSV Import
 - リアルタイム同期

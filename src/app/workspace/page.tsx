@@ -25,6 +25,7 @@ import {
 import {
   aiRecommendedOutcomes,
   buildMatchBadges,
+  favoriteOutcomeForBucket,
   categoryLabel,
   formatCurrency,
   formatDateTime,
@@ -37,6 +38,7 @@ import {
   roundStatusLabel,
   roundStatusOptions,
 } from "@/lib/domain";
+import { canEstimateAiModel } from "@/lib/ai-estimator";
 import { deriveRoundProgressSummary, matchHasSetupInput } from "@/lib/round-progress";
 import {
   nullableString,
@@ -46,7 +48,7 @@ import {
 } from "@/lib/forms";
 import { fixtureImportTemplate, parseFixtureImportText } from "@/lib/fixture-import";
 import { appRoute, buildRoundHref, getSingleSearchParam } from "@/lib/round-links";
-import { bulkUpdateRoundMatches, updateRound } from "@/lib/repository";
+import { bulkUpdateRoundMatches, estimateRoundAiModel, updateRound } from "@/lib/repository";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { useRoundWorkspace } from "@/lib/use-app-data";
 
@@ -67,6 +69,9 @@ function WorkspacePageContent() {
   const [bulkSaving, setBulkSaving] = useState(false);
   const [bulkError, setBulkError] = useState<string | null>(null);
   const [bulkSuccess, setBulkSuccess] = useState<string | null>(null);
+  const [estimatingAi, setEstimatingAi] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiSuccess, setAiSuccess] = useState<string | null>(null);
   const progress = data
     ? deriveRoundProgressSummary({
         matches: data.round.matches,
@@ -76,6 +81,12 @@ function WorkspacePageContent() {
         userCount: data.users.length,
       })
     : null;
+  const estimableMatchCount =
+    data?.round.matches.filter((match) => canEstimateAiModel(match)).length ?? 0;
+  const missingAiCount =
+    data?.round.matches.filter(
+      (match) => match.modelProb1 === null && match.modelProb0 === null && match.modelProb2 === null,
+    ).length ?? 0;
 
   const handleSaveRound = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -144,6 +155,32 @@ function WorkspacePageContent() {
       setBulkError(errorMessage(nextError));
     } finally {
       setBulkSaving(false);
+    }
+  };
+
+  const handleEstimateAi = async () => {
+    if (!data) {
+      return;
+    }
+
+    setEstimatingAi(true);
+    setAiError(null);
+    setAiSuccess(null);
+
+    try {
+      const result = await estimateRoundAiModel({
+        roundId: data.round.id,
+      });
+      await refresh();
+      setAiSuccess(
+        result.updatedCount > 0
+          ? `${result.updatedCount} 試合の AI確率を試算しました。`
+          : "試算できる試合がありませんでした。先に公式人気か市場確率を入れてください。",
+      );
+    } catch (nextError) {
+      setAiError(errorMessage(nextError));
+    } finally {
+      setEstimatingAi(false);
     }
   };
 
@@ -392,6 +429,76 @@ function WorkspacePageContent() {
                   <li>日時は `2026-06-11 19:00` のように入れると読み取りやすいです。</li>
                   <li>会場やステージが空でも反映できます。後で試合編集で追記できます。</li>
                   <li>AI確率までは自動で入りません。日程を入れた後に、必要な試合だけ AI 1/0/2 を足してください。</li>
+                </ul>
+              </div>
+            </div>
+          </CollapsibleSectionCard>
+
+          <CollapsibleSectionCard
+            title="AI予想をまとめて試算する"
+            description="公式人気と市場確率が入っている試合を対象に、このアプリ内の暫定モデルで AI 1 / 0 / 2 を自動計算します。あとで試合編集で上書きできます。"
+            badge={<Badge tone="sky">AI試算</Badge>}
+          >
+            <div className="grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
+              <div className="space-y-4">
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <StatCard
+                    label="AI未設定"
+                    value={`${missingAiCount}`}
+                    hint="まだ AI 1 / 0 / 2 が空の試合数"
+                    compact
+                  />
+                  <StatCard
+                    label="試算できる試合"
+                    value={`${estimableMatchCount}`}
+                    hint="公式人気か市場確率が入っている試合数"
+                    compact
+                  />
+                  <StatCard
+                    label="今のAI本命"
+                    value={`${data.round.matches.filter((match) => favoriteOutcomeForBucket(match, "model")).length}`}
+                    hint="AI本命が表示できる試合数"
+                    compact
+                  />
+                </div>
+
+                <div className="rounded-[24px] border border-slate-200 bg-slate-50/85 p-5">
+                  <p className="text-sm leading-7 text-slate-700">
+                    これは外部モデルではなく、`公式人気 + 市場確率 + カテゴリ補正` から作る暫定の AI基準線です。
+                    人力の前段でたたき台を作る用途として使う想定です。
+                  </p>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className={buttonClassName}
+                      onClick={() => void handleEstimateAi()}
+                      disabled={estimatingAi}
+                    >
+                      {estimatingAi ? "AI試算中..." : "AI未設定を試算する"}
+                    </button>
+                    <Link
+                      href={buildRoundHref(appRoute.matchEditor, data.round.id, {
+                        match: data.round.matches[0]?.id,
+                      })}
+                      className={secondaryButtonClassName}
+                    >
+                      試合編集で確認
+                    </Link>
+                  </div>
+                  {aiError ? <p className="mt-3 text-sm text-rose-700">{aiError}</p> : null}
+                  {aiSuccess ? <p className="mt-3 text-sm text-emerald-700">{aiSuccess}</p> : null}
+                </div>
+              </div>
+
+              <div className="space-y-3 rounded-[24px] border border-slate-200 bg-slate-50/85 p-5">
+                <h3 className="font-display text-lg font-semibold tracking-[-0.04em] text-slate-950">
+                  試算ルール
+                </h3>
+                <ul className="space-y-2 text-sm leading-7 text-slate-700">
+                  <li>市場確率を強め、公式人気を補助的に混ぜています。</li>
+                  <li>ホーム / アウェイ差が小さい試合は、引き分けをやや持ち上げます。</li>
+                  <li>`固定寄り` や `引き分け候補` などのカテゴリも少しだけ反映します。</li>
+                  <li>本番用の予測モデルではないので、最後は試合編集で微調整してください。</li>
                 </ul>
               </div>
             </div>
