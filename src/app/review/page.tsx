@@ -43,6 +43,8 @@ function ReviewPageContent() {
   const [savingResults, setSavingResults] = useState(false);
   const [savingNote, setSavingNote] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const pendingResultsCount =
+    data?.round.matches.filter((match) => match.actualResult === null).length ?? 0;
 
   const summary = data
     ? buildReviewSummary({
@@ -140,7 +142,8 @@ function ReviewPageContent() {
             currentPath={appRoute.review}
           />
 
-          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+            <StatCard label="結果入力の残り" value={`${pendingResultsCount}`} />
             <StatCard label="AI推奨の的中数" value={`${summary.aiHits}/${summary.completedMatches}`} />
             <StatCard
               label="人力コンセンサスの的中数"
@@ -150,7 +153,19 @@ function ReviewPageContent() {
             <StatCard label="市場本命の的中数" value={`${summary.marketHits}/${summary.completedMatches}`} />
           </section>
 
-          <SectionCard title="結果入力" description="actualResult をまとめて更新できます。">
+          <SectionCard
+            title="結果入力"
+            description="試合結果をまとめて更新できます。結果がすべて入ると、そのまま振り返りが見やすくなります。"
+          >
+            {pendingResultsCount > 0 ? (
+              <div className="rounded-3xl border border-amber-200 bg-amber-50/90 p-4 text-sm leading-6 text-amber-950">
+                まだ結果未入力の試合が {pendingResultsCount} 件あります。先にここを埋めると、下の集計とランキングが揃います。
+              </div>
+            ) : (
+              <div className="rounded-3xl border border-emerald-200 bg-emerald-50/90 p-4 text-sm leading-6 text-emerald-950">
+                13 試合ぶんの結果入力が揃っています。下の集計と反省ログをそのまま確認できます。
+              </div>
+            )}
             <form onSubmit={handleSaveResults} className="space-y-5">
               <div className="grid gap-4 md:grid-cols-3">
                 {data.round.matches.map((match) => (

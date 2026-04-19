@@ -33,6 +33,7 @@ import {
   roundStatusLabel,
   roundStatusOptions,
 } from "@/lib/domain";
+import { deriveRoundProgressSummary } from "@/lib/round-progress";
 import { appRoute, buildRoundHref } from "@/lib/round-links";
 import { createDemoRound, createRound, createSampleUsers } from "@/lib/repository";
 import { isSupabaseConfigured } from "@/lib/supabase";
@@ -40,6 +41,10 @@ import { useDashboardData } from "@/lib/use-app-data";
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "不明なエラーです。";
+}
+
+function progressValue(done: number, total: number) {
+  return total > 0 ? `${done}/${total}` : "未設定";
 }
 
 export default function DashboardPage() {
@@ -102,6 +107,18 @@ export default function DashboardPage() {
 
   const demoRound =
     data?.rounds.find((round) => round.title === demoRoundTitle) ?? null;
+  const latestRound = data?.rounds[0] ?? null;
+  const latestRoundProgress =
+    data && latestRound
+      ? deriveRoundProgressSummary({
+          matches: latestRound.matches,
+          picks: latestRound.picks,
+          resultedCount: latestRound.resultedCount,
+          roundId: latestRound.id,
+          scoutReports: latestRound.scoutReports,
+          userCount: data.users.length,
+        })
+      : null;
 
   return (
     <div className="space-y-8">
@@ -111,12 +128,32 @@ export default function DashboardPage() {
         description="AI基準線を先に見て、その上に人力の別予想をかぶせながら、入力と集計と振り返りを回す MVP です。"
         actions={
           <div className="flex flex-wrap gap-3">
-            <a href="#create-round" className={buttonClassName}>
-              ラウンドを作成
-            </a>
-            <a href="#round-list" className={secondaryButtonClassName}>
-              ラウンド一覧へ
-            </a>
+            {!data || data.users.length === 0 ? (
+              <button
+                type="button"
+                className={buttonClassName}
+                onClick={handleCreateSampleUsers}
+                disabled={busy === "members"}
+              >
+                {busy === "members" ? "作成中..." : "共有メンバーを作成"}
+              </button>
+            ) : latestRoundProgress ? (
+              <Link href={latestRoundProgress.nextStep.href} className={buttonClassName}>
+                {latestRoundProgress.nextStep.label}
+              </Link>
+            ) : (
+              <a href="#create-round" className={buttonClassName}>
+                ラウンドを作成
+              </a>
+            )}
+            <button
+              type="button"
+              className={secondaryButtonClassName}
+              onClick={handleOpenDemo}
+              disabled={busy === "demo"}
+            >
+              {busy === "demo" ? "準備中..." : "デモで体験する"}
+            </button>
           </div>
         }
       />
@@ -129,6 +166,102 @@ export default function DashboardPage() {
         <ErrorNotice error={error} onRetry={() => void refresh()} />
       ) : data ? (
         <>
+          <SectionCard
+            title="まずここから始める"
+            description="初回セットアップ、デモ体験、続きから再開の 3 本だけ先に見えるようにしています。"
+          >
+            <div className="grid gap-4 lg:grid-cols-3">
+              <div className="rounded-[24px] border border-white/80 bg-white/76 p-5 shadow-[0_18px_44px_-30px_rgba(15,23,42,0.4)]">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge tone={data.users.length > 0 ? "teal" : "amber"}>
+                    {data.users.length > 0 ? "準備済み" : "最初の一歩"}
+                  </Badge>
+                  <h3 className="font-display text-lg font-semibold tracking-[-0.04em] text-slate-950">
+                    初回セットアップ
+                  </h3>
+                </div>
+                <p className="mt-3 text-sm leading-6 text-slate-600">
+                  共有メンバーを先に作ると、そのまま人力予想と根拠カードへ進めます。
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {data.users.length === 0 ? (
+                    <button
+                      type="button"
+                      className={buttonClassName}
+                      onClick={handleCreateSampleUsers}
+                      disabled={busy === "members"}
+                    >
+                      {busy === "members" ? "作成中..." : "サンプル10人を作成"}
+                    </button>
+                  ) : (
+                    <a href="#shared-members" className={secondaryButtonClassName}>
+                      メンバーを確認
+                    </a>
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-[24px] border border-white/80 bg-white/76 p-5 shadow-[0_18px_44px_-30px_rgba(15,23,42,0.4)]">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge tone={demoRound ? "teal" : "amber"}>
+                    {demoRound ? "すぐ触れる" : "体験用"}
+                  </Badge>
+                  <h3 className="font-display text-lg font-semibold tracking-[-0.04em] text-slate-950">
+                    デモで流れを見る
+                  </h3>
+                </div>
+                <p className="mt-3 text-sm leading-6 text-slate-600">
+                  1 ラウンドぶんの入力と振り返りが最初から入っているので、操作の全体感を最短で確認できます。
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className={buttonClassName}
+                    onClick={handleOpenDemo}
+                    disabled={busy === "demo"}
+                  >
+                    {busy === "demo" ? "準備中..." : "デモラウンドを開く"}
+                  </button>
+                </div>
+              </div>
+
+              <div className="rounded-[24px] border border-white/80 bg-white/76 p-5 shadow-[0_18px_44px_-30px_rgba(15,23,42,0.4)]">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge tone={latestRoundProgress?.nextStep.tone ?? "sky"}>
+                    {latestRound ? "続きから" : "次にやる"}
+                  </Badge>
+                  <h3 className="font-display text-lg font-semibold tracking-[-0.04em] text-slate-950">
+                    今やること
+                  </h3>
+                </div>
+                <p className="mt-3 text-sm leading-6 text-slate-600">
+                  {latestRound && latestRoundProgress
+                    ? `${latestRound.title} の次アクションは「${latestRoundProgress.nextStep.label}」です。`
+                    : "共有メンバーができたら、新しいラウンドを作って試合設定から始めます。"}
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {latestRound && latestRoundProgress ? (
+                    <>
+                      <Link href={latestRoundProgress.nextStep.href} className={buttonClassName}>
+                        {latestRoundProgress.nextStep.label}
+                      </Link>
+                      <Link
+                        href={buildRoundHref(appRoute.workspace, latestRound.id)}
+                        className={secondaryButtonClassName}
+                      >
+                        ラウンド詳細
+                      </Link>
+                    </>
+                  ) : (
+                    <a href="#create-round" className={secondaryButtonClassName}>
+                      ラウンド作成へ
+                    </a>
+                  )}
+                </div>
+              </div>
+            </div>
+          </SectionCard>
+
           <SectionCard
             title="迷ったらこのデモラウンドから"
             description="保存済みのデモラウンドを 1 つ置いて、開くと『AI基準線と人力上書きがどういうことか』をそのまま追えるようにしています。"
@@ -540,6 +673,7 @@ export default function DashboardPage() {
           </section>
 
           <SectionCard
+            id="shared-members"
             title="共有メンバー"
             description="MVP では認証を入れず、表示名つきの共有入力として運用します。"
             actions={
@@ -636,68 +770,124 @@ export default function DashboardPage() {
 
           <section id="round-list" className="grid gap-5 xl:grid-cols-2">
             {data.rounds.map((round) => (
-              <SectionCard
-                key={round.id}
-                title={round.title}
-                description={round.notes ?? "ラウンドメモはまだありません。"}
-                actions={
-                  <div className="flex items-center gap-2">
-                    {round.title === demoRoundTitle ? (
-                      <Badge tone="amber">デモ</Badge>
-                    ) : null}
-                    <Badge tone="sky">{roundStatusLabel[round.status]}</Badge>
-                    <Link
-                      href={buildRoundHref(appRoute.workspace, round.id)}
-                      className={secondaryButtonClassName}
-                    >
-                      ラウンド詳細
-                    </Link>
-                  </div>
-                }
-              >
-                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                  <StatCard label="試合数" value={`${round.matchCount}`} compact />
-                  <StatCard label="予想数" value={`${round.pickCount}`} compact />
-                  <StatCard label="結果確定数" value={`${round.resultedCount}`} compact />
-                  <StatCard
-                    label="人力コンセンサス完成率"
-                    value={formatPercent(round.consensusCompletion)}
-                    compact
-                  />
-                </div>
+              (() => {
+                const progress = deriveRoundProgressSummary({
+                  matches: round.matches,
+                  picks: round.picks,
+                  resultedCount: round.resultedCount,
+                  roundId: round.id,
+                  scoutReports: round.scoutReports,
+                  userCount: data.users.length,
+                });
 
-                <div className="rounded-3xl border border-white/60 bg-white/80 p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <h3 className="text-sm font-semibold text-slate-900">
-                      Edgeが大きい試合トップ3
-                    </h3>
-                    <span className="text-xs text-slate-500">
-                      予算 {formatCurrency(round.budgetYen)}
-                    </span>
-                  </div>
-                  <div className="mt-3 space-y-2">
-                    {round.topEdges.length === 0 ? (
-                      <p className="text-sm text-slate-500">
-                        モデル確率と公式人気が入るとここに表示されます。
-                      </p>
-                    ) : (
-                      round.topEdges.map((edge) => (
-                        <div
-                          key={edge.matchId}
-                          className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-slate-950/5 px-3 py-2"
+                return (
+                  <SectionCard
+                    key={round.id}
+                    title={round.title}
+                    description={round.notes ?? "ラウンドメモはまだありません。"}
+                    actions={
+                      <div className="flex items-center gap-2">
+                        {round.title === demoRoundTitle ? (
+                          <Badge tone="amber">デモ</Badge>
+                        ) : null}
+                        <Badge tone="sky">{roundStatusLabel[round.status]}</Badge>
+                        <Link
+                          href={buildRoundHref(appRoute.workspace, round.id)}
+                          className={secondaryButtonClassName}
                         >
-                          <span className="text-sm font-medium text-slate-800">
-                            #{edge.matchNo} {edge.fixture}
-                          </span>
-                          <span className="text-sm font-semibold text-emerald-700">
-                            {formatSignedPercent(edge.edge)}
+                          ラウンド詳細
+                        </Link>
+                      </div>
+                    }
+                  >
+                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                      <StatCard
+                        label="試合設定"
+                        value={progressValue(progress.configuredMatches, round.matchCount)}
+                        compact
+                      />
+                      <StatCard
+                        label="人力予想"
+                        value={progressValue(round.pickCount, progress.expectedMemberEntries)}
+                        compact
+                      />
+                      <StatCard
+                        label="根拠カード"
+                        value={progressValue(round.scoutReports.length, progress.expectedMemberEntries)}
+                        compact
+                      />
+                      <StatCard
+                        label="結果入力"
+                        value={progressValue(round.resultedCount, round.matchCount)}
+                        compact
+                      />
+                    </div>
+
+                    <div className="grid gap-4 xl:grid-cols-[1fr_0.95fr]">
+                      <div className="rounded-3xl border border-white/60 bg-white/80 p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <h3 className="text-sm font-semibold text-slate-900">
+                            Edgeが大きい試合トップ3
+                          </h3>
+                          <span className="text-xs text-slate-500">
+                            予算 {formatCurrency(round.budgetYen)}
                           </span>
                         </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              </SectionCard>
+                        <div className="mt-3 space-y-2">
+                          {round.topEdges.length === 0 ? (
+                            <p className="text-sm text-slate-500">
+                              モデル確率と公式人気が入るとここに表示されます。
+                            </p>
+                          ) : (
+                            round.topEdges.map((edge) => (
+                              <div
+                                key={edge.matchId}
+                                className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-slate-950/5 px-3 py-2"
+                              >
+                                <span className="text-sm font-medium text-slate-800">
+                                  #{edge.matchNo} {edge.fixture}
+                                </span>
+                                <span className="text-sm font-semibold text-emerald-700">
+                                  {formatSignedPercent(edge.edge)}
+                                </span>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="rounded-3xl border border-slate-200 bg-slate-50/92 p-4">
+                        <div className="flex items-center gap-2">
+                          <Badge tone={progress.nextStep.tone}>次にやること</Badge>
+                          <h3 className="text-sm font-semibold text-slate-900">
+                            {progress.nextStep.label}
+                          </h3>
+                        </div>
+                        <p className="mt-3 text-sm leading-6 text-slate-600">
+                          {progress.nextStep.description}
+                        </p>
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          <Link href={progress.nextStep.href} className={buttonClassName}>
+                            {progress.nextStep.label}
+                          </Link>
+                          <Link
+                            href={buildRoundHref(appRoute.workspace, round.id)}
+                            className={secondaryButtonClassName}
+                          >
+                            ラウンドを開く
+                          </Link>
+                        </div>
+                        <div className="mt-4 flex flex-wrap gap-2 text-xs text-slate-500">
+                          <span>設定 {formatPercent(progress.setupCompletion)}</span>
+                          <span>予想 {formatPercent(progress.pickCompletion)}</span>
+                          <span>根拠 {formatPercent(progress.scoutCompletion)}</span>
+                          <span>結果 {formatPercent(progress.resultCompletion)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </SectionCard>
+                );
+              })()
             ))}
           </section>
         </>

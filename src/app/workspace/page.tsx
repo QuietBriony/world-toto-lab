@@ -18,6 +18,7 @@ import {
   PageHeader,
   secondaryButtonClassName,
   SectionCard,
+  StatCard,
   textAreaClassName,
 } from "@/components/ui";
 import {
@@ -35,6 +36,7 @@ import {
   roundStatusLabel,
   roundStatusOptions,
 } from "@/lib/domain";
+import { deriveRoundProgressSummary, matchHasSetupInput } from "@/lib/round-progress";
 import {
   nullableString,
   parseIntOrNull,
@@ -50,12 +52,25 @@ function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "不明なエラーです。";
 }
 
+function progressValue(done: number, total: number) {
+  return total > 0 ? `${done}/${total}` : "未設定";
+}
+
 function WorkspacePageContent() {
   const searchParams = useSearchParams();
   const roundId = getSingleSearchParam(searchParams.get("round"));
   const { data, error, loading, refresh } = useRoundWorkspace(roundId);
   const [saving, setSaving] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const progress = data
+    ? deriveRoundProgressSummary({
+        matches: data.round.matches,
+        picks: data.round.picks,
+        roundId: data.round.id,
+        scoutReports: data.round.scoutReports,
+        userCount: data.users.length,
+      })
+    : null;
 
   const handleSaveRound = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -113,56 +128,74 @@ function WorkspacePageContent() {
           />
 
           <SectionCard
-            title="このラウンドの進め方"
-            description="ラウンドを作った後は、だいたいこの順で使うとまとまります。"
+            title="進行チェック"
+            description="今どこまで進んでいるかと、次にやることを先に確認できます。"
           >
-            <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                {[
-                  {
-                    title: "1. 試合編集",
-                    body: "試合名、確率、カテゴリ、推奨候補を整える",
-                  },
-                  {
-                    title: "2. 人力予想",
-                    body: "AI基準線を見てから各メンバーの 1 / 0 / 2 を上書きする",
-                  },
-                  {
-                    title: "3. 根拠カード",
-                    body: "根拠スコアと drawAlert を入れる",
-                  },
-                  {
-                    title: "4. コンセンサス",
-                    body: "AI基準線に対して人力がどう重なったかを見る",
-                  },
-                  {
-                    title: "5. 差分 / 候補チケット",
-                    body: "差分と候補比較を並べる",
-                  },
-                  {
-                    title: "6. 振り返り",
-                    body: "結果と反省ログを残す",
-                  },
-                ].map((item) => (
-                  <div
-                    key={item.title}
-                    className="rounded-[22px] border border-white/80 bg-white/74 p-4 shadow-[0_16px_38px_-30px_rgba(15,23,42,0.45)]"
-                  >
-                    <h3 className="font-display text-base font-semibold tracking-[-0.04em] text-slate-950">
-                      {item.title}
-                    </h3>
-                    <p className="mt-2 text-sm leading-6 text-slate-600">{item.body}</p>
-                  </div>
-                ))}
+            <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <StatCard
+                  label="試合設定"
+                  value={
+                    progressValue(progress?.configuredMatches ?? 0, data.round.matches.length)
+                  }
+                  hint="キックオフ、確率、メモなどが入った試合数"
+                  compact
+                />
+                <StatCard
+                  label="人力予想"
+                  value={
+                    progressValue(
+                      data.round.picks.length,
+                      progress?.expectedMemberEntries ?? 0,
+                    )
+                  }
+                  hint="全メンバーぶんの 1 / 0 / 2 入力状況"
+                  compact
+                />
+                <StatCard
+                  label="根拠カード"
+                  value={
+                    progressValue(
+                      data.round.scoutReports.length,
+                      progress?.expectedMemberEntries ?? 0,
+                    )
+                  }
+                  hint="根拠スコアとメモの入力状況"
+                  compact
+                />
+                <StatCard
+                  label="結果入力"
+                  value={progressValue(
+                    data.round.matches.filter((match) => match.actualResult !== null).length,
+                    data.round.matches.length,
+                  )}
+                  hint="試合結果の入力状況"
+                  compact
+                />
               </div>
 
               <div className="rounded-[24px] border border-slate-200 bg-slate-50/80 p-5">
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge tone={progress?.nextStep.tone ?? "sky"}>今やること</Badge>
+                  <h3 className="font-display text-lg font-semibold tracking-[-0.04em] text-slate-950">
+                    {progress?.nextStep.label ?? "ラウンドを進める"}
+                  </h3>
+                </div>
+                <p className="mt-3 text-sm leading-6 text-slate-600">
+                  {progress?.nextStep.description ??
+                    "試合設定、人力予想、根拠カード、振り返りの順で進めるとまとまりやすいです。"}
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {progress ? (
+                    <Link href={progress.nextStep.href} className={buttonClassName}>
+                      {progress.nextStep.label}
+                    </Link>
+                  ) : null}
                   <Link
                     href={buildRoundHref(appRoute.picks, data.round.id, {
                       user: data.users[0]?.id,
                     })}
-                    className={buttonClassName}
+                    className={secondaryButtonClassName}
                   >
                     人力予想へ
                   </Link>
@@ -175,32 +208,20 @@ function WorkspacePageContent() {
                     根拠カードへ
                   </Link>
                   <Link
-                    href={buildRoundHref(appRoute.consensus, data.round.id)}
-                    className={secondaryButtonClassName}
-                  >
-                    コンセンサスへ
-                  </Link>
-                  <Link
-                    href={buildRoundHref(appRoute.edgeBoard, data.round.id)}
-                    className={secondaryButtonClassName}
-                  >
-                    差分ボードへ
-                  </Link>
-                  <Link
-                    href={buildRoundHref(appRoute.ticketGenerator, data.round.id)}
-                    className={secondaryButtonClassName}
-                  >
-                    候補チケットへ
-                  </Link>
-                  <Link
                     href={buildRoundHref(appRoute.review, data.round.id)}
                     className={secondaryButtonClassName}
                   >
                     振り返りへ
                   </Link>
                 </div>
+                <div className="mt-4 flex flex-wrap gap-2 text-xs text-slate-500">
+                  <span>設定 {formatPercent(progress?.setupCompletion ?? 0)}</span>
+                  <span>予想 {formatPercent(progress?.pickCompletion ?? 0)}</span>
+                  <span>根拠 {formatPercent(progress?.scoutCompletion ?? 0)}</span>
+                  <span>結果 {formatPercent(progress?.resultCompletion ?? 0)}</span>
+                </div>
                 <p className="mt-4 text-sm leading-6 text-slate-600">
-                  先にメンバーを作っておくと、人力予想と根拠カードの切り替えがスムーズです。
+                  基本の順番: 試合設定 → 人力予想 → 根拠カード → コンセンサス → 差分 / 候補チケット → 振り返り
                 </p>
               </div>
             </div>
@@ -306,9 +327,17 @@ function WorkspacePageContent() {
                     const aiBase = aiRecommendedOutcomes(match);
                     const badges = buildMatchBadges(match);
                     const overlayBadge = humanOverlayBadge(match);
+                    const setupReady = matchHasSetupInput(match);
 
                     return (
-                      <tr key={match.id} className="border-b border-slate-100 align-top">
+                      <tr
+                        key={match.id}
+                        className={
+                          setupReady
+                            ? "border-b border-slate-100 align-top"
+                            : "border-b border-amber-100 bg-amber-50/40 align-top"
+                        }
+                      >
                         <td className="px-3 py-4 font-semibold text-slate-900">
                           {match.matchNo}
                         </td>
@@ -396,7 +425,10 @@ function WorkspacePageContent() {
                         </td>
                         <td className="px-3 py-4">
                           <div className="flex max-w-[240px] flex-wrap gap-2">
-                            {badges.length === 0 ? (
+                            {!setupReady ? (
+                              <Badge tone="amber">要設定</Badge>
+                            ) : null}
+                            {badges.length === 0 && setupReady ? (
                               <span className="text-xs text-slate-400">—</span>
                             ) : (
                               badges.map((badge) => (

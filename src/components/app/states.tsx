@@ -78,8 +78,8 @@ export function ErrorNotice({
 export function RoundRequiredNotice() {
   return (
     <SectionCard
-      title="ラウンドを選択してください"
-      description="この画面は URL の `?round=` で対象ラウンドを切り替えます。"
+      title="先にラウンドを開いてください"
+      description="この画面は単独では使えません。ダッシュボードから対象ラウンドを開くと、そのまま続きに進めます。"
       actions={
         <Link href={appRoute.dashboard} className={secondaryButtonClassName}>
           ダッシュボードへ
@@ -87,7 +87,7 @@ export function RoundRequiredNotice() {
       }
     >
       <p className="text-sm text-slate-600">
-        まずダッシュボードでラウンドを作成し、そこから各画面へ移動してください。
+        まずダッシュボードでラウンドを作成するか、既存ラウンドの「ラウンド詳細」を開いてください。
       </p>
     </SectionCard>
   );

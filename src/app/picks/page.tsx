@@ -1,8 +1,7 @@
 "use client";
 
-import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { Suspense, useState, type FormEvent } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState, type FormEvent } from "react";
 
 import {
   ConfigurationNotice,
@@ -76,12 +75,14 @@ function buildDraftPickIdentity(input: {
 }
 
 function PicksPageContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const roundId = getSingleSearchParam(searchParams.get("round"));
   const requestedUserId = getSingleSearchParam(searchParams.get("user"));
   const { data, error, loading, refresh } = useRoundWorkspace(roundId);
   const [saving, setSaving] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [draftPickState, setDraftPickState] = useState<{
     identity: string;
     values: Record<string, OutcomeValue | "">;
@@ -112,6 +113,43 @@ function PicksPageContent() {
     draftPickState.identity === draftPickIdentity
       ? draftPickState.values
       : baseDraftPickValues;
+  const hasVisibleUnsavedChanges =
+    hasUnsavedChanges && draftPickState.identity === draftPickIdentity;
+  const filledPickCount =
+    data && activeUser
+      ? data.round.matches.filter((match) => Boolean(resolvedDraftPickValues[match.id])).length
+      : 0;
+  const pendingPickCount = data ? Math.max(data.round.matches.length - filledPickCount, 0) : 0;
+  const formId = activeUser ? `picks-form-${activeUser.id}` : "picks-form";
+
+  useEffect(() => {
+    if (!hasVisibleUnsavedChanges) {
+      return;
+    }
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hasVisibleUnsavedChanges]);
+
+  const handleSwitchUser = (userId: string) => {
+    if (
+      hasVisibleUnsavedChanges &&
+      !window.confirm("未保存の変更があります。保存せずにユーザーを切り替えますか？")
+    ) {
+      return;
+    }
+
+    router.push(
+      buildRoundHref(appRoute.picks, data?.round.id ?? roundId, {
+        user: userId,
+      }),
+    );
+  };
 
   const handleSave = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -134,6 +172,7 @@ function PicksPageContent() {
           note: nullableString(formData, `note_${match.id}`),
         })),
       });
+      setHasUnsavedChanges(false);
       await refresh();
     } catch (nextError) {
       setSubmitError(errorMessage(nextError));
@@ -185,17 +224,19 @@ function PicksPageContent() {
               >
                 <div className="flex flex-wrap gap-2">
                   {data.users.map((user) => (
-                    <Link
+                    <button
+                      type="button"
                       key={user.id}
-                      href={buildRoundHref(appRoute.picks, data.round.id, {
-                        user: user.id,
-                      })}
+                      onClick={() => handleSwitchUser(user.id)}
                       className={user.id === activeUser.id ? buttonClassName : fieldClassName}
                     >
                       {user.name}
-                    </Link>
+                    </button>
                   ))}
                 </div>
+                <p className="text-xs text-slate-500">
+                  先に保存してから切り替えると、入力の取りこぼしを防げます。
+                </p>
               </SectionCard>
 
               <SectionCard
@@ -317,10 +358,32 @@ function PicksPageContent() {
                         className="lg:col-span-4"
                         title={`${activeUser.name} の上書き入力表`}
                         description="AI 基準線を見ながら、13試合をまとめて保存します。"
+                        actions={
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Badge tone={pendingPickCount === 0 ? "teal" : "amber"}>
+                              入力 {filledPickCount}/{data.round.matches.length}
+                            </Badge>
+                            {hasVisibleUnsavedChanges ? (
+                              <Badge tone="rose">未保存あり</Badge>
+                            ) : (
+                              <Badge tone="slate">保存済み</Badge>
+                            )}
+                            <button
+                              type="submit"
+                              form={formId}
+                              className={buttonClassName}
+                              disabled={saving}
+                            >
+                              {saving ? "保存中..." : "予想を保存"}
+                            </button>
+                          </div>
+                        }
                       >
                         <form
+                          id={formId}
                           key={activeUser.id}
                           onSubmit={handleSave}
+                          onChange={() => setHasUnsavedChanges(true)}
                           className="space-y-5"
                         >
                           <div className="overflow-x-auto">
@@ -328,7 +391,7 @@ function PicksPageContent() {
                               <thead>
                                 <tr className="border-b border-slate-200 text-slate-500">
                                   <th className="px-3 py-3">番号</th>
-                                  <th className="px-3 py-3">番号</th>
+                                  <th className="px-3 py-3">試合</th>
                                   <th className="px-3 py-3">AI基準線</th>
                                   <th className="px-3 py-3">自分の上書き</th>
                                   <th className="px-3 py-3">AIとの差分</th>
@@ -377,7 +440,7 @@ function PicksPageContent() {
                                             <Badge tone="slate">AI未設定</Badge>
                                           ) : (
                                             aiBase.map((outcome) => (
-                                                <Badge key={`${match.id}-ai-${outcome}`} tone="amber">
+                                              <Badge key={`${match.id}-ai-${outcome}`} tone="amber">
                                                 AI {outcome}
                                               </Badge>
                                             ))
@@ -467,98 +530,106 @@ function PicksPageContent() {
                       <SectionCard
                         className="lg:col-span-4"
                         title="全員の予想一覧"
-                        description="AI 基準線に対して、各メンバーがどこへ上書きしたかを 1 試合ごとに見ます。"
+                        description="必要なときだけ開いて、全体の重なり方を確認します。"
                       >
-                        <div className="overflow-x-auto">
-                          <table className="min-w-[1280px] text-left text-sm">
-                            <thead>
+                        <details className="group rounded-[24px] border border-slate-200 bg-slate-50/85">
+                          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-4 text-sm font-medium text-slate-700 [&::-webkit-details-marker]:hidden">
+                            <span>全員の予想分布を開く</span>
+                            <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-500">
+                              クリックで表示
+                            </span>
+                          </summary>
+                          <div className="overflow-x-auto border-t border-slate-200 px-4 py-4">
+                            <table className="min-w-[1280px] text-left text-sm">
+                              <thead>
                                 <tr className="border-b border-slate-200 text-slate-500">
-                                  <th className="px-3 py-3">試合</th>
+                                  <th className="px-3 py-3">番号</th>
                                   <th className="px-3 py-3">試合</th>
                                   <th className="px-3 py-3">AI基準線</th>
-                                {data.users.map((user) => (
-                                  <th key={user.id} className="px-3 py-3">
-                                    {user.name}
-                                  </th>
-                                ))}
+                                  {data.users.map((user) => (
+                                    <th key={user.id} className="px-3 py-3">
+                                      {user.name}
+                                    </th>
+                                  ))}
                                   <th className="px-3 py-3">人力上書き</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {data.round.matches.map((match) => {
-                                const counts = pickCounts(picksByMatch.get(match.id) ?? []);
-                                const aiBase = aiRecommendedOutcomes(match);
-                                const overlayBadge = humanOverlayBadge(match);
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {data.round.matches.map((match) => {
+                                  const counts = pickCounts(picksByMatch.get(match.id) ?? []);
+                                  const aiBase = aiRecommendedOutcomes(match);
+                                  const overlayBadge = humanOverlayBadge(match);
 
-                                return (
-                                  <tr key={match.id} className="border-b border-slate-100">
-                                    <td className="px-3 py-4 font-semibold text-slate-900">
-                                      {match.matchNo}
-                                    </td>
-                                    <td className="px-3 py-4">
-                                      <div className="font-medium text-slate-900">
-                                        {match.homeTeam} 対 {match.awayTeam}
-                                      </div>
-                                      <div className="text-xs text-slate-500">
-                                        人力{" "}
-                                        {majorityHumanOutcome(picksByMatch.get(match.id) ?? []) ??
-                                          "—"}
-                                      </div>
-                                    </td>
-                                    <td className="px-3 py-4">
-                                      <div className="flex flex-wrap gap-2">
-                                        {aiBase.length === 0 ? (
-                                          <Badge tone="slate">AI未設定</Badge>
-                                        ) : (
-                                          aiBase.map((outcome) => (
-                                            <Badge
-                                              key={`${match.id}-all-ai-${outcome}`}
-                                              tone="amber"
-                                            >
-                                              {outcome}
-                                            </Badge>
-                                          ))
-                                        )}
-                                      </div>
-                                      <div className="mt-2 text-xs text-slate-500">
-                                        AI {formatPercent(match.modelProb1)} /{" "}
-                                        {formatPercent(match.modelProb0)} /{" "}
-                                        {formatPercent(match.modelProb2)}
-                                      </div>
-                                    </td>
-                                    {data.users.map((user) => {
-                                      const pick = pickByMatchUser.get(`${match.id}:${user.id}`);
-                                      const value = enumToOutcome(pick?.pick) ?? "—";
-                                      const tone =
-                                        value === "—"
-                                          ? "slate"
-                                          : singlePickOverlayBadge(match, value).tone;
+                                  return (
+                                    <tr key={match.id} className="border-b border-slate-100">
+                                      <td className="px-3 py-4 font-semibold text-slate-900">
+                                        {match.matchNo}
+                                      </td>
+                                      <td className="px-3 py-4">
+                                        <div className="font-medium text-slate-900">
+                                          {match.homeTeam} 対 {match.awayTeam}
+                                        </div>
+                                        <div className="text-xs text-slate-500">
+                                          人力{" "}
+                                          {majorityHumanOutcome(picksByMatch.get(match.id) ?? []) ??
+                                            "—"}
+                                        </div>
+                                      </td>
+                                      <td className="px-3 py-4">
+                                        <div className="flex flex-wrap gap-2">
+                                          {aiBase.length === 0 ? (
+                                            <Badge tone="slate">AI未設定</Badge>
+                                          ) : (
+                                            aiBase.map((outcome) => (
+                                              <Badge
+                                                key={`${match.id}-all-ai-${outcome}`}
+                                                tone="amber"
+                                              >
+                                                {outcome}
+                                              </Badge>
+                                            ))
+                                          )}
+                                        </div>
+                                        <div className="mt-2 text-xs text-slate-500">
+                                          AI {formatPercent(match.modelProb1)} /{" "}
+                                          {formatPercent(match.modelProb0)} /{" "}
+                                          {formatPercent(match.modelProb2)}
+                                        </div>
+                                      </td>
+                                      {data.users.map((user) => {
+                                        const pick = pickByMatchUser.get(`${match.id}:${user.id}`);
+                                        const value = enumToOutcome(pick?.pick) ?? "—";
+                                        const tone =
+                                          value === "—"
+                                            ? "slate"
+                                            : singlePickOverlayBadge(match, value).tone;
 
-                                      return (
-                                        <td key={user.id} className="px-3 py-4">
-                                          <Badge tone={tone}>{value}</Badge>
-                                        </td>
-                                      );
-                                    })}
-                                    <td className="px-3 py-4 text-slate-600">
-                                      <div className="flex flex-wrap gap-2">
-                                        <Badge tone={overlayBadge.tone}>
-                                          {overlayBadge.label}
-                                        </Badge>
-                                        <Badge tone="slate">
-                                          {match.consensusCall ?? "未集計"}
-                                        </Badge>
-                                      </div>
-                                      <div className="mt-2">
-                                        {counts["1"]} / {counts["0"]} / {counts["2"]}
-                                      </div>
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
+                                        return (
+                                          <td key={user.id} className="px-3 py-4">
+                                            <Badge tone={tone}>{value}</Badge>
+                                          </td>
+                                        );
+                                      })}
+                                      <td className="px-3 py-4 text-slate-600">
+                                        <div className="flex flex-wrap gap-2">
+                                          <Badge tone={overlayBadge.tone}>
+                                            {overlayBadge.label}
+                                          </Badge>
+                                          <Badge tone="slate">
+                                            {match.consensusCall ?? "未集計"}
+                                          </Badge>
+                                        </div>
+                                        <div className="mt-2">
+                                          {counts["1"]} / {counts["0"]} / {counts["2"]}
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </details>
                       </SectionCard>
                     </>
                   );
