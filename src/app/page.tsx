@@ -110,6 +110,45 @@ export default function DashboardPage() {
         <ErrorNotice error={error} onRetry={() => void refresh()} />
       ) : data ? (
         <>
+          <SectionCard
+            className="metric-grid"
+            title="Lab Frame"
+            description="保存、共有、分析を一つの流れで回すための MVP です。単なる紹介ページではなく、実際の入力と集計に寄せています。"
+          >
+            <div className="grid gap-4 lg:grid-cols-3">
+              {[
+                {
+                  kicker: "Collect",
+                  title: "人力の見立てを集める",
+                  body: "Picks と Scout Card で、試合ごとの理由つき入力を共有します。",
+                },
+                {
+                  kicker: "Compare",
+                  title: "モデル差分を並べる",
+                  body: "Official / Market / Model / Human を同じ面で比較できます。",
+                },
+                {
+                  kicker: "Review",
+                  title: "反省を次回に残す",
+                  body: "Review で的中率だけでなく一致・対立パターンも振り返ります。",
+                },
+              ].map((item) => (
+                <div
+                  key={item.kicker}
+                  className="rounded-[24px] border border-white/70 bg-white/72 p-4 shadow-[0_18px_44px_-30px_rgba(15,23,42,0.42)]"
+                >
+                  <div className="font-display text-[11px] uppercase tracking-[0.34em] text-teal-800/72">
+                    {item.kicker}
+                  </div>
+                  <h3 className="mt-3 font-display text-xl font-semibold tracking-[-0.05em] text-slate-950">
+                    {item.title}
+                  </h3>
+                  <p className="mt-3 text-sm leading-6 text-slate-600">{item.body}</p>
+                </div>
+              ))}
+            </div>
+          </SectionCard>
+
           <section className="grid gap-4 md:grid-cols-4">
             <StatCard
               label="Round数"

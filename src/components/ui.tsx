@@ -39,16 +39,16 @@ export function cx(...inputs: ClassValue[]) {
 }
 
 export const buttonClassName =
-  "inline-flex h-11 items-center justify-center rounded-full bg-teal-600 px-5 text-sm font-semibold text-white transition duration-200 hover:bg-teal-500 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-teal-500/25 disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex h-11 items-center justify-center rounded-full border border-teal-700/80 bg-[linear-gradient(135deg,#0f766e,#0b5f5d)] px-5 text-sm font-semibold text-white shadow-[0_18px_38px_-24px_rgba(15,118,110,0.85)] hover:-translate-y-0.5 hover:shadow-[0_28px_56px_-26px_rgba(15,118,110,0.75)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-teal-500/25 disabled:cursor-not-allowed disabled:opacity-50";
 
 export const secondaryButtonClassName =
-  "inline-flex h-11 items-center justify-center rounded-full border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-800 transition duration-200 hover:border-teal-300 hover:bg-teal-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-teal-500/15 disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex h-11 items-center justify-center rounded-full border border-slate-300/90 bg-white/88 px-5 text-sm font-semibold text-slate-800 shadow-[0_18px_38px_-28px_rgba(15,23,42,0.55)] hover:-translate-y-0.5 hover:border-teal-300 hover:bg-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-teal-500/15 disabled:cursor-not-allowed disabled:opacity-50";
 
 export const fieldClassName =
-  "h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-teal-400 focus:ring-4 focus:ring-teal-500/15";
+  "h-11 w-full rounded-2xl border border-slate-300/90 bg-white/88 px-4 text-sm text-slate-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] outline-none placeholder:text-slate-400 focus:border-teal-400 focus:ring-4 focus:ring-teal-500/15";
 
 export const textAreaClassName =
-  "min-h-32 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-teal-400 focus:ring-4 focus:ring-teal-500/15";
+  "min-h-32 w-full rounded-2xl border border-slate-300/90 bg-white/88 px-4 py-3 text-sm text-slate-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] outline-none placeholder:text-slate-400 focus:border-teal-400 focus:ring-4 focus:ring-teal-500/15";
 
 type BadgeTone =
   | "amber"
@@ -94,7 +94,7 @@ export function Badge({
   return (
     <span
       className={cx(
-        "inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold tracking-[0.16em]",
+        "inline-flex items-center gap-1 rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] shadow-[0_12px_24px_-22px_rgba(15,23,42,0.7)]",
         badgeToneClassName[tone],
         className,
       )}
@@ -129,7 +129,7 @@ export function SectionCard({
   return (
     <section
       className={cx(
-        "rounded-[28px] border border-white/70 bg-white/88 p-5 shadow-[0_24px_80px_-40px_rgba(15,23,42,0.35)] backdrop-blur-xl sm:p-6",
+        "relative overflow-hidden rounded-[30px] border border-white/70 bg-[linear-gradient(145deg,rgba(255,255,255,0.94),rgba(246,248,251,0.9))] p-5 shadow-[0_28px_90px_-48px_rgba(15,23,42,0.46)] backdrop-blur-xl before:absolute before:inset-x-6 before:top-0 before:h-px before:bg-[linear-gradient(90deg,transparent,rgba(15,118,110,0.5),transparent)] sm:p-6",
         className,
       )}
       {...props}
@@ -138,7 +138,7 @@ export function SectionCard({
         <div className="mb-5 flex flex-col gap-3 border-b border-slate-200 pb-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-1.5">
             {typeof title === "string" ? (
-              <h2 className="text-lg font-semibold tracking-tight text-slate-950">
+              <h2 className="font-display text-lg font-semibold tracking-[-0.04em] text-slate-950 sm:text-[1.2rem]">
                 {title}
               </h2>
             ) : (
@@ -192,7 +192,7 @@ export function StatCard({
   return (
     <div
       className={cx(
-        "rounded-[24px] border p-4 shadow-[0_16px_40px_-28px_rgba(15,23,42,0.28)] backdrop-blur-xl sm:p-5",
+        "relative overflow-hidden rounded-[26px] border p-4 shadow-[0_20px_54px_-34px_rgba(15,23,42,0.34)] backdrop-blur-xl before:absolute before:right-[-2rem] before:top-[-2rem] before:h-24 before:w-24 before:rounded-full before:bg-white/45 before:blur-2xl sm:p-5",
         statToneClassName[tone],
         className,
       )}
@@ -204,8 +204,8 @@ export function StatCard({
       </div>
       <div
         className={cx(
-          "mt-4 font-semibold tracking-tight text-slate-950",
-          compact ? "text-2xl" : "text-3xl",
+          "font-display mt-4 font-semibold tracking-[-0.06em] text-slate-950",
+          compact ? "text-[1.9rem]" : "text-[2.4rem]",
         )}
       >
         {value}
@@ -235,19 +235,19 @@ export function PageHeader({
   return (
     <header
       className={cx(
-        "flex flex-col gap-4 rounded-[28px] border border-white/70 bg-[linear-gradient(135deg,rgba(236,253,245,0.95),rgba(240,249,255,0.92))] p-5 shadow-[0_24px_80px_-40px_rgba(15,23,42,0.35)] backdrop-blur-xl sm:p-6 lg:flex-row lg:items-end lg:justify-between",
+        "relative overflow-hidden flex flex-col gap-4 rounded-[32px] border border-white/70 bg-[linear-gradient(125deg,rgba(255,255,255,0.76),rgba(233,248,244,0.92)_40%,rgba(240,249,255,0.84))] p-5 shadow-[0_30px_90px_-50px_rgba(15,23,42,0.45)] backdrop-blur-xl before:absolute before:right-[-4rem] before:top-[-5rem] before:h-40 before:w-40 before:rounded-full before:bg-[radial-gradient(circle,rgba(15,118,110,0.18),transparent_65%)] before:blur-xl sm:p-6 lg:flex-row lg:items-end lg:justify-between",
         className,
       )}
       {...props}
     >
       <div className="space-y-3">
         {eyebrow ? (
-          <div className="text-xs font-medium uppercase tracking-[0.3em] text-teal-700/70">
+          <div className="font-display text-[11px] font-medium uppercase tracking-[0.38em] text-teal-800/72">
             {eyebrow}
           </div>
         ) : null}
         {typeof title === "string" ? (
-          <h1 className="text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
+          <h1 className="font-display text-3xl font-semibold tracking-[-0.07em] text-slate-950 sm:text-4xl lg:text-[3rem]">
             {title}
           </h1>
         ) : (
