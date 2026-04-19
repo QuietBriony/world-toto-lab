@@ -12,6 +12,7 @@ import {
 import {
   Badge,
   buttonClassName,
+  CollapsibleSectionCard,
   fieldClassName,
   PageHeader,
   secondaryButtonClassName,
@@ -28,14 +29,21 @@ import {
 } from "@/lib/forms";
 import {
   formatCurrency,
+  formatDateTime,
   formatPercent,
   formatSignedPercent,
   roundStatusLabel,
   roundStatusOptions,
 } from "@/lib/domain";
-import { deriveRoundProgressSummary } from "@/lib/round-progress";
+import { deriveRoundProgressSummary, matchHasSetupInput } from "@/lib/round-progress";
 import { appRoute, buildRoundHref } from "@/lib/round-links";
-import { createDemoRound, createRound, createSampleUsers } from "@/lib/repository";
+import {
+  createDemoRound,
+  createRound,
+  createSampleUsers,
+  createUser,
+  updateUserName,
+} from "@/lib/repository";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { useDashboardData } from "@/lib/use-app-data";
 
@@ -47,11 +55,18 @@ function progressValue(done: number, total: number) {
   return total > 0 ? `${done}/${total}` : "未設定";
 }
 
+function hasAiInputs(model: { modelProb0: number | null; modelProb1: number | null; modelProb2: number | null }) {
+  return model.modelProb1 !== null || model.modelProb0 !== null || model.modelProb2 !== null;
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const { data, error, loading, refresh } = useDashboardData();
   const [busy, setBusy] = useState<"demo" | "members" | "round" | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [addingMember, setAddingMember] = useState(false);
+  const [savingMemberId, setSavingMemberId] = useState<string | null>(null);
+  const [memberActionError, setMemberActionError] = useState<string | null>(null);
 
   const handleCreateSampleUsers = async () => {
     setBusy("members");
@@ -90,6 +105,47 @@ export default function DashboardPage() {
     }
   };
 
+  const handleAddMember = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setAddingMember(true);
+    setMemberActionError(null);
+
+    try {
+      const formData = new FormData(event.currentTarget);
+      await createUser({
+        name: stringValue(formData, "memberName"),
+      });
+      event.currentTarget.reset();
+      await refresh();
+    } catch (nextError) {
+      setMemberActionError(errorMessage(nextError));
+    } finally {
+      setAddingMember(false);
+    }
+  };
+
+  const handleRenameMember = async (
+    event: FormEvent<HTMLFormElement>,
+    userId: string,
+  ) => {
+    event.preventDefault();
+    setSavingMemberId(userId);
+    setMemberActionError(null);
+
+    try {
+      const formData = new FormData(event.currentTarget);
+      await updateUserName({
+        userId,
+        name: stringValue(formData, "memberName"),
+      });
+      await refresh();
+    } catch (nextError) {
+      setMemberActionError(errorMessage(nextError));
+    } finally {
+      setSavingMemberId(null);
+    }
+  };
+
   const handleOpenDemo = async () => {
     setBusy("demo");
     setActionError(null);
@@ -119,6 +175,33 @@ export default function DashboardPage() {
           userCount: data.users.length,
         })
       : null;
+  const upcomingMatches = data
+    ? data.rounds
+        .flatMap((round) =>
+          round.matches
+            .filter((match) => {
+              if (!match.kickoffTime) {
+                return false;
+              }
+
+              return new Date(match.kickoffTime).getTime() >= Date.now();
+            })
+            .map((match) => ({
+              round,
+              match,
+            })),
+        )
+        .sort((left, right) => {
+          const leftTime = left.match.kickoffTime
+            ? new Date(left.match.kickoffTime).getTime()
+            : Number.POSITIVE_INFINITY;
+          const rightTime = right.match.kickoffTime
+            ? new Date(right.match.kickoffTime).getTime()
+            : Number.POSITIVE_INFINITY;
+          return leftTime - rightTime;
+        })
+        .slice(0, 8)
+    : [];
 
   return (
     <div className="space-y-8">
@@ -367,9 +450,11 @@ export default function DashboardPage() {
             {actionError ? <p className="text-sm text-rose-700">{actionError}</p> : null}
           </SectionCard>
 
-          <SectionCard
+          <CollapsibleSectionCard
             title="このサイトは何をするもの？"
             description="友人グループで W杯toto / WINNER の見立てを共有し、AI基準線と人力上書きを一つの流れで扱う分析ラボです。"
+            defaultOpen
+            badge={<Badge tone="teal">全体像</Badge>}
           >
             <div className="grid gap-4 lg:grid-cols-3">
               {[
@@ -403,11 +488,12 @@ export default function DashboardPage() {
                 </div>
               ))}
             </div>
-          </SectionCard>
+          </CollapsibleSectionCard>
 
-          <SectionCard
+          <CollapsibleSectionCard
             title="最初の使い方"
             description="初回はこの順で進めると迷いにくいです。"
+            badge={<Badge tone="sky">チュートリアル</Badge>}
           >
             <div className="grid gap-4 lg:grid-cols-2">
               {[
@@ -473,11 +559,12 @@ export default function DashboardPage() {
                 </div>
               ))}
             </div>
-          </SectionCard>
+          </CollapsibleSectionCard>
 
-          <SectionCard
+          <CollapsibleSectionCard
             title="今どこまで使える？"
             description="共有 MVP としてのコア機能は入っていますが、まだフルプロダクトではありません。"
+            badge={<Badge tone="amber">到達点</Badge>}
           >
             <div className="grid gap-4 lg:grid-cols-2">
               <div className="rounded-[24px] border border-emerald-200 bg-emerald-50/85 p-5">
@@ -534,7 +621,7 @@ export default function DashboardPage() {
                 </p>
               </div>
             </div>
-          </SectionCard>
+          </CollapsibleSectionCard>
 
           <SectionCard
             title="運用メモと公開時の注意"
@@ -590,8 +677,22 @@ export default function DashboardPage() {
                         {item.summary}
                       </p>
                     </div>
-                    <span className="rounded-full border border-slate-200 bg-white/84 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                      開く
+                    <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/84 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                      <svg
+                        viewBox="0 0 20 20"
+                        fill="none"
+                        aria-hidden="true"
+                        className="h-3.5 w-3.5 transition-transform duration-200 group-open:rotate-180"
+                      >
+                        <path
+                          d="M5 7.5L10 12.5L15 7.5"
+                          stroke="currentColor"
+                          strokeWidth="1.75"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                      <span>開閉</span>
                     </span>
                   </summary>
                   <div className="border-t border-slate-200/80 px-5 py-4">
@@ -673,9 +774,110 @@ export default function DashboardPage() {
           </section>
 
           <SectionCard
+            title="今後の試合予定"
+            description="キックオフ時刻が入っている試合を近い順に並べています。AIや試合情報の入力状況もここで確認できます。"
+          >
+            {upcomingMatches.length === 0 ? (
+              <div className="rounded-[24px] border border-dashed border-slate-300 bg-slate-50/88 p-5 text-sm leading-7 text-slate-600">
+                まだ今後の試合予定はありません。ラウンド詳細の「試合編集」でキックオフ日時を入れると、ここに次の試合が出ます。
+              </div>
+            ) : (
+              <div className="grid gap-4 xl:grid-cols-2">
+                {upcomingMatches.map(({ round, match }) => {
+                  const aiReady = hasAiInputs(match);
+
+                  return (
+                    <div
+                      key={match.id}
+                      className="rounded-[24px] border border-white/80 bg-white/76 p-5 shadow-[0_18px_44px_-30px_rgba(15,23,42,0.4)]"
+                    >
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge tone="sky">{formatDateTime(match.kickoffTime)}</Badge>
+                        <Badge tone="slate">{round.title}</Badge>
+                        <Badge tone={aiReady ? "teal" : "amber"}>
+                          {aiReady ? "AIあり" : "AI未入力"}
+                        </Badge>
+                      </div>
+                      <h3 className="mt-3 font-display text-xl font-semibold tracking-[-0.05em] text-slate-950">
+                        #{match.matchNo} {match.homeTeam} 対 {match.awayTeam}
+                      </h3>
+                      <p className="mt-2 text-sm leading-6 text-slate-600">
+                        {[match.stage, match.venue].filter(Boolean).join(" / ") || "会場・ステージは未入力"}
+                      </p>
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        <Badge tone={aiReady ? "teal" : "amber"}>
+                          {aiReady
+                            ? `AI ${formatPercent(match.modelProb1)} / ${formatPercent(match.modelProb0)} / ${formatPercent(match.modelProb2)}`
+                            : "AI確率はまだ入っていません"}
+                        </Badge>
+                        <Badge tone={matchHasSetupInput(match) ? "teal" : "amber"}>
+                          {matchHasSetupInput(match) ? "試合情報あり" : "試合情報はまだ薄い"}
+                        </Badge>
+                      </div>
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        <Link
+                          href={buildRoundHref(appRoute.workspace, round.id)}
+                          className={secondaryButtonClassName}
+                        >
+                          ラウンドを見る
+                        </Link>
+                        <Link
+                          href={buildRoundHref(appRoute.matchEditor, round.id, {
+                            match: match.id,
+                          })}
+                          className={secondaryButtonClassName}
+                        >
+                          試合編集
+                        </Link>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </SectionCard>
+
+          <CollapsibleSectionCard
+            title="試合データとAI分析の入り方"
+            description="今どこまで自動で出ていて、どこから先が手入力かを先に分かるようにしています。"
+            defaultOpen
+            badge={<Badge tone="sky">データ状況</Badge>}
+          >
+            <div className="grid gap-4 lg:grid-cols-2">
+              <div className="rounded-[24px] border border-emerald-200 bg-emerald-50/85 p-5">
+                <div className="flex items-center gap-2">
+                  <Badge tone="teal">今できる</Badge>
+                  <h3 className="font-display text-lg font-semibold tracking-[-0.04em] text-slate-950">
+                    保存済みデータはちゃんと表示できる
+                  </h3>
+                </div>
+                <ul className="mt-4 space-y-2 text-sm leading-7 text-slate-700">
+                  <li>デモラウンドには試合情報、AI確率、人力予想、根拠カード、レビューが最初から入っています。</li>
+                  <li>新規ラウンドでも、試合編集に入れた日時、会場、ステージ、公式人気、市場、AI確率は各画面に反映されます。</li>
+                  <li>AI分析として見えているのは、いまは `1 / 0 / 2` の確率と、そこから作る AI基準線・差分計算です。</li>
+                </ul>
+              </div>
+
+              <div className="rounded-[24px] border border-amber-200 bg-amber-50/88 p-5">
+                <div className="flex items-center gap-2">
+                  <Badge tone="amber">まだない</Badge>
+                  <h3 className="font-display text-lg font-semibold tracking-[-0.04em] text-slate-950">
+                    自動取得と自動分析は未実装
+                  </h3>
+                </div>
+                <ul className="mt-4 space-y-2 text-sm leading-7 text-slate-700">
+                  <li>実試合の日程や対戦カードを外部 API から自動で取る処理はまだありません。</li>
+                  <li>AI確率をこのサイト内で自動計算するモデル連携もまだありません。</li>
+                  <li>なので現状は、デモを見るか、試合編集で実データを入れて使う MVP です。</li>
+                </ul>
+              </div>
+            </div>
+          </CollapsibleSectionCard>
+
+          <SectionCard
             id="shared-members"
             title="共有メンバー"
-            description="MVP では認証を入れず、表示名つきの共有入力として運用します。"
+            description="認証なし MVP なので、ここでハンドル名やあだ名を作って共有入力に使います。並び順も 1 → 2 → 10 の自然順に直しています。"
             actions={
               data.users.length === 0 ? (
                 <button
@@ -694,14 +896,71 @@ export default function DashboardPage() {
                 人力予想 / 根拠カードを使う前に、まず共有メンバーを作成してください。
               </p>
             ) : (
-              <div className="flex flex-wrap gap-2">
-                {data.users.map((user) => (
-                  <Badge key={user.id} tone={user.role === "admin" ? "teal" : "slate"}>
-                    {user.name}
-                  </Badge>
-                ))}
+              <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
+                <div className="grid gap-3">
+                  {data.users.map((user) => (
+                    <form
+                      key={user.id}
+                      onSubmit={(event) => void handleRenameMember(event, user.id)}
+                      className="grid gap-3 rounded-[22px] border border-white/80 bg-white/76 p-4 shadow-[0_16px_38px_-30px_rgba(15,23,42,0.4)] sm:grid-cols-[auto_1fr_auto]"
+                    >
+                      <div className="flex items-center">
+                        <Badge tone={user.role === "admin" ? "teal" : "slate"}>
+                          {user.role === "admin" ? "管理" : "共有"}
+                        </Badge>
+                      </div>
+                      <input
+                        name="memberName"
+                        defaultValue={user.name}
+                        className={fieldClassName}
+                        placeholder="ブリオニー / 観戦会A / 友人B"
+                      />
+                      <button
+                        type="submit"
+                        className={secondaryButtonClassName}
+                        disabled={savingMemberId === user.id}
+                      >
+                        {savingMemberId === user.id ? "更新中..." : "更新"}
+                      </button>
+                    </form>
+                  ))}
+                </div>
+
+                <div className="rounded-[24px] border border-slate-200 bg-slate-50/85 p-5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge tone="amber">ニックネーム</Badge>
+                    <h3 className="font-display text-lg font-semibold tracking-[-0.04em] text-slate-950">
+                      あだ名を追加
+                    </h3>
+                  </div>
+                  <p className="mt-3 text-sm leading-6 text-slate-600">
+                    本名ではなく、観戦会で分かる呼び名だけを入れる運用が向いています。
+                  </p>
+                  <form onSubmit={handleAddMember} className="mt-4 grid gap-3">
+                    <input
+                      name="memberName"
+                      className={fieldClassName}
+                      placeholder="例: ブリオニー / 青組 / さとし"
+                    />
+                    <button
+                      type="submit"
+                      className={buttonClassName}
+                      disabled={addingMember}
+                    >
+                      {addingMember ? "追加中..." : "あだ名を追加"}
+                    </button>
+                  </form>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {data.users.map((user) => (
+                      <Badge key={user.id} tone={user.role === "admin" ? "teal" : "slate"}>
+                        {user.name}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
+            {memberActionError ? <p className="text-sm text-rose-700">{memberActionError}</p> : null}
           </SectionCard>
 
           <SectionCard

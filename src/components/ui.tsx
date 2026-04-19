@@ -156,8 +156,85 @@ export function SectionCard({
         </div>
       )}
 
-      <div className={cx("relative z-10 space-y-4", contentClassName)}>{children}</div>
-    </section>
+  <div className={cx("relative z-10 space-y-4", contentClassName)}>{children}</div>
+      </section>
+  );
+}
+
+type CollapsibleSectionCardProps = HTMLAttributes<HTMLDetailsElement> & {
+  badge?: ReactNode;
+  children: ReactNode;
+  contentClassName?: string;
+  defaultOpen?: boolean;
+  description?: ReactNode;
+  title: ReactNode;
+};
+
+export function CollapsibleSectionCard({
+  badge,
+  children,
+  className,
+  contentClassName,
+  defaultOpen = false,
+  description,
+  title,
+  ...props
+}: CollapsibleSectionCardProps) {
+  return (
+    <details
+      open={defaultOpen}
+      className={cx(
+        "group relative overflow-hidden rounded-[30px] border border-white/55 bg-[linear-gradient(145deg,rgba(255,255,255,0.94),rgba(244,250,246,0.9))] shadow-[0_28px_90px_-48px_rgba(0,0,0,0.42)] backdrop-blur-xl before:pointer-events-none before:absolute before:inset-x-6 before:top-0 before:h-px before:bg-[linear-gradient(90deg,transparent,rgba(22,128,61,0.48),rgba(245,158,11,0.35),transparent)] after:pointer-events-none after:absolute after:inset-0 after:bg-[repeating-linear-gradient(180deg,rgba(22,128,61,0.018)_0px,rgba(22,128,61,0.018)_26px,transparent_26px,transparent_52px)] after:opacity-85 after:content-['']",
+        className,
+      )}
+      {...props}
+    >
+      <summary className="relative z-10 flex cursor-pointer list-none items-start justify-between gap-4 px-5 py-5 [&::-webkit-details-marker]:hidden sm:px-6 sm:py-6">
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {badge ? <div>{badge}</div> : null}
+            {typeof title === "string" ? (
+              <h2 className="font-display text-lg font-semibold tracking-[-0.04em] text-slate-950 sm:text-[1.2rem]">
+                {title}
+              </h2>
+            ) : (
+              title
+            )}
+          </div>
+          {typeof description === "string" ? (
+            <p className="max-w-2xl text-sm leading-6 text-slate-600">{description}</p>
+          ) : (
+            description
+          )}
+        </div>
+        <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/88 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500 shadow-[0_12px_24px_-22px_rgba(15,23,42,0.55)]">
+          <svg
+            viewBox="0 0 20 20"
+            fill="none"
+            aria-hidden="true"
+            className="h-3.5 w-3.5 transition-transform duration-200 group-open:rotate-180"
+          >
+            <path
+              d="M5 7.5L10 12.5L15 7.5"
+              stroke="currentColor"
+              strokeWidth="1.75"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          <span>開閉</span>
+        </span>
+      </summary>
+
+      <div
+        className={cx(
+          "relative z-10 border-t border-slate-200 px-5 py-5 sm:px-6 sm:py-6",
+          contentClassName,
+        )}
+      >
+        {children}
+      </div>
+    </details>
   );
 }
 

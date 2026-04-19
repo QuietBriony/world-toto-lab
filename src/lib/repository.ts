@@ -149,6 +149,30 @@ function mapUser(row: UserRow): User {
   };
 }
 
+const userNameCollator = new Intl.Collator("ja", {
+  numeric: true,
+  sensitivity: "base",
+});
+
+function sortUsers(users: User[]) {
+  return [...users].sort((left, right) => {
+    if (left.role !== right.role) {
+      return left.role === "admin" ? -1 : 1;
+    }
+
+    const byName = userNameCollator.compare(left.name, right.name);
+    if (byName !== 0) {
+      return byName;
+    }
+
+    if (left.createdAt !== right.createdAt) {
+      return left.createdAt.localeCompare(right.createdAt);
+    }
+
+    return left.id.localeCompare(right.id);
+  });
+}
+
 function mapRound(row: RoundRow): Round {
   return {
     id: row.id,
@@ -365,7 +389,7 @@ export async function listDashboardData(): Promise<DashboardData> {
   throwIfError("Failed to load picks", picksResult);
   throwIfError("Failed to load scout reports", reportsResult);
 
-  const users = (usersResult.data as UserRow[]).map(mapUser);
+  const users = sortUsers((usersResult.data as UserRow[]).map(mapUser));
   const rounds = (roundsResult.data as RoundRow[]).map(mapRound);
   const matches = (matchesResult.data as MatchRow[]).map(mapMatch);
   const picks = (picksResult.data as PickRow[]).map((row) => mapPick(row));
@@ -422,7 +446,7 @@ export async function getRoundWorkspace(roundId: string): Promise<RoundWorkspace
     return null;
   }
 
-  const users = (usersResult.data as UserRow[]).map(mapUser);
+  const users = sortUsers((usersResult.data as UserRow[]).map(mapUser));
   const userById = new Map(users.map((user) => [user.id, user]));
   const round = mapRound(roundResult.data as RoundRow);
   const matches = (matchesResult.data as MatchRow[]).map(mapMatch);
@@ -470,6 +494,40 @@ export async function createSampleUsers() {
   );
 
   throwIfError("Failed to create sample users", insertResult);
+}
+
+export async function createUser(input: { name: string; role?: UserRole }) {
+  const supabase = requireSupabaseClient();
+  const name = input.name.trim();
+
+  if (!name) {
+    throw new Error("あだ名を入力してください。");
+  }
+
+  const result = await supabase.from("users").insert({
+    name,
+    role: input.role ?? "member",
+  });
+
+  throwIfError("Failed to create user", result);
+}
+
+export async function updateUserName(input: { userId: string; name: string }) {
+  const supabase = requireSupabaseClient();
+  const name = input.name.trim();
+
+  if (!name) {
+    throw new Error("あだ名を空にはできません。");
+  }
+
+  const result = await supabase
+    .from("users")
+    .update({
+      name,
+    })
+    .eq("id", input.userId);
+
+  throwIfError("Failed to update user", result);
 }
 
 export async function createRound(input: {
@@ -526,7 +584,7 @@ export async function createDemoRound() {
   const usersResult = await supabase.from("users").select("*").order("role").order("name");
   throwIfError("Failed to load users for demo round", usersResult);
 
-  const users = (usersResult.data as UserRow[]).map(mapUser);
+  const users = sortUsers((usersResult.data as UserRow[]).map(mapUser));
   if (users.length === 0) {
     throw new Error("No users are available for the demo round.");
   }
