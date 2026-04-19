@@ -30,6 +30,7 @@ import {
   nullableString,
 } from "@/lib/forms";
 import {
+  advantageBucketLabel,
   formatDateTime,
   formatPercent,
   formatSignedPercent,
@@ -1235,29 +1236,39 @@ export default function DashboardPage() {
                       <div className="rounded-3xl border border-white/60 bg-white/80 p-4">
                         <div className="flex items-center justify-between gap-3">
                           <h3 className="text-sm font-semibold text-slate-900">
-                            AI優位差が大きい試合トップ3
+                            合成優位が大きい候補トップ3
                           </h3>
                           <span className="text-xs text-slate-500">
                             候補上限 {candidateLimitFromBudget(round.budgetYen ?? 500)} 案
                           </span>
                         </div>
                         <div className="mt-3 space-y-2">
-                          {round.topEdges.length === 0 ? (
+                          {round.topSignals.length === 0 ? (
                             <p className="text-sm text-slate-500">
-                              モデル確率と公式人気が入るとここに表示されます。
+                              AI・予想者・ウォッチ支持が入るとここに表示されます。
                             </p>
                           ) : (
-                            round.topEdges.map((edge) => (
+                            round.topSignals.map((signal) => (
                               <div
-                                key={edge.matchId}
+                                key={`${signal.matchId}-${signal.outcome}`}
                                 className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-slate-950/5 px-3 py-2"
                               >
-                                <span className="text-sm font-medium text-slate-800">
-                                  #{edge.matchNo} {edge.fixture}
-                                </span>
-                                <span className="text-sm font-semibold text-emerald-700">
-                                  {formatSignedPercent(edge.edge)}
-                                </span>
+                                <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-slate-800">
+                                  <span>
+                                    #{signal.matchNo} {signal.fixture} / {signal.outcome}
+                                  </span>
+                                  <Badge tone={signal.bucket === "darkhorse" ? "amber" : signal.bucket === "core" ? "teal" : "sky"}>
+                                    {advantageBucketLabel[signal.bucket]}
+                                  </Badge>
+                                </div>
+                                <div className="text-right">
+                                  <div className="text-sm font-semibold text-emerald-700">
+                                    {formatSignedPercent(signal.compositeAdvantage)}
+                                  </div>
+                                  <div className="text-xs text-slate-500">
+                                    注目配分 {formatPercent(signal.attentionShare)}
+                                  </div>
+                                </div>
                               </div>
                             ))
                           )}

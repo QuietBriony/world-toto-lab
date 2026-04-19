@@ -1,5 +1,5 @@
 import { canEstimateAiModel, estimateAiModel } from "@/lib/ai-estimator";
-import { computeConsensus, getEdge } from "@/lib/domain";
+import { buildAdvantageRows, computeConsensus } from "@/lib/domain";
 import {
   buildDemoMatchRows,
   buildDemoPickRows,
@@ -328,24 +328,14 @@ function deriveRoundSummary(
   picks: Pick[],
   scoutReports: HumanScoutReport[],
   reviewNotes: ReviewNote[],
+  users: User[],
 ): DashboardRoundSummary {
-  const topEdges = matches
-    .map((match) => {
-      const edges = [
-        getEdge(match, "1") ?? Number.NEGATIVE_INFINITY,
-        getEdge(match, "0") ?? Number.NEGATIVE_INFINITY,
-        getEdge(match, "2") ?? Number.NEGATIVE_INFINITY,
-      ];
-
-      return {
-        matchId: match.id,
-        matchNo: match.matchNo,
-        fixture: `${match.homeTeam} 対 ${match.awayTeam}`,
-        edge: Math.max(...edges),
-      };
-    })
-    .filter((entry) => Number.isFinite(entry.edge))
-    .sort((left, right) => right.edge - left.edge)
+  const topSignals = buildAdvantageRows({
+    matches,
+    picks,
+    users,
+  })
+    .filter((row) => row.include)
     .slice(0, 3);
 
   const consensusCompleted = matches.filter((match) => match.consensusCall !== null).length;
@@ -361,7 +351,15 @@ function deriveRoundSummary(
     pickCount: picks.length,
     resultedCount,
     consensusCompletion: matches.length > 0 ? consensusCompleted / matches.length : 0,
-    topEdges,
+    topSignals: topSignals.map((row) => ({
+      attentionShare: row.attentionShare,
+      bucket: row.bucket,
+      compositeAdvantage: row.compositeAdvantage ?? 0,
+      fixture: row.fixture,
+      matchId: row.matchId,
+      matchNo: row.matchNo,
+      outcome: row.outcome,
+    })),
   };
 }
 
@@ -422,6 +420,7 @@ export async function listDashboardData(): Promise<DashboardData> {
         picksByRound.get(round.id) ?? [],
         reportsByRound.get(round.id) ?? [],
         notesByRound.get(round.id) ?? [],
+        users,
       ),
     ),
   };

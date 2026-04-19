@@ -20,6 +20,9 @@ import {
   textAreaClassName,
 } from "@/components/ui";
 import {
+  actualIncludesOutcome,
+  advantageBucketLabel,
+  buildAdvantageRows,
   enumToOutcome,
   formatPercent,
   roundStatusLabel,
@@ -67,6 +70,40 @@ function ReviewPageContent() {
         scoutReports: data.round.scoutReports,
         users: data.users,
       })
+    : null;
+  const advantageSummary = data
+    ? (() => {
+        const rows = buildAdvantageRows({
+          matches: data.round.matches,
+          picks: data.round.picks,
+          users: data.users,
+        }).filter((row) => row.include);
+        const matchById = new Map(data.round.matches.map((match) => [match.id, match]));
+        const completedRows = rows.filter((row) => {
+          const match = matchById.get(row.matchId);
+          return Boolean(match?.actualResult);
+        });
+        const coreRows = completedRows.filter((row) => row.bucket === "core");
+        const darkHorseRows = completedRows.filter((row) => row.bucket === "darkhorse");
+        const topAttentionRows = completedRows
+          .slice()
+          .sort((left, right) => right.attentionShare - left.attentionShare)
+          .slice(0, Math.min(8, completedRows.length));
+        const hitCount = (targetRows: typeof completedRows) =>
+          targetRows.filter((row) => {
+            const match = matchById.get(row.matchId);
+            return match ? actualIncludesOutcome(match, [row.outcome]) : false;
+          }).length;
+
+        return {
+          coreHitCount: hitCount(coreRows),
+          coreTotal: coreRows.length,
+          darkHorseHitCount: hitCount(darkHorseRows),
+          darkHorseTotal: darkHorseRows.length,
+          topAttentionHitCount: hitCount(topAttentionRows),
+          topAttentionTotal: topAttentionRows.length,
+        };
+      })()
     : null;
 
   const handleSaveResults = async (event: FormEvent<HTMLFormElement>) => {
@@ -166,6 +203,28 @@ function ReviewPageContent() {
             <StatCard label="公式本命の的中数" value={`${summary.officialHits}/${summary.completedMatches}`} />
             <StatCard label="市場本命の的中数" value={`${summary.marketHits}/${summary.completedMatches}`} />
           </section>
+
+          {advantageSummary ? (
+            <section className="grid gap-4 md:grid-cols-3">
+              <StatCard
+                label={`${advantageBucketLabel.core}の当たり`}
+                value={`${advantageSummary.coreHitCount}/${advantageSummary.coreTotal}`}
+                hint="合成優位とリスクのバランスが良い候補"
+                tone="positive"
+              />
+              <StatCard
+                label={`${advantageBucketLabel.darkhorse}の当たり`}
+                value={`${advantageSummary.darkHorseHitCount}/${advantageSummary.darkHorseTotal}`}
+                hint="一般人気より薄いのに拾えた候補"
+                tone="warning"
+              />
+              <StatCard
+                label="注目配分上位の当たり"
+                value={`${advantageSummary.topAttentionHitCount}/${advantageSummary.topAttentionTotal}`}
+                hint="注目配分が高い順に見たときのヒット数"
+              />
+            </section>
+          ) : null}
 
           <SectionCard
             title="まず見るところ"

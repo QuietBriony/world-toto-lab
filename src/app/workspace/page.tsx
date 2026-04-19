@@ -24,6 +24,8 @@ import {
 } from "@/components/ui";
 import {
   aiRecommendedOutcomes,
+  advantageBucketLabel,
+  buildAdvantageRows,
   buildMatchBadges,
   favoriteOutcomeForBucket,
   categoryLabel,
@@ -86,52 +88,6 @@ function previewNotes(value: string | null | undefined, maxSentences = 2) {
   return sentences.length > 0 ? `${sentences.join("。")}。` : null;
 }
 
-function strongestPositiveEdge(match: {
-  modelProb0: number | null;
-  modelProb1: number | null;
-  modelProb2: number | null;
-  officialVote0: number | null;
-  officialVote1: number | null;
-  officialVote2: number | null;
-}) {
-  const candidates = [
-    {
-      edge:
-        match.modelProb1 !== null && match.officialVote1 !== null
-          ? match.modelProb1 - match.officialVote1
-          : null,
-      outcome: "1",
-    },
-    {
-      edge:
-        match.modelProb0 !== null && match.officialVote0 !== null
-          ? match.modelProb0 - match.officialVote0
-          : null,
-      outcome: "0",
-    },
-    {
-      edge:
-        match.modelProb2 !== null && match.officialVote2 !== null
-          ? match.modelProb2 - match.officialVote2
-          : null,
-      outcome: "2",
-    },
-  ].filter(
-    (
-      candidate,
-    ): candidate is {
-      edge: number;
-      outcome: "1" | "0" | "2";
-    } => candidate.edge !== null && candidate.edge > 0,
-  );
-
-  if (candidates.length === 0) {
-    return null;
-  }
-
-  return candidates.sort((left, right) => right.edge - left.edge)[0];
-}
-
 function WorkspacePageContent() {
   const searchParams = useSearchParams();
   const roundId = getSingleSearchParam(searchParams.get("round"));
@@ -153,6 +109,16 @@ function WorkspacePageContent() {
         users: data.users,
       })
     : null;
+  const advantageRows = data
+    ? buildAdvantageRows({
+        matches: data.round.matches,
+        picks: data.round.picks,
+        users: data.users,
+      })
+    : [];
+  const topAdvantageByMatchId = new Map(
+    advantageRows.filter((row) => row.include).map((row) => [row.matchId, row] as const),
+  );
   const predictorUsers = data ? filterPredictors(data.users) : [];
   const estimableMatchCount =
     data?.round.matches.filter((match) => canEstimateAiModel(match)).length ?? 0;
@@ -164,18 +130,21 @@ function WorkspacePageContent() {
   const aiGapMatches =
     data?.round.matches
       .map((match) => {
-        const strongestEdge = strongestPositiveEdge(match);
-        return strongestEdge ? { match, strongestEdge } : null;
+        const topSignal = topAdvantageByMatchId.get(match.id);
+        return topSignal ? { match, topSignal } : null;
       })
       .filter(
         (
           entry,
         ): entry is {
           match: (typeof data.round.matches)[number];
-          strongestEdge: NonNullable<ReturnType<typeof strongestPositiveEdge>>;
+          topSignal: (typeof advantageRows)[number];
         } => entry !== null,
       )
-      .sort((left, right) => right.strongestEdge.edge - left.strongestEdge.edge)
+      .sort(
+        (left, right) =>
+          (right.topSignal.compositeAdvantage ?? 0) - (left.topSignal.compositeAdvantage ?? 0),
+      )
       .slice(0, 4) ?? [];
   const drawWatchMatches =
     data?.round.matches
@@ -611,16 +580,16 @@ function WorkspacePageContent() {
                 <div className="flex items-center gap-2">
                   <Badge tone="positive">優位差大</Badge>
                   <h3 className="font-display text-lg font-semibold tracking-[-0.04em] text-slate-950">
-                    AIが強めに見ている試合
+                    合成優位が強い試合
                   </h3>
                 </div>
                 <div className="mt-4 space-y-3">
                   {aiGapMatches.length === 0 ? (
                     <p className="text-sm leading-6 text-slate-600">
-                      一般人気と AI が両方入ると、ここに優位差の大きい試合が出ます。
+                      AI・予想者・ウォッチ支持が揃うと、ここに注目候補が出ます。
                     </p>
                   ) : (
-                    aiGapMatches.map(({ match, strongestEdge }) => (
+                    aiGapMatches.map(({ match, topSignal }) => (
                       <div
                         key={match.id}
                         className="rounded-[18px] border border-emerald-200 bg-white/75 p-3"
@@ -629,14 +598,22 @@ function WorkspacePageContent() {
                           #{match.matchNo} {match.homeTeam} 対 {match.awayTeam}
                         </div>
                         <div className="mt-1 text-sm text-slate-700">
-                          {strongestEdge.outcome} が {formatSignedPercent(strongestEdge.edge)}
+                          {topSignal.outcome} が {formatSignedPercent(topSignal.compositeAdvantage)}
                         </div>
                         <div className="mt-2 flex flex-wrap gap-2">
-                          <Badge tone="amber">
-                            AI基準線 {formatOutcomeSet(aiRecommendedOutcomes(match))}
+                          <Badge
+                            tone={
+                              topSignal.bucket === "darkhorse"
+                                ? "amber"
+                                : topSignal.bucket === "core"
+                                  ? "teal"
+                                  : "sky"
+                            }
+                          >
+                            {advantageBucketLabel[topSignal.bucket]}
                           </Badge>
                           <Badge tone="slate">
-                            人力 {formatOutcomeSet(humanConsensusOutcomes(match))}
+                            注目配分 {formatPercent(topSignal.attentionShare)}
                           </Badge>
                         </div>
                       </div>
@@ -938,12 +915,12 @@ function WorkspacePageContent() {
           >
             <div className="grid gap-4 xl:grid-cols-2">
               {orderedOverviewMatches.map((match) => {
-                const aiBase = aiRecommendedOutcomes(match);
-                const humanBase = humanConsensusOutcomes(match);
-                const badges = buildMatchBadges(match);
-                const overlayBadge = humanOverlayBadge(match);
-                const setupReady = matchHasSetupInput(match);
-                const strongestEdge = strongestPositiveEdge(match);
+                  const aiBase = aiRecommendedOutcomes(match);
+                  const humanBase = humanConsensusOutcomes(match);
+                  const badges = buildMatchBadges(match);
+                  const overlayBadge = humanOverlayBadge(match);
+                  const setupReady = matchHasSetupInput(match);
+                  const topSignal = topAdvantageByMatchId.get(match.id) ?? null;
 
                 return (
                   <article
@@ -1026,12 +1003,13 @@ function WorkspacePageContent() {
                     </div>
 
                     <div className="mt-4 flex flex-wrap gap-2">
-                      {strongestEdge ? (
-                        <Badge tone="positive">
-                          優位差大 {strongestEdge.outcome} {formatSignedPercent(strongestEdge.edge)}
+                      {topSignal ? (
+                        <Badge tone={topSignal.bucket === "darkhorse" ? "amber" : "positive"}>
+                          {advantageBucketLabel[topSignal.bucket]} {topSignal.outcome}{" "}
+                          {formatSignedPercent(topSignal.compositeAdvantage)}
                         </Badge>
                       ) : (
-                        <Badge tone="slate">優位差はまだ小さめ</Badge>
+                        <Badge tone="slate">注目候補はまだ少なめ</Badge>
                       )}
                       {match.category ? (
                         <Badge tone="sky">{categoryLabel[match.category]}</Badge>

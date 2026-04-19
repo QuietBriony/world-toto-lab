@@ -152,11 +152,14 @@ export type DashboardRoundSummary = Round & {
   pickCount: number;
   resultedCount: number;
   consensusCompletion: number;
-  topEdges: Array<{
+  topSignals: Array<{
+    attentionShare: number;
+    bucket: "core" | "focus" | "darkhorse" | "watch";
+    compositeAdvantage: number;
     matchId: string;
     matchNo: number;
     fixture: string;
-    edge: number;
+    outcome: "1" | "0" | "2";
   }>;
 };
 
