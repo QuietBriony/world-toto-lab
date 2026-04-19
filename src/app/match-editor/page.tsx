@@ -12,11 +12,14 @@ import {
 } from "@/components/app/states";
 import { RoundNav } from "@/components/round-nav";
 import {
+  Badge,
   buttonClassName,
+  CollapsibleSectionCard,
   fieldClassName,
   PageHeader,
   secondaryButtonClassName,
   SectionCard,
+  StatCard,
   textAreaClassName,
 } from "@/components/ui";
 import {
@@ -58,6 +61,39 @@ function MatchEditorPageContent() {
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const match = data?.round.matches.find((entry) => entry.id === matchId) ?? null;
+  const orderedMatches = data?.round.matches.slice().sort((left, right) => left.matchNo - right.matchNo) ?? [];
+  const currentMatchIndex = match
+    ? orderedMatches.findIndex((entry) => entry.id === match.id)
+    : -1;
+  const previousMatch =
+    currentMatchIndex > 0 ? orderedMatches[currentMatchIndex - 1] : null;
+  const nextMatch =
+    currentMatchIndex >= 0 && currentMatchIndex < orderedMatches.length - 1
+      ? orderedMatches[currentMatchIndex + 1]
+      : null;
+  const hasOfficialInputs = Boolean(
+    match &&
+      (match.officialVote1 !== null ||
+        match.officialVote0 !== null ||
+        match.officialVote2 !== null),
+  );
+  const hasMarketInputs = Boolean(
+    match &&
+      (match.marketProb1 !== null || match.marketProb0 !== null || match.marketProb2 !== null),
+  );
+  const hasAiInputs = Boolean(
+    match &&
+      (match.modelProb1 !== null || match.modelProb0 !== null || match.modelProb2 !== null),
+  );
+  const noteCount = match
+    ? [
+        match.tacticalNote,
+        match.injuryNote,
+        match.motivationNote,
+        match.adminNote,
+      ].filter(Boolean).length
+    : 0;
+  const formId = match ? `match-editor-form-${match.id}` : "match-editor-form";
 
   const handleSave = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -119,8 +155,34 @@ function MatchEditorPageContent() {
           match
             ? `開始 ${formatDateTime(match.kickoffTime)} / 現在結果 ${
                 enumToOutcome(match.actualResult) ?? "—"
-              }`
+              } / まずは基本情報とカテゴリだけ先に入れると進めやすいです。`
             : "ラウンドから対象試合を選んで編集します。"
+        }
+        actions={
+          match && data ? (
+            <div className="flex flex-wrap gap-2">
+              {previousMatch ? (
+                <Link
+                  href={buildRoundHref(appRoute.matchEditor, data.round.id, {
+                    match: previousMatch.id,
+                  })}
+                  className={secondaryButtonClassName}
+                >
+                  前の試合
+                </Link>
+              ) : null}
+              {nextMatch ? (
+                <Link
+                  href={buildRoundHref(appRoute.matchEditor, data.round.id, {
+                    match: nextMatch.id,
+                  })}
+                  className={secondaryButtonClassName}
+                >
+                  次の試合
+                </Link>
+              ) : null}
+            </div>
+          ) : undefined
         }
       />
 
@@ -159,166 +221,262 @@ function MatchEditorPageContent() {
               </p>
             </SectionCard>
           ) : (
-            <SectionCard
-              title="試合編集"
-              description="確率は 0〜1 保存ですが、画面では % 入力です。"
+            <form
+              id={formId}
+              key={match.updatedAt}
+              onSubmit={handleSave}
+              className="space-y-6"
             >
-              <form
-                key={match.updatedAt}
-                onSubmit={handleSave}
-                className="grid gap-5 lg:grid-cols-2"
+              <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                <StatCard
+                  label="基本情報"
+                  value={match.kickoffTime ? "入力あり" : "未入力"}
+                  hint={match.venue ?? "会場はまだ未入力です"}
+                  tone={match.kickoffTime ? "positive" : "warning"}
+                  compact
+                />
+                <StatCard
+                  label="公式人気"
+                  value={hasOfficialInputs ? "あり" : "未入力"}
+                  hint="1 / 0 / 2 の公式人気"
+                  tone={hasOfficialInputs ? "positive" : "warning"}
+                  compact
+                />
+                <StatCard
+                  label="市場 / AI"
+                  value={hasMarketInputs || hasAiInputs ? "あり" : "未入力"}
+                  hint={`市場 ${hasMarketInputs ? "あり" : "なし"} / AI ${hasAiInputs ? "あり" : "なし"}`}
+                  tone={hasMarketInputs || hasAiInputs ? "positive" : "warning"}
+                  compact
+                />
+                <StatCard
+                  label="メモ"
+                  value={`${noteCount}`}
+                  hint={noteCount > 0 ? "入力済みメモ数" : "まだメモはありません"}
+                  compact
+                />
+              </section>
+
+              <SectionCard
+                title="まずここだけ入れる"
+                description="チーム名、開始、カテゴリ、信頼度が先に入っていれば、他の画面でもかなり読めるようになります。確率は下の詳細で % 入力、信頼度だけ 0〜1 入力です。"
+                actions={
+                  <button type="submit" form={formId} className={buttonClassName} disabled={saving}>
+                    {saving ? "保存中..." : "試合を保存"}
+                  </button>
+                }
               >
-                <label className="grid gap-2 text-sm font-medium text-slate-700">
-                  ホームチーム
-                  <input name="homeTeam" defaultValue={match.homeTeam} className={fieldClassName} />
-                </label>
+                <div className="grid gap-5 lg:grid-cols-2">
+                  <label className="grid gap-2 text-sm font-medium text-slate-700">
+                    ホームチーム
+                    <input name="homeTeam" defaultValue={match.homeTeam} className={fieldClassName} />
+                  </label>
 
-                <label className="grid gap-2 text-sm font-medium text-slate-700">
-                  アウェイチーム
-                  <input name="awayTeam" defaultValue={match.awayTeam} className={fieldClassName} />
-                </label>
+                  <label className="grid gap-2 text-sm font-medium text-slate-700">
+                    アウェイチーム
+                    <input name="awayTeam" defaultValue={match.awayTeam} className={fieldClassName} />
+                  </label>
 
-                <label className="grid gap-2 text-sm font-medium text-slate-700">
-                  試合開始
-                  <input
-                    name="kickoffTime"
-                    type="datetime-local"
-                    defaultValue={
-                      match.kickoffTime
-                        ? new Date(match.kickoffTime).toISOString().slice(0, 16)
-                        : ""
-                    }
-                    className={fieldClassName}
-                  />
-                </label>
+                  <label className="grid gap-2 text-sm font-medium text-slate-700">
+                    試合開始
+                    <input
+                      name="kickoffTime"
+                      type="datetime-local"
+                      defaultValue={
+                        match.kickoffTime
+                          ? new Date(match.kickoffTime).toISOString().slice(0, 16)
+                          : ""
+                      }
+                      className={fieldClassName}
+                    />
+                  </label>
 
-                <label className="grid gap-2 text-sm font-medium text-slate-700">
-                  会場
-                  <input name="venue" defaultValue={match.venue ?? ""} className={fieldClassName} />
-                </label>
+                  <label className="grid gap-2 text-sm font-medium text-slate-700">
+                    会場
+                    <input name="venue" defaultValue={match.venue ?? ""} className={fieldClassName} />
+                  </label>
 
-                <label className="grid gap-2 text-sm font-medium text-slate-700">
-                  ステージ
-                  <input name="stage" defaultValue={match.stage ?? ""} className={fieldClassName} />
-                </label>
+                  <label className="grid gap-2 text-sm font-medium text-slate-700">
+                    ステージ
+                    <input name="stage" defaultValue={match.stage ?? ""} className={fieldClassName} />
+                  </label>
 
-                <label className="grid gap-2 text-sm font-medium text-slate-700">
-                  信頼度
-                  <input
-                    name="confidence"
-                    type="number"
-                    min={0}
-                    max={1}
-                    step={0.01}
-                    defaultValue={match.confidence ?? ""}
-                    className={fieldClassName}
-                  />
-                </label>
+                  <label className="grid gap-2 text-sm font-medium text-slate-700">
+                    カテゴリ
+                    <select
+                      name="category"
+                      className={fieldClassName}
+                      defaultValue={match.category ?? ""}
+                    >
+                      <option value="">未設定</option>
+                      {categoryOptions.map((category) => (
+                        <option key={category} value={category}>
+                          {categoryLabel[category]}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
 
-                <div className="grid gap-3 rounded-3xl border border-slate-200 bg-slate-950/5 p-4 lg:col-span-2 lg:grid-cols-3">
+                  <label className="grid gap-2 text-sm font-medium text-slate-700">
+                    信頼度（0〜1）
+                    <input
+                      name="confidence"
+                      type="number"
+                      min={0}
+                      max={1}
+                      step={0.01}
+                      defaultValue={match.confidence ?? ""}
+                      className={fieldClassName}
+                    />
+                  </label>
+
+                  <label className="grid gap-2 text-sm font-medium text-slate-700">
+                    AI推奨候補
+                    <input
+                      name="recommendedOutcomes"
+                      defaultValue={match.recommendedOutcomes ?? ""}
+                      className={fieldClassName}
+                      placeholder="1,0"
+                    />
+                  </label>
+
+                  <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50/85 p-4 text-sm leading-6 text-slate-600 lg:col-span-2">
+                    単位のルール: `公式 / 市場 / AI` は下の詳細で `%` 入力、`信頼度` だけ `0〜1` 入力です。
+                  </div>
+                </div>
+              </SectionCard>
+
+              <CollapsibleSectionCard
+                title="確率入力"
+                description="ここは % 入力です。公式人気、市場、AI を必要な範囲だけ埋めれば大丈夫です。"
+                badge={<Badge tone="sky">詳細</Badge>}
+                defaultOpen={!hasOfficialInputs && !hasMarketInputs && !hasAiInputs}
+              >
+                <div className="grid gap-4 xl:grid-cols-3">
                   {[
-                    ["officialVote1", "公式 1", percentInput(match.officialVote1)],
-                    ["officialVote0", "公式 0", percentInput(match.officialVote0)],
-                    ["officialVote2", "公式 2", percentInput(match.officialVote2)],
-                    ["marketProb1", "市場 1", percentInput(match.marketProb1)],
-                    ["marketProb0", "市場 0", percentInput(match.marketProb0)],
-                    ["marketProb2", "市場 2", percentInput(match.marketProb2)],
-                    ["modelProb1", "AI 1", percentInput(match.modelProb1)],
-                    ["modelProb0", "AI 0", percentInput(match.modelProb0)],
-                    ["modelProb2", "AI 2", percentInput(match.modelProb2)],
-                  ].map(([name, label, value]) => (
-                    <label key={name} className="grid gap-2 text-sm font-medium text-slate-700">
-                      {label}
-                      <input
-                        name={name}
-                        type="number"
-                        min={0}
-                        max={100}
-                        step={0.1}
-                        defaultValue={value}
-                        className={fieldClassName}
-                      />
-                    </label>
+                    {
+                      title: "公式人気",
+                      tone: hasOfficialInputs ? "teal" : "amber",
+                      rows: [
+                        ["officialVote1", "公式 1", percentInput(match.officialVote1)],
+                        ["officialVote0", "公式 0", percentInput(match.officialVote0)],
+                        ["officialVote2", "公式 2", percentInput(match.officialVote2)],
+                      ],
+                    },
+                    {
+                      title: "市場",
+                      tone: hasMarketInputs ? "teal" : "amber",
+                      rows: [
+                        ["marketProb1", "市場 1", percentInput(match.marketProb1)],
+                        ["marketProb0", "市場 0", percentInput(match.marketProb0)],
+                        ["marketProb2", "市場 2", percentInput(match.marketProb2)],
+                      ],
+                    },
+                    {
+                      title: "AI",
+                      tone: hasAiInputs ? "teal" : "amber",
+                      rows: [
+                        ["modelProb1", "AI 1", percentInput(match.modelProb1)],
+                        ["modelProb0", "AI 0", percentInput(match.modelProb0)],
+                        ["modelProb2", "AI 2", percentInput(match.modelProb2)],
+                      ],
+                    },
+                  ].map((group) => (
+                    <div
+                      key={group.title}
+                      className="rounded-[24px] border border-slate-200 bg-slate-50/85 p-5"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Badge tone={group.tone as "amber" | "teal"}>
+                          {group.tone === "teal" ? "入力あり" : "未入力"}
+                        </Badge>
+                        <h3 className="font-display text-lg font-semibold tracking-[-0.04em] text-slate-950">
+                          {group.title}
+                        </h3>
+                      </div>
+                      <div className="mt-4 grid gap-3">
+                        {group.rows.map(([name, label, value]) => (
+                          <label key={name} className="grid gap-2 text-sm font-medium text-slate-700">
+                            {label}
+                            <input
+                              name={name}
+                              type="number"
+                              min={0}
+                              max={100}
+                              step={0.1}
+                              defaultValue={value}
+                              className={fieldClassName}
+                            />
+                          </label>
+                        ))}
+                      </div>
+                    </div>
                   ))}
                 </div>
+              </CollapsibleSectionCard>
 
-                <label className="grid gap-2 text-sm font-medium text-slate-700">
-                  カテゴリ
-                  <select
-                    name="category"
-                    className={fieldClassName}
-                    defaultValue={match.category ?? ""}
-                  >
-                    <option value="">未設定</option>
-                    {categoryOptions.map((category) => (
-                      <option key={category} value={category}>
-                        {categoryLabel[category]}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+              <CollapsibleSectionCard
+                title="メモ"
+                description="長文メモは必要なときだけ。迷う試合だけ短く残す運用でも十分です。"
+                badge={<Badge tone="slate">補足</Badge>}
+              >
+                <div className="grid gap-5 lg:grid-cols-2">
+                  <label className="grid gap-2 text-sm font-medium text-slate-700 lg:col-span-2">
+                    戦術メモ
+                    <textarea
+                      name="tacticalNote"
+                      defaultValue={match.tacticalNote ?? ""}
+                      className={textAreaClassName}
+                    />
+                  </label>
 
-                <label className="grid gap-2 text-sm font-medium text-slate-700">
-                  AI推奨候補
-                  <input
-                    name="recommendedOutcomes"
-                    defaultValue={match.recommendedOutcomes ?? ""}
-                    className={fieldClassName}
-                    placeholder="1,0"
-                  />
-                </label>
+                  <label className="grid gap-2 text-sm font-medium text-slate-700">
+                    負傷情報メモ
+                    <textarea
+                      name="injuryNote"
+                      defaultValue={match.injuryNote ?? ""}
+                      className={textAreaClassName}
+                    />
+                  </label>
 
-                <label className="grid gap-2 text-sm font-medium text-slate-700 lg:col-span-2">
-                  戦術メモ
-                  <textarea
-                    name="tacticalNote"
-                    defaultValue={match.tacticalNote ?? ""}
-                    className={textAreaClassName}
-                  />
-                </label>
+                  <label className="grid gap-2 text-sm font-medium text-slate-700">
+                    モチベーションメモ
+                    <textarea
+                      name="motivationNote"
+                      defaultValue={match.motivationNote ?? ""}
+                      className={textAreaClassName}
+                    />
+                  </label>
 
-                <label className="grid gap-2 text-sm font-medium text-slate-700">
-                  負傷情報メモ
-                  <textarea
-                    name="injuryNote"
-                    defaultValue={match.injuryNote ?? ""}
-                    className={textAreaClassName}
-                  />
-                </label>
+                  <label className="grid gap-2 text-sm font-medium text-slate-700 lg:col-span-2">
+                    運営メモ
+                    <textarea
+                      name="adminNote"
+                      defaultValue={match.adminNote ?? ""}
+                      className={textAreaClassName}
+                    />
+                  </label>
+                </div>
+              </CollapsibleSectionCard>
 
-                <label className="grid gap-2 text-sm font-medium text-slate-700">
-                  モチベーションメモ
-                  <textarea
-                    name="motivationNote"
-                    defaultValue={match.motivationNote ?? ""}
-                    className={textAreaClassName}
-                  />
-                </label>
-
-                <label className="grid gap-2 text-sm font-medium text-slate-700 lg:col-span-2">
-                  運営メモ
-                  <textarea
-                    name="adminNote"
-                    defaultValue={match.adminNote ?? ""}
-                    className={textAreaClassName}
-                  />
-                </label>
-
-                <div className="rounded-3xl border border-dashed border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-900 lg:col-span-2">
+              <SectionCard
+                title="現在の表示"
+                description="保存前のざっくり確認です。公式と AI の入り具合だけ見ておけば大丈夫です。"
+                actions={
+                  <button type="submit" form={formId} className={buttonClassName} disabled={saving}>
+                    {saving ? "保存中..." : "試合を保存"}
+                  </button>
+                }
+              >
+                <div className="rounded-3xl border border-dashed border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-900">
                   現在の表示: 公式 {formatPercent(match.officialVote1)} /{" "}
                   {formatPercent(match.officialVote0)} / {formatPercent(match.officialVote2)}、 AI{" "}
                   {formatPercent(match.modelProb1)} / {formatPercent(match.modelProb0)} /{" "}
                   {formatPercent(match.modelProb2)}
                 </div>
-
-                <div className="flex justify-end lg:col-span-2">
-                  <button type="submit" className={buttonClassName} disabled={saving}>
-                    {saving ? "保存中..." : "試合を保存"}
-                  </button>
-                </div>
-              </form>
-              {submitError ? <p className="text-sm text-rose-700">{submitError}</p> : null}
-            </SectionCard>
+                {submitError ? <p className="text-sm text-rose-700">{submitError}</p> : null}
+              </SectionCard>
+            </form>
           )}
         </>
       ) : null}
