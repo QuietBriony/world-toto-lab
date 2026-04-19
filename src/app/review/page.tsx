@@ -249,8 +249,8 @@ function ReviewPageContent() {
           </SectionCard>
 
           <section className="grid gap-4 xl:grid-cols-4">
-            <StatCard label="drawAlertが効いた試合" value={`${summary.drawAlertEffective}`} />
-            <StatCard label="exceptionFlagが刺さった試合" value={`${summary.exceptionUseful}`} />
+            <StatCard label="引き分け警戒が効いた試合" value={`${summary.drawAlertEffective}`} />
+            <StatCard label="例外メモが効いた試合" value={`${summary.exceptionUseful}`} />
             <StatCard
               label="AIと人間が一致した試合の的中率"
               value={formatPercent(summary.agreementRate)}
@@ -293,7 +293,7 @@ function ReviewPageContent() {
                   <textarea
                     name="note"
                     className={textAreaClassName}
-                    placeholder="例: drawAlert を軽く見すぎた。人気過多バッジの試合は次回もっと強くケアする。"
+                    placeholder="例: 引き分け警戒を軽く見すぎた。人気過多の試合は次回もっと強くケアする。"
                   />
                 </label>
 

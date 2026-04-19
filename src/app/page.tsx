@@ -392,7 +392,7 @@ export default function DashboardPage() {
                     className="rounded-[22px] border border-white/80 bg-white/74 p-4 shadow-[0_16px_38px_-30px_rgba(15,23,42,0.4)]"
                   >
                     <div className="font-display text-[11px] uppercase tracking-[0.34em] text-teal-800/72">
-                      Step {item.step}
+                      手順 {item.step}
                     </div>
                     <h3 className="mt-3 font-display text-lg font-semibold tracking-[-0.04em] text-slate-950">
                       {item.title}
@@ -1086,7 +1086,7 @@ export default function DashboardPage() {
                       <div className="rounded-3xl border border-white/60 bg-white/80 p-4">
                         <div className="flex items-center justify-between gap-3">
                           <h3 className="text-sm font-semibold text-slate-900">
-                            Edgeが大きい試合トップ3
+                            AI差分が大きい試合トップ3
                           </h3>
                           <span className="text-xs text-slate-500">
                             予算 {formatCurrency(round.budgetYen)}

@@ -253,11 +253,11 @@ function ScoutCardsPageContent() {
                     引き分け警戒 D（0 / 1 / 2）
                   </p>
                   <p>
-                    方向スコア F = ① + ② + ③ + ④ + M。F がプラスなら Home / 1
-                    寄り、マイナスなら Away / 2 寄りです。
+                    方向スコア F = ① + ② + ③ + ④ + M。F がプラスならホーム / 1
+                    寄り、マイナスならアウェイ / 2 寄りです。
                   </p>
                   <p>
-                    F が ±1 以内で D が高い場合は Draw / 0 候補、D = 2
+                    F が ±1 以内で D が高い場合は引き分け / 0 候補、D = 2
                     なら引き分け警戒を強調します。
                   </p>
                 </div>
@@ -410,8 +410,8 @@ function ScoutCardsPageContent() {
                         <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-4 text-sm leading-7 text-emerald-950">
                           <p>保存後に方向スコア F を自動計算します。</p>
                           <p>現在値: {report?.directionScoreF ?? 0}</p>
-                          <p>F がプラスなら Home / 1 寄り、マイナスなら Away / 2 寄り。</p>
-                          <p>F が小さく D が高い場合は Draw / 0 候補として扱います。</p>
+                          <p>F がプラスならホーム / 1 寄り、マイナスならアウェイ / 2 寄り。</p>
+                          <p>F が小さく D が高い場合は引き分け / 0 候補として扱います。</p>
                         </div>
                       </div>
                     </details>
