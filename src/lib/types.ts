@@ -18,6 +18,11 @@ export type User = {
   updatedAt: string;
 };
 
+export type PickSupport =
+  | { kind: "manual" }
+  | { kind: "ai" }
+  | { kind: "predictor"; userId: string };
+
 export type Round = {
   id: string;
   title: string;
@@ -70,6 +75,7 @@ export type Pick = {
   userId: string;
   pick: Outcome;
   note: string | null;
+  support: PickSupport;
   createdAt: string;
   updatedAt: string;
   user?: User;

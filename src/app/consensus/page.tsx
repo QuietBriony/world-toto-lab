@@ -99,9 +99,9 @@ function ConsensusPageContent() {
   return (
     <div className="space-y-8">
       <PageHeader
-        eyebrow="人力コンセンサス"
-        title="人力コンセンサス集計"
-        description="AI基準線に対して、人力がどこをそのまま採用し、どこに別筋を重ねたかを一覧できます。"
+        eyebrow="予想者コンセンサス"
+        title="予想者コンセンサス集計"
+        description="AI基準線に対して、予想者ラインがどこをそのまま採用し、どこに別筋を重ねたかを一覧できます。"
       />
 
       {!isSupabaseConfigured() ? (
@@ -261,7 +261,7 @@ function ConsensusPageContent() {
 
           <SectionCard
             title="コンセンサス一覧"
-            description="注目順に並べています。代表メモは根拠カードの内容から重複を除いて抜粋しています。"
+            description="注目順に並べています。代表メモは予想者カードの内容から重複を除いて抜粋しています。"
           >
             <div className="overflow-x-auto">
               <table className="min-w-[1540px] text-left text-sm">

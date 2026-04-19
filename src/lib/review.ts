@@ -8,6 +8,7 @@ import {
   type OutcomeValue,
 } from "@/lib/domain";
 import type { HumanScoutReport, Match, Outcome, Pick, User } from "@/lib/types";
+import { filterPredictors } from "@/lib/users";
 
 type PickWithUser = Pick & {
   user?: User;
@@ -95,7 +96,8 @@ export function buildReviewSummary(input: {
     outcomeMatches(match.actualResult, favoriteOutcomeForBucket(match as MatchLike, "market")),
   ).length;
 
-  const rankings = input.users
+  const rankingUsers = filterPredictors(input.users);
+  const rankings = (rankingUsers.length > 0 ? rankingUsers : input.users)
     .map((user) => {
       const userPicks = input.picks.filter((pick) => pick.userId === user.id);
       const hits = userPicks.filter((pick) => {

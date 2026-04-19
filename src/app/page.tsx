@@ -43,8 +43,9 @@ import {
   createRound,
   createSampleUsers,
   createUser,
-  updateUserName,
+  updateUserProfile,
 } from "@/lib/repository";
+import { parseUserRole, userRoleDescription, userRoleLabel } from "@/lib/users";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { useDashboardData } from "@/lib/use-app-data";
 
@@ -115,6 +116,7 @@ export default function DashboardPage() {
       const formData = new FormData(event.currentTarget);
       await createUser({
         name: stringValue(formData, "memberName"),
+        role: parseUserRole(stringValue(formData, "memberRole")),
       });
       event.currentTarget.reset();
       await refresh();
@@ -125,7 +127,7 @@ export default function DashboardPage() {
     }
   };
 
-  const handleRenameMember = async (
+  const handleSaveMember = async (
     event: FormEvent<HTMLFormElement>,
     userId: string,
   ) => {
@@ -135,9 +137,10 @@ export default function DashboardPage() {
 
     try {
       const formData = new FormData(event.currentTarget);
-      await updateUserName({
+      await updateUserProfile({
         userId,
         name: stringValue(formData, "memberName"),
+        role: parseUserRole(stringValue(formData, "memberRole")),
       });
       await refresh();
     } catch (nextError) {
@@ -173,7 +176,7 @@ export default function DashboardPage() {
           resultedCount: latestRound.resultedCount,
           roundId: latestRound.id,
           scoutReports: latestRound.scoutReports,
-          userCount: data.users.length,
+          users: data.users,
         })
       : null;
   const upcomingMatches = data
@@ -209,7 +212,7 @@ export default function DashboardPage() {
       <PageHeader
         eyebrow="ワールドtotoラボ"
         title="W杯totoの予想・分析・記録ダッシュボード"
-        description="まず AI基準線 を見て、人力で上書きし、最後に振り返るための共有 MVP です。"
+        description="AI基準線と少数の予想者を見比べながら、他メンバーは支持先を選べる共有 MVP です。"
         actions={
           <div className="flex flex-wrap gap-3">
             {!data || data.users.length === 0 ? (
@@ -265,7 +268,7 @@ export default function DashboardPage() {
                   </h3>
                 </div>
                 <p className="mt-3 text-sm leading-6 text-slate-600">
-                  共有メンバーを先に作ると、そのまま人力予想と根拠カードへ進めます。
+                  共有メンバーを先に作り、1 人以上を予想者にすると、そのまま比較と支持入力へ進めます。
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   {data.users.length === 0 ? (
@@ -392,7 +395,7 @@ export default function DashboardPage() {
                   </h3>
                 </div>
                 <p className="mt-3 text-sm leading-6 text-slate-600">
-                  このラウンドには試合データ、AI予測、人力予想、根拠カード、コンセンサス、候補チケット、
+                  このラウンドには試合データ、AI予測、予想者ライン、支持入力、予想者カード、コンセンサス、候補チケット、
                   振り返りが最初から入ります。
                 </p>
                 {demoRound ? (
@@ -425,7 +428,7 @@ export default function DashboardPage() {
                       })}
                       className={secondaryButtonClassName}
                     >
-                      人力予想
+                      支持 / 予想
                     </Link>
                     <Link
                       href={buildRoundHref(appRoute.consensus, demoRound.id)}
@@ -448,7 +451,7 @@ export default function DashboardPage() {
 
           <CollapsibleSectionCard
             title="このサイトは何をするもの？"
-            description="友人グループで W杯toto / WINNER の見立てを共有し、AI基準線と人力上書きを一つの流れで扱う分析ラボです。"
+            description="友人グループで W杯toto / WINNER の見立てを共有し、AI基準線と少数の予想者ラインを比べながら、他メンバーは支持先を選べる分析ラボです。"
             defaultOpen={false}
             badge={<Badge tone="teal">全体像</Badge>}
           >
@@ -456,8 +459,8 @@ export default function DashboardPage() {
               {[
                 {
                   eyebrow: "入力",
-                  title: "予想を持ち寄る",
-                  body: "まず AI基準線 を見てから、人力予想と根拠カードで 1/0/2 の予想と根拠を重ねます。",
+                  title: "AIと予想者を並べる",
+                  body: "まず AI基準線 と予想者ラインを見ます。予想者は 1/0/2 とカードを入れ、他メンバーは支持先を選びます。",
                 },
                 {
                   eyebrow: "比較",
@@ -517,8 +520,8 @@ export default function DashboardPage() {
                 },
                 {
                   step: "04",
-                  title: "人力予想 / 根拠カードを入力",
-                  body: "ユーザーを切り替えて 1/0/2 と根拠カードを入れます。ここが共有利用の中心です。",
+                  title: "支持 / 予想と予想者カードを入力",
+                  body: "予想者は 1/0/2 とカードを入れ、ウォッチ担当は AI か予想者のどちらに乗るかを選びます。",
                   tone: "sky",
                   status: "保存対応",
                 },
@@ -815,7 +818,7 @@ export default function DashboardPage() {
                   </h3>
                 </div>
                 <ul className="mt-4 space-y-2 text-sm leading-7 text-slate-700">
-                  <li>デモラウンドには試合情報、AI確率、人力予想、根拠カード、レビューが最初から入っています。</li>
+                  <li>デモラウンドには試合情報、AI確率、予想者ライン、支持入力、予想者カード、レビューが最初から入っています。</li>
                   <li>新規ラウンドでも、試合編集に入れた日時、会場、ステージ、公式人気、市場、AI確率は各画面に反映されます。</li>
                   <li>AI分析として見えているのは、いまは `1 / 0 / 2` の確率と、そこから作る AI基準線・差分計算です。</li>
                 </ul>
@@ -840,7 +843,7 @@ export default function DashboardPage() {
           <SectionCard
             id="shared-members"
             title="共有メンバー"
-            description="認証なし MVP なので、ここでハンドル名やあだ名を作って共有入力に使います。並び順も 1 → 2 → 10 の自然順に直しています。"
+            description="認証なし MVP なので、ここであだ名と役割を決めます。予想者は AI と比べる人、ウォッチは支持先を選ぶ人という前提です。"
             actions={
               data.users.length === 0 ? (
                 <button
@@ -856,7 +859,7 @@ export default function DashboardPage() {
           >
             {data.users.length === 0 ? (
               <p className="text-sm text-slate-600">
-                人力予想 / 根拠カードを使う前に、まず共有メンバーを作成してください。
+                まず共有メンバーを作り、少なくとも 1 人は `予想者` にしてください。
               </p>
             ) : (
               <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
@@ -864,12 +867,12 @@ export default function DashboardPage() {
                   {data.users.map((user) => (
                     <form
                       key={user.id}
-                      onSubmit={(event) => void handleRenameMember(event, user.id)}
-                      className="grid gap-3 rounded-[22px] border border-white/80 bg-white/76 p-4 shadow-[0_16px_38px_-30px_rgba(15,23,42,0.4)] sm:grid-cols-[auto_1fr_auto]"
+                      onSubmit={(event) => void handleSaveMember(event, user.id)}
+                      className="grid gap-3 rounded-[22px] border border-white/80 bg-white/76 p-4 shadow-[0_16px_38px_-30px_rgba(15,23,42,0.4)] sm:grid-cols-[auto_1fr_180px_auto]"
                     >
                       <div className="flex items-center">
                         <Badge tone={user.role === "admin" ? "teal" : "slate"}>
-                          {user.role === "admin" ? "管理" : "共有"}
+                          {userRoleLabel[user.role]}
                         </Badge>
                       </div>
                       <input
@@ -878,6 +881,15 @@ export default function DashboardPage() {
                         className={fieldClassName}
                         placeholder="ブリオニー / 観戦会A / 友人B"
                       />
+                      <select
+                        name="memberRole"
+                        defaultValue={user.role}
+                        className={fieldClassName}
+                        title={userRoleDescription[user.role]}
+                      >
+                        <option value="admin">予想者</option>
+                        <option value="member">ウォッチ</option>
+                      </select>
                       <button
                         type="submit"
                         className={secondaryButtonClassName}
@@ -905,6 +917,10 @@ export default function DashboardPage() {
                       className={fieldClassName}
                       placeholder="例: ブリオニー / 青組 / さとし"
                     />
+                    <select name="memberRole" className={fieldClassName} defaultValue="member">
+                      <option value="member">ウォッチとして追加</option>
+                      <option value="admin">予想者として追加</option>
+                    </select>
                     <button
                       type="submit"
                       className={buttonClassName}
@@ -916,7 +932,7 @@ export default function DashboardPage() {
                   <div className="mt-4 flex flex-wrap gap-2">
                     {data.users.map((user) => (
                       <Badge key={user.id} tone={user.role === "admin" ? "teal" : "slate"}>
-                        {user.name}
+                        {user.name} / {userRoleLabel[user.role]}
                       </Badge>
                     ))}
                   </div>
@@ -999,7 +1015,7 @@ export default function DashboardPage() {
                   resultedCount: round.resultedCount,
                   roundId: round.id,
                   scoutReports: round.scoutReports,
-                  userCount: data.users.length,
+                  users: data.users,
                 });
 
                 return (
@@ -1029,13 +1045,13 @@ export default function DashboardPage() {
                         compact
                       />
                       <StatCard
-                        label="人力予想"
-                        value={progressValue(round.pickCount, progress.expectedMemberEntries)}
+                        label="支持 / 予想"
+                        value={progressValue(round.pickCount, progress.expectedPickEntries)}
                         compact
                       />
                       <StatCard
-                        label="根拠カード"
-                        value={progressValue(round.scoutReports.length, progress.expectedMemberEntries)}
+                        label="予想者カード"
+                        value={progressValue(round.scoutReports.length, progress.expectedScoutEntries)}
                         compact
                       />
                       <StatCard

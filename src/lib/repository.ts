@@ -9,9 +9,11 @@ import {
   demoRoundTitle,
   demoTicketSettings,
 } from "@/lib/demo-data";
+import { encodePickSupportNote, parsePickSupportNote } from "@/lib/pick-support";
 import { defaultMemberNames } from "@/lib/sample-data";
 import { requireSupabaseClient } from "@/lib/supabase";
 import { generateAllModeTickets } from "@/lib/tickets";
+import { filterPredictors, isPredictorRole } from "@/lib/users";
 import type {
   DashboardData,
   DashboardRoundSummary,
@@ -21,6 +23,7 @@ import type {
   MatchCategory,
   Outcome,
   Pick,
+  PickSupport,
   ProvisionalCall,
   ReviewNote,
   Round,
@@ -224,13 +227,15 @@ function mapMatch(row: MatchRow): Match {
 }
 
 function mapPick(row: PickRow, user?: User): Pick {
+  const parsed = parsePickSupportNote(row.note);
   return {
     id: row.id,
     roundId: row.round_id,
     matchId: row.match_id,
     userId: row.user_id,
     pick: row.pick,
-    note: row.note,
+    note: parsed.note,
+    support: parsed.support,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     user,
@@ -531,6 +536,29 @@ export async function updateUserName(input: { userId: string; name: string }) {
   throwIfError("Failed to update user", result);
 }
 
+export async function updateUserProfile(input: {
+  userId: string;
+  name: string;
+  role: UserRole;
+}) {
+  const supabase = requireSupabaseClient();
+  const name = input.name.trim();
+
+  if (!name) {
+    throw new Error("あだ名を空にはできません。");
+  }
+
+  const result = await supabase
+    .from("users")
+    .update({
+      name,
+      role: input.role,
+    })
+    .eq("id", input.userId);
+
+  throwIfError("Failed to update user profile", result);
+}
+
 export async function createRound(input: {
   budgetYen: number | null;
   notes: string | null;
@@ -589,6 +617,7 @@ export async function createDemoRound() {
   if (users.length === 0) {
     throw new Error("No users are available for the demo round.");
   }
+  const predictorIds = filterPredictors(users).map((user) => user.id);
 
   const roundResult = await supabase
     .from("rounds")
@@ -617,7 +646,11 @@ export async function createDemoRound() {
     const matches = (matchesResult.data as MatchRow[]).map(mapMatch);
     const userIds = users.map((user) => user.id);
     const pickRows = buildDemoPickRows(round.id, matches, userIds);
-    const scoutRows = buildDemoScoutReportRows(round.id, matches, userIds);
+    const scoutRows = buildDemoScoutReportRows(
+      round.id,
+      matches,
+      predictorIds.length > 0 ? predictorIds : [userIds[0]],
+    );
 
     const [picksResult, reportsResult] = await Promise.all([
       supabase.from("picks").insert(pickRows),
@@ -926,6 +959,7 @@ export async function replacePicks(input: {
     matchId: string;
     note: string | null;
     pick: Outcome | null;
+    support?: PickSupport;
   }>;
 }) {
   const supabase = requireSupabaseClient();
@@ -944,7 +978,7 @@ export async function replacePicks(input: {
       user_id: input.userId,
       match_id: entry.matchId,
       pick: entry.pick,
-      note: entry.note,
+      note: encodePickSupportNote(entry.note, entry.support ?? { kind: "manual" }),
     }));
 
   if (rows.length === 0) {
@@ -1022,6 +1056,10 @@ export async function replaceScoutReports(input: {
 
   const reportsByMatch = new Map<string, HumanScoutReport[]>();
   for (const report of workspace.round.scoutReports) {
+    if (!isPredictorRole(report.user?.role ?? "member")) {
+      continue;
+    }
+
     const current = reportsByMatch.get(report.matchId) ?? [];
     current.push(report);
     reportsByMatch.set(report.matchId, current);

@@ -34,6 +34,7 @@ import { appRoute, buildRoundHref, getSingleSearchParam } from "@/lib/round-link
 import { replaceScoutReports } from "@/lib/repository";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { useRoundWorkspace } from "@/lib/use-app-data";
+import { filterPredictors, userRoleLabel } from "@/lib/users";
 
 const scoreOptions = {
   strength: [-3, -2, -1, 0, 1, 2, 3],
@@ -102,8 +103,9 @@ function ScoutCardsPageContent() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
+  const predictorUsers = data ? filterPredictors(data.users) : [];
   const activeUser =
-    data?.users.find((user) => user.id === requestedUserId) ?? data?.users[0] ?? null;
+    predictorUsers.find((user) => user.id === requestedUserId) ?? predictorUsers[0] ?? null;
   const reportByMatch = new Map(
     (data?.round.scoutReports ?? [])
       .filter((report) => report.userId === activeUser?.id)
@@ -298,8 +300,8 @@ function ScoutCardsPageContent() {
     <div className="space-y-8">
       <PageHeader
         eyebrow="根拠カード"
-        title="人力スコアリングカード"
-        description="W杯toto予想の根拠を、試合ごとに点数化して残します。方向スコア F は保存時に自動計算されます。"
+        title="予想者カード"
+        description="AIと比較したい予想者だけが、試合ごとの根拠を点数化して残します。方向スコア F は保存時に自動計算されます。"
       />
 
       {!isSupabaseConfigured() ? (
@@ -320,24 +322,33 @@ function ScoutCardsPageContent() {
             userId={activeUser?.id}
           />
 
-          {data.users.length === 0 || !activeUser ? (
+          {data.users.length === 0 ? (
             <SectionCard
               title="共有メンバーがまだありません"
               description="ダッシュボードでサンプルメンバーを作成してから利用してください。"
             >
               <p className="text-sm text-slate-600">
-                根拠カードは共有メンバー前提の入力画面です。
+                予想者カードは共有メンバー前提の入力画面です。
+              </p>
+            </SectionCard>
+          ) : predictorUsers.length === 0 || !activeUser ? (
+            <SectionCard
+              title="予想者がまだいません"
+              description="ダッシュボードの共有メンバーで、少なくとも1人を予想者に変更してください。"
+            >
+              <p className="text-sm leading-6 text-slate-600">
+                ウォッチ担当はここでは入力せず、支持 / 予想画面で AI か予想者のどちらに乗るかを選びます。
               </p>
             </SectionCard>
           ) : (
             <>
               <SectionCard
                 title="入力ユーザー切り替え"
-                description="メンバーごとの視点を残す前提なので、入力対象を切り替えて使います。"
+                description="予想者ごとの視点を残す前提なので、入力対象を切り替えて使います。"
               >
                 <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-start">
                   <div className="flex flex-wrap gap-2">
-                    {data.users.map((user) => (
+                    {predictorUsers.map((user) => (
                       <button
                         type="button"
                         key={user.id}
@@ -352,6 +363,7 @@ function ScoutCardsPageContent() {
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge tone="sky">いま入力中</Badge>
                       <span className="font-semibold text-slate-900">{activeUser.name}</span>
+                      <Badge tone="teal">{userRoleLabel[activeUser.role]}</Badge>
                     </div>
                     <p className="mt-2 leading-6">
                       保存してから切り替えると、根拠メモの取りこぼしを防げます。
@@ -360,7 +372,7 @@ function ScoutCardsPageContent() {
                 </div>
               </SectionCard>
 
-              <SectionCard title="入力ルール" description="表示文言は要件に合わせています。">
+              <SectionCard title="入力ルール" description="予想者だけが使う補助カードです。">
                 <div className="space-y-2 text-sm leading-7 text-slate-700">
                   <p>W杯toto予想。上から重要考慮要素。</p>
                   <p>
@@ -419,7 +431,7 @@ function ScoutCardsPageContent() {
                       className={buttonClassName}
                       disabled={saving}
                     >
-                      {saving ? "保存中..." : "カードを保存"}
+                      {saving ? "保存中..." : "予想者カードを保存"}
                     </button>
                   </div>
                 }

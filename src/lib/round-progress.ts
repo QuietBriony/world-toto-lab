@@ -1,5 +1,6 @@
 import { appRoute, buildRoundHref } from "@/lib/round-links";
-import type { HumanScoutReport, Match, Pick } from "@/lib/types";
+import { filterPredictors } from "@/lib/users";
+import type { HumanScoutReport, Match, Pick, User } from "@/lib/types";
 
 type ProgressTone = "amber" | "sky" | "teal";
 
@@ -12,15 +13,18 @@ export type RoundNextStep = {
 
 export type RoundProgressSummary = {
   configuredMatches: number;
-  expectedMemberEntries: number;
+  expectedPickEntries: number;
+  expectedScoutEntries: number;
   missingPickEntries: number;
   missingResultCount: number;
   missingScoutEntries: number;
   nextStep: RoundNextStep;
   pickCompletion: number;
+  predictorCount: number;
   resultCompletion: number;
   scoutCompletion: number;
   setupCompletion: number;
+  watcherCount: number;
 };
 
 export function matchHasSetupInput(match: Match) {
@@ -60,24 +64,34 @@ export function deriveRoundProgressSummary(input: {
   resultedCount?: number;
   roundId: string;
   scoutReports: HumanScoutReport[];
-  userCount: number;
+  users: User[];
 }): RoundProgressSummary {
   const matchCount = input.matches.length;
   const configuredMatches = input.matches.filter(matchHasSetupInput).length;
-  const expectedMemberEntries = input.userCount > 0 ? input.userCount * matchCount : 0;
-  const missingPickEntries = Math.max(expectedMemberEntries - input.picks.length, 0);
-  const missingScoutEntries = Math.max(expectedMemberEntries - input.scoutReports.length, 0);
+  const predictorCount = filterPredictors(input.users).length;
+  const watcherCount = Math.max(input.users.length - predictorCount, 0);
+  const expectedPickEntries = input.users.length > 0 ? input.users.length * matchCount : 0;
+  const expectedScoutEntries = predictorCount > 0 ? predictorCount * matchCount : 0;
+  const missingPickEntries = Math.max(expectedPickEntries - input.picks.length, 0);
+  const missingScoutEntries = Math.max(expectedScoutEntries - input.scoutReports.length, 0);
   const resultedCount =
     input.resultedCount ?? input.matches.filter((match) => match.actualResult !== null).length;
   const missingResultCount = Math.max(matchCount - resultedCount, 0);
 
   let nextStep: RoundNextStep;
 
-  if (input.userCount === 0) {
+  if (input.users.length === 0) {
     nextStep = {
       description: "まずは共有メンバーを作ってから入力を始めます。",
       href: `${appRoute.dashboard}#shared-members`,
       label: "共有メンバーを作成",
+      tone: "amber",
+    };
+  } else if (predictorCount === 0) {
+    nextStep = {
+      description: "少なくとも1人は予想者にして、AIと比較できる人力ラインを作ります。",
+      href: `${appRoute.dashboard}#shared-members`,
+      label: "予想者を選ぶ",
       tone: "amber",
     };
   } else if (configuredMatches < matchCount) {
@@ -89,16 +103,16 @@ export function deriveRoundProgressSummary(input: {
     };
   } else if (missingPickEntries > 0) {
     nextStep = {
-      description: `人力予想があと ${missingPickEntries} 件で揃います。`,
+      description: `予想者の入力とウォッチの支持先が、あと ${missingPickEntries} 件で揃います。`,
       href: buildRoundHref(appRoute.picks, input.roundId),
-      label: "人力予想を入力",
+      label: "支持 / 予想を入力",
       tone: "sky",
     };
   } else if (missingScoutEntries > 0) {
     nextStep = {
-      description: `根拠カードがあと ${missingScoutEntries} 件で揃います。`,
+      description: `予想者カードがあと ${missingScoutEntries} 件で揃います。`,
       href: buildRoundHref(appRoute.scoutCards, input.roundId),
-      label: "根拠カードを追加",
+      label: "予想者カードを追加",
       tone: "sky",
     };
   } else if (missingResultCount > 0) {
@@ -119,14 +133,17 @@ export function deriveRoundProgressSummary(input: {
 
   return {
     configuredMatches,
-    expectedMemberEntries,
+    expectedPickEntries,
+    expectedScoutEntries,
     missingPickEntries,
     missingResultCount,
     missingScoutEntries,
     nextStep,
-    pickCompletion: ratio(input.picks.length, expectedMemberEntries),
+    pickCompletion: ratio(input.picks.length, expectedPickEntries),
+    predictorCount,
     resultCompletion: ratio(resultedCount, matchCount),
-    scoutCompletion: ratio(input.scoutReports.length, expectedMemberEntries),
+    scoutCompletion: ratio(input.scoutReports.length, expectedScoutEntries),
     setupCompletion: ratio(configuredMatches, matchCount),
+    watcherCount,
   };
 }

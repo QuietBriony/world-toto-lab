@@ -98,8 +98,8 @@ export const demoWalkthroughSteps = [
   },
   {
     key: "picks",
-    title: "人力予想",
-    body: "AI本線に乗るか、0 を足すか、別筋へ振るかを実例で確認します。",
+    title: "支持 / 予想",
+    body: "予想者が AI とどう違うか、ウォッチ担当がどちらに乗るかを実例で確認します。",
   },
   {
     key: "consensus",

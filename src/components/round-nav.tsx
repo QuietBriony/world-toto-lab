@@ -46,11 +46,11 @@ export function RoundNav({
           { href: buildRoundHref(appRoute.workspace, roundId), label: "ラウンド詳細" },
           {
             href: buildRoundHref(appRoute.picks, roundId, { user: userId }),
-            label: "人力予想",
+            label: "支持 / 予想",
           },
           {
             href: buildRoundHref(appRoute.scoutCards, roundId, { user: userId }),
-            label: "根拠カード",
+            label: "予想者カード",
           },
           { href: buildRoundHref(appRoute.consensus, roundId), label: "コンセンサス" },
           { href: buildRoundHref(appRoute.edgeBoard, roundId), label: "差分ボード" },

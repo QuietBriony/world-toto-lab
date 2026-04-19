@@ -62,6 +62,7 @@ import { appRoute, buildRoundHref, getSingleSearchParam } from "@/lib/round-link
 import { bulkUpdateRoundMatches, estimateRoundAiModel, updateRound } from "@/lib/repository";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { useRoundWorkspace } from "@/lib/use-app-data";
+import { filterPredictors } from "@/lib/users";
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "不明なエラーです。";
@@ -149,9 +150,10 @@ function WorkspacePageContent() {
         picks: data.round.picks,
         roundId: data.round.id,
         scoutReports: data.round.scoutReports,
-        userCount: data.users.length,
+        users: data.users,
       })
     : null;
+  const predictorUsers = data ? filterPredictors(data.users) : [];
   const estimableMatchCount =
     data?.round.matches.filter((match) => canEstimateAiModel(match)).length ?? 0;
   const missingAiCount =
@@ -329,8 +331,8 @@ function WorkspacePageContent() {
         title={data?.round.title ?? "ラウンド詳細"}
         description={
           isDemoRound
-            ? "このデモは、確認カード → 人力予想 → コンセンサス → 振り返り の順で触ると全体像をつかみやすいです。"
-            : "13試合の分析入力状況を、AI基準線を土台にして人力上書きと差分候補まで一気に俯瞰できます。"
+            ? "このデモは、確認カード → 支持 / 予想 → コンセンサス → 振り返り の順で触ると全体像をつかみやすいです。"
+            : "13試合の分析入力状況を、AI基準線と予想者ラインを土台にして支持分布まで一気に俯瞰できます。"
         }
         actions={
           data ? (
@@ -480,25 +482,25 @@ function WorkspacePageContent() {
                   compact
                 />
                 <StatCard
-                  label="人力予想"
+                  label="支持 / 予想"
                   value={
                     progressValue(
                       data.round.picks.length,
-                      progress?.expectedMemberEntries ?? 0,
+                      progress?.expectedPickEntries ?? 0,
                     )
                   }
-                  hint="全メンバーぶんの 1 / 0 / 2 入力状況"
+                  hint="予想者の入力とウォッチの支持先が入った件数"
                   compact
                 />
                 <StatCard
-                  label="根拠カード"
+                  label="予想者カード"
                   value={
                     progressValue(
                       data.round.scoutReports.length,
-                      progress?.expectedMemberEntries ?? 0,
+                      progress?.expectedScoutEntries ?? 0,
                     )
                   }
-                  hint="根拠スコアとメモの入力状況"
+                  hint="予想者だけが入れる根拠スコアとメモ"
                   compact
                 />
                 <StatCard
@@ -521,7 +523,7 @@ function WorkspacePageContent() {
                 </div>
                 <p className="mt-3 text-sm leading-6 text-slate-600">
                   {progress?.nextStep.description ??
-                    "試合設定、人力予想、根拠カード、振り返りの順で進めるとまとまりやすいです。"}
+                    "試合設定、AIと予想者の比較、支持 / 予想、予想者カード、振り返りの順で進めるとまとまりやすいです。"}
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   {progress ? (
@@ -531,19 +533,19 @@ function WorkspacePageContent() {
                   ) : null}
                   <Link
                     href={buildRoundHref(appRoute.picks, data.round.id, {
-                      user: data.users[0]?.id,
+                      user: predictorUsers[0]?.id ?? data.users[0]?.id,
                     })}
                     className={secondaryButtonClassName}
                   >
-                    人力予想へ
+                    支持 / 予想へ
                   </Link>
                   <Link
                     href={buildRoundHref(appRoute.scoutCards, data.round.id, {
-                      user: data.users[0]?.id,
+                      user: predictorUsers[0]?.id ?? data.users[0]?.id,
                     })}
                     className={secondaryButtonClassName}
                   >
-                    根拠カードへ
+                    予想者カードへ
                   </Link>
                   <Link
                     href={buildRoundHref(appRoute.review, data.round.id)}
@@ -559,7 +561,7 @@ function WorkspacePageContent() {
                   <span>結果 {formatPercent(progress?.resultCompletion ?? 0)}</span>
                 </div>
                 <p className="mt-4 text-sm leading-6 text-slate-600">
-                  基本の順番: 試合設定 → 人力予想 → 根拠カード → コンセンサス → 差分 / 候補チケット → 振り返り
+                  基本の順番: 試合設定 → AIと予想者の比較 → 支持 / 予想入力 → 予想者カード → コンセンサス → 振り返り
                 </p>
               </div>
             </div>

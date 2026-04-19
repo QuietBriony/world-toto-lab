@@ -222,7 +222,7 @@ function ReviewPageContent() {
                 <div className="flex items-center gap-2">
                   <Badge tone="teal">上位</Badge>
                   <h3 className="font-display text-lg font-semibold tracking-[-0.04em] text-slate-950">
-                    先頭メンバー
+                    先頭予想者
                   </h3>
                 </div>
                 {summary.rankings[0] ? (
@@ -239,8 +239,8 @@ function ReviewPageContent() {
                       </Badge>
                     </div>
                     <p className="text-sm leading-6 text-slate-600">
-                      今回の上位メンバーです。人力側の見立てが強かったかどうかの参考になります。
-                    </p>
+                       今回の上位予想者です。AI と並べたときに人力ラインが強かったかどうかの参考になります。
+                     </p>
                   </div>
                 ) : (
                   <p className="mt-4 text-sm leading-6 text-slate-600">
@@ -330,13 +330,13 @@ function ReviewPageContent() {
             </form>
           </SectionCard>
 
-          <SectionCard title="予想的中ランキング" description="賞金や配当ではなく、純粋に予想結果を並べます。">
+          <SectionCard title="予想者ランキング" description="賞金や配当ではなく、AI に対する予想者ラインの結果を並べます。">
             <div className="overflow-x-auto">
               <table className="min-w-[640px] text-left text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 text-slate-500">
                     <th className="px-3 py-3">順位</th>
-                    <th className="px-3 py-3">メンバー</th>
+                    <th className="px-3 py-3">予想者</th>
                     <th className="px-3 py-3">的中数</th>
                     <th className="px-3 py-3">F方向的中率</th>
                   </tr>
