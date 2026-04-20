@@ -10,7 +10,12 @@ import {
   demoTicketSettings,
   isDemoRoundTitle,
 } from "@/lib/demo-data";
-import { encodePickSupportNote, parsePickSupportNote } from "@/lib/pick-support";
+import { parseOutcome } from "@/lib/forms";
+import {
+  encodePickSupportNote,
+  parsePickSupportNote,
+  resolveSupportedOutcome,
+} from "@/lib/pick-support";
 import {
   encodeRoundParticipantsNote,
   parseRoundParticipantsNote,
@@ -252,16 +257,23 @@ function mapMatch(row: MatchRow): Match {
   };
 }
 
-function mapPick(row: PickRow, user?: User): Pick {
-  const parsed = parsePickSupportNote(row.note);
+function mapResolvedPick(
+  row: PickRow,
+  input: {
+    note: string | null;
+    pick: Outcome;
+    support: PickSupport;
+  },
+  user?: User,
+): Pick {
   return {
     id: row.id,
     roundId: row.round_id,
     matchId: row.match_id,
     userId: row.user_id,
-    pick: row.pick,
-    note: parsed.note,
-    support: parsed.support,
+    pick: input.pick,
+    note: input.note,
+    support: input.support,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     user,
@@ -459,6 +471,86 @@ function filterReviewNotesForScopedUsers(
   return rows.filter((row) => !row.user_id || scopedUserIds.has(row.user_id));
 }
 
+function resolvePicksForScopedUsers(input: {
+  matches: Match[];
+  rows: PickRow[];
+  users: User[];
+}) {
+  const userById = new Map(input.users.map((user) => [user.id, user]));
+  const selectedUserIds = new Set(userById.keys());
+  const matchById = new Map(input.matches.map((match) => [match.id, match]));
+  const rowByMatchUser = new Map(
+    input.rows.map((row) => [`${row.match_id}:${row.user_id}`, row]),
+  );
+  const parsedByRowId = new Map(
+    input.rows.map((row) => [row.id, parsePickSupportNote(row.note)]),
+  );
+  const resolvedPickByRowId = new Map<string, Outcome>();
+  const resolvingRowIds = new Set<string>();
+
+  const resolveRowPick = (row: PickRow): Outcome => {
+    const cached = resolvedPickByRowId.get(row.id);
+    if (cached) {
+      return cached;
+    }
+
+    if (resolvingRowIds.has(row.id)) {
+      return row.pick;
+    }
+
+    resolvingRowIds.add(row.id);
+    const parsed = parsedByRowId.get(row.id) ?? parsePickSupportNote(row.note);
+    let nextPick = row.pick;
+
+    if (parsed.support.kind === "ai") {
+      const match = matchById.get(row.match_id);
+      if (match) {
+        nextPick =
+          parseOutcome(
+            resolveSupportedOutcome({
+              match,
+              picks: [],
+              support: parsed.support,
+            }),
+          ) ?? row.pick;
+      }
+    } else if (
+      parsed.support.kind === "predictor" &&
+      selectedUserIds.has(parsed.support.userId)
+    ) {
+      const predictorRow = rowByMatchUser.get(
+        `${row.match_id}:${parsed.support.userId}`,
+      );
+      if (predictorRow) {
+        nextPick = resolveRowPick(predictorRow);
+      }
+    }
+
+    resolvingRowIds.delete(row.id);
+    resolvedPickByRowId.set(row.id, nextPick);
+    return nextPick;
+  };
+
+  return input.rows.map((row) => {
+    const parsed = parsedByRowId.get(row.id) ?? parsePickSupportNote(row.note);
+    const support =
+      parsed.support.kind === "predictor" &&
+      !selectedUserIds.has(parsed.support.userId)
+        ? ({ kind: "manual" } as const)
+        : parsed.support;
+
+    return mapResolvedPick(
+      row,
+      {
+        note: parsed.note,
+        pick: resolveRowPick(row),
+        support,
+      },
+      userById.get(row.user_id),
+    );
+  });
+}
+
 function sameParticipantIds(left: string[] | null | undefined, right: string[] | null | undefined) {
   const leftIds = Array.from(new Set((left ?? []).filter(Boolean))).sort();
   const rightIds = Array.from(new Set((right ?? []).filter(Boolean))).sort();
@@ -628,10 +720,12 @@ export async function listDashboardData(): Promise<DashboardData> {
         roundTitle: round.title,
         scoutReports: rawReportsByRound.get(round.id) ?? [],
       });
+      const picks = resolvePicksForScopedUsers({
+        matches: matchesByRound.get(round.id) ?? [],
+        rows: filterRowsForScopedUsers(rawPicksByRound.get(round.id) ?? [], users),
+        users,
+      });
       const userById = new Map(users.map((user) => [user.id, user]));
-      const picks = filterRowsForScopedUsers(rawPicksByRound.get(round.id) ?? [], users).map(
-        (row) => mapPick(row, userById.get(row.user_id)),
-      );
       const scoutReports = filterRowsForScopedUsers(
         rawReportsByRound.get(round.id) ?? [],
         users,
@@ -705,9 +799,11 @@ export async function getRoundWorkspace(roundId: string): Promise<RoundWorkspace
   const userById = new Map(users.map((user) => [user.id, user]));
   const matches = (matchesResult.data as MatchRow[]).map(mapMatch);
   const matchById = new Map(matches.map((match) => [match.id, match]));
-  const picks = filterRowsForScopedUsers(rawPicks, users).map((row) =>
-    mapPick(row, userById.get(row.user_id)),
-  );
+  const picks = resolvePicksForScopedUsers({
+    matches,
+    rows: filterRowsForScopedUsers(rawPicks, users),
+    users,
+  });
   const scoutReports = filterRowsForScopedUsers(rawScoutReports, users).map((row) =>
     mapScoutReport(row, userById.get(row.user_id), matchById.get(row.match_id)),
   );
