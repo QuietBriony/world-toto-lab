@@ -2,8 +2,11 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useState, type FormEvent } from "react";
+import { Suspense, useEffect, useState, type FormEvent } from "react";
 
+import {
+  EditingStatusNotice,
+} from "@/components/app/editing-status";
 import {
   RouteGlossaryCard,
   RoundProgressCallout,
@@ -108,13 +111,20 @@ function summarizePercentGroup(values: string[]) {
   };
 }
 
+type ScopedMessage = {
+  message: string;
+  scope: string;
+};
+
 function MatchEditorPageContent() {
   const searchParams = useSearchParams();
   const roundId = getSingleSearchParam(searchParams.get("round"));
   const matchId = getSingleSearchParam(searchParams.get("match"));
   const { data, error, loading, refresh } = useRoundWorkspace(roundId);
   const [saving, setSaving] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<ScopedMessage | null>(null);
+  const [saveMessage, setSaveMessage] = useState<ScopedMessage | null>(null);
+  const [dirtyScope, setDirtyScope] = useState<string | null>(null);
   const [probabilityDraftState, setProbabilityDraftState] = useState({
     matchId: "",
     market: ["", "", ""],
@@ -178,6 +188,26 @@ function MatchEditorPageContent() {
   const officialSummary = summarizePercentGroup(probabilityDraft.official);
   const marketSummary = summarizePercentGroup(probabilityDraft.market);
   const modelSummary = summarizePercentGroup(probabilityDraft.model);
+  const currentFormScope = match?.id ?? "none";
+  const hasVisibleUnsavedChanges = dirtyScope === currentFormScope;
+  const visibleSubmitError =
+    submitError?.scope === currentFormScope ? submitError.message : null;
+  const visibleSaveMessage =
+    saveMessage?.scope === currentFormScope ? saveMessage.message : null;
+
+  useEffect(() => {
+    if (!hasVisibleUnsavedChanges) {
+      return;
+    }
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hasVisibleUnsavedChanges]);
 
   const handleSave = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -222,9 +252,17 @@ function MatchEditorPageContent() {
           parseOutcomeList(stringValue(formData, "recommendedOutcomes")),
         ),
       });
+      setDirtyScope(null);
+      setSaveMessage({
+        scope: currentFormScope,
+        message: "試合設定を保存しました。AI比較と各集計に反映されます。",
+      });
       await refresh();
     } catch (nextError) {
-      setSubmitError(errorMessage(nextError));
+      setSubmitError({
+        scope: currentFormScope,
+        message: errorMessage(nextError),
+      });
     } finally {
       setSaving(false);
     }
@@ -304,6 +342,31 @@ function MatchEditorPageContent() {
             }
           />
 
+          {visibleSubmitError ? (
+            <EditingStatusNotice
+              tone="rose"
+              title="保存に失敗しました"
+              description={visibleSubmitError}
+            />
+          ) : match && hasVisibleUnsavedChanges ? (
+            <EditingStatusNotice
+              tone="amber"
+              title="未保存の変更があります"
+              description="試合設定を変えたあとは、保存するまでは AI 比較や候補配分に反映されません。"
+              action={
+                <button type="submit" form={formId} className={buttonClassName} disabled={saving}>
+                  {saving ? "保存中..." : "試合を保存"}
+                </button>
+              }
+            />
+          ) : visibleSaveMessage ? (
+            <EditingStatusNotice
+              tone="teal"
+              title="保存済み"
+              description={visibleSaveMessage}
+            />
+          ) : null}
+
           {!match ? (
             <SectionCard
               title="対象試合が選ばれていません"
@@ -326,6 +389,11 @@ function MatchEditorPageContent() {
               id={formId}
               key={match.updatedAt}
               onSubmit={handleSave}
+              onChangeCapture={() => {
+                setSubmitError(null);
+                setSaveMessage(null);
+                setDirtyScope(currentFormScope);
+              }}
               className="space-y-6"
             >
               <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -651,7 +719,6 @@ function MatchEditorPageContent() {
                   {formatPercent(match.modelProb1)} / {formatPercent(match.modelProb0)} /{" "}
                   {formatPercent(match.modelProb2)}
                 </div>
-                {submitError ? <p className="text-sm text-rose-700">{submitError}</p> : null}
               </SectionCard>
             </form>
           )}

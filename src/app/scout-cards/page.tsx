@@ -5,6 +5,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState, type FormEvent } from "react";
 
 import {
+  EditingStatusNotice,
+} from "@/components/app/editing-status";
+import {
   RouteGlossaryCard,
   RoundProgressCallout,
 } from "@/components/app/round-guides";
@@ -48,6 +51,11 @@ const scoreOptions = {
   conditions: [-2, -1, 0, 1, 2],
   micro: [-1, 0, 1],
   draw: [0, 1, 2],
+};
+
+type ScopedMessage = {
+  message: string;
+  scope: string;
 };
 
 function errorMessage(error: unknown) {
@@ -107,8 +115,9 @@ function ScoutCardsPageContent() {
   const requestedUserId = getSingleSearchParam(searchParams.get("user"));
   const { data, error, loading, refresh } = useRoundWorkspace(roundId);
   const [saving, setSaving] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [submitError, setSubmitError] = useState<ScopedMessage | null>(null);
+  const [saveMessage, setSaveMessage] = useState<ScopedMessage | null>(null);
+  const [dirtyScope, setDirtyScope] = useState<string | null>(null);
 
   const predictorUsers = data ? filterPredictors(data.users) : [];
   const activeUser =
@@ -148,9 +157,15 @@ function ScoutCardsPageContent() {
       }) ?? [];
   const focusMatches = orderedMatches.slice(0, 4);
   const formId = activeUser ? `scout-form-${activeUser.id}` : "scout-form";
+  const currentFormScope = activeUser?.id ?? "none";
+  const hasVisibleUnsavedChanges = dirtyScope === currentFormScope;
+  const visibleSubmitError =
+    submitError?.scope === currentFormScope ? submitError.message : null;
+  const visibleSaveMessage =
+    saveMessage?.scope === currentFormScope ? saveMessage.message : null;
 
   useEffect(() => {
-    if (!hasUnsavedChanges) {
+    if (!hasVisibleUnsavedChanges) {
       return;
     }
 
@@ -161,11 +176,11 @@ function ScoutCardsPageContent() {
 
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [hasUnsavedChanges]);
+  }, [hasVisibleUnsavedChanges]);
 
   const handleSwitchUser = (userId: string) => {
     if (
-      hasUnsavedChanges &&
+      hasVisibleUnsavedChanges &&
       !window.confirm("未保存の変更があります。保存せずにユーザーを切り替えますか？")
     ) {
       return;
@@ -294,10 +309,17 @@ function ScoutCardsPageContent() {
         userId: activeUser.id,
         reports,
       });
-      setHasUnsavedChanges(false);
+      setDirtyScope(null);
+      setSaveMessage({
+        scope: currentFormScope,
+        message: "予想者カードを保存しました。方向スコアとコンセンサスに反映されます。",
+      });
       await refresh();
     } catch (nextError) {
-      setSubmitError(errorMessage(nextError));
+      setSubmitError({
+        scope: currentFormScope,
+        message: errorMessage(nextError),
+      });
     } finally {
       setSaving(false);
     }
@@ -342,6 +364,31 @@ function ScoutCardsPageContent() {
             currentPath={appRoute.scoutCards}
             defaultOpen={completedReportCount === 0}
           />
+
+          {visibleSubmitError ? (
+            <EditingStatusNotice
+              tone="rose"
+              title="保存に失敗しました"
+              description={visibleSubmitError}
+            />
+          ) : hasVisibleUnsavedChanges ? (
+            <EditingStatusNotice
+              tone="amber"
+              title="未保存の変更があります"
+              description="いまの点数や根拠メモは、保存するまではコンセンサスや振り返りに反映されません。"
+              action={
+                <button type="submit" form={formId} className={buttonClassName} disabled={saving}>
+                  {saving ? "保存中..." : "カードを保存"}
+                </button>
+              }
+            />
+          ) : visibleSaveMessage ? (
+            <EditingStatusNotice
+              tone="teal"
+              title="保存済み"
+              description={visibleSaveMessage}
+            />
+          ) : null}
 
           {data.users.length === 0 ? (
             <SectionCard
@@ -554,7 +601,11 @@ function ScoutCardsPageContent() {
               <form
                 id={formId}
                 onSubmit={handleSave}
-                onChange={() => setHasUnsavedChanges(true)}
+                onChange={() => {
+                  setSubmitError(null);
+                  setSaveMessage(null);
+                  setDirtyScope(currentFormScope);
+                }}
                 className="space-y-6"
               >
                 {orderedMatches.map((match, index) => {
@@ -725,7 +776,6 @@ function ScoutCardsPageContent() {
                   </button>
                 </div>
               </form>
-              {submitError ? <p className="text-sm text-rose-700">{submitError}</p> : null}
             </>
           )}
         </>

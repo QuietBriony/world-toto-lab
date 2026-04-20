@@ -5,6 +5,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState, type FormEvent } from "react";
 
 import {
+  EditingStatusNotice,
+} from "@/components/app/editing-status";
+import {
   RouteGlossaryCard,
   RoundProgressCallout,
 } from "@/components/app/round-guides";
@@ -66,6 +69,11 @@ type DraftPickState = {
   identity: string;
   supportValues: Record<string, string>;
   values: Record<string, OutcomeValue | "">;
+};
+
+type ScopedMessage = {
+  message: string;
+  scope: string;
 };
 
 function errorMessage(error: unknown) {
@@ -205,8 +213,9 @@ function PicksPageContent() {
   const requestedUserId = getSingleSearchParam(searchParams.get("user"));
   const { data, error, loading, refresh } = useRoundWorkspace(roundId);
   const [saving, setSaving] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [submitError, setSubmitError] = useState<ScopedMessage | null>(null);
+  const [saveMessage, setSaveMessage] = useState<ScopedMessage | null>(null);
+  const [dirtyScope, setDirtyScope] = useState<string | null>(null);
   const [draftPickState, setDraftPickState] = useState<DraftPickState>({
     identity: "empty",
     supportValues: {},
@@ -257,8 +266,13 @@ function PicksPageContent() {
     draftPickState.identity === draftPickIdentity
       ? draftPickState.supportValues
       : baseDraftSupportValues;
+  const currentDraftScope = draftPickIdentity;
   const hasVisibleUnsavedChanges =
-    hasUnsavedChanges && draftPickState.identity === draftPickIdentity;
+    dirtyScope === currentDraftScope && draftPickState.identity === draftPickIdentity;
+  const visibleSubmitError =
+    submitError?.scope === currentDraftScope ? submitError.message : null;
+  const visibleSaveMessage =
+    saveMessage?.scope === currentDraftScope ? saveMessage.message : null;
 
   const picksByMatch = useMemo(() => {
     const map = new Map<string, Pick[]>();
@@ -394,12 +408,14 @@ function PicksPageContent() {
     supportValues?: Record<string, string>;
     values: Record<string, OutcomeValue | "">;
   }) => {
+    setSubmitError(null);
+    setSaveMessage(null);
     setDraftPickState({
       identity: draftPickIdentity,
       supportValues: input.supportValues ?? resolvedDraftSupportValues,
       values: input.values,
     });
-    setHasUnsavedChanges(true);
+    setDirtyScope(currentDraftScope);
   };
 
   const applyAiPrimaryToPending = () => {
@@ -508,10 +524,19 @@ function PicksPageContent() {
           };
         }),
       });
-      setHasUnsavedChanges(false);
+      setDirtyScope(null);
+      setSaveMessage({
+        scope: currentDraftScope,
+        message: activeUserIsPredictor
+          ? "予想を保存しました。全体の分布と比較表示に反映されています。"
+          : "支持先を保存しました。採用ラインと支持分布に反映されています。",
+      });
       await refresh();
     } catch (nextError) {
-      setSubmitError(errorMessage(nextError));
+      setSubmitError({
+        scope: currentDraftScope,
+        message: errorMessage(nextError),
+      });
     } finally {
       setSaving(false);
     }
@@ -556,6 +581,36 @@ function PicksPageContent() {
             currentPath={appRoute.picks}
             defaultOpen={data.round.picks.length === 0}
           />
+
+          {visibleSubmitError ? (
+            <EditingStatusNotice
+              tone="rose"
+              title="保存に失敗しました"
+              description={visibleSubmitError}
+            />
+          ) : hasVisibleUnsavedChanges ? (
+            <EditingStatusNotice
+              tone="amber"
+              title="未保存の変更があります"
+              description="このままページを閉じたりユーザーを切り替えると、いまの変更は反映されません。"
+              action={
+                <button
+                  type="submit"
+                  form={formId}
+                  className={buttonClassName}
+                  disabled={saving}
+                >
+                  {saving ? "保存中..." : activeUserIsPredictor ? "予想を保存" : "支持先を保存"}
+                </button>
+              }
+            />
+          ) : visibleSaveMessage ? (
+            <EditingStatusNotice
+              tone="teal"
+              title="保存済み"
+              description={visibleSaveMessage}
+            />
+          ) : null}
 
           {data.users.length === 0 || !activeUser ? (
             <SectionCard
@@ -971,7 +1026,11 @@ function PicksPageContent() {
                   id={formId}
                   key={activeUser.id}
                   onSubmit={handleSave}
-                  onChange={() => setHasUnsavedChanges(true)}
+                  onChange={() => {
+                    setSubmitError(null);
+                    setSaveMessage(null);
+                    setDirtyScope(currentDraftScope);
+                  }}
                   className="space-y-5"
                 >
                   <div className="overflow-x-auto">
@@ -1272,7 +1331,6 @@ function PicksPageContent() {
                     </button>
                   </div>
                 </form>
-                {submitError ? <p className="text-sm text-rose-700">{submitError}</p> : null}
               </SectionCard>
 
               <SectionCard

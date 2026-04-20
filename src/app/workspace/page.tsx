@@ -2,8 +2,11 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useState, type FormEvent } from "react";
+import { Suspense, useEffect, useState, type FormEvent } from "react";
 
+import {
+  EditingStatusNotice,
+} from "@/components/app/editing-status";
 import {
   RouteGlossaryCard,
   RoundProgressCallout,
@@ -93,12 +96,19 @@ function previewNotes(value: string | null | undefined, maxSentences = 2) {
   return sentences.length > 0 ? `${sentences.join("。")}。` : null;
 }
 
+type ScopedMessage = {
+  message: string;
+  scope: string;
+};
+
 function WorkspacePageContent() {
   const searchParams = useSearchParams();
   const roundId = getSingleSearchParam(searchParams.get("round"));
   const { data, error, loading, refresh } = useRoundWorkspace(roundId);
   const [saving, setSaving] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<ScopedMessage | null>(null);
+  const [saveMessage, setSaveMessage] = useState<ScopedMessage | null>(null);
+  const [dirtyScope, setDirtyScope] = useState<string | null>(null);
   const [bulkSaving, setBulkSaving] = useState(false);
   const [bulkError, setBulkError] = useState<string | null>(null);
   const [bulkSuccess, setBulkSuccess] = useState<string | null>(null);
@@ -213,6 +223,26 @@ function WorkspacePageContent() {
           user: predictorUsers[0].id,
         })
       : sharedMembersHref;
+  const currentRoundScope = data?.round.id ?? "none";
+  const hasVisibleUnsavedChanges = dirtyScope === currentRoundScope;
+  const visibleSubmitError =
+    submitError?.scope === currentRoundScope ? submitError.message : null;
+  const visibleSaveMessage =
+    saveMessage?.scope === currentRoundScope ? saveMessage.message : null;
+
+  useEffect(() => {
+    if (!hasVisibleUnsavedChanges) {
+      return;
+    }
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hasVisibleUnsavedChanges]);
 
   const handleSaveRound = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -242,9 +272,17 @@ function WorkspacePageContent() {
         notes: nullableString(formData, "notes"),
         participantIds,
       });
+      setDirtyScope(null);
+      setSaveMessage({
+        scope: currentRoundScope,
+        message: "ラウンド設定を保存しました。参加メンバーと進行表示に反映されます。",
+      });
       await refresh();
     } catch (nextError) {
-      setSubmitError(errorMessage(nextError));
+      setSubmitError({
+        scope: currentRoundScope,
+        message: errorMessage(nextError),
+      });
     } finally {
       setSaving(false);
     }
@@ -370,6 +408,36 @@ function WorkspacePageContent() {
             currentPath={appRoute.workspace}
             defaultOpen={!isDemoRound && (progress?.setupCompletion ?? 0) < 1}
           />
+
+          {visibleSubmitError ? (
+            <EditingStatusNotice
+              tone="rose"
+              title="保存に失敗しました"
+              description={visibleSubmitError}
+            />
+          ) : hasVisibleUnsavedChanges ? (
+            <EditingStatusNotice
+              tone="amber"
+              title="未保存の変更があります"
+              description="ラウンド名、参加メンバー、候補上限の変更は、保存するまでは他画面に反映されません。"
+              action={
+                <button
+                  type="submit"
+                  form="workspace-round-form"
+                  className={buttonClassName}
+                  disabled={saving}
+                >
+                  {saving ? "保存中..." : "ラウンドを保存"}
+                </button>
+              }
+            />
+          ) : visibleSaveMessage ? (
+            <EditingStatusNotice
+              tone="teal"
+              title="保存済み"
+              description={visibleSaveMessage}
+            />
+          ) : null}
 
           {isDemoRound ? (
             <SectionCard
@@ -697,8 +765,14 @@ function WorkspacePageContent() {
             description="候補上限、参加メンバー、ステータス、当日の観戦メモをここで更新します。"
           >
             <form
+              id="workspace-round-form"
               key={data.round.updatedAt}
               onSubmit={handleSaveRound}
+              onChangeCapture={() => {
+                setSubmitError(null);
+                setSaveMessage(null);
+                setDirtyScope(currentRoundScope);
+              }}
               className="grid gap-5 md:grid-cols-2"
             >
               <label className="grid gap-2 text-sm font-medium text-slate-700">
@@ -798,7 +872,6 @@ function WorkspacePageContent() {
                 </button>
               </div>
             </form>
-            {submitError ? <p className="text-sm text-rose-700">{submitError}</p> : null}
           </SectionCard>
 
           <CollapsibleSectionCard
