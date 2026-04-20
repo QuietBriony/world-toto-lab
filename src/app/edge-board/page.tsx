@@ -5,6 +5,10 @@ import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 
 import {
+  RouteGlossaryCard,
+  RoundProgressCallout,
+} from "@/components/app/round-guides";
+import {
   ConfigurationNotice,
   ErrorNotice,
   LoadingNotice,
@@ -114,6 +118,20 @@ function EdgeBoardPageContent() {
             roundTitle={data.round.title}
             roundStatus={roundStatusLabel[data.round.status]}
             currentPath={appRoute.edgeBoard}
+          />
+
+          <RoundProgressCallout
+            currentPath={appRoute.edgeBoard}
+            matches={data.round.matches}
+            picks={data.round.picks}
+            roundId={data.round.id}
+            scoutReports={data.round.scoutReports}
+            users={data.users}
+          />
+
+          <RouteGlossaryCard
+            currentPath={appRoute.edgeBoard}
+            defaultOpen={includedRows.length === 0}
           />
 
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">

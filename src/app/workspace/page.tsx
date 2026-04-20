@@ -5,6 +5,10 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useState, type FormEvent } from "react";
 
 import {
+  RouteGlossaryCard,
+  RoundProgressCallout,
+} from "@/components/app/round-guides";
+import {
   ConfigurationNotice,
   ErrorNotice,
   LoadingNotice,
@@ -351,6 +355,20 @@ function WorkspacePageContent() {
             roundTitle={data.round.title}
             roundStatus={roundStatusLabel[data.round.status]}
             currentPath={appRoute.workspace}
+          />
+
+          <RoundProgressCallout
+            currentPath={appRoute.workspace}
+            matches={data.round.matches}
+            picks={data.round.picks}
+            roundId={data.round.id}
+            scoutReports={data.round.scoutReports}
+            users={data.users}
+          />
+
+          <RouteGlossaryCard
+            currentPath={appRoute.workspace}
+            defaultOpen={!isDemoRound && (progress?.setupCompletion ?? 0) < 1}
           />
 
           {isDemoRound ? (

@@ -2,6 +2,10 @@
 
 import Link from "next/link";
 import {
+  RouteGlossaryCard,
+  RoundProgressCallout,
+} from "@/components/app/round-guides";
+import {
   ConfigurationNotice,
   ErrorNotice,
   LoadingNotice,
@@ -127,6 +131,20 @@ function ConsensusPageContent() {
             roundTitle={data.round.title}
             roundStatus={roundStatusLabel[data.round.status]}
             currentPath={appRoute.consensus}
+          />
+
+          <RoundProgressCallout
+            currentPath={appRoute.consensus}
+            matches={data.round.matches}
+            picks={data.round.picks}
+            roundId={data.round.id}
+            scoutReports={data.round.scoutReports}
+            users={data.users}
+          />
+
+          <RouteGlossaryCard
+            currentPath={appRoute.consensus}
+            defaultOpen={data.round.scoutReports.length === 0}
           />
 
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">

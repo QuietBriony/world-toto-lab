@@ -9,6 +9,7 @@ import {
   ErrorNotice,
   LoadingNotice,
 } from "@/components/app/states";
+import { RouteGlossaryCard } from "@/components/app/round-guides";
 import { FeedbackBoard } from "@/components/feedback-board";
 import {
   Badge,
@@ -389,6 +390,11 @@ export default function DashboardPage() {
             </a>
           </div>
         }
+      />
+
+      <RouteGlossaryCard
+        currentPath={appRoute.dashboard}
+        defaultOpen={!data || (data.users.length === 0 && data.rounds.length === 0)}
       />
 
       {!isSupabaseConfigured() ? (

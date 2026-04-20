@@ -4,6 +4,10 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useState, type FormEvent } from "react";
 
 import {
+  RouteGlossaryCard,
+  RoundProgressCallout,
+} from "@/components/app/round-guides";
+import {
   ConfigurationNotice,
   ErrorNotice,
   LoadingNotice,
@@ -191,6 +195,20 @@ function ReviewPageContent() {
             roundTitle={data.round.title}
             roundStatus={roundStatusLabel[data.round.status]}
             currentPath={appRoute.review}
+          />
+
+          <RoundProgressCallout
+            currentPath={appRoute.review}
+            matches={data.round.matches}
+            picks={data.round.picks}
+            roundId={data.round.id}
+            scoutReports={data.round.scoutReports}
+            users={data.users}
+          />
+
+          <RouteGlossaryCard
+            currentPath={appRoute.review}
+            defaultOpen={pendingResultsCount > 0}
           />
 
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">

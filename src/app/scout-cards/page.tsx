@@ -5,6 +5,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState, type FormEvent } from "react";
 
 import {
+  RouteGlossaryCard,
+  RoundProgressCallout,
+} from "@/components/app/round-guides";
+import {
   ConfigurationNotice,
   ErrorNotice,
   LoadingNotice,
@@ -323,6 +327,20 @@ function ScoutCardsPageContent() {
             roundStatus={roundStatusLabel[data.round.status]}
             currentPath={appRoute.scoutCards}
             userId={activeUser?.id}
+          />
+
+          <RoundProgressCallout
+            currentPath={appRoute.scoutCards}
+            matches={data.round.matches}
+            picks={data.round.picks}
+            roundId={data.round.id}
+            scoutReports={data.round.scoutReports}
+            users={data.users}
+          />
+
+          <RouteGlossaryCard
+            currentPath={appRoute.scoutCards}
+            defaultOpen={completedReportCount === 0}
           />
 
           {data.users.length === 0 ? (

@@ -5,6 +5,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState, type FormEvent } from "react";
 
 import {
+  RouteGlossaryCard,
+  RoundProgressCallout,
+} from "@/components/app/round-guides";
+import {
   ConfigurationNotice,
   ErrorNotice,
   LoadingNotice,
@@ -340,47 +344,19 @@ function TicketGeneratorPageContent() {
             currentPath={appRoute.ticketGenerator}
           />
 
-          <CollapsibleSectionCard
-            title="候補配分の読み方"
-            description="初見なら、ここは `どれから見るかの順番表` と思えば大丈夫です。"
+          <RoundProgressCallout
+            currentPath={appRoute.ticketGenerator}
+            matches={data.round.matches}
+            picks={data.round.picks}
+            roundId={data.round.id}
+            scoutReports={data.round.scoutReports}
+            users={data.users}
+          />
+
+          <RouteGlossaryCard
+            currentPath={appRoute.ticketGenerator}
             defaultOpen={parsedTickets.length === 0}
-            badge={<Badge tone="sky">初見向け</Badge>}
-          >
-            <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-4">
-              {[
-                {
-                  title: "候補配分",
-                  body: "お金の配分ではなく、先に確認したい候補の並び順です。",
-                  tone: "amber" as const,
-                },
-                {
-                  title: "本線 / バランス / 荒れ狙い",
-                  body: "どの見方で候補を並べるかの違いです。最初は `バランス` で十分です。",
-                  tone: "teal" as const,
-                },
-                {
-                  title: "理由タグ",
-                  body: "その候補を上に出した理由です。`コア候補` や `ダークホース` を見れば雰囲気が掴めます。",
-                  tone: "sky" as const,
-                },
-                {
-                  title: "全力プッシュ候補",
-                  body: "優位差がかなり強い試合です。まずここが入っている案から見ると速いです。",
-                  tone: "rose" as const,
-                },
-              ].map((item) => (
-                <div
-                  key={item.title}
-                  className="rounded-[22px] border border-white/80 bg-white/76 p-4 shadow-[0_16px_38px_-30px_rgba(15,23,42,0.4)]"
-                >
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge tone={item.tone}>{item.title}</Badge>
-                  </div>
-                  <p className="mt-3 text-sm leading-6 text-slate-600">{item.body}</p>
-                </div>
-              ))}
-            </div>
-          </CollapsibleSectionCard>
+          />
 
           <SectionCard
             title="最初に見るポイント"

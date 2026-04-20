@@ -5,6 +5,10 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useState, type FormEvent } from "react";
 
 import {
+  RouteGlossaryCard,
+  RoundProgressCallout,
+} from "@/components/app/round-guides";
+import {
   ConfigurationNotice,
   ErrorNotice,
   LoadingNotice,
@@ -281,6 +285,23 @@ function MatchEditorPageContent() {
             roundTitle={data.round.title}
             roundStatus={roundStatusLabel[data.round.status]}
             currentPath={appRoute.matchEditor}
+          />
+
+          <RoundProgressCallout
+            currentPath={appRoute.matchEditor}
+            matches={data.round.matches}
+            picks={data.round.picks}
+            roundId={data.round.id}
+            scoutReports={data.round.scoutReports}
+            users={data.users}
+          />
+
+          <RouteGlossaryCard
+            currentPath={appRoute.matchEditor}
+            defaultOpen={
+              !match ||
+              (!hasOfficialInputs && !hasMarketInputs && !hasAiInputs && noteCount === 0)
+            }
           />
 
           {!match ? (
