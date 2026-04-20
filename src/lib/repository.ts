@@ -443,6 +443,22 @@ function resolveUsersForRoundRows(input: {
   return scopedUsers.length > 0 ? scopedUsers : input.demoUsers;
 }
 
+function filterRowsForScopedUsers<T extends { user_id: string }>(
+  rows: T[],
+  users: User[],
+) {
+  const scopedUserIds = new Set(users.map((user) => user.id));
+  return rows.filter((row) => scopedUserIds.has(row.user_id));
+}
+
+function filterReviewNotesForScopedUsers(
+  rows: ReviewNoteRow[],
+  users: User[],
+) {
+  const scopedUserIds = new Set(users.map((user) => user.id));
+  return rows.filter((row) => !row.user_id || scopedUserIds.has(row.user_id));
+}
+
 function isValidDemoRound(input: {
   demoUsers: User[];
   matches: MatchRow[];
@@ -561,16 +577,7 @@ export async function listDashboardData(): Promise<DashboardData> {
   const rawScoutReports = reportsResult.data as HumanScoutReportRow[];
   const rawReviewNotes = notesResult.data as ReviewNoteRow[];
   const matches = rawMatches.map(mapMatch);
-  const picks = rawPicks.map((row) => mapPick(row));
-  const scoutReports = rawScoutReports.map((row) =>
-    mapScoutReport(row),
-  );
-  const reviewNotes = rawReviewNotes.map((row) => mapReviewNote(row));
-
   const matchesByRound = groupByRoundId(matches);
-  const picksByRound = groupByRoundId(picks);
-  const reportsByRound = groupByRoundId(scoutReports);
-  const notesByRound = groupByRoundId(reviewNotes);
   const rawPicksByRound = new Map<string, PickRow[]>();
   const rawReportsByRound = new Map<string, HumanScoutReportRow[]>();
   const rawNotesByRound = new Map<string, ReviewNoteRow[]>();
@@ -593,25 +600,39 @@ export async function listDashboardData(): Promise<DashboardData> {
 
   return {
     demoUsers,
-    rounds: rounds.map((round) =>
-      deriveRoundSummary(
+    rounds: rounds.map((round) => {
+      const users = resolveUsersForRoundRows({
+        allUsers,
+        demoUsers,
+        liveUsers,
+        participantIds: round.participantIds,
+        picks: rawPicksByRound.get(round.id) ?? [],
+        reviewNotes: rawNotesByRound.get(round.id) ?? [],
+        roundTitle: round.title,
+        scoutReports: rawReportsByRound.get(round.id) ?? [],
+      });
+      const userById = new Map(users.map((user) => [user.id, user]));
+      const picks = filterRowsForScopedUsers(rawPicksByRound.get(round.id) ?? [], users).map(
+        (row) => mapPick(row, userById.get(row.user_id)),
+      );
+      const scoutReports = filterRowsForScopedUsers(
+        rawReportsByRound.get(round.id) ?? [],
+        users,
+      ).map((row) => mapScoutReport(row, userById.get(row.user_id)));
+      const reviewNotes = filterReviewNotesForScopedUsers(
+        rawNotesByRound.get(round.id) ?? [],
+        users,
+      ).map((row) => mapReviewNote(row, userById.get(row.user_id ?? "")));
+
+      return deriveRoundSummary(
         round,
         matchesByRound.get(round.id) ?? [],
-        picksByRound.get(round.id) ?? [],
-        reportsByRound.get(round.id) ?? [],
-        notesByRound.get(round.id) ?? [],
-        resolveUsersForRoundRows({
-          allUsers,
-          demoUsers,
-          liveUsers,
-          participantIds: round.participantIds,
-          picks: rawPicksByRound.get(round.id) ?? [],
-          reviewNotes: rawNotesByRound.get(round.id) ?? [],
-          roundTitle: round.title,
-          scoutReports: rawReportsByRound.get(round.id) ?? [],
-        }),
-      ),
-    ),
+        picks,
+        scoutReports,
+        reviewNotes,
+        users,
+      );
+    }),
     users: liveUsers,
   };
 }
@@ -667,16 +688,16 @@ export async function getRoundWorkspace(roundId: string): Promise<RoundWorkspace
   const userById = new Map(users.map((user) => [user.id, user]));
   const matches = (matchesResult.data as MatchRow[]).map(mapMatch);
   const matchById = new Map(matches.map((match) => [match.id, match]));
-  const picks = rawPicks.map((row) =>
+  const picks = filterRowsForScopedUsers(rawPicks, users).map((row) =>
     mapPick(row, userById.get(row.user_id)),
   );
-  const scoutReports = rawScoutReports.map((row) =>
+  const scoutReports = filterRowsForScopedUsers(rawScoutReports, users).map((row) =>
     mapScoutReport(row, userById.get(row.user_id), matchById.get(row.match_id)),
   );
   const generatedTickets = (ticketsResult.data as GeneratedTicketRow[]).map(
     mapGeneratedTicket,
   );
-  const reviewNotes = rawReviewNotes.map((row) =>
+  const reviewNotes = filterReviewNotesForScopedUsers(rawReviewNotes, users).map((row) =>
     mapReviewNote(row, userById.get(row.user_id ?? ""), matchById.get(row.match_id ?? "")),
   );
 
