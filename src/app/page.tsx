@@ -973,27 +973,36 @@ export default function DashboardPage() {
             </div>
           </CollapsibleSectionCard>
 
-          <SectionCard
+          <CollapsibleSectionCard
             id="shared-members"
             title="共有メンバー"
             description="認証なし MVP なので、ここで本番用のあだ名と役割を決めます。デモ用アカウントはここに混ぜません。"
-            actions={
-              data.users.length === 0 ? (
-                <button
-                  type="button"
-                  className={buttonClassName}
-                  onClick={handleCreateInitialUsers}
-                  disabled={busy === "members"}
-                >
-                  {busy === "members" ? "準備中..." : "hazi と空き枠を先に準備"}
-                </button>
-              ) : null
+            defaultOpen={data.users.length === 0}
+            badge={
+              <Badge tone={data.users.length > 0 ? "slate" : "amber"}>
+                {data.users.length > 0 ? `${data.users.length}人` : "準備待ち"}
+              </Badge>
             }
           >
             {data.users.length === 0 ? (
-              <p className="text-sm text-slate-600">
-                まず `ラウンドを作成` から始めると、必要なら `hazi` と空き枠を一緒に準備できます。
-              </p>
+              <div className="grid gap-4">
+                <p className="text-sm text-slate-600">
+                  まず `ラウンドを作成` から始めると、必要なら `hazi` と空き枠を一緒に準備できます。
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className={buttonClassName}
+                    onClick={handleCreateInitialUsers}
+                    disabled={busy === "members"}
+                  >
+                    {busy === "members" ? "準備中..." : "hazi と空き枠を先に準備"}
+                  </button>
+                  <a href="#create-round" className={secondaryButtonClassName}>
+                    ラウンド作成へ
+                  </a>
+                </div>
+              </div>
             ) : (
               <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
                 <div className="grid gap-3">
@@ -1236,7 +1245,7 @@ export default function DashboardPage() {
               </div>
             )}
             {memberActionError ? <p className="text-sm text-rose-700">{memberActionError}</p> : null}
-          </SectionCard>
+          </CollapsibleSectionCard>
 
           <SectionCard
             id="create-round"
