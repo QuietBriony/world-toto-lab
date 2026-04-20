@@ -96,6 +96,7 @@ type DemoWatcherPlan = {
 export const demoRoundTitle = "デモ体験ラウンド";
 export const demoRoundNotes =
   "チュートリアル用の仮ラウンドです。AI基準線、人力上書き、コンセンサス、優位差、候補配分、振り返りまで一通り入っています。金銭、配当、代理購入、精算は扱いません。";
+export const legacyDemoRoundTitles = ["Demo Tour Round"] as const;
 
 export const demoWalkthroughSteps = [
   {
@@ -148,7 +149,7 @@ export const demoFocusMatches = [
 ] as const;
 
 export function isDemoRoundTitle(title: string | null | undefined) {
-  return title === demoRoundTitle;
+  return title === demoRoundTitle || legacyDemoRoundTitles.includes(title as (typeof legacyDemoRoundTitles)[number]);
 }
 
 export const demoTicketSettings: GeneratorSettings = {

@@ -409,6 +409,31 @@ function collectRoundUserIds(input: {
   return userIds;
 }
 
+function resolveUsersForRoundRows(input: {
+  allUsers: User[];
+  demoUsers: User[];
+  liveUsers: User[];
+  picks: PickRow[];
+  reviewNotes: ReviewNoteRow[];
+  roundTitle: string;
+  scoutReports: HumanScoutReportRow[];
+}) {
+  if (!isDemoRoundTitle(input.roundTitle)) {
+    return input.liveUsers;
+  }
+
+  const roundUserIds = collectRoundUserIds({
+    picks: input.picks,
+    reviewNotes: input.reviewNotes,
+    scoutReports: input.scoutReports,
+  });
+  const scopedUsers = sortUsers(
+    input.allUsers.filter((user) => roundUserIds.has(user.id)),
+  );
+
+  return scopedUsers.length > 0 ? scopedUsers : input.demoUsers;
+}
+
 function isValidDemoRound(input: {
   demoUsers: User[];
   matches: MatchRow[];
@@ -522,17 +547,40 @@ export async function listDashboardData(): Promise<DashboardData> {
   const allUsers = sortUsers((usersResult.data as UserRow[]).map(mapUser));
   const { demoUsers, liveUsers } = partitionUsers(allUsers);
   const rounds = (roundsResult.data as RoundRow[]).map(mapRound);
-  const matches = (matchesResult.data as MatchRow[]).map(mapMatch);
-  const picks = (picksResult.data as PickRow[]).map((row) => mapPick(row));
-  const scoutReports = (reportsResult.data as HumanScoutReportRow[]).map((row) =>
+  const rawMatches = matchesResult.data as MatchRow[];
+  const rawPicks = picksResult.data as PickRow[];
+  const rawScoutReports = reportsResult.data as HumanScoutReportRow[];
+  const rawReviewNotes = notesResult.data as ReviewNoteRow[];
+  const matches = rawMatches.map(mapMatch);
+  const picks = rawPicks.map((row) => mapPick(row));
+  const scoutReports = rawScoutReports.map((row) =>
     mapScoutReport(row),
   );
-  const reviewNotes = (notesResult.data as ReviewNoteRow[]).map((row) => mapReviewNote(row));
+  const reviewNotes = rawReviewNotes.map((row) => mapReviewNote(row));
 
   const matchesByRound = groupByRoundId(matches);
   const picksByRound = groupByRoundId(picks);
   const reportsByRound = groupByRoundId(scoutReports);
   const notesByRound = groupByRoundId(reviewNotes);
+  const rawPicksByRound = new Map<string, PickRow[]>();
+  const rawReportsByRound = new Map<string, HumanScoutReportRow[]>();
+  const rawNotesByRound = new Map<string, ReviewNoteRow[]>();
+
+  rawPicks.forEach((row) => {
+    const current = rawPicksByRound.get(row.round_id) ?? [];
+    current.push(row);
+    rawPicksByRound.set(row.round_id, current);
+  });
+  rawScoutReports.forEach((row) => {
+    const current = rawReportsByRound.get(row.round_id) ?? [];
+    current.push(row);
+    rawReportsByRound.set(row.round_id, current);
+  });
+  rawReviewNotes.forEach((row) => {
+    const current = rawNotesByRound.get(row.round_id) ?? [];
+    current.push(row);
+    rawNotesByRound.set(row.round_id, current);
+  });
 
   return {
     demoUsers,
@@ -543,7 +591,15 @@ export async function listDashboardData(): Promise<DashboardData> {
         picksByRound.get(round.id) ?? [],
         reportsByRound.get(round.id) ?? [],
         notesByRound.get(round.id) ?? [],
-        isDemoRoundTitle(round.title) ? demoUsers : liveUsers,
+        resolveUsersForRoundRows({
+          allUsers,
+          demoUsers,
+          liveUsers,
+          picks: rawPicksByRound.get(round.id) ?? [],
+          reviewNotes: rawNotesByRound.get(round.id) ?? [],
+          roundTitle: round.title,
+          scoutReports: rawReportsByRound.get(round.id) ?? [],
+        }),
       ),
     ),
     users: liveUsers,
@@ -585,20 +641,31 @@ export async function getRoundWorkspace(roundId: string): Promise<RoundWorkspace
   const round = mapRound(roundResult.data as RoundRow);
   const allUsers = sortUsers((usersResult.data as UserRow[]).map(mapUser));
   const { demoUsers, liveUsers } = partitionUsers(allUsers);
-  const users = isDemoRoundTitle(round.title) ? demoUsers : liveUsers;
+  const rawPicks = picksResult.data as PickRow[];
+  const rawScoutReports = reportsResult.data as HumanScoutReportRow[];
+  const rawReviewNotes = notesResult.data as ReviewNoteRow[];
+  const users = resolveUsersForRoundRows({
+    allUsers,
+    demoUsers,
+    liveUsers,
+    picks: rawPicks,
+    reviewNotes: rawReviewNotes,
+    roundTitle: round.title,
+    scoutReports: rawScoutReports,
+  });
   const userById = new Map(users.map((user) => [user.id, user]));
   const matches = (matchesResult.data as MatchRow[]).map(mapMatch);
   const matchById = new Map(matches.map((match) => [match.id, match]));
-  const picks = (picksResult.data as PickRow[]).map((row) =>
+  const picks = rawPicks.map((row) =>
     mapPick(row, userById.get(row.user_id)),
   );
-  const scoutReports = (reportsResult.data as HumanScoutReportRow[]).map((row) =>
+  const scoutReports = rawScoutReports.map((row) =>
     mapScoutReport(row, userById.get(row.user_id), matchById.get(row.match_id)),
   );
   const generatedTickets = (ticketsResult.data as GeneratedTicketRow[]).map(
     mapGeneratedTicket,
   );
-  const reviewNotes = (notesResult.data as ReviewNoteRow[]).map((row) =>
+  const reviewNotes = rawReviewNotes.map((row) =>
     mapReviewNote(row, userById.get(row.user_id ?? ""), matchById.get(row.match_id ?? "")),
   );
 
