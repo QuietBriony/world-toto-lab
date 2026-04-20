@@ -522,69 +522,104 @@ function resolvePicksForScopedUsers(input: {
   const parsedByRowId = new Map(
     input.rows.map((row) => [row.id, parsePickSupportNote(row.note)]),
   );
-  const resolvedPickByRowId = new Map<string, Outcome>();
+  const resolvedPickByRowId = new Map<
+    string,
+    | {
+        note: string | null;
+        pick: Outcome;
+        support: PickSupport;
+      }
+    | null
+  >();
   const resolvingRowIds = new Set<string>();
 
-  const resolveRowPick = (row: PickRow): Outcome => {
+  const resolveRowPick = (
+    row: PickRow,
+  ):
+    | {
+        note: string | null;
+        pick: Outcome;
+        support: PickSupport;
+      }
+    | null => {
     const cached = resolvedPickByRowId.get(row.id);
-    if (cached) {
+    if (cached !== undefined) {
       return cached;
     }
 
     if (resolvingRowIds.has(row.id)) {
-      return row.pick;
+      return {
+        note: parsePickSupportNote(row.note).note,
+        pick: row.pick,
+        support: parsePickSupportNote(row.note).support,
+      };
     }
 
     resolvingRowIds.add(row.id);
     const parsed = parsedByRowId.get(row.id) ?? parsePickSupportNote(row.note);
-    let nextPick = row.pick;
+    let resolved:
+      | {
+          note: string | null;
+          pick: Outcome;
+          support: PickSupport;
+        }
+      | null = {
+      note: parsed.note,
+      pick: row.pick,
+      support: parsed.support,
+    };
 
     if (parsed.support.kind === "ai") {
       const match = matchById.get(row.match_id);
-      if (match) {
-        nextPick =
-          parseOutcome(
+      const nextPick = match
+        ? parseOutcome(
             resolveSupportedOutcome({
               match,
               picks: [],
               support: parsed.support,
             }),
-          ) ?? row.pick;
-      }
+          )
+        : null;
+
+      resolved = nextPick
+        ? {
+            note: parsed.note,
+            pick: nextPick,
+            support: parsed.support,
+          }
+        : null;
     } else if (
-      parsed.support.kind === "predictor" &&
-      selectedUserIds.has(parsed.support.userId)
+      parsed.support.kind === "predictor"
     ) {
+      if (!selectedUserIds.has(parsed.support.userId)) {
+        resolved = null;
+      } else {
       const predictorRow = rowByMatchUser.get(
         `${row.match_id}:${parsed.support.userId}`,
       );
-      if (predictorRow) {
-        nextPick = resolveRowPick(predictorRow);
+        const predictorPick = predictorRow ? resolveRowPick(predictorRow) : null;
+        resolved = predictorPick
+          ? {
+              note: parsed.note,
+              pick: predictorPick.pick,
+              support: parsed.support,
+            }
+          : null;
       }
     }
 
     resolvingRowIds.delete(row.id);
-    resolvedPickByRowId.set(row.id, nextPick);
-    return nextPick;
+    resolvedPickByRowId.set(row.id, resolved);
+    return resolved;
   };
 
-  return input.rows.map((row) => {
-    const parsed = parsedByRowId.get(row.id) ?? parsePickSupportNote(row.note);
-    const support =
-      parsed.support.kind === "predictor" &&
-      !selectedUserIds.has(parsed.support.userId)
-        ? ({ kind: "manual" } as const)
-        : parsed.support;
+  return input.rows.flatMap((row) => {
+    const resolved = resolveRowPick(row);
+    if (!resolved) {
+      return [];
+    }
 
-    return mapResolvedPick(
-      row,
-      {
-        note: parsed.note,
-        pick: resolveRowPick(row),
-        support,
-      },
-      userById.get(row.user_id),
-    );
+    return [mapResolvedPick(row, resolved, userById.get(row.user_id))];
   });
 }
 
