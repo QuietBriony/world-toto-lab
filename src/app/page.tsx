@@ -22,7 +22,12 @@ import {
   StatCard,
   textAreaClassName,
 } from "@/components/ui";
-import { demoFocusMatches, demoRoundTitle, demoWalkthroughSteps } from "@/lib/demo-data";
+import {
+  demoFocusMatches,
+  demoRoundTitle,
+  demoWalkthroughSteps,
+  isDemoRoundTitle,
+} from "@/lib/demo-data";
 import {
   parseIntOrNull,
   parseRoundStatus,
@@ -41,8 +46,8 @@ import { deriveRoundProgressSummary, matchHasSetupInput } from "@/lib/round-prog
 import { appRoute, buildRoundHref } from "@/lib/round-links";
 import {
   createDemoRound,
+  createInitialUsers,
   createRound,
-  createSampleUsers,
   createUser,
   deleteUserIfInactive,
   updateUserProfile,
@@ -73,6 +78,15 @@ function hasAiInputs(model: { modelProb0: number | null; modelProb1: number | nu
   return model.modelProb1 !== null || model.modelProb0 !== null || model.modelProb2 !== null;
 }
 
+type MemberRoundActivity = {
+  pickCount: number;
+  reviewNoteCount: number;
+  roundId: string;
+  roundTitle: string;
+  scoutReportCount: number;
+  supportRefCount: number;
+};
+
 export default function DashboardPage() {
   const router = useRouter();
   const { data, error, loading, refresh } = useDashboardData();
@@ -84,12 +98,12 @@ export default function DashboardPage() {
   const [duplicatingPredictorId, setDuplicatingPredictorId] = useState<string | null>(null);
   const [memberActionError, setMemberActionError] = useState<string | null>(null);
 
-  const handleCreateSampleUsers = async () => {
+  const handleCreateInitialUsers = async () => {
     setBusy("members");
     setActionError(null);
 
     try {
-      await createSampleUsers();
+      await createInitialUsers();
       await refresh();
     } catch (nextError) {
       setActionError(errorMessage(nextError));
@@ -106,11 +120,20 @@ export default function DashboardPage() {
     try {
       const formData = new FormData(event.currentTarget);
       const candidateLimit = parseIntOrNull(stringValue(formData, "candidateLimit"));
+      const matchCount = parseIntOrNull(stringValue(formData, "matchCount")) ?? 13;
+      const shouldBootstrapMembers =
+        (data?.users.length ?? 0) === 0 && formData.get("bootstrapMembers") === "on";
+
+      if (shouldBootstrapMembers) {
+        await createInitialUsers();
+      }
+
       const roundId = await createRound({
         title: stringValue(formData, "title") || "新規ラウンド",
         status: parseRoundStatus(stringValue(formData, "status")),
         budgetYen:
           candidateLimit !== null ? budgetFromCandidateLimit(candidateLimit) : null,
+        matchCount,
         notes: nullableString(formData, "notes"),
       });
 
@@ -227,7 +250,11 @@ export default function DashboardPage() {
 
   const demoRound =
     data?.rounds.find((round) => round.title === demoRoundTitle) ?? null;
-  const latestRound = data?.rounds[0] ?? null;
+  const inventoryRounds = useMemo(
+    () => data?.rounds.filter((round) => !isDemoRoundTitle(round.title)) ?? [],
+    [data],
+  );
+  const latestRound = inventoryRounds[0] ?? null;
   const latestRoundProgress =
     data && latestRound
       ? deriveRoundProgressSummary({
@@ -240,7 +267,7 @@ export default function DashboardPage() {
         })
       : null;
   const upcomingMatches = data
-    ? data.rounds
+    ? inventoryRounds
         .flatMap((round) =>
           round.matches
             .filter((match) => {
@@ -273,11 +300,45 @@ export default function DashboardPage() {
 
     return buildMemberUsageMap({
       users: data.users,
-      picks: data.rounds.flatMap((round) => round.picks),
-      scoutReports: data.rounds.flatMap((round) => round.scoutReports),
-      reviewNotes: data.rounds.flatMap((round) => round.reviewNotes),
+      picks: inventoryRounds.flatMap((round) => round.picks),
+      scoutReports: inventoryRounds.flatMap((round) => round.scoutReports),
+      reviewNotes: inventoryRounds.flatMap((round) => round.reviewNotes),
     });
-  }, [data]);
+  }, [data, inventoryRounds]);
+  const memberActivityMap = useMemo(() => {
+    if (!data) {
+      return new Map<string, MemberRoundActivity[]>();
+    }
+
+    return new Map<string, MemberRoundActivity[]>(
+      data.users.map((user) => [
+        user.id,
+        inventoryRounds.flatMap((round) => {
+          const pickCount = round.picks.filter((pick) => pick.userId === user.id).length;
+          const scoutReportCount = round.scoutReports.filter((report) => report.userId === user.id).length;
+          const reviewNoteCount = round.reviewNotes.filter((note) => note.userId === user.id).length;
+          const supportRefCount = round.picks.filter(
+            (pick) => pick.support.kind === "predictor" && pick.support.userId === user.id,
+          ).length;
+
+          if (pickCount + scoutReportCount + reviewNoteCount + supportRefCount === 0) {
+            return [];
+          }
+
+          return [
+            {
+              pickCount,
+              reviewNoteCount,
+              roundId: round.id,
+              roundTitle: round.title,
+              scoutReportCount,
+              supportRefCount,
+            },
+          ];
+        }),
+      ]),
+    );
+  }, [data, inventoryRounds]);
   const emptyMemberCount =
     data?.users.filter((user) => memberUsageMap.get(user.id)?.isEmpty).length ?? 0;
   const predictorCount =
@@ -294,14 +355,9 @@ export default function DashboardPage() {
         actions={
           <div className="flex flex-wrap gap-3">
             {!data || data.users.length === 0 ? (
-              <button
-                type="button"
-                className={buttonClassName}
-                onClick={handleCreateSampleUsers}
-                disabled={busy === "members"}
-              >
-                {busy === "members" ? "作成中..." : "共有メンバーを作成"}
-              </button>
+              <a href="#create-round" className={buttonClassName}>
+                本番セットを始める
+              </a>
             ) : latestRoundProgress ? (
               <Link href={latestRoundProgress.nextStep.href} className={buttonClassName}>
                 {latestRoundProgress.nextStep.label}
@@ -311,14 +367,9 @@ export default function DashboardPage() {
                 ラウンドを作成
               </a>
             )}
-            <button
-              type="button"
-              className={secondaryButtonClassName}
-              onClick={handleOpenDemo}
-              disabled={busy === "demo"}
-            >
-              {busy === "demo" ? "準備中..." : "デモで体験する"}
-            </button>
+            <a href="#demo-lab" className={secondaryButtonClassName}>
+              デモを見る
+            </a>
           </div>
         }
       />
@@ -332,61 +383,35 @@ export default function DashboardPage() {
       ) : data ? (
         <>
           <SectionCard
-            title="まずここから始める"
-            description="初回セットアップ、デモ体験、続きから再開だけを先に見えるようにしています。"
+            title="本番セットアップ"
+            description="まずは本番ラウンドを1つ作り、必要なら `hazi` と空き枠も一緒に準備してから進めます。"
           >
-            <div className="grid gap-4 lg:grid-cols-3">
+            <div className="grid gap-4 lg:grid-cols-2">
               <div className="rounded-[24px] border border-white/80 bg-white/76 p-5 shadow-[0_18px_44px_-30px_rgba(15,23,42,0.4)]">
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge tone={data.users.length > 0 ? "teal" : "amber"}>
-                    {data.users.length > 0 ? "準備済み" : "最初の一歩"}
+                  <Badge tone={data.rounds.length > 0 ? "teal" : "amber"}>
+                    {data.rounds.length > 0 ? "進行中" : "最初の一歩"}
                   </Badge>
                   <h3 className="font-display text-lg font-semibold tracking-[-0.04em] text-slate-950">
-                    初回セットアップ
+                    本番ラウンドを作る
                   </h3>
                 </div>
                 <p className="mt-3 text-sm leading-6 text-slate-600">
-                  共有メンバーを先に作り、1 人以上を予想者にすると、そのまま比較と支持入力へ進めます。
+                  初回はここから始めれば十分です。必要なら `hazi` と空き枠も同時に作って、そのまま試合設定へ進めます。
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
-                  {data.users.length === 0 ? (
-                    <button
-                      type="button"
-                      className={buttonClassName}
-                      onClick={handleCreateSampleUsers}
-                      disabled={busy === "members"}
-                    >
-                      {busy === "members" ? "作成中..." : "サンプル10人を作成"}
-                    </button>
-                  ) : (
-                    <a href="#shared-members" className={secondaryButtonClassName}>
-                      メンバーを確認
+                  {data.rounds.length === 0 ? (
+                    <a href="#create-round" className={buttonClassName}>
+                      本番セットを始める
                     </a>
+                  ) : (
+                    <Link href={buildRoundHref(appRoute.workspace, latestRound?.id ?? data.rounds[0].id)} className={buttonClassName}>
+                      直近ラウンドを開く
+                    </Link>
                   )}
-                </div>
-              </div>
-
-              <div className="rounded-[24px] border border-white/80 bg-white/76 p-5 shadow-[0_18px_44px_-30px_rgba(15,23,42,0.4)]">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge tone={demoRound ? "teal" : "amber"}>
-                    {demoRound ? "すぐ触れる" : "体験用"}
-                  </Badge>
-                  <h3 className="font-display text-lg font-semibold tracking-[-0.04em] text-slate-950">
-                    デモで流れを見る
-                  </h3>
-                </div>
-                <p className="mt-3 text-sm leading-6 text-slate-600">
-                  1 ラウンドぶんの入力と振り返りが最初から入っているので、操作の全体感を最短で確認できます。
-                </p>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    className={buttonClassName}
-                    onClick={handleOpenDemo}
-                    disabled={busy === "demo"}
-                  >
-                    {busy === "demo" ? "準備中..." : "デモラウンドを開く"}
-                  </button>
+                  <a href="#shared-members" className={secondaryButtonClassName}>
+                    メンバーを確認
+                  </a>
                 </div>
               </div>
 
@@ -402,7 +427,7 @@ export default function DashboardPage() {
                 <p className="mt-3 text-sm leading-6 text-slate-600">
                   {latestRound && latestRoundProgress
                     ? `${latestRound.title} の次アクションは「${latestRoundProgress.nextStep.label}」です。`
-                    : "共有メンバーができたら、新しいラウンドを作って試合設定から始めます。"}
+                    : "本番ラウンドを作ったら、試合設定から順に進めます。"}
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   {latestRound && latestRoundProgress ? (
@@ -428,8 +453,9 @@ export default function DashboardPage() {
           </SectionCard>
 
           <SectionCard
-            title="迷ったらこのデモラウンドから"
-            description="保存済みの 1 ラウンドを置いてあるので、開くだけで全体の流れを追えます。"
+            id="demo-lab"
+            title="体験用デモ"
+            description="本番セットとは切り離して、操作の流れだけを確認したいときに使います。"
             actions={
               <button
                 type="button"
@@ -465,16 +491,15 @@ export default function DashboardPage() {
 
               <div className="rounded-[24px] border border-slate-200 bg-slate-50/85 p-5">
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge tone={demoRound ? "teal" : "amber"}>
-                    {demoRound ? "保存済み" : "未作成"}
-                  </Badge>
+                  <Badge tone="amber">デモ専用</Badge>
+                  <Badge tone={demoRound ? "teal" : "amber"}>{demoRound ? "保存済み" : "未作成"}</Badge>
                   <h3 className="font-display text-lg font-semibold tracking-[-0.04em] text-slate-950">
                     {demoRoundTitle}
                   </h3>
                 </div>
                 <p className="mt-3 text-sm leading-6 text-slate-600">
                   このラウンドには試合データ、AI予測、予想者ライン、支持入力、予想者カード、コンセンサス、候補配分、
-                  振り返りが最初から入ります。
+                  振り返りが最初から入ります。本番メンバーの状態判定には含めません。
                 </p>
                 {demoRound ? (
                   <div className="mt-4 flex flex-wrap gap-2">
@@ -577,17 +602,17 @@ export default function DashboardPage() {
               {[
                 {
                   step: "01",
-                  title: "サンプル10人を作成",
-                  body: "共有メンバーを先に用意します。認証なし MVP なので、ここで作った表示名を切り替えて入力します。",
-                  tone: data.users.length > 0 ? "teal" : "amber",
-                  status: data.users.length > 0 ? "済み" : "次にやる",
+                  title: "本番ラウンドを作成",
+                  body: "まず対象回を1つ作ります。初回なら `hazi` と空き枠もここで一緒に準備できます。",
+                  tone: data.rounds.length > 0 ? "teal" : "amber",
+                  status: data.rounds.length > 0 ? "済み" : "次にやる",
                 },
                 {
                   step: "02",
-                  title: "ラウンドを作成",
-                  body: "ラウンドを作ると 13 試合のプレースホルダーが自動でできます。まずは対象回を1つ作ります。",
-                  tone: data.rounds.length > 0 ? "teal" : "amber",
-                  status: data.rounds.length > 0 ? "作成可" : "作成待ち",
+                  title: "共有メンバーを確認",
+                  body: "`hazi` を起点に、必要な人だけ名前や役割を変えます。ほかは空き枠のままで始めて大丈夫です。",
+                  tone: data.users.length > 0 ? "teal" : "amber",
+                  status: data.users.length > 0 ? "確認可" : "作成待ち",
                 },
                 {
                   step: "03",
@@ -927,17 +952,17 @@ export default function DashboardPage() {
                 <button
                   type="button"
                   className={buttonClassName}
-                  onClick={handleCreateSampleUsers}
+                  onClick={handleCreateInitialUsers}
                   disabled={busy === "members"}
                 >
-                  {busy === "members" ? "作成中..." : "サンプル10人を作成"}
+                  {busy === "members" ? "準備中..." : "hazi と空き枠を先に準備"}
                 </button>
               ) : null
             }
           >
             {data.users.length === 0 ? (
               <p className="text-sm text-slate-600">
-                まず共有メンバーを作り、少なくとも 1 人は `予想者` にしてください。
+                まず `ラウンドを作成` から始めると、必要なら `hazi` と空き枠を一緒に準備できます。
               </p>
             ) : (
               <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
@@ -951,10 +976,25 @@ export default function DashboardPage() {
                     左側は登録済みメンバーの編集です。
                     名前や役割を変えたいときは各行を更新します。
                     `空き` はここからすぐ整理できて、入力ありの人は内容を消してからでないと消えません。
+                    状態の判定には `デモ体験ラウンド` の入力を含めません。
                   </div>
                   {data.users.map((user) => (
                     (() => {
                       const usageSummary = memberUsageMap.get(user.id);
+                      const roundActivities: MemberRoundActivity[] =
+                        memberActivityMap.get(user.id) ?? [];
+                      const latestPickActivity = roundActivities.find(
+                        (activity) => activity.pickCount > 0,
+                      );
+                      const latestSupportActivity = roundActivities.find(
+                        (activity) => activity.pickCount === 0 && activity.supportRefCount > 0,
+                      );
+                      const latestScoutActivity = roundActivities.find(
+                        (activity) => activity.scoutReportCount > 0,
+                      );
+                      const latestReviewActivity = roundActivities.find(
+                        (activity) => activity.reviewNoteCount > 0,
+                      );
                       const inventoryStatus = usageSummary
                         ? describeMemberInventoryStatus(usageSummary)
                         : null;
@@ -1006,6 +1046,58 @@ export default function DashboardPage() {
                             </div>
                             <div className="text-xs leading-5 text-slate-500">
                               {inventoryStatus?.detail ?? "状態を確認中です。"}
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {latestPickActivity ? (
+                                <Link
+                                  href={buildRoundHref(appRoute.picks, latestPickActivity.roundId, {
+                                    user: user.id,
+                                  })}
+                                  className={secondaryButtonClassName}
+                                >
+                                  支持 / 予想を確認
+                                </Link>
+                              ) : null}
+                              {!latestPickActivity && latestSupportActivity ? (
+                                <Link
+                                  href={buildRoundHref(appRoute.picks, latestSupportActivity.roundId)}
+                                  className={secondaryButtonClassName}
+                                >
+                                  支持参照を確認
+                                </Link>
+                              ) : null}
+                              {latestScoutActivity ? (
+                                <Link
+                                  href={buildRoundHref(appRoute.scoutCards, latestScoutActivity.roundId, {
+                                    user: user.id,
+                                  })}
+                                  className={secondaryButtonClassName}
+                                >
+                                  予想者カードを確認
+                                </Link>
+                              ) : null}
+                              {latestReviewActivity ? (
+                                <Link
+                                  href={buildRoundHref(appRoute.review, latestReviewActivity.roundId)}
+                                  className={secondaryButtonClassName}
+                                >
+                                  振り返りメモを確認
+                                </Link>
+                              ) : null}
+                              {!latestPickActivity &&
+                              !latestSupportActivity &&
+                              !latestScoutActivity &&
+                              !latestReviewActivity &&
+                              inventoryRounds[0] ? (
+                                <Link
+                                  href={buildRoundHref(appRoute.picks, inventoryRounds[0].id, {
+                                    user: user.id,
+                                  })}
+                                  className={secondaryButtonClassName}
+                                >
+                                  直近ラウンドを確認
+                                </Link>
+                              ) : null}
                             </div>
                           </div>
                           <div className="flex flex-wrap items-start justify-start gap-2 xl:justify-end">
@@ -1115,7 +1207,7 @@ export default function DashboardPage() {
           <SectionCard
             id="create-round"
             title="ラウンドを作成"
-            description="ラウンド作成時に 13 試合ぶんのプレースホルダーも自動で作成します。"
+            description="指定した試合数ぶんのプレースホルダーを作り、初回ならメンバー初期化も一緒に進められます。"
           >
             <form onSubmit={handleCreateRound} className="grid gap-5 md:grid-cols-2">
               <label className="grid gap-2 text-sm font-medium text-slate-700">
@@ -1123,7 +1215,7 @@ export default function DashboardPage() {
                 <input
                   name="title"
                   className={fieldClassName}
-                  placeholder="W杯サンプル回"
+                  placeholder="World Toto 本番回"
                 />
               </label>
 
@@ -1136,6 +1228,19 @@ export default function DashboardPage() {
                     </option>
                   ))}
                 </select>
+              </label>
+
+              <label className="grid gap-2 text-sm font-medium text-slate-700">
+                試合数
+                <input
+                  name="matchCount"
+                  type="number"
+                  min={1}
+                  max={20}
+                  step={1}
+                  defaultValue={13}
+                  className={fieldClassName}
+                />
               </label>
 
               <label className="grid gap-2 text-sm font-medium text-slate-700">
@@ -1154,6 +1259,21 @@ export default function DashboardPage() {
               <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-950/5 p-4 text-sm text-slate-600">
                 金銭、配当、代理購入、精算は扱いません。ここでの上位候補数は、候補配分画面で何案まで並べるかの目安です。
               </div>
+
+              {data.users.length === 0 ? (
+                <label className="md:col-span-2 flex items-start gap-3 rounded-3xl border border-emerald-200 bg-emerald-50/80 p-4 text-sm text-slate-700">
+                  <input
+                    type="checkbox"
+                    name="bootstrapMembers"
+                    defaultChecked
+                    className="mt-1 h-4 w-4 rounded border-slate-300 text-emerald-700 focus:ring-emerald-300"
+                  />
+                  <span className="leading-6">
+                    このラウンド作成時に、初回メンバーとして `hazi` を予想者、ほか 9 枠を `空き`
+                    として一緒に準備する
+                  </span>
+                </label>
+              ) : null}
 
               <label className="grid gap-2 text-sm font-medium text-slate-700 md:col-span-2">
                 メモ

@@ -303,7 +303,7 @@ function WorkspacePageContent() {
         description={
           isDemoRound
             ? "このデモは、確認カード → 支持 / 予想 → コンセンサス → 振り返り の順で触ると全体像をつかみやすいです。"
-            : "13試合の分析入力状況を、AI基準線と予想者ラインを土台にして支持分布まで一気に俯瞰できます。"
+            : `${data?.round.matches.length ?? 0}試合の分析入力状況を、AI基準線と予想者ラインを土台にして支持分布まで一気に俯瞰できます。`
         }
         actions={
           data ? (
@@ -734,7 +734,7 @@ function WorkspacePageContent() {
 
           <CollapsibleSectionCard
             title="試合日程をまとめて入れる"
-            description="FIFA公式日程や手元の表から、13試合ぶんをまとめて貼り付けできます。ホーム / アウェイ / 日時 / 会場 / ステージを一気に反映します。"
+            description={`FIFA公式日程や手元の表から、${data.round.matches.length}試合ぶんをまとめて貼り付けできます。ホーム / アウェイ / 日時 / 会場 / ステージを一気に反映します。`}
             badge={<Badge tone="amber">時短入力</Badge>}
           >
             <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
@@ -910,7 +910,7 @@ function WorkspacePageContent() {
 
           <SectionCard
             id="overview-cards"
-            title="13試合の確認カード"
+            title={`${data.round.matches.length}試合の確認カード`}
             description="まずはここで全体をざっと見ます。細かい数値表は下の `詳細表を開く` に残しています。"
           >
             <div className="grid gap-4 xl:grid-cols-2">
@@ -1031,7 +1031,7 @@ function WorkspacePageContent() {
           </SectionCard>
 
           <CollapsibleSectionCard
-            title="13試合の詳細表"
+            title={`${data.round.matches.length}試合の詳細表`}
             description="細かい数値を確認したいときだけ開いて使います。横スクロール対応で、優位差は AI - 公式人気 です。"
             badge={<Badge tone="slate">詳細</Badge>}
           >

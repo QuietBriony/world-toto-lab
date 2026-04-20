@@ -22,6 +22,7 @@ import {
   secondaryButtonClassName,
 } from "@/components/ui";
 import {
+  buildAdvantageRows,
   drawPolicyLabel,
   formatNumber,
   formatPercent,
@@ -208,6 +209,36 @@ function TicketGeneratorPageContent() {
     includeDrawPolicy: lastSettings?.includeDrawPolicy ?? "medium",
   };
   const effectiveCandidateLimit = candidateLimitFromBudget(effectiveSettings.budgetYen);
+  const maxContrarianMatchesCap = Math.max(data?.round.matches.length ?? 13, 1);
+
+  const pushCandidates = data
+    ? (() => {
+        const seenMatchIds = new Set<string>();
+
+        return buildAdvantageRows({
+          matches: data.round.matches,
+          picks: data.round.picks,
+          users: data.users,
+        })
+          .filter(
+            (row) =>
+              row.include &&
+              !seenMatchIds.has(row.matchId) &&
+              (row.compositeAdvantage ?? 0) >= 0.12 &&
+              row.riskScore <= 0.45 &&
+              (row.aiProbability ?? row.modelProbability ?? 0) >= 0.38,
+          )
+          .filter((row) => {
+            if (seenMatchIds.has(row.matchId)) {
+              return false;
+            }
+
+            seenMatchIds.add(row.matchId);
+            return true;
+          })
+          .slice(0, 3);
+      })()
+    : [];
 
   const selectedModeTickets = ticketsByMode[selectedMode];
   const selectedHero = selectedModeTickets[0] ?? null;
@@ -239,7 +270,7 @@ function TicketGeneratorPageContent() {
         ),
         maxContrarianMatches: Math.min(
           Math.max(parseIntOrNull(stringValue(formData, "maxContrarianMatches")) ?? 3, 0),
-          13,
+          maxContrarianMatchesCap,
         ),
         includeDrawPolicy:
           stringValue(formData, "includeDrawPolicy") === "low" ||
@@ -403,6 +434,39 @@ function TicketGeneratorPageContent() {
                 </p>
               </div>
             </div>
+            {pushCandidates.length > 0 ? (
+              <div className="mt-4 rounded-[28px] border border-amber-200 bg-[linear-gradient(145deg,rgba(255,247,237,0.96),rgba(254,249,195,0.9))] p-5 shadow-[0_24px_60px_-42px_rgba(120,53,15,0.22)]">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge tone="amber">全力プッシュ候補</Badge>
+                  <h3 className="font-display text-lg font-semibold tracking-[-0.05em] text-slate-950">
+                    優位差がかなり強い試合があります
+                  </h3>
+                </div>
+                <p className="mt-3 text-sm leading-6 text-slate-700">
+                  造船太郎の一撃みたいに、明らかに押し込みたい筋が出たときの目印です。
+                  まずは `本線` か `バランス` を見ながら、この候補が入っている配分案を優先して確認できます。
+                </p>
+                <div className="mt-4 grid gap-3 lg:grid-cols-3">
+                  {pushCandidates.map((candidate) => (
+                    <div
+                      key={`push-${candidate.matchId}-${candidate.outcome}`}
+                      className="rounded-[22px] border border-white/70 bg-white/88 p-4"
+                    >
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge tone="amber">#{candidate.matchNo}</Badge>
+                        <Badge tone="teal">{candidate.outcome}</Badge>
+                      </div>
+                      <p className="mt-2 text-sm font-semibold text-slate-900">{candidate.fixture}</p>
+                      <div className="mt-3 text-xs leading-5 text-slate-600">
+                        合成優位 {formatSignedPercent(candidate.compositeAdvantage ?? 0, 1)} / AI{" "}
+                        {formatPercent(candidate.aiProbability ?? candidate.modelProbability ?? 0, 1)} / リスク{" "}
+                        {formatNumber(candidate.riskScore, 2)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </SectionCard>
 
           <SectionCard
@@ -453,7 +517,7 @@ function TicketGeneratorPageContent() {
                   name="maxContrarianMatches"
                   type="number"
                   min={0}
-                  max={13}
+                  max={maxContrarianMatchesCap}
                   step={1}
                   defaultValue={effectiveSettings.maxContrarianMatches}
                   className={fieldClassName}

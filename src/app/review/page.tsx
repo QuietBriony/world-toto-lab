@@ -328,7 +328,7 @@ function ReviewPageContent() {
               </div>
             ) : (
               <div className="rounded-3xl border border-emerald-200 bg-emerald-50/90 p-4 text-sm leading-6 text-emerald-950">
-                13 試合ぶんの結果入力が揃っています。下の集計と反省ログをそのまま確認できます。
+                {data.round.matches.length} 試合ぶんの結果入力が揃っています。下の集計と反省ログをそのまま確認できます。
               </div>
             )}
             <form onSubmit={handleSaveResults} className="space-y-5">

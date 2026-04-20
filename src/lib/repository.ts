@@ -10,7 +10,7 @@ import {
   demoTicketSettings,
 } from "@/lib/demo-data";
 import { encodePickSupportNote, parsePickSupportNote } from "@/lib/pick-support";
-import { defaultMemberNames } from "@/lib/sample-data";
+import { defaultInitialUsers } from "@/lib/sample-data";
 import { requireSupabaseClient } from "@/lib/supabase";
 import { generateAllModeTickets } from "@/lib/tickets";
 import { filterPredictors, isPredictorRole } from "@/lib/users";
@@ -363,8 +363,16 @@ function deriveRoundSummary(
   };
 }
 
-function placeholderMatches(roundId: string) {
-  return Array.from({ length: 13 }, (_, index) => ({
+function normalizeMatchCount(value: number | null | undefined) {
+  if (value === null || value === undefined || Number.isNaN(value)) {
+    return 13;
+  }
+
+  return Math.min(Math.max(Math.floor(value), 1), 20);
+}
+
+function placeholderMatches(roundId: string, matchCount?: number | null) {
+  return Array.from({ length: normalizeMatchCount(matchCount) }, (_, index) => ({
     round_id: roundId,
     match_no: index + 1,
     home_team: `チーム ${index + 1}A`,
@@ -489,7 +497,7 @@ export async function getRoundWorkspace(roundId: string): Promise<RoundWorkspace
   };
 }
 
-export async function createSampleUsers() {
+export async function createInitialUsers() {
   const supabase = requireSupabaseClient();
   const existingResult = await supabase.from("users").select("id");
   throwIfError("Failed to check existing users", existingResult);
@@ -499,13 +507,13 @@ export async function createSampleUsers() {
   }
 
   const insertResult = await supabase.from("users").insert(
-    defaultMemberNames.map((name, index) => ({
-      name,
-      role: index === 0 ? "admin" : "member",
+    defaultInitialUsers.map((user) => ({
+      name: user.name,
+      role: user.role,
     })),
   );
 
-  throwIfError("Failed to create sample users", insertResult);
+  throwIfError("Failed to create initial users", insertResult);
 }
 
 export async function createUser(input: { name: string; role?: UserRole }) {
@@ -593,6 +601,7 @@ export async function deleteUserIfInactive(userId: string) {
 
 export async function createRound(input: {
   budgetYen: number | null;
+  matchCount?: number | null;
   notes: string | null;
   status: RoundStatus;
   title: string;
@@ -614,7 +623,7 @@ export async function createRound(input: {
   const round = roundResult.data as RoundRow;
   const matchesResult = await supabase
     .from("matches")
-    .insert(placeholderMatches(round.id));
+    .insert(placeholderMatches(round.id, input.matchCount));
 
   if (matchesResult.error) {
     await supabase.from("rounds").delete().eq("id", round.id);
@@ -640,7 +649,7 @@ export async function createDemoRound() {
     return existingRoundId;
   }
 
-  await createSampleUsers();
+  await createInitialUsers();
 
   const usersResult = await supabase.from("users").select("*").order("role").order("name");
   throwIfError("Failed to load users for demo round", usersResult);
