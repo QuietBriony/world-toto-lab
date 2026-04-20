@@ -14,6 +14,7 @@ import { RoundNav } from "@/components/round-nav";
 import {
   Badge,
   buttonClassName,
+  CollapsibleSectionCard,
   cx,
   fieldClassName,
   PageHeader,
@@ -538,6 +539,48 @@ function PicksPageContent() {
             currentPath={appRoute.picks}
             userId={activeUser?.id}
           />
+
+          <CollapsibleSectionCard
+            title="この画面でやること"
+            description="toto初見なら、まずこの4つだけ分かれば進めます。"
+            defaultOpen={data.round.picks.length === 0}
+            badge={<Badge tone="sky">かんたん説明</Badge>}
+          >
+            <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-4">
+              {[
+                {
+                  title: "1 / 0 / 2",
+                  body: "`1` はホーム勝ち、`0` は引き分け、`2` はアウェイ勝ちです。",
+                  tone: "amber" as const,
+                },
+                {
+                  title: "AI基準線",
+                  body: "AI が出した叩き台です。まずここを見て、人力でずらすかを考えます。",
+                  tone: "sky" as const,
+                },
+                {
+                  title: "予想者",
+                  body: "自分で `1 / 0 / 2` を直接入れる人です。AI本命を土台にして上書きできます。",
+                  tone: "teal" as const,
+                },
+                {
+                  title: "ウォッチ / 支持先",
+                  body: "AI か予想者のどちらに乗るかを選ぶ人です。選ぶ相手が `支持先` です。",
+                  tone: "slate" as const,
+                },
+              ].map((item) => (
+                <div
+                  key={item.title}
+                  className="rounded-[22px] border border-white/80 bg-white/76 p-4 shadow-[0_16px_38px_-30px_rgba(15,23,42,0.4)]"
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge tone={item.tone}>{item.title}</Badge>
+                  </div>
+                  <p className="mt-3 text-sm leading-6 text-slate-600">{item.body}</p>
+                </div>
+              ))}
+            </div>
+          </CollapsibleSectionCard>
 
           {data.users.length === 0 || !activeUser ? (
             <SectionCard

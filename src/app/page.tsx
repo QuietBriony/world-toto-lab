@@ -400,6 +400,126 @@ export default function DashboardPage() {
       ) : data ? (
         <>
           <SectionCard
+            title="初めてならここから"
+            description="totoを知らなくても、まずは `デモで流れを見る` か `本番セットを始める` のどちらかを選べば大丈夫です。"
+          >
+            <div className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
+              <div className="rounded-[28px] border border-emerald-200 bg-[linear-gradient(145deg,rgba(236,253,245,0.96),rgba(239,246,255,0.92))] p-5 shadow-[0_24px_60px_-40px_rgba(15,23,42,0.45)]">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge tone="teal">初見OK</Badge>
+                  <Badge tone="slate">30秒説明</Badge>
+                </div>
+                <h3 className="mt-3 font-display text-[1.4rem] font-semibold tracking-[-0.05em] text-slate-950">
+                  まず知るのは `1 / 0 / 2` と役割だけで十分です
+                </h3>
+                <ul className="mt-4 space-y-2 text-sm leading-7 text-slate-700">
+                  <li>`1` はホーム勝ち、`0` は引き分け、`2` はアウェイ勝ちです。</li>
+                  <li>`toto` は複数試合の `1 / 0 / 2` を見るサッカーくじで、このサイトでは購入ではなく見立ての共有と整理をします。</li>
+                  <li>`予想者` は自分で `1 / 0 / 2` を入れる人、`ウォッチ` は AI か予想者のどちらに乗るかを選ぶ人です。</li>
+                  <li>`候補配分` はお金の配分ではなく、どの候補から先に見るかの順番表です。</li>
+                </ul>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  {[
+                    {
+                      title: "予想者",
+                      body: "自分で `1 / 0 / 2` を直接入れる役です。",
+                      tone: "teal" as const,
+                    },
+                    {
+                      title: "ウォッチ",
+                      body: "AI か予想者のどちらに乗るかを選ぶ役です。",
+                      tone: "slate" as const,
+                    },
+                    {
+                      title: "AI基準線",
+                      body: "AI が出した叩き台です。まずここから比較します。",
+                      tone: "sky" as const,
+                    },
+                    {
+                      title: "候補配分",
+                      body: "最初にどの候補を見るかを整理した一覧です。",
+                      tone: "amber" as const,
+                    },
+                  ].map((item) => (
+                    <div
+                      key={item.title}
+                      className="rounded-[20px] border border-white/75 bg-white/82 p-4"
+                    >
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge tone={item.tone}>{item.title}</Badge>
+                      </div>
+                      <p className="mt-3 text-sm leading-6 text-slate-600">{item.body}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid gap-3">
+                <div className="rounded-[24px] border border-amber-200 bg-amber-50/88 p-5 shadow-[0_18px_44px_-30px_rgba(15,23,42,0.24)]">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge tone="amber">まず試す</Badge>
+                    <h3 className="font-display text-lg font-semibold tracking-[-0.04em] text-slate-950">
+                      デモで流れを見る
+                    </h3>
+                  </div>
+                  <p className="mt-3 text-sm leading-6 text-slate-600">
+                    役割、入力、コンセンサス、候補配分まで最初から入った教材用ラウンドです。
+                    用語の雰囲気を掴むなら、ここからがいちばん速いです。
+                  </p>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className={buttonClassName}
+                      onClick={handleOpenDemo}
+                      disabled={busy === "demo"}
+                    >
+                      {busy === "demo"
+                        ? "準備中..."
+                        : demoRound
+                          ? "デモラウンドを開く"
+                          : "デモラウンドを作成"}
+                    </button>
+                    <a href="#demo-lab" className={secondaryButtonClassName}>
+                      デモ説明を見る
+                    </a>
+                  </div>
+                </div>
+
+                <div className="rounded-[24px] border border-emerald-200 bg-emerald-50/85 p-5 shadow-[0_18px_44px_-30px_rgba(15,23,42,0.24)]">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge tone="teal">すぐ本番</Badge>
+                    <h3 className="font-display text-lg font-semibold tracking-[-0.04em] text-slate-950">
+                      本番セットを始める
+                    </h3>
+                  </div>
+                  <p className="mt-3 text-sm leading-6 text-slate-600">
+                    `ラウンド作成 → 試合編集 → 支持 / 予想 → 候補配分` の順で進めれば十分です。
+                    初回は `hazi` と空き枠も一緒に準備できます。
+                  </p>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {liveRoundCount === 0 ? (
+                      <a href="#create-round" className={buttonClassName}>
+                        本番セットを始める
+                      </a>
+                    ) : latestRoundProgress ? (
+                      <Link href={latestRoundProgress.nextStep.href} className={buttonClassName}>
+                        {latestRoundProgress.nextStep.label}
+                      </Link>
+                    ) : (
+                      <a href="#create-round" className={buttonClassName}>
+                        ラウンドを作成
+                      </a>
+                    )}
+                    <a href="#shared-members" className={secondaryButtonClassName}>
+                      メンバーの意味を見る
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </SectionCard>
+
+          <SectionCard
             title="本番セットアップ"
             description="まずは本番ラウンドを1つ作り、必要なら `hazi` と空き枠も一緒に準備してから進めます。"
           >
