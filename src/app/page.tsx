@@ -54,6 +54,7 @@ import {
 } from "@/lib/repository";
 import { budgetFromCandidateLimit, candidateLimitFromBudget } from "@/lib/tickets";
 import {
+  filterPredictors,
   nextPredictorLineName,
   parseUserRole,
   userRoleDescription,
@@ -190,7 +191,7 @@ export default function DashboardPage() {
   };
 
   const handleDeleteMember = async (userId: string, name: string) => {
-    if (!window.confirm(`「${name}」を整理します。空きアカウントだけ削除されます。続けますか？`)) {
+    if (!window.confirm(`「${name}」を整理します。未入力アカウントだけ削除されます。続けますか？`)) {
       return;
     }
 
@@ -250,10 +251,13 @@ export default function DashboardPage() {
 
   const demoRound =
     data?.rounds.find((round) => round.title === demoRoundTitle) ?? null;
+  const demoUsers = data?.demoUsers ?? [];
+  const demoPredictorUsers = filterPredictors(demoUsers);
   const inventoryRounds = useMemo(
     () => data?.rounds.filter((round) => !isDemoRoundTitle(round.title)) ?? [],
     [data],
   );
+  const liveRoundCount = inventoryRounds.length;
   const latestRound = inventoryRounds[0] ?? null;
   const latestRoundProgress =
     data && latestRound
@@ -340,11 +344,16 @@ export default function DashboardPage() {
     );
   }, [data, inventoryRounds]);
   const emptyMemberCount =
-    data?.users.filter((user) => memberUsageMap.get(user.id)?.isEmpty).length ?? 0;
+    data?.users.filter((user) => {
+      const usageSummary = memberUsageMap.get(user.id);
+      return Boolean(usageSummary?.isEmpty && usageSummary.isPlaceholderName);
+    }).length ?? 0;
   const predictorCount =
     data?.users.filter((user) => user.role === "admin").length ?? 0;
   const watcherCount =
     data?.users.filter((user) => user.role === "member").length ?? 0;
+  const livePickCount = inventoryRounds.reduce((sum, round) => sum + round.pickCount, 0);
+  const liveResultCount = inventoryRounds.reduce((sum, round) => sum + round.resultedCount, 0);
 
   return (
     <div className="space-y-8">
@@ -389,8 +398,8 @@ export default function DashboardPage() {
             <div className="grid gap-4 lg:grid-cols-2">
               <div className="rounded-[24px] border border-white/80 bg-white/76 p-5 shadow-[0_18px_44px_-30px_rgba(15,23,42,0.4)]">
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge tone={data.rounds.length > 0 ? "teal" : "amber"}>
-                    {data.rounds.length > 0 ? "進行中" : "最初の一歩"}
+                  <Badge tone={liveRoundCount > 0 ? "teal" : "amber"}>
+                    {liveRoundCount > 0 ? "進行中" : "最初の一歩"}
                   </Badge>
                   <h3 className="font-display text-lg font-semibold tracking-[-0.04em] text-slate-950">
                     本番ラウンドを作る
@@ -400,7 +409,7 @@ export default function DashboardPage() {
                   初回はここから始めれば十分です。必要なら `hazi` と空き枠も同時に作って、そのまま試合設定へ進めます。
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
-                  {data.rounds.length === 0 ? (
+                  {liveRoundCount === 0 ? (
                     <a href="#create-round" className={buttonClassName}>
                       本番セットを始める
                     </a>
@@ -504,10 +513,21 @@ export default function DashboardPage() {
                 {demoRound ? (
                   <div className="mt-4 flex flex-wrap gap-2">
                     <Badge tone="slate">{demoRound.matchCount}試合</Badge>
-                    <Badge tone="slate">{data.users.length}人</Badge>
+                    <Badge tone="slate">{demoUsers.length}人</Badge>
+                    <Badge tone="slate">予想者 {demoPredictorUsers.length}</Badge>
+                    <Badge tone="slate">ウォッチ {Math.max(demoUsers.length - demoPredictorUsers.length, 0)}</Badge>
                     <Badge tone="slate">{demoRound.pickCount}予想</Badge>
                     <Badge tone="slate">{demoRound.scoutReports.length}根拠</Badge>
                     <Badge tone="slate">{demoRound.resultedCount}結果</Badge>
+                  </div>
+                ) : null}
+                {demoUsers.length > 0 ? (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {demoUsers.map((user) => (
+                      <Badge key={user.id} tone={user.role === "admin" ? "teal" : "slate"}>
+                        {user.name} / {userRoleLabel[user.role]}
+                      </Badge>
+                    ))}
                   </div>
                 ) : null}
                 <div className="mt-4 flex flex-wrap gap-2">
@@ -527,7 +547,7 @@ export default function DashboardPage() {
                     </Link>
                     <Link
                       href={buildRoundHref(appRoute.picks, demoRound.id, {
-                        user: data.users[0]?.id,
+                        user: demoPredictorUsers[0]?.id ?? demoUsers[0]?.id,
                       })}
                       className={secondaryButtonClassName}
                     >
@@ -604,8 +624,8 @@ export default function DashboardPage() {
                   step: "01",
                   title: "本番ラウンドを作成",
                   body: "まず対象回を1つ作ります。初回なら `hazi` と空き枠もここで一緒に準備できます。",
-                  tone: data.rounds.length > 0 ? "teal" : "amber",
-                  status: data.rounds.length > 0 ? "済み" : "次にやる",
+                  tone: liveRoundCount > 0 ? "teal" : "amber",
+                  status: liveRoundCount > 0 ? "済み" : "次にやる",
                 },
                 {
                   step: "02",
@@ -821,24 +841,24 @@ export default function DashboardPage() {
 
           <section className="grid gap-4 md:grid-cols-4">
             <StatCard
-              label="ラウンド数"
-              value={`${data.rounds.length}`}
-              hint="開催回の下書きからレビュー済みまでを一覧表示"
+              label="本番ラウンド"
+              value={`${liveRoundCount}`}
+              hint="本番回の下書きからレビュー済みまでを一覧表示"
             />
             <StatCard
-              label="登録メンバー"
+              label="本番メンバー"
               value={`${data.users.length}`}
-              hint="認証なし MVP なので表示名を共有で使います"
+              hint="デモを除いた共有メンバーだけを数えています"
             />
             <StatCard
-              label="入力済み予想"
-              value={`${data.rounds.reduce((sum, round) => sum + round.pickCount, 0)}`}
-              hint="友人メンバーの 1 / 0 / 2 入力件数"
+              label="本番入力済み"
+              value={`${livePickCount}`}
+              hint="本番ラウンドの 1 / 0 / 2 入力件数"
             />
             <StatCard
-              label="結果確定"
-              value={`${data.rounds.reduce((sum, round) => sum + round.resultedCount, 0)}`}
-              hint="結果が入力されている試合数"
+              label="本番結果確定"
+              value={`${liveResultCount}`}
+              hint="本番ラウンドで結果が入力されている試合数"
             />
           </section>
 
@@ -946,7 +966,7 @@ export default function DashboardPage() {
           <SectionCard
             id="shared-members"
             title="共有メンバー"
-            description="認証なし MVP なので、ここであだ名と役割を決めます。空きアカウントはここから整理できて、入力ありの人は簡単削除しないようにしています。"
+            description="認証なし MVP なので、ここで本番用のあだ名と役割を決めます。デモ用アカウントはここに混ぜません。"
             actions={
               data.users.length === 0 ? (
                 <button
@@ -975,8 +995,8 @@ export default function DashboardPage() {
                   <div className="rounded-[22px] border border-slate-200 bg-slate-50/90 p-4 text-sm leading-6 text-slate-600">
                     左側は登録済みメンバーの編集です。
                     名前や役割を変えたいときは各行を更新します。
-                    `空き` はここからすぐ整理できて、入力ありの人は内容を消してからでないと消えません。
-                    状態の判定には `デモ体験ラウンド` の入力を含めません。
+                    `空き n` は `空き`、名前を付けたけれどまだ触っていない人は `入力なし` と表示します。
+                    状態の判定にはデモ入力を含めません。
                   </div>
                   {data.users.map((user) => (
                     (() => {
@@ -1128,7 +1148,11 @@ export default function DashboardPage() {
                                 disabled={removingMemberId === user.id}
                                 onClick={() => void handleDeleteMember(user.id, user.name)}
                               >
-                                {removingMemberId === user.id ? "整理中..." : "空きを削除"}
+                                {removingMemberId === user.id
+                                  ? "整理中..."
+                                  : usageSummary?.isPlaceholderName
+                                    ? "空きを削除"
+                                    : "未入力を削除"}
                               </button>
                             ) : (
                               <div className="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-medium text-slate-500">
@@ -1195,8 +1219,8 @@ export default function DashboardPage() {
                     ))}
                   </div>
                   <div className="mt-4 rounded-[20px] border border-white/70 bg-white/70 p-4 text-sm leading-6 text-slate-600">
-                    `空きアカウント` は左側で `空きを削除` できます。支持/予想ページにも状態表示を出しているので、
-                    誰が `入力済 / 未入力 / 空き` か見ながら整理できます。
+                    `空きアカウント` は左側で `空きを削除`、名前を付けただけの人は `未入力を削除` できます。
+                    支持/予想ページにも状態表示を出しているので、誰が `入力済 / 入力なし / 空き` か見ながら整理できます。
                   </div>
                 </div>
               </div>
@@ -1207,7 +1231,7 @@ export default function DashboardPage() {
           <SectionCard
             id="create-round"
             title="ラウンドを作成"
-            description="指定した試合数ぶんのプレースホルダーを作り、初回ならメンバー初期化も一緒に進められます。"
+            description="本番用のラウンドを作ります。指定した試合数ぶんのプレースホルダーを作り、初回なら本番メンバー初期化も一緒に進められます。"
           >
             <form onSubmit={handleCreateRound} className="grid gap-5 md:grid-cols-2">
               <label className="grid gap-2 text-sm font-medium text-slate-700">
@@ -1298,7 +1322,16 @@ export default function DashboardPage() {
           </SectionCard>
 
           <section id="round-list" className="grid gap-5 xl:grid-cols-2">
-            {data.rounds.map((round) => (
+            {inventoryRounds.length === 0 ? (
+              <SectionCard
+                title="本番ラウンド一覧"
+                description="本番ラウンドはまだありません。デモとは別に、ここへ本番回が並びます。"
+              >
+                <p className="text-sm text-slate-600">
+                  まずは `ラウンドを作成` から本番セットを始めてください。
+                </p>
+              </SectionCard>
+            ) : inventoryRounds.map((round) => (
               (() => {
                 const progress = deriveRoundProgressSummary({
                   matches: round.matches,
@@ -1316,9 +1349,6 @@ export default function DashboardPage() {
                     description={round.notes ?? "ラウンドメモはまだありません。"}
                     actions={
                       <div className="flex items-center gap-2">
-                        {round.title === demoRoundTitle ? (
-                          <Badge tone="amber">デモ</Badge>
-                        ) : null}
                         <Badge tone="sky">{roundStatusLabel[round.status]}</Badge>
                         <Link
                           href={buildRoundHref(appRoute.workspace, round.id)}

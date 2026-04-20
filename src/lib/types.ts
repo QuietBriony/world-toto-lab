@@ -164,6 +164,7 @@ export type DashboardRoundSummary = Round & {
 };
 
 export type DashboardData = {
+  demoUsers: User[];
   rounds: DashboardRoundSummary[];
   users: User[];
 };

@@ -8,9 +8,10 @@ import {
   demoRoundNotes,
   demoRoundTitle,
   demoTicketSettings,
+  isDemoRoundTitle,
 } from "@/lib/demo-data";
 import { encodePickSupportNote, parsePickSupportNote } from "@/lib/pick-support";
-import { defaultInitialUsers } from "@/lib/sample-data";
+import { defaultDemoUsers, defaultInitialUsers, isDemoAccountName } from "@/lib/sample-data";
 import { requireSupabaseClient } from "@/lib/supabase";
 import { generateAllModeTickets } from "@/lib/tickets";
 import { filterPredictors, isPredictorRole } from "@/lib/users";
@@ -175,6 +176,23 @@ function sortUsers(users: User[]) {
 
     return left.id.localeCompare(right.id);
   });
+}
+
+function partitionUsers(users: User[]) {
+  return {
+    demoUsers: sortUsers(users.filter((user) => isDemoAccountName(user.name))),
+    liveUsers: sortUsers(users.filter((user) => !isDemoAccountName(user.name))),
+  };
+}
+
+function hasExpectedDemoUsers(users: User[]) {
+  if (users.length !== defaultDemoUsers.length) {
+    return false;
+  }
+
+  return defaultDemoUsers.every((seed) =>
+    users.some((user) => user.name === seed.name && user.role === seed.role),
+  );
 }
 
 function mapRound(row: RoundRow): Round {
@@ -363,6 +381,72 @@ function deriveRoundSummary(
   };
 }
 
+function collectRoundUserIds(input: {
+  picks: PickRow[];
+  reviewNotes: ReviewNoteRow[];
+  scoutReports: HumanScoutReportRow[];
+}) {
+  const userIds = new Set<string>();
+
+  input.picks.forEach((pick) => {
+    userIds.add(pick.user_id);
+    const support = parsePickSupportNote(pick.note).support;
+    if (support.kind === "predictor") {
+      userIds.add(support.userId);
+    }
+  });
+
+  input.scoutReports.forEach((report) => {
+    userIds.add(report.user_id);
+  });
+
+  input.reviewNotes.forEach((note) => {
+    if (note.user_id) {
+      userIds.add(note.user_id);
+    }
+  });
+
+  return userIds;
+}
+
+function isValidDemoRound(input: {
+  demoUsers: User[];
+  matches: MatchRow[];
+  picks: PickRow[];
+  reviewNotes: ReviewNoteRow[];
+  scoutReports: HumanScoutReportRow[];
+}) {
+  const predictorIds = new Set(filterPredictors(input.demoUsers).map((user) => user.id));
+  const demoUserIds = new Set(input.demoUsers.map((user) => user.id));
+  const roundUserIds = collectRoundUserIds({
+    picks: input.picks,
+    reviewNotes: input.reviewNotes,
+    scoutReports: input.scoutReports,
+  });
+
+  if (!hasExpectedDemoUsers(input.demoUsers)) {
+    return false;
+  }
+
+  if (predictorIds.size !== 2 || input.matches.length === 0) {
+    return false;
+  }
+
+  if (input.picks.length !== input.matches.length * input.demoUsers.length) {
+    return false;
+  }
+
+  if (input.scoutReports.length !== input.matches.length * predictorIds.size) {
+    return false;
+  }
+
+  if (![...roundUserIds].every((userId) => demoUserIds.has(userId))) {
+    return false;
+  }
+
+  return input.scoutReports.every((report) => predictorIds.has(report.user_id));
+}
+
 function normalizeMatchCount(value: number | null | undefined) {
   if (value === null || value === undefined || Number.isNaN(value)) {
     return 13;
@@ -386,6 +470,36 @@ async function deleteRoundCascade(roundId: string) {
   await supabase.from("rounds").delete().eq("id", roundId);
 }
 
+async function replaceDemoUsers() {
+  const supabase = requireSupabaseClient();
+  const usersResult = await supabase.from("users").select("*").order("role").order("name");
+  throwIfError("Failed to load users for demo setup", usersResult);
+
+  const existingUsers = sortUsers((usersResult.data as UserRow[]).map(mapUser));
+  const demoUsers = existingUsers.filter((user) => isDemoAccountName(user.name));
+
+  for (const user of demoUsers) {
+    await deleteUserIfInactive(user.id);
+  }
+
+  const insertResult = await supabase.from("users").insert(
+    defaultDemoUsers.map((user) => ({
+      name: user.name,
+      role: user.role,
+    })),
+  );
+  throwIfError("Failed to create demo users", insertResult);
+
+  const refreshedUsersResult = await supabase.from("users").select("*").order("role").order("name");
+  throwIfError("Failed to reload demo users", refreshedUsersResult);
+
+  return sortUsers(
+    (refreshedUsersResult.data as UserRow[])
+      .map(mapUser)
+      .filter((user) => isDemoAccountName(user.name)),
+  );
+}
+
 export async function listDashboardData(): Promise<DashboardData> {
   const supabase = requireSupabaseClient();
   const [usersResult, roundsResult, matchesResult, picksResult, reportsResult, notesResult] =
@@ -405,7 +519,8 @@ export async function listDashboardData(): Promise<DashboardData> {
   throwIfError("Failed to load scout reports", reportsResult);
   throwIfError("Failed to load review notes", notesResult);
 
-  const users = sortUsers((usersResult.data as UserRow[]).map(mapUser));
+  const allUsers = sortUsers((usersResult.data as UserRow[]).map(mapUser));
+  const { demoUsers, liveUsers } = partitionUsers(allUsers);
   const rounds = (roundsResult.data as RoundRow[]).map(mapRound);
   const matches = (matchesResult.data as MatchRow[]).map(mapMatch);
   const picks = (picksResult.data as PickRow[]).map((row) => mapPick(row));
@@ -420,7 +535,7 @@ export async function listDashboardData(): Promise<DashboardData> {
   const notesByRound = groupByRoundId(reviewNotes);
 
   return {
-    users,
+    demoUsers,
     rounds: rounds.map((round) =>
       deriveRoundSummary(
         round,
@@ -428,9 +543,10 @@ export async function listDashboardData(): Promise<DashboardData> {
         picksByRound.get(round.id) ?? [],
         reportsByRound.get(round.id) ?? [],
         notesByRound.get(round.id) ?? [],
-        users,
+        isDemoRoundTitle(round.title) ? demoUsers : liveUsers,
       ),
     ),
+    users: liveUsers,
   };
 }
 
@@ -466,9 +582,11 @@ export async function getRoundWorkspace(roundId: string): Promise<RoundWorkspace
     return null;
   }
 
-  const users = sortUsers((usersResult.data as UserRow[]).map(mapUser));
-  const userById = new Map(users.map((user) => [user.id, user]));
   const round = mapRound(roundResult.data as RoundRow);
+  const allUsers = sortUsers((usersResult.data as UserRow[]).map(mapUser));
+  const { demoUsers, liveUsers } = partitionUsers(allUsers);
+  const users = isDemoRoundTitle(round.title) ? demoUsers : liveUsers;
+  const userById = new Map(users.map((user) => [user.id, user]));
   const matches = (matchesResult.data as MatchRow[]).map(mapMatch);
   const matchById = new Map(matches.map((match) => [match.id, match]));
   const picks = (picksResult.data as PickRow[]).map((row) =>
@@ -499,10 +617,11 @@ export async function getRoundWorkspace(roundId: string): Promise<RoundWorkspace
 
 export async function createInitialUsers() {
   const supabase = requireSupabaseClient();
-  const existingResult = await supabase.from("users").select("id");
+  const existingResult = await supabase.from("users").select("*").order("role").order("name");
   throwIfError("Failed to check existing users", existingResult);
 
-  if ((existingResult.data ?? []).length > 0) {
+  const existingUsers = sortUsers((existingResult.data as UserRow[]).map(mapUser));
+  if (partitionUsers(existingUsers).liveUsers.length > 0) {
     return;
   }
 
@@ -645,20 +764,48 @@ export async function createDemoRound() {
   throwIfError("Failed to check existing demo round", existingResult);
 
   const existingRoundId = (existingResult.data as Array<{ id: string }>)[0]?.id;
-  if (existingRoundId) {
-    return existingRoundId;
-  }
-
-  await createInitialUsers();
-
   const usersResult = await supabase.from("users").select("*").order("role").order("name");
   throwIfError("Failed to load users for demo round", usersResult);
 
-  const users = sortUsers((usersResult.data as UserRow[]).map(mapUser));
-  if (users.length === 0) {
-    throw new Error("No users are available for the demo round.");
+  const allUsers = sortUsers((usersResult.data as UserRow[]).map(mapUser));
+  let { demoUsers } = partitionUsers(allUsers);
+
+  if (existingRoundId && hasExpectedDemoUsers(demoUsers)) {
+    const [matchesResult, picksResult, reportsResult, notesResult] = await Promise.all([
+      supabase.from("matches").select("*").eq("round_id", existingRoundId),
+      supabase.from("picks").select("*").eq("round_id", existingRoundId),
+      supabase.from("human_scout_reports").select("*").eq("round_id", existingRoundId),
+      supabase.from("review_notes").select("*").eq("round_id", existingRoundId),
+    ]);
+
+    throwIfError("Failed to inspect demo matches", matchesResult);
+    throwIfError("Failed to inspect demo picks", picksResult);
+    throwIfError("Failed to inspect demo scout reports", reportsResult);
+    throwIfError("Failed to inspect demo review notes", notesResult);
+
+    if (
+      isValidDemoRound({
+        demoUsers,
+        matches: matchesResult.data as MatchRow[],
+        picks: picksResult.data as PickRow[],
+        reviewNotes: notesResult.data as ReviewNoteRow[],
+        scoutReports: reportsResult.data as HumanScoutReportRow[],
+      })
+    ) {
+      return existingRoundId;
+    }
   }
-  const predictorIds = filterPredictors(users).map((user) => user.id);
+
+  if (existingRoundId) {
+    await deleteRoundCascade(existingRoundId);
+  }
+
+  demoUsers = await replaceDemoUsers();
+  if (demoUsers.length === 0) {
+    throw new Error("デモ用ユーザーを準備できませんでした。");
+  }
+
+  const predictorIds = filterPredictors(demoUsers).map((user) => user.id);
 
   const roundResult = await supabase
     .from("rounds")
@@ -685,12 +832,11 @@ export async function createDemoRound() {
     throwIfError("Failed to create demo matches", matchesResult);
 
     const matches = (matchesResult.data as MatchRow[]).map(mapMatch);
-    const userIds = users.map((user) => user.id);
-    const pickRows = buildDemoPickRows(round.id, matches, userIds);
+    const pickRows = buildDemoPickRows(round.id, matches, demoUsers);
     const scoutRows = buildDemoScoutReportRows(
       round.id,
       matches,
-      predictorIds.length > 0 ? predictorIds : [userIds[0]],
+      predictorIds.length > 0 ? predictorIds : [demoUsers[0].id],
     );
 
     const [picksResult, reportsResult] = await Promise.all([
@@ -788,7 +934,7 @@ export async function createDemoRound() {
 
     const notesResult = await supabase
       .from("review_notes")
-      .insert(buildDemoReviewNotes(round.id, matches, userIds));
+      .insert(buildDemoReviewNotes(round.id, matches, demoUsers));
 
     throwIfError("Failed to save demo review notes", notesResult);
 

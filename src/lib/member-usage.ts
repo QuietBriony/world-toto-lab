@@ -4,9 +4,11 @@ import type {
   ReviewNote,
   User,
 } from "@/lib/types";
+import { isPlaceholderAccountName } from "@/lib/sample-data";
 
 export type MemberUsageSummary = {
   userId: string;
+  isPlaceholderName: boolean;
   pickCount: number;
   scoutReportCount: number;
   reviewNoteCount: number;
@@ -31,9 +33,10 @@ export type MemberUsageStatus = {
   tone: StatusTone;
 };
 
-function createEmptySummary(userId: string): MemberUsageSummary {
+function createEmptySummary(user: { id: string; name: string }): MemberUsageSummary {
   return {
-    userId,
+    userId: user.id,
+    isPlaceholderName: isPlaceholderAccountName(user.name),
     pickCount: 0,
     scoutReportCount: 0,
     reviewNoteCount: 0,
@@ -63,12 +66,19 @@ function detailParts(summary: MemberUsageSummary) {
 }
 
 export function buildMemberUsageMap(input: UsageCollections) {
+  const userById = new Map(input.users.map((user) => [user.id, user]));
   const map = new Map<string, MemberUsageSummary>(
-    input.users.map((user) => [user.id, createEmptySummary(user.id)]),
+    input.users.map((user) => [user.id, createEmptySummary(user)]),
   );
 
   const ensureSummary = (userId: string) => {
-    const current = map.get(userId) ?? createEmptySummary(userId);
+    const sourceUser = userById.get(userId);
+    const current =
+      map.get(userId) ??
+      createEmptySummary({
+        id: userId,
+        name: sourceUser?.name ?? "",
+      });
     map.set(userId, current);
     return current;
   };
@@ -117,9 +127,11 @@ export function buildMemberUsageMap(input: UsageCollections) {
 export function describeMemberInventoryStatus(summary: MemberUsageSummary): MemberUsageStatus {
   if (summary.canQuickDelete) {
     return {
-      label: "空き",
+      label: summary.isPlaceholderName ? "空き" : "入力なし",
       tone: "slate",
-      detail: "入力がないので、この画面から整理できます。",
+      detail: summary.isPlaceholderName
+        ? "入力がないので、この画面から整理できます。"
+        : "まだ本番入力がないので、この画面から整理できます。",
     };
   }
 
@@ -167,8 +179,10 @@ export function describeRoundMemberStatus(
   }
 
   return {
-    label: "空き",
+    label: summary.isPlaceholderName ? "空き" : "入力なし",
     tone: "slate",
-    detail: "このラウンドではまだ使っていません。",
+    detail: summary.isPlaceholderName
+      ? "このラウンドではまだ使っていません。"
+      : "このラウンドではまだ入力がありません。",
   };
 }

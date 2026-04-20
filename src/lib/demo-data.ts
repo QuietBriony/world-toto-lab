@@ -7,8 +7,9 @@ import {
   getProbability,
   outcomeToEnum,
 } from "@/lib/domain";
+import { encodePickSupportNote } from "@/lib/pick-support";
 import type { GeneratorSettings } from "@/lib/tickets";
-import type { Match, MatchCategory, Outcome, ProvisionalCall } from "@/lib/types";
+import type { Match, MatchCategory, Outcome, ProvisionalCall, User } from "@/lib/types";
 
 type DemoMatchSeed = {
   actualResult: Outcome;
@@ -51,7 +52,7 @@ type DemoProfile = {
 
 type DemoPickInsert = {
   match_id: string;
-  note: string;
+  note: string | null;
   pick: Outcome;
   round_id: string;
   user_id: string;
@@ -84,6 +85,12 @@ type DemoReviewNoteInsert = {
   note: string;
   round_id: string;
   user_id: string | null;
+};
+
+type DemoWatcherPlan = {
+  note: string;
+  support: { kind: "ai" } | { kind: "predictor"; userId: string };
+  user: Pick<User, "id" | "name" | "role">;
 };
 
 export const demoRoundTitle = "デモ体験ラウンド";
@@ -159,6 +166,8 @@ const demoProfiles: DemoProfile[] = [
   { key: "secondary", label: "第2候補", drawLift: 0, edgeTolerance: 0.05 },
   { key: "market_fade", label: "人気読み替え", drawLift: 0, edgeTolerance: 0.04 },
 ];
+
+const demoPredictorProfileIndexes = [0, 5] as const;
 
 const demoMatchSeeds: DemoMatchSeed[] = [
   {
@@ -687,21 +696,96 @@ export function buildDemoMatchRows(roundId: string) {
   }));
 }
 
-export function buildDemoPickRows(roundId: string, matches: Match[], userIds: string[]) {
-  const rows: DemoPickInsert[] = [];
+function demoAiPrimaryOutcome(match: Match) {
+  return aiRecommendedOutcomes(match)[0] ?? favoriteOutcomeForBucket(match, "model") ?? "1";
+}
 
-  userIds.forEach((userId, userIndex) => {
+export function buildDemoPickRows(
+  roundId: string,
+  matches: Match[],
+  users: Array<Pick<User, "id" | "name" | "role">>,
+) {
+  const predictors = users.filter((user) => user.role === "admin").slice(0, 2);
+  const watchers = users.filter((user) => user.role === "member").slice(0, 3);
+  const rows: DemoPickInsert[] = [];
+  const predictorPickByMatch = new Map<string, "1" | "0" | "2">();
+
+  predictors.forEach((user, userIndex) => {
+    const profileIndex = demoPredictorProfileIndexes[userIndex] ?? demoPredictorProfileIndexes[0];
+
     matches.forEach((match) => {
-      const outcome = pickOutcomeForProfile(match, userIndex);
+      const outcome = pickOutcomeForProfile(match, profileIndex);
       const aiSet = aiRecommendedOutcomes(match);
-      const profile = profileForUser(userIndex);
+      const profile = profileForUser(profileIndex);
+      predictorPickByMatch.set(`${match.id}:${user.id}`, outcome);
 
       rows.push({
         round_id: roundId,
-        user_id: userId,
+        user_id: user.id,
         match_id: match.id,
         pick: outcomeToEnum(outcome),
         note: `AI ${formatOutcomeSet(aiSet)} を見たうえで ${profile.label} として ${outcome} を選択。`,
+      });
+    });
+  });
+
+  const primaryPredictor = predictors[0] ?? null;
+  const secondaryPredictor = predictors[1] ?? primaryPredictor;
+  const watcherPlans: DemoWatcherPlan[] = [];
+
+  if (watchers[0]) {
+    watcherPlans.push(
+      primaryPredictor
+        ? {
+            note: `${primaryPredictor.name} のラインをそのまま支持。`,
+            support: { kind: "predictor", userId: primaryPredictor.id },
+            user: watchers[0],
+          }
+        : {
+            note: "AI基準線をそのまま支持。",
+            support: { kind: "ai" },
+            user: watchers[0],
+          },
+    );
+  }
+
+  if (watchers[1]) {
+    watcherPlans.push({
+      note: "AI基準線をそのまま支持。",
+      support: { kind: "ai" },
+      user: watchers[1],
+    });
+  }
+
+  if (watchers[2]) {
+    watcherPlans.push(
+      secondaryPredictor
+        ? {
+            note: `${secondaryPredictor.name} の別筋ラインを支持。`,
+            support: { kind: "predictor", userId: secondaryPredictor.id },
+            user: watchers[2],
+          }
+        : {
+            note: "AI基準線を参考に支持。",
+            support: { kind: "ai" },
+            user: watchers[2],
+          },
+    );
+  }
+
+  watcherPlans.forEach((plan) => {
+    matches.forEach((match) => {
+      const supportedOutcome =
+        plan.support.kind === "ai"
+          ? demoAiPrimaryOutcome(match)
+          : predictorPickByMatch.get(`${match.id}:${plan.support.userId}`) ?? demoAiPrimaryOutcome(match);
+
+      rows.push({
+        round_id: roundId,
+        user_id: plan.user.id,
+        match_id: match.id,
+        pick: outcomeToEnum(supportedOutcome),
+        note: encodePickSupportNote(plan.note, plan.support),
       });
     });
   });
@@ -717,22 +801,24 @@ export function buildDemoScoutReportRows(
   const rows: DemoScoutReportInsert[] = [];
 
   userIds.forEach((userId, userIndex) => {
+    const profileIndex = demoPredictorProfileIndexes[userIndex] ?? demoPredictorProfileIndexes[0];
+
     matches.forEach((match) => {
-      const outcome = pickOutcomeForProfile(match, userIndex);
-      const directionScoreF = directionScoreForPick(match, outcome, userIndex);
+      const outcome = pickOutcomeForProfile(match, profileIndex);
+      const directionScoreF = directionScoreForPick(match, outcome, profileIndex);
       const breakdown = directionBreakdown(directionScoreF);
       const drawAlert = Math.min(
         2,
         outcome === "0"
           ? 2
           : shouldDraw(match)
-            ? 1 + profileForUser(userIndex).drawLift
-            : profileForUser(userIndex).drawLift,
+            ? 1 + profileForUser(profileIndex).drawLift
+            : profileForUser(profileIndex).drawLift,
       );
       const notes = noteForOutcome(match, outcome);
       const exceptionFlag =
         match.category === "info_wait" ||
-        (profileForUser(userIndex).key === "contrarian" && match.category === "contrarian");
+        (profileForUser(profileIndex).key === "contrarian" && match.category === "contrarian");
 
       rows.push({
         round_id: roundId,
@@ -772,12 +858,14 @@ export function buildDemoScoutReportRows(
 export function buildDemoReviewNotes(
   roundId: string,
   matches: Match[],
-  userIds: string[],
+  users: Array<Pick<User, "id" | "role">>,
 ) {
   const matchByNo = new Map(matches.map((match) => [match.matchNo, match]));
-  const reporterA = userIds[0] ?? null;
-  const reporterB = userIds[2] ?? null;
-  const reporterC = userIds[3] ?? null;
+  const predictors = users.filter((user) => user.role === "admin");
+  const watchers = users.filter((user) => user.role === "member");
+  const reporterA = predictors[0]?.id ?? null;
+  const reporterB = watchers[0]?.id ?? null;
+  const reporterC = predictors[1]?.id ?? predictors[0]?.id ?? null;
 
   return [
     {
