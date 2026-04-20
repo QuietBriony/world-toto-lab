@@ -196,6 +196,19 @@ function WorkspacePageContent() {
         match: data?.round.matches.find((match) => match.matchNo === item.matchNo) ?? null,
       }))
     : [];
+  const sharedMembersHref = `${appRoute.dashboard}#shared-members`;
+  const picksEntryHref =
+    data && data.users.length > 0
+      ? buildRoundHref(appRoute.picks, data.round.id, {
+          user: predictorUsers[0]?.id ?? data.users[0]?.id,
+        })
+      : sharedMembersHref;
+  const scoutCardsEntryHref =
+    data && predictorUsers.length > 0
+      ? buildRoundHref(appRoute.scoutCards, data.round.id, {
+          user: predictorUsers[0].id,
+        })
+      : sharedMembersHref;
 
   const handleSaveRound = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -510,21 +523,11 @@ function WorkspacePageContent() {
                       {progress.nextStep.label}
                     </Link>
                   ) : null}
-                  <Link
-                    href={buildRoundHref(appRoute.picks, data.round.id, {
-                      user: predictorUsers[0]?.id ?? data.users[0]?.id,
-                    })}
-                    className={secondaryButtonClassName}
-                  >
-                    支持 / 予想へ
+                  <Link href={picksEntryHref} className={secondaryButtonClassName}>
+                    {data.users.length > 0 ? "支持 / 予想へ" : "共有メンバーを作成"}
                   </Link>
-                  <Link
-                    href={buildRoundHref(appRoute.scoutCards, data.round.id, {
-                      user: predictorUsers[0]?.id ?? data.users[0]?.id,
-                    })}
-                    className={secondaryButtonClassName}
-                  >
-                    予想者カードへ
+                  <Link href={scoutCardsEntryHref} className={secondaryButtonClassName}>
+                    {predictorUsers.length > 0 ? "予想者カードへ" : "予想者を設定"}
                   </Link>
                   <Link
                     href={buildRoundHref(appRoute.review, data.round.id)}
