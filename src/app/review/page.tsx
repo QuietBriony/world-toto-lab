@@ -18,6 +18,7 @@ import {
   Badge,
   buttonClassName,
   fieldClassName,
+  HorizontalScrollTable,
   PageHeader,
   SectionCard,
   StatCard,
@@ -408,7 +409,7 @@ function ReviewPageContent() {
           </SectionCard>
 
           <SectionCard title="予想者ランキング" description="賞金や配当ではなく、AI に対する予想者ラインの結果を並べます。">
-            <div className="overflow-x-auto">
+            <HorizontalScrollTable hint="スマホでは横にスワイプすると、的中数と F 方向的中率を見比べられます。">
               <table className="min-w-[640px] text-left text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 text-slate-500">
@@ -433,7 +434,7 @@ function ReviewPageContent() {
                   ))}
                 </tbody>
               </table>
-            </div>
+            </HorizontalScrollTable>
           </SectionCard>
 
           <section className="grid gap-4 xl:grid-cols-4">

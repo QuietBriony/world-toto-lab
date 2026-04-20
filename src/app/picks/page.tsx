@@ -23,6 +23,7 @@ import {
   buttonClassName,
   cx,
   fieldClassName,
+  HorizontalScrollTable,
   PageHeader,
   SectionCard,
   secondaryButtonClassName,
@@ -1033,7 +1034,7 @@ function PicksPageContent() {
                   }}
                   className="space-y-5"
                 >
-                  <div className="overflow-x-auto">
+                  <HorizontalScrollTable hint="スマホでは横にスワイプすると、AI基準線・支持先・採用結果・メモまで続けて見られます。">
                     <table
                       className={cx(
                         "text-left text-sm",
@@ -1323,7 +1324,7 @@ function PicksPageContent() {
                         })}
                       </tbody>
                     </table>
-                  </div>
+                  </HorizontalScrollTable>
 
                   <div className="flex justify-end">
                     <button type="submit" className={buttonClassName} disabled={saving}>
@@ -1344,7 +1345,8 @@ function PicksPageContent() {
                       クリックで表示
                     </span>
                   </summary>
-                  <div className="overflow-x-auto border-t border-slate-200 px-4 py-4">
+                  <div className="border-t border-slate-200 px-4 py-4">
+                    <HorizontalScrollTable hint="スマホでは横にスワイプすると、全員の支持先と全体像を並べて確認できます。">
                     <table className="min-w-[1360px] text-left text-sm">
                       <thead>
                         <tr className="border-b border-slate-200 text-slate-500">
@@ -1430,6 +1432,7 @@ function PicksPageContent() {
                         })}
                       </tbody>
                     </table>
+                    </HorizontalScrollTable>
                   </div>
                 </details>
               </SectionCard>

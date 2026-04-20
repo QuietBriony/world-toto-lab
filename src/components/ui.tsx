@@ -105,6 +105,35 @@ export function Badge({
   );
 }
 
+type HorizontalScrollTableProps = HTMLAttributes<HTMLDivElement> & {
+  children: ReactNode;
+  hint?: ReactNode;
+};
+
+export function HorizontalScrollTable({
+  children,
+  className,
+  hint = "横にスワイプで続きを見られます。",
+  ...props
+}: HorizontalScrollTableProps) {
+  return (
+    <div className={cx("space-y-3", className)} {...props}>
+      <div className="flex items-center justify-between gap-3">
+        <div className="sm:hidden">
+          <Badge tone="slate">横にスワイプ</Badge>
+        </div>
+        <p className="text-xs leading-5 text-slate-500 sm:ml-auto">{hint}</p>
+      </div>
+
+      <div className="relative">
+        <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-6 bg-[linear-gradient(90deg,rgba(248,250,252,0.96),rgba(248,250,252,0))] sm:hidden" />
+        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-6 bg-[linear-gradient(270deg,rgba(248,250,252,0.96),rgba(248,250,252,0))] sm:hidden" />
+        <div className="overflow-x-auto overscroll-x-contain pb-2">{children}</div>
+      </div>
+    </div>
+  );
+}
+
 type SectionCardProps = HTMLAttributes<HTMLElement> & {
   action?: ReactNode;
   actions?: ReactNode;

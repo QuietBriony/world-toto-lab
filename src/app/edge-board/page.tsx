@@ -18,6 +18,7 @@ import { RoundNav } from "@/components/round-nav";
 import {
   Badge,
   CollapsibleSectionCard,
+  HorizontalScrollTable,
   PageHeader,
   SectionCard,
   secondaryButtonClassName,
@@ -293,7 +294,7 @@ function EdgeBoardPageContent() {
             description="上から 注目候補 → 監視候補 の順です。一般人気との差、AI差、予想者差、注目配分を一緒に見て判断します。"
             badge={<Badge tone="slate">詳細</Badge>}
           >
-            <div className="overflow-x-auto">
+            <HorizontalScrollTable hint="スマホでは横にスワイプすると、合成・AI差・予想者差・リスクまで続けて確認できます。">
               <table className="min-w-[1480px] text-left text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 text-slate-500">
@@ -385,7 +386,7 @@ function EdgeBoardPageContent() {
                   ))}
                 </tbody>
               </table>
-            </div>
+            </HorizontalScrollTable>
           </CollapsibleSectionCard>
         </>
       ) : null}

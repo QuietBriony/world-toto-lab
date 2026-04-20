@@ -15,6 +15,7 @@ import { RoundNav } from "@/components/round-nav";
 import {
   Badge,
   CollapsibleSectionCard,
+  HorizontalScrollTable,
   PageHeader,
   SectionCard,
   secondaryButtonClassName,
@@ -306,7 +307,7 @@ function ConsensusPageContent() {
             description="注目順に並べています。代表メモは予想者カードの内容から重複を除いて抜粋しています。"
             badge={<Badge tone="slate">詳細</Badge>}
           >
-            <div className="overflow-x-auto">
+            <HorizontalScrollTable hint="スマホでは横にスワイプすると、F / D / 代表メモまで続けて見られます。">
               <table className="min-w-[1540px] text-left text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 text-slate-500">
@@ -411,7 +412,7 @@ function ConsensusPageContent() {
                   })}
                 </tbody>
               </table>
-            </div>
+            </HorizontalScrollTable>
           </CollapsibleSectionCard>
         </>
       ) : null}

@@ -23,6 +23,7 @@ import {
   buttonClassName,
   CollapsibleSectionCard,
   fieldClassName,
+  HorizontalScrollTable,
   PageHeader,
   secondaryButtonClassName,
   SectionCard,
@@ -1177,7 +1178,7 @@ function WorkspacePageContent() {
             description="細かい数値を確認したいときだけ開いて使います。横スクロール対応で、優位差は AI - 公式人気 です。"
             badge={<Badge tone="slate">詳細</Badge>}
           >
-            <div className="overflow-x-auto">
+            <HorizontalScrollTable hint="スマホでは横にスワイプすると、AI基準線、人力上書き、優位差、結果まで続けて見られます。">
               <table className="min-w-[1540px] text-left text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 text-slate-500">
@@ -1342,7 +1343,7 @@ function WorkspacePageContent() {
                   })}
                 </tbody>
               </table>
-            </div>
+            </HorizontalScrollTable>
           </CollapsibleSectionCard>
         </>
       ) : null}
