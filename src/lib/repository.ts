@@ -459,6 +459,23 @@ function filterReviewNotesForScopedUsers(
   return rows.filter((row) => !row.user_id || scopedUserIds.has(row.user_id));
 }
 
+function sameParticipantIds(left: string[] | null | undefined, right: string[] | null | undefined) {
+  const leftIds = Array.from(new Set((left ?? []).filter(Boolean))).sort();
+  const rightIds = Array.from(new Set((right ?? []).filter(Boolean))).sort();
+
+  if (leftIds.length !== rightIds.length) {
+    return false;
+  }
+
+  return leftIds.every((value, index) => value === rightIds[index]);
+}
+
+async function clearGeneratedTicketsForRound(roundId: string) {
+  const supabase = requireSupabaseClient();
+  const result = await supabase.from("generated_tickets").delete().eq("round_id", roundId);
+  throwIfError("Failed to clear generated tickets", result);
+}
+
 function isValidDemoRound(input: {
   demoUsers: User[];
   matches: MatchRow[];
@@ -1055,6 +1072,19 @@ export async function updateRound(input: {
   title: string;
 }) {
   const supabase = requireSupabaseClient();
+  const currentRoundResult = await supabase
+    .from("rounds")
+    .select("*")
+    .eq("id", input.roundId)
+    .maybeSingle();
+
+  throwIfError("Failed to load round before update", currentRoundResult);
+
+  if (!currentRoundResult.data) {
+    throw new Error("更新対象のラウンドが見つかりません。");
+  }
+
+  const currentRound = mapRound(currentRoundResult.data as RoundRow);
   const result = await supabase
     .from("rounds")
     .update({
@@ -1066,6 +1096,13 @@ export async function updateRound(input: {
     .eq("id", input.roundId);
 
   throwIfError("Failed to update round", result);
+
+  if (
+    currentRound.budgetYen !== input.budgetYen ||
+    !sameParticipantIds(currentRound.participantIds, input.participantIds)
+  ) {
+    await clearGeneratedTicketsForRound(input.roundId);
+  }
 }
 
 export async function updateMatch(input: {
@@ -1123,6 +1160,7 @@ export async function updateMatch(input: {
     .eq("round_id", input.roundId);
 
   throwIfError("Failed to update match", result);
+  await clearGeneratedTicketsForRound(input.roundId);
 }
 
 export async function bulkUpdateRoundMatches(input: {
@@ -1181,6 +1219,7 @@ export async function bulkUpdateRoundMatches(input: {
   );
 
   results.forEach((result) => throwIfError("Failed to bulk update matches", result));
+  await clearGeneratedTicketsForRound(input.roundId);
 }
 
 export async function estimateRoundAiModel(input: {
@@ -1241,6 +1280,7 @@ export async function estimateRoundAiModel(input: {
   );
 
   results.forEach((result) => throwIfError("Failed to save estimated AI model", result));
+  await clearGeneratedTicketsForRound(input.roundId);
 
   return {
     skippedCount: matches.length - updates.length,
@@ -1278,11 +1318,13 @@ export async function replacePicks(input: {
     }));
 
   if (rows.length === 0) {
+    await clearGeneratedTicketsForRound(input.roundId);
     return;
   }
 
   const insertResult = await supabase.from("picks").insert(rows);
   throwIfError("Failed to save picks", insertResult);
+  await clearGeneratedTicketsForRound(input.roundId);
 }
 
 export async function replaceScoutReports(input: {
@@ -1393,6 +1435,7 @@ export async function replaceScoutReports(input: {
     onConflict: "id",
   });
   throwIfError("Failed to update consensus fields", updateResult);
+  await clearGeneratedTicketsForRound(input.roundId);
 }
 
 export async function replaceGeneratedTickets(input: {

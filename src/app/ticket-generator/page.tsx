@@ -679,7 +679,18 @@ function TicketGeneratorPageContent() {
           >
             <div className="space-y-4">
               {ticketsByMode[selectedMode].length === 0 ? (
-                <p className="text-sm text-slate-500">まだ配分案が生成されていません。</p>
+                <div className="rounded-[24px] border border-amber-200 bg-amber-50/90 p-5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge tone="amber">再生成待ち</Badge>
+                    <h3 className="font-display text-lg font-semibold tracking-[-0.04em] text-slate-950">
+                      まだ最新の配分案がありません
+                    </h3>
+                  </div>
+                  <p className="mt-3 text-sm leading-6 text-slate-700">
+                    試合情報、AI確率、支持 / 予想、予想者カード、参加メンバーが変わると、
+                    古い候補配分は自動で外れます。最新の内容で見直すには、上の `配分案を更新` を押してください。
+                  </p>
+                </div>
               ) : (
                 <>
                   <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
