@@ -326,6 +326,43 @@ function mapGeneratedTicket(row: GeneratedTicketRow): GeneratedTicket {
   };
 }
 
+function applyScopedConsensus(
+  matches: Match[],
+  scoutReports: HumanScoutReport[],
+) {
+  const reportsByMatchId = new Map<string, HumanScoutReport[]>();
+
+  scoutReports.forEach((report) => {
+    const current = reportsByMatchId.get(report.matchId) ?? [];
+    current.push(report);
+    reportsByMatchId.set(report.matchId, current);
+  });
+
+  return matches.map((match) => {
+    const reports = reportsByMatchId.get(match.id) ?? [];
+    if (reports.length === 0) {
+      return {
+        ...match,
+        consensusF: null,
+        consensusD: null,
+        consensusCall: null,
+        disagreementScore: null,
+        exceptionCount: null,
+      };
+    }
+
+    const summary = computeConsensus(reports);
+    return {
+      ...match,
+      consensusF: summary.avgF,
+      consensusD: summary.avgD,
+      consensusCall: summary.consensusCall,
+      disagreementScore: summary.disagreementScore,
+      exceptionCount: summary.exceptionCount,
+    };
+  });
+}
+
 function mapReviewNote(row: ReviewNoteRow, user?: User, match?: Match): ReviewNote {
   return {
     id: row.id,
@@ -730,6 +767,10 @@ export async function listDashboardData(): Promise<DashboardData> {
         rawReportsByRound.get(round.id) ?? [],
         users,
       ).map((row) => mapScoutReport(row, userById.get(row.user_id)));
+      const scopedMatches = applyScopedConsensus(
+        matchesByRound.get(round.id) ?? [],
+        scoutReports,
+      );
       const reviewNotes = filterReviewNotesForScopedUsers(
         rawNotesByRound.get(round.id) ?? [],
         users,
@@ -737,7 +778,7 @@ export async function listDashboardData(): Promise<DashboardData> {
 
       return deriveRoundSummary(
         round,
-        matchesByRound.get(round.id) ?? [],
+        scopedMatches,
         picks,
         scoutReports,
         reviewNotes,
@@ -807,11 +848,13 @@ export async function getRoundWorkspace(roundId: string): Promise<RoundWorkspace
   const scoutReports = filterRowsForScopedUsers(rawScoutReports, users).map((row) =>
     mapScoutReport(row, userById.get(row.user_id), matchById.get(row.match_id)),
   );
+  const scopedMatches = applyScopedConsensus(matches, scoutReports);
+  const scopedMatchById = new Map(scopedMatches.map((match) => [match.id, match]));
   const generatedTickets = (ticketsResult.data as GeneratedTicketRow[]).map(
     mapGeneratedTicket,
   );
   const reviewNotes = filterReviewNotesForScopedUsers(rawReviewNotes, users).map((row) =>
-    mapReviewNote(row, userById.get(row.user_id ?? ""), matchById.get(row.match_id ?? "")),
+    mapReviewNote(row, userById.get(row.user_id ?? ""), scopedMatchById.get(row.match_id ?? "")),
   );
 
   return {
@@ -819,7 +862,7 @@ export async function getRoundWorkspace(roundId: string): Promise<RoundWorkspace
     users,
     round: {
       ...round,
-      matches,
+      matches: scopedMatches,
       picks,
       scoutReports,
       generatedTickets,
