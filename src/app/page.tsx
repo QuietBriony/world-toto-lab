@@ -32,6 +32,7 @@ import {
   parseIntOrNull,
   parseRoundStatus,
   stringValue,
+  stringValues,
   nullableString,
 } from "@/lib/forms";
 import {
@@ -42,6 +43,7 @@ import {
   roundStatusLabel,
   roundStatusOptions,
 } from "@/lib/domain";
+import { resolveRoundParticipantUsers } from "@/lib/round-participants";
 import { deriveRoundProgressSummary, matchHasSetupInput } from "@/lib/round-progress";
 import { appRoute, buildRoundHref } from "@/lib/round-links";
 import {
@@ -124,6 +126,11 @@ export default function DashboardPage() {
       const matchCount = parseIntOrNull(stringValue(formData, "matchCount")) ?? 13;
       const shouldBootstrapMembers =
         (data?.users.length ?? 0) === 0 && formData.get("bootstrapMembers") === "on";
+      const participantIds = stringValues(formData, "participantUserId");
+
+      if ((data?.users.length ?? 0) > 0 && participantIds.length === 0) {
+        throw new Error("この回で使うメンバーを1人以上選んでください。");
+      }
 
       if (shouldBootstrapMembers) {
         await createInitialUsers();
@@ -136,6 +143,7 @@ export default function DashboardPage() {
           candidateLimit !== null ? budgetFromCandidateLimit(candidateLimit) : null,
         matchCount,
         notes: nullableString(formData, "notes"),
+        participantIds,
       });
 
       await refresh();
@@ -267,7 +275,7 @@ export default function DashboardPage() {
           resultedCount: latestRound.resultedCount,
           roundId: latestRound.id,
           scoutReports: latestRound.scoutReports,
-          users: data.users,
+          users: resolveRoundParticipantUsers(data.users, latestRound.participantIds),
         })
       : null;
   const upcomingMatches = data
@@ -461,11 +469,14 @@ export default function DashboardPage() {
             </div>
           </SectionCard>
 
-          <SectionCard
+          <CollapsibleSectionCard
             id="demo-lab"
             title="体験用デモ"
             description="本番セットとは切り離して、操作の流れだけを確認したいときに使います。"
-            actions={
+            defaultOpen={false}
+            badge={<Badge tone="amber">デモ専用</Badge>}
+          >
+            <div className="flex flex-wrap gap-2">
               <button
                 type="button"
                 className={buttonClassName}
@@ -478,8 +489,7 @@ export default function DashboardPage() {
                     ? "デモラウンドを開く"
                     : "デモラウンドを作成"}
               </button>
-            }
-          >
+            </div>
             <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
               <div className="grid gap-3 sm:grid-cols-2">
                 {demoWalkthroughSteps.map((item, index) => (
@@ -570,7 +580,7 @@ export default function DashboardPage() {
               </div>
             </div>
             {actionError ? <p className="text-sm text-rose-700">{actionError}</p> : null}
-          </SectionCard>
+          </CollapsibleSectionCard>
 
           <CollapsibleSectionCard
             title="このサイトは何をするもの？"
@@ -1284,6 +1294,39 @@ export default function DashboardPage() {
                 金銭、配当、代理購入、精算は扱いません。ここでの上位候補数は、候補配分画面で何案まで並べるかの目安です。
               </div>
 
+              {data.users.length > 0 ? (
+                <div className="grid gap-3 rounded-3xl border border-slate-200 bg-slate-50/88 p-4 text-sm text-slate-700 md:col-span-2">
+                  <div>
+                    <div className="font-medium text-slate-900">この回で使うメンバー</div>
+                    <div className="mt-1 text-xs leading-5 text-slate-500">
+                      参加者だけを選ぶと、その回の支持 / 予想 / 予想者カードの必要件数もこの人数で計算します。
+                    </div>
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                    {data.users.map((user) => (
+                      <label
+                        key={`create-round-participant-${user.id}`}
+                        className="flex items-center gap-3 rounded-2xl border border-white/80 bg-white/82 px-4 py-3"
+                      >
+                        <input
+                          type="checkbox"
+                          name="participantUserId"
+                          value={user.id}
+                          defaultChecked
+                          className="h-4 w-4 rounded border-slate-300 text-emerald-700 focus:ring-emerald-300"
+                        />
+                        <span className="text-sm font-medium text-slate-800">
+                          {user.name}
+                        </span>
+                        <Badge tone={user.role === "admin" ? "teal" : "slate"}>
+                          {userRoleLabel[user.role]}
+                        </Badge>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
               {data.users.length === 0 ? (
                 <label className="md:col-span-2 flex items-start gap-3 rounded-3xl border border-emerald-200 bg-emerald-50/80 p-4 text-sm text-slate-700">
                   <input
@@ -1297,7 +1340,11 @@ export default function DashboardPage() {
                     として一緒に準備する
                   </span>
                 </label>
-              ) : null}
+              ) : (
+                <div className="md:col-span-2 rounded-3xl border border-dashed border-slate-300 bg-slate-950/5 p-4 text-sm text-slate-600">
+                  メンバーはあとでラウンド詳細から入れ替えられます。まず全員で作って、不要な人だけ外す流れでも大丈夫です。
+                </div>
+              )}
 
               <label className="grid gap-2 text-sm font-medium text-slate-700 md:col-span-2">
                 メモ
@@ -1333,13 +1380,14 @@ export default function DashboardPage() {
               </SectionCard>
             ) : inventoryRounds.map((round) => (
               (() => {
+                const roundUsers = resolveRoundParticipantUsers(data.users, round.participantIds);
                 const progress = deriveRoundProgressSummary({
                   matches: round.matches,
                   picks: round.picks,
                   resultedCount: round.resultedCount,
                   roundId: round.id,
                   scoutReports: round.scoutReports,
-                  users: data.users,
+                  users: roundUsers,
                 });
 
                 return (
@@ -1349,6 +1397,7 @@ export default function DashboardPage() {
                     description={round.notes ?? "ラウンドメモはまだありません。"}
                     actions={
                       <div className="flex items-center gap-2">
+                        <Badge tone="slate">{roundUsers.length}人</Badge>
                         <Badge tone="sky">{roundStatusLabel[round.status]}</Badge>
                         <Link
                           href={buildRoundHref(appRoute.workspace, round.id)}

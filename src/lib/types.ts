@@ -29,6 +29,7 @@ export type Round = {
   status: RoundStatus;
   budgetYen: number | null;
   notes: string | null;
+  participantIds: string[];
   createdAt: string;
   updatedAt: string;
 };
@@ -139,6 +140,7 @@ export type RoundWorkspaceRound = Round & {
 };
 
 export type RoundWorkspace = {
+  availableUsers: User[];
   round: RoundWorkspaceRound;
   users: User[];
 };

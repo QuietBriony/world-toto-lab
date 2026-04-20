@@ -57,6 +57,7 @@ import {
   parseIntOrNull,
   parseRoundStatus,
   stringValue,
+  stringValues,
 } from "@/lib/forms";
 import { fixtureImportTemplate, parseFixtureImportText } from "@/lib/fixture-import";
 import { appRoute, buildRoundHref, getSingleSearchParam } from "@/lib/round-links";
@@ -209,6 +210,12 @@ function WorkspacePageContent() {
     try {
       const formData = new FormData(event.currentTarget);
       const candidateLimit = parseIntOrNull(stringValue(formData, "candidateLimit"));
+      const participantIds = stringValues(formData, "participantUserId");
+
+      if (!isDemoRound && data.availableUsers.length > 0 && participantIds.length === 0) {
+        throw new Error("この回で使うメンバーを1人以上選んでください。");
+      }
+
       await updateRound({
         roundId: data.round.id,
         title: stringValue(formData, "title") || "無題のラウンド",
@@ -216,6 +223,7 @@ function WorkspacePageContent() {
         budgetYen:
           candidateLimit !== null ? budgetFromCandidateLimit(candidateLimit) : null,
         notes: nullableString(formData, "notes"),
+        participantIds,
       });
       await refresh();
     } catch (nextError) {
@@ -665,7 +673,7 @@ function WorkspacePageContent() {
 
           <SectionCard
             title="ラウンド設定"
-            description="候補上限やステータス、当日の観戦メモをここで更新します。"
+            description="候補上限、参加メンバー、ステータス、当日の観戦メモをここで更新します。"
           >
             <form
               key={data.round.updatedAt}
@@ -713,6 +721,46 @@ function WorkspacePageContent() {
                 候補配分は、ここで決めた上位候補数をもとに並びます。
                 現在の設定: {candidateLimitFromBudget(data.round.budgetYen ?? 500)} 案
               </div>
+
+              {!isDemoRound ? (
+                <div className="grid gap-3 rounded-3xl border border-slate-200 bg-slate-50/88 p-4 text-sm text-slate-700 md:col-span-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="font-medium text-slate-900">この回で使うメンバー</div>
+                    <Badge tone="slate">{data.users.length}人を選択中</Badge>
+                  </div>
+                  <div className="text-xs leading-5 text-slate-500">
+                    ここで選んだ人だけを、この回の支持 / 予想 / 予想者カードの対象にします。
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                    {data.availableUsers.map((user) => {
+                      const selectedByDefault =
+                        data.round.participantIds.length === 0 ||
+                        data.round.participantIds.includes(user.id);
+
+                      return (
+                        <label
+                          key={`workspace-participant-${user.id}`}
+                          className="flex items-center gap-3 rounded-2xl border border-white/80 bg-white/82 px-4 py-3"
+                        >
+                          <input
+                            type="checkbox"
+                            name="participantUserId"
+                            value={user.id}
+                            defaultChecked={selectedByDefault}
+                            className="h-4 w-4 rounded border-slate-300 text-emerald-700 focus:ring-emerald-300"
+                          />
+                          <span className="text-sm font-medium text-slate-800">
+                            {user.name}
+                          </span>
+                          <Badge tone={user.role === "admin" ? "teal" : "slate"}>
+                            {user.role === "admin" ? "予想者" : "ウォッチ"}
+                          </Badge>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
 
               <label className="grid gap-2 text-sm font-medium text-slate-700 md:col-span-2">
                 メモ

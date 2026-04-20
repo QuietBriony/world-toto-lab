@@ -9,7 +9,7 @@ export const defaultInitialUsers: Array<{ name: string; role: UserRole }> = [
 ];
 
 const demoAccountSuffix = "（デモ）";
-const placeholderAccountPattern = /^空き\s+\d+$/;
+const placeholderAccountPattern = /^(?:空き|member)\s+\d+$/i;
 
 export const defaultDemoUsers: Array<{ name: string; role: UserRole }> = [
   { name: `hazi${demoAccountSuffix}`, role: "admin" },

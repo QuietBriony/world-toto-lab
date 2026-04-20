@@ -15,6 +15,13 @@ export function stringValue(formData: FormData, key: string) {
   return stringFromUnknown(formData.get(key));
 }
 
+export function stringValues(formData: FormData, key: string) {
+  return formData
+    .getAll(key)
+    .map((value) => stringFromUnknown(value))
+    .filter(Boolean);
+}
+
 export function nullableString(formData: FormData, key: string) {
   const value = stringValue(formData, key);
   return value.length > 0 ? value : null;

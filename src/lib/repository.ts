@@ -11,6 +11,11 @@ import {
   isDemoRoundTitle,
 } from "@/lib/demo-data";
 import { encodePickSupportNote, parsePickSupportNote } from "@/lib/pick-support";
+import {
+  encodeRoundParticipantsNote,
+  parseRoundParticipantsNote,
+  resolveRoundParticipantUsers,
+} from "@/lib/round-participants";
 import { defaultDemoUsers, defaultInitialUsers, isDemoAccountName } from "@/lib/sample-data";
 import { requireSupabaseClient } from "@/lib/supabase";
 import { generateAllModeTickets } from "@/lib/tickets";
@@ -196,12 +201,15 @@ function hasExpectedDemoUsers(users: User[]) {
 }
 
 function mapRound(row: RoundRow): Round {
+  const parsed = parseRoundParticipantsNote(row.notes);
+
   return {
     id: row.id,
     title: row.title,
     status: row.status,
     budgetYen: row.budget_yen,
-    notes: row.notes,
+    notes: parsed.notes,
+    participantIds: parsed.participantIds,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -413,13 +421,14 @@ function resolveUsersForRoundRows(input: {
   allUsers: User[];
   demoUsers: User[];
   liveUsers: User[];
+  participantIds: string[];
   picks: PickRow[];
   reviewNotes: ReviewNoteRow[];
   roundTitle: string;
   scoutReports: HumanScoutReportRow[];
 }) {
   if (!isDemoRoundTitle(input.roundTitle)) {
-    return input.liveUsers;
+    return resolveRoundParticipantUsers(input.liveUsers, input.participantIds);
   }
 
   const roundUserIds = collectRoundUserIds({
@@ -595,6 +604,7 @@ export async function listDashboardData(): Promise<DashboardData> {
           allUsers,
           demoUsers,
           liveUsers,
+          participantIds: round.participantIds,
           picks: rawPicksByRound.get(round.id) ?? [],
           reviewNotes: rawNotesByRound.get(round.id) ?? [],
           roundTitle: round.title,
@@ -648,6 +658,7 @@ export async function getRoundWorkspace(roundId: string): Promise<RoundWorkspace
     allUsers,
     demoUsers,
     liveUsers,
+    participantIds: round.participantIds,
     picks: rawPicks,
     reviewNotes: rawReviewNotes,
     roundTitle: round.title,
@@ -670,6 +681,7 @@ export async function getRoundWorkspace(roundId: string): Promise<RoundWorkspace
   );
 
   return {
+    availableUsers: isDemoRoundTitle(round.title) ? users : liveUsers,
     users,
     round: {
       ...round,
@@ -789,6 +801,7 @@ export async function createRound(input: {
   budgetYen: number | null;
   matchCount?: number | null;
   notes: string | null;
+  participantIds?: string[];
   status: RoundStatus;
   title: string;
 }) {
@@ -799,7 +812,7 @@ export async function createRound(input: {
       title: input.title,
       status: input.status,
       budget_yen: input.budgetYen,
-      notes: input.notes,
+      notes: encodeRoundParticipantsNote(input.notes, input.participantIds),
     })
     .select("*")
     .single();
@@ -1016,6 +1029,7 @@ export async function updateRound(input: {
   roundId: string;
   budgetYen: number | null;
   notes: string | null;
+  participantIds?: string[];
   status: RoundStatus;
   title: string;
 }) {
@@ -1026,7 +1040,7 @@ export async function updateRound(input: {
       title: input.title,
       status: input.status,
       budget_yen: input.budgetYen,
-      notes: input.notes,
+      notes: encodeRoundParticipantsNote(input.notes, input.participantIds),
     })
     .eq("id", input.roundId);
 
