@@ -22,4 +22,15 @@ describe("round links", () => {
       "/toto-official-round-import?round=round-123&autoSync=1&productType=mini_toto&sourcePreset=yahoo_toto_schedule",
     );
   });
+
+  it("builds a WINNER import href without forcing auto-sync", () => {
+    expect(
+      buildOfficialRoundImportHref("round-123", {
+        productType: "winner",
+        sourcePreset: "toto_official_detail",
+      }),
+    ).toBe(
+      "/toto-official-round-import?round=round-123&productType=winner&sourcePreset=toto_official_detail",
+    );
+  });
 });

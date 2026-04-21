@@ -376,6 +376,7 @@ const pageGlossaryEntries: Partial<Record<GuideRoute, GlossaryEntry[]>> = {
 
 const routeLabel: Partial<Record<GuideRoute, string>> = {
   [appRoute.workspace]: "ラウンド詳細",
+  [appRoute.bigCarryover]: "BIG Carryover Monitor",
   [appRoute.matchEditor]: "試合設定",
   [appRoute.picks]: "支持 / 予想",
   [appRoute.scoutCards]: "予想者カード",

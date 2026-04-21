@@ -303,6 +303,17 @@ function WorkspacePageContent() {
           }),
           label: "mini-toto-official-import",
         },
+        ...(winnerLike
+          ? [
+              {
+                href: buildOfficialRoundImportHref(data.round.id, {
+                  productType: "winner",
+                  sourcePreset: "toto_official_detail",
+                }),
+                label: "winner-official-import",
+              },
+            ]
+          : []),
         {
           href: buildRoundHref(appRoute.simpleView, data.round.id, {
             user: data.users[0]?.id,
@@ -351,6 +362,20 @@ function WorkspacePageContent() {
           label: "mini toto で作る",
           productLabel: "mini toto",
         },
+        ...(winnerLike
+          ? [
+              {
+                badgeTone: "amber" as const,
+                body: "1試合の WINNER を回すときは、公式くじ情報URLを直接読む導線が安定です。取り込み後は WINNER Value Board へ進めます。",
+                href: buildOfficialRoundImportHref(data.round.id, {
+                  productType: "winner",
+                  sourcePreset: "toto_official_detail",
+                }),
+                label: "WINNER で作る",
+                productLabel: "WINNER",
+              },
+            ]
+          : []),
       ]
     : [];
 

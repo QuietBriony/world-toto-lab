@@ -45,6 +45,7 @@ npm run check:pages
 - `/world-toto-lab/big-carryover/` を開く
 - 概算EV、還元率からの上振れ、損益分岐との差が見える
 - 入力欄を変えると概算値が更新される
+- `この条件を共有` で開いた URL でも、イベント名 / 売上 / キャリー / 還元率 / 投下額 / 元ソース が復元される
 
 ### 2. Round Detail
 

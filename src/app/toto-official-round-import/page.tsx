@@ -60,7 +60,8 @@ const officialSourcePresets = [
     sourceUrl: "https://toto.yahoo.co.jp/schedule/toto",
   },
   {
-    blurb: "1回分の公式詳細ページを直接読む補助用です。個別の holdCntId URL を入れたいときに使います。",
+    blurb:
+      "1回分の公式詳細ページを直接読む補助用です。個別の holdCntId URL を入れたいときや、WINNER を直接読みたいときに使います。",
     id: "toto_official_detail",
     label: "スポーツくじオフィシャル くじ情報URL",
     sourceUrl:
@@ -69,9 +70,10 @@ const officialSourcePresets = [
 ] as const;
 
 const officialProductFocusCards: Array<{
-  badgeTone: "sky" | "teal";
+  badgeTone: "amber" | "sky" | "teal";
   body: string;
   productType: ProductType;
+  recommendedSourcePresetId?: (typeof officialSourcePresets)[number]["id"];
   title: string;
 }> = [
   {
@@ -85,6 +87,13 @@ const officialProductFocusCards: Array<{
     body: "5試合で軽く回せるので、友人会の試運転や短時間の投票会に向いています。",
     productType: "mini_toto",
     title: "mini toto を選ぶ",
+  },
+  {
+    badgeTone: "amber",
+    body: "1試合商品です。開催一覧より、公式くじ情報URLを直接読ませる方が安定します。WINNER Value Board と併用すると流れがきれいです。",
+    productType: "winner",
+    recommendedSourcePresetId: "toto_official_detail",
+    title: "WINNER を選ぶ",
   },
 ];
 
@@ -474,7 +483,7 @@ function TotoOfficialRoundImportPageContent() {
 
       <SectionCard
         title="おすすめ導線"
-        description="まずは toto か mini toto のどちらで回すか決めて、その商品だけ一覧を見にいくのが最短です。"
+        description="まずは toto / mini toto / WINNER のどれで回すか決めて、その商品に合った一覧や公式詳細URLへ寄せるのが最短です。"
       >
         <div className="grid gap-4 md:grid-cols-2">
           {officialProductFocusCards.map((card) => {
@@ -497,10 +506,20 @@ function TotoOfficialRoundImportPageContent() {
                   <button
                     type="button"
                     onClick={() => {
+                      const preset = card.recommendedSourcePresetId
+                        ? resolveOfficialSourcePreset(card.recommendedSourcePresetId)
+                        : null;
                       setProductType(card.productType);
                       setLibraryProductType(card.productType);
                       setEditingLibraryEntryId(null);
-                      setActionMessage(`${productTypeLabel[card.productType]} の一覧に切り替えました。`);
+                      if (preset) {
+                        setSyncSourceUrl(preset.sourceUrl);
+                      }
+                      setActionMessage(
+                        preset
+                          ? `${productTypeLabel[card.productType]} 向けに切り替えました。同期元も「${preset.label}」へ合わせています。`
+                          : `${productTypeLabel[card.productType]} の一覧に切り替えました。`,
+                      );
                     }}
                     className={buttonClassName}
                   >
