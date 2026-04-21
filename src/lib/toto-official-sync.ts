@@ -193,7 +193,7 @@ function extractHoldCountId(value: string | null | undefined) {
 
 function buildGoal3VoteRateUrl(rawHtml: string, sourceUrl: string) {
   const explicitMatch = rawHtml.match(
-    /(?:https:\/\/store\.toto-dream\.com)?(?:\.\/)?PGSPIN00301InitVoteRate\.form\?holdCntId=\d+&commodityId=02/i,
+    /https:\/\/store\.toto-dream\.com\/dcs\/subos\/screen\/pi09\/spin003\/PGSPIN00301InitVoteRate\.form\?holdCntId=\d+&commodityId=02|(?:\.\/)?PGSPIN00301InitVoteRate\.form\?holdCntId=\d+&commodityId=02/i,
   );
 
   if (explicitMatch?.[0]) {
@@ -241,6 +241,83 @@ function displayProductLabel(label: string, fallback: string) {
 
 function isGoal3VoteRateHtml(rawHtml: string) {
   return /totoGOAL3[\s\S]*投票状況|0点[\s\S]*1点[\s\S]*2点[\s\S]*3点以上/.test(rawHtml);
+}
+
+function isGoal3VoteRateUnavailableHtml(rawHtml: string) {
+  return rawHtml.includes("ご指定の投票状況は表示できません");
+}
+
+function parseGoal3VoteRatePercent(value: string) {
+  const match = value.match(/([\d.]+)%/);
+  if (!match) {
+    return null;
+  }
+
+  return Number.parseFloat(match[1] ?? "0") / 100;
+}
+
+function parseGoal3VoteRateRowsFromTable(
+  rawHtml: string,
+  kickoffYear: number | null,
+) {
+  const teamRows: ParsedTotoOfficialMatch[] = [];
+  let currentKickoff: string | null = null;
+
+  for (const cells of htmlToTableRows(rawHtml)) {
+    if (
+      cells.length >= 9 &&
+      /^\d{2}\/\d{2}$/.test(cells[0] ?? "") &&
+      /^[0-2]?\d[:：][0-5]\d$/.test(cells[1] ?? "") &&
+      /^\d+$/.test(cells[2] ?? "") &&
+      /^(ホーム|アウェイ)$/.test(cells[4] ?? "")
+    ) {
+      currentKickoff = parseMatchKickoff(kickoffYear, cells[0] ?? "", cells[1] ?? "");
+      const officialMatchNo = Number.parseInt(cells[2] ?? "0", 10);
+      teamRows.push({
+        awayTeam: "",
+        goal3FixtureNo: Math.ceil(officialMatchNo / 2),
+        goal3TeamRole: cells[4] === "ホーム" ? "home" : "away",
+        homeTeam: cells[3] ?? "未設定",
+        kickoffTime: currentKickoff,
+        matchStatus: "scheduled",
+        officialMatchNo,
+        officialVote0: parseGoal3VoteRatePercent(cells[5] ?? ""),
+        officialVote1: parseGoal3VoteRatePercent(cells[6] ?? ""),
+        officialVote2: parseGoal3VoteRatePercent(cells[7] ?? ""),
+        officialVote3: parseGoal3VoteRatePercent(cells[8] ?? ""),
+        sourceText: cells.join(" | "),
+        stage: cells[4] ?? null,
+        venue: null,
+      });
+      continue;
+    }
+
+    if (
+      cells.length >= 7 &&
+      /^\d+$/.test(cells[0] ?? "") &&
+      /^(ホーム|アウェイ)$/.test(cells[2] ?? "")
+    ) {
+      const officialMatchNo = Number.parseInt(cells[0] ?? "0", 10);
+      teamRows.push({
+        awayTeam: "",
+        goal3FixtureNo: Math.ceil(officialMatchNo / 2),
+        goal3TeamRole: cells[2] === "ホーム" ? "home" : "away",
+        homeTeam: cells[1] ?? "未設定",
+        kickoffTime: currentKickoff,
+        matchStatus: "scheduled",
+        officialMatchNo,
+        officialVote0: parseGoal3VoteRatePercent(cells[3] ?? ""),
+        officialVote1: parseGoal3VoteRatePercent(cells[4] ?? ""),
+        officialVote2: parseGoal3VoteRatePercent(cells[5] ?? ""),
+        officialVote3: parseGoal3VoteRatePercent(cells[6] ?? ""),
+        sourceText: cells.join(" | "),
+        stage: cells[2] ?? null,
+        venue: null,
+      });
+    }
+  }
+
+  return teamRows;
 }
 
 function parseGoal3SalesPeriod(value: string) {
@@ -403,7 +480,7 @@ function mapLotInfoProduct(
 }
 
 function parseGoal3VoteRateHtml(rawHtml: string, sourceUrl: string) {
-  if (!isGoal3VoteRateHtml(rawHtml)) {
+  if (isGoal3VoteRateUnavailableHtml(rawHtml) || !isGoal3VoteRateHtml(rawHtml)) {
     return null;
   }
 
@@ -436,66 +513,69 @@ function parseGoal3VoteRateHtml(rawHtml: string, sourceUrl: string) {
       salesStartAt: salesPeriod.salesStartAt,
     }) ?? new Date().getFullYear();
 
-  const teamRows: ParsedTotoOfficialMatch[] = [];
-  let currentKickoff: string | null = null;
+  const teamRows = parseGoal3VoteRateRowsFromTable(rawHtml, kickoffYear);
 
-  for (const line of lines) {
-    const withDate =
-      line.match(
-        /^(\d{2}\/\d{2})\s+([0-2]?\d[:：][0-5]\d)\s+(\d+)\s+(.+?)\s+(ホーム|アウェイ)\s+[\d,]+[（(]([\d.]+)%[）)]\s+[\d,]+[（(]([\d.]+)%[）)]\s+[\d,]+[（(]([\d.]+)%[）)]\s+[\d,]+[（(]([\d.]+)%[）)]/,
-      ) ??
-      line.match(
-        /^(\d{2}\/\d{2})\s+([0-2]?\d[:：][0-5]\d)\s+(\d+)\s+(.+?)\s+(ホーム|アウェイ)\s+([\d.]+)%\s+([\d.]+)%\s+([\d.]+)%\s+([\d.]+)%/,
-      );
+  if (teamRows.length === 0) {
+    let currentKickoff: string | null = null;
 
-    const withoutDate =
-      line.match(
-        /^(\d+)\s+(.+?)\s+(ホーム|アウェイ)\s+[\d,]+[（(]([\d.]+)%[）)]\s+[\d,]+[（(]([\d.]+)%[）)]\s+[\d,]+[（(]([\d.]+)%[）)]\s+[\d,]+[（(]([\d.]+)%[）)]/,
-      ) ??
-      line.match(
-        /^(\d+)\s+(.+?)\s+(ホーム|アウェイ)\s+([\d.]+)%\s+([\d.]+)%\s+([\d.]+)%\s+([\d.]+)%/,
-      );
+    for (const line of lines) {
+      const withDate =
+        line.match(
+          /^(\d{2}\/\d{2})\s+([0-2]?\d[:：][0-5]\d)\s+(\d+)\s+(.+?)\s+(ホーム|アウェイ)\s+[\d,]+[（(]([\d.]+)%[）)]\s+[\d,]+[（(]([\d.]+)%[）)]\s+[\d,]+[（(]([\d.]+)%[）)]\s+[\d,]+[（(]([\d.]+)%[）)]/,
+        ) ??
+        line.match(
+          /^(\d{2}\/\d{2})\s+([0-2]?\d[:：][0-5]\d)\s+(\d+)\s+(.+?)\s+(ホーム|アウェイ)\s+([\d.]+)%\s+([\d.]+)%\s+([\d.]+)%\s+([\d.]+)%/,
+        );
 
-    if (withDate) {
-      currentKickoff = parseMatchKickoff(kickoffYear, withDate[1] ?? "", withDate[2] ?? "");
-      const officialMatchNo = Number.parseInt(withDate[3] ?? "0", 10);
-      teamRows.push({
-        awayTeam: "",
-        goal3FixtureNo: Math.ceil(officialMatchNo / 2),
-        goal3TeamRole: withDate[5] === "ホーム" ? "home" : "away",
-        homeTeam: withDate[4] ?? "未設定",
-        kickoffTime: currentKickoff,
-        matchStatus: "scheduled",
-        officialMatchNo,
-        officialVote0: Number.parseFloat(withDate[6] ?? "0") / 100,
-        officialVote1: Number.parseFloat(withDate[7] ?? "0") / 100,
-        officialVote2: Number.parseFloat(withDate[8] ?? "0") / 100,
-        officialVote3: Number.parseFloat(withDate[9] ?? "0") / 100,
-        sourceText: line,
-        stage: withDate[5] ?? null,
-        venue: null,
-      });
-      continue;
-    }
+      const withoutDate =
+        line.match(
+          /^(\d+)\s+(.+?)\s+(ホーム|アウェイ)\s+[\d,]+[（(]([\d.]+)%[）)]\s+[\d,]+[（(]([\d.]+)%[）)]\s+[\d,]+[（(]([\d.]+)%[）)]\s+[\d,]+[（(]([\d.]+)%[）)]/,
+        ) ??
+        line.match(
+          /^(\d+)\s+(.+?)\s+(ホーム|アウェイ)\s+([\d.]+)%\s+([\d.]+)%\s+([\d.]+)%\s+([\d.]+)%/,
+        );
 
-    if (withoutDate) {
-      const officialMatchNo = Number.parseInt(withoutDate[1] ?? "0", 10);
-      teamRows.push({
-        awayTeam: "",
-        goal3FixtureNo: Math.ceil(officialMatchNo / 2),
-        goal3TeamRole: withoutDate[3] === "ホーム" ? "home" : "away",
-        homeTeam: withoutDate[2] ?? "未設定",
-        kickoffTime: currentKickoff,
-        matchStatus: "scheduled",
-        officialMatchNo,
-        officialVote0: Number.parseFloat(withoutDate[4] ?? "0") / 100,
-        officialVote1: Number.parseFloat(withoutDate[5] ?? "0") / 100,
-        officialVote2: Number.parseFloat(withoutDate[6] ?? "0") / 100,
-        officialVote3: Number.parseFloat(withoutDate[7] ?? "0") / 100,
-        sourceText: line,
-        stage: withoutDate[3] ?? null,
-        venue: null,
-      });
+      if (withDate) {
+        currentKickoff = parseMatchKickoff(kickoffYear, withDate[1] ?? "", withDate[2] ?? "");
+        const officialMatchNo = Number.parseInt(withDate[3] ?? "0", 10);
+        teamRows.push({
+          awayTeam: "",
+          goal3FixtureNo: Math.ceil(officialMatchNo / 2),
+          goal3TeamRole: withDate[5] === "ホーム" ? "home" : "away",
+          homeTeam: withDate[4] ?? "未設定",
+          kickoffTime: currentKickoff,
+          matchStatus: "scheduled",
+          officialMatchNo,
+          officialVote0: Number.parseFloat(withDate[6] ?? "0") / 100,
+          officialVote1: Number.parseFloat(withDate[7] ?? "0") / 100,
+          officialVote2: Number.parseFloat(withDate[8] ?? "0") / 100,
+          officialVote3: Number.parseFloat(withDate[9] ?? "0") / 100,
+          sourceText: line,
+          stage: withDate[5] ?? null,
+          venue: null,
+        });
+        continue;
+      }
+
+      if (withoutDate) {
+        const officialMatchNo = Number.parseInt(withoutDate[1] ?? "0", 10);
+        teamRows.push({
+          awayTeam: "",
+          goal3FixtureNo: Math.ceil(officialMatchNo / 2),
+          goal3TeamRole: withoutDate[3] === "ホーム" ? "home" : "away",
+          homeTeam: withoutDate[2] ?? "未設定",
+          kickoffTime: currentKickoff,
+          matchStatus: "scheduled",
+          officialMatchNo,
+          officialVote0: Number.parseFloat(withoutDate[4] ?? "0") / 100,
+          officialVote1: Number.parseFloat(withoutDate[5] ?? "0") / 100,
+          officialVote2: Number.parseFloat(withoutDate[6] ?? "0") / 100,
+          officialVote3: Number.parseFloat(withoutDate[7] ?? "0") / 100,
+          sourceText: line,
+          stage: withoutDate[3] ?? null,
+          venue: null,
+        });
+      }
     }
   }
 
@@ -868,9 +948,15 @@ export async function parseTotoOfficialHtmlSource(input: ParseHtmlInput) {
 
               try {
                 const voteHtml = await fetchText(voteRateUrl);
+                if (isGoal3VoteRateUnavailableHtml(voteHtml)) {
+                  return round;
+                }
+
                 const voteRate = parseGoal3VoteRateHtml(voteHtml, voteRateUrl);
-                if (!voteRate?.rounds[0]) {
-                  warnings.push(`${round.title} の投票状況を解釈できませんでした。`);
+                if (!voteRate?.rounds[0] || voteRate.rounds[0].matches.length === 0) {
+                  if (round.resultStatus !== "draft") {
+                    warnings.push(`${round.title} の投票状況詳細はまだ整っていないため、くじ情報だけ取り込みました。`);
+                  }
                   return round;
                 }
 

@@ -702,6 +702,135 @@ function mapTotoOfficialRoundLibraryEntry(
   };
 }
 
+function compareIsoDateTimeDesc(left: string | null | undefined, right: string | null | undefined) {
+  const leftTime = left ? Date.parse(left) : Number.NEGATIVE_INFINITY;
+  const rightTime = right ? Date.parse(right) : Number.NEGATIVE_INFINITY;
+
+  if (Number.isFinite(leftTime) && Number.isFinite(rightTime) && leftTime !== rightTime) {
+    return rightTime - leftTime;
+  }
+
+  if (Number.isFinite(leftTime) !== Number.isFinite(rightTime)) {
+    return Number.isFinite(rightTime) ? 1 : -1;
+  }
+
+  return 0;
+}
+
+function sortLibraryRowsNewestFirst<T extends { created_at: string; updated_at: string }>(
+  rows: T[],
+) {
+  return rows.slice().sort((left, right) => {
+    const updatedDiff = compareIsoDateTimeDesc(left.updated_at, right.updated_at);
+    if (updatedDiff !== 0) {
+      return updatedDiff;
+    }
+
+    const createdDiff = compareIsoDateTimeDesc(left.created_at, right.created_at);
+    if (createdDiff !== 0) {
+      return createdDiff;
+    }
+
+    return 0;
+  });
+}
+
+function dedupeTotoOfficialRoundLibraryRows(rows: TotoOfficialRoundLibraryRow[]) {
+  const uniqueRows = new Map<string, TotoOfficialRoundLibraryRow>();
+  const duplicateIdsByKey = new Map<string, string[]>();
+
+  for (const row of sortLibraryRowsNewestFirst(rows)) {
+    const identityKey = libraryIdentityMatchKey(row as unknown as SyncedRoundIdentityInput);
+    if (!uniqueRows.has(identityKey)) {
+      uniqueRows.set(identityKey, row);
+      continue;
+    }
+
+    const current = duplicateIdsByKey.get(identityKey) ?? [];
+    current.push(row.id);
+    duplicateIdsByKey.set(identityKey, current);
+  }
+
+  return {
+    duplicateIdsByKey,
+    uniqueRows,
+  };
+}
+
+const OFFICIAL_LIBRARY_HISTORY_RETAIN_COUNT_PER_PRODUCT = 24;
+const OFFICIAL_LIBRARY_ACTIVE_STATUSES = new Set(["draft", "selling", "unknown"]);
+
+function compareNullableNumberDesc(left: number | null | undefined, right: number | null | undefined) {
+  const leftValue = Number.isFinite(left ?? Number.NaN) ? (left as number) : Number.NEGATIVE_INFINITY;
+  const rightValue = Number.isFinite(right ?? Number.NaN) ? (right as number) : Number.NEGATIVE_INFINITY;
+
+  if (leftValue !== rightValue) {
+    return rightValue - leftValue;
+  }
+
+  return 0;
+}
+
+function sortLibraryRowsForRetention(rows: TotoOfficialRoundLibraryRow[]) {
+  return rows.slice().sort((left, right) => {
+    const roundDiff = compareNullableNumberDesc(left.official_round_number, right.official_round_number);
+    if (roundDiff !== 0) {
+      return roundDiff;
+    }
+
+    const updatedDiff = compareIsoDateTimeDesc(left.updated_at, right.updated_at);
+    if (updatedDiff !== 0) {
+      return updatedDiff;
+    }
+
+    return compareIsoDateTimeDesc(left.created_at, right.created_at);
+  });
+}
+
+function isSyncedOfficialRoundLibraryRow(row: TotoOfficialRoundLibraryRow) {
+  const sourceUrl = (row.source_url ?? "").toLowerCase();
+  const sourceNote = (row.source_note ?? "").toLowerCase();
+
+  return (
+    sourceUrl.includes("toto.yahoo.co.jp") ||
+    sourceUrl.includes("store.toto-dream.com") ||
+    sourceNote.includes("オフィシャル") ||
+    sourceNote.includes("yahoo! toto")
+  );
+}
+
+function collectPrunableOfficialRoundLibraryRowIds(rows: TotoOfficialRoundLibraryRow[]) {
+  const idsToDelete = new Set<string>();
+  const { duplicateIdsByKey, uniqueRows } = dedupeTotoOfficialRoundLibraryRows(
+    rows.filter(isSyncedOfficialRoundLibraryRow),
+  );
+
+  duplicateIdsByKey.forEach((duplicateIds) => {
+    duplicateIds.forEach((id) => idsToDelete.add(id));
+  });
+
+  const rowsByProduct = new Map<string, TotoOfficialRoundLibraryRow[]>();
+  Array.from(uniqueRows.values()).forEach((row) => {
+    const bucket = rowsByProduct.get(row.product_type) ?? [];
+    bucket.push(row);
+    rowsByProduct.set(row.product_type, bucket);
+  });
+
+  rowsByProduct.forEach((productRows) => {
+    const historicalRows = sortLibraryRowsForRetention(
+      productRows.filter(
+        (row) => !OFFICIAL_LIBRARY_ACTIVE_STATUSES.has(row.result_status ?? "unknown"),
+      ),
+    );
+
+    historicalRows
+      .slice(OFFICIAL_LIBRARY_HISTORY_RETAIN_COUNT_PER_PRODUCT)
+      .forEach((row) => idsToDelete.add(row.id));
+  });
+
+  return Array.from(idsToDelete);
+}
+
 function applyScopedConsensus(
   matches: Match[],
   scoutReports: HumanScoutReport[],
@@ -3428,10 +3557,11 @@ export async function upsertTotoOfficialRoundLibraryFromSync(input: {
 
   throwIfError("Failed to load existing official round library for sync", existingResult);
   const existingRows = (existingResult.data ?? []) as TotoOfficialRoundLibraryRow[];
+  const { duplicateIdsByKey, uniqueRows } = dedupeTotoOfficialRoundLibraryRows(existingRows);
 
   const byNumber = new Map<string, TotoOfficialRoundLibraryRow>();
   const byTitle = new Map<string, TotoOfficialRoundLibraryRow>();
-  existingRows.forEach((existing) => {
+  Array.from(uniqueRows.values()).forEach((existing) => {
     const identityKey = libraryIdentityMatchKey(existing as unknown as SyncedTotoOfficialRoundEntry);
     if (existing.official_round_number !== null) {
       byNumber.set(identityKey, existing);
@@ -3482,6 +3612,7 @@ export async function upsertTotoOfficialRoundLibraryFromSync(input: {
     const target = entry.officialRoundNumber !== null
       ? byNumber.get(identityKey) ?? byTitle.get(identityKey)
       : byTitle.get(identityKey);
+    const duplicateIds = duplicateIdsByKey.get(identityKey) ?? [];
 
     if (!target) {
       const insertResult = await supabase.from("toto_official_round_library").insert(payload).select("id");
@@ -3501,6 +3632,18 @@ export async function upsertTotoOfficialRoundLibraryFromSync(input: {
     const hasMatchChange = nextMatchJson !== currentMatchJson;
 
     if (!hasCoreChange && !hasMatchChange) {
+      if (duplicateIds.length > 0) {
+        const deleteDuplicatesResult = await supabase
+          .from("toto_official_round_library")
+          .delete()
+          .in("id", duplicateIds);
+
+        if (deleteDuplicatesResult.error) {
+          warnings.push(`${entry.title} の古い重複履歴削除に失敗しました: ${deleteDuplicatesResult.error.message}`);
+        } else {
+          warnings.push(`${entry.title} の古い重複履歴 ${duplicateIds.length} 件を整理しました。`);
+        }
+      }
       skippedCount += 1;
       continue;
     }
@@ -3516,6 +3659,41 @@ export async function upsertTotoOfficialRoundLibraryFromSync(input: {
     }
 
     updatedCount += 1;
+
+    if (duplicateIds.length > 0) {
+      const deleteDuplicatesResult = await supabase
+        .from("toto_official_round_library")
+        .delete()
+        .in("id", duplicateIds);
+
+      if (deleteDuplicatesResult.error) {
+        warnings.push(`${entry.title} の古い重複履歴削除に失敗しました: ${deleteDuplicatesResult.error.message}`);
+      } else {
+        warnings.push(`${entry.title} の古い重複履歴 ${duplicateIds.length} 件を整理しました。`);
+      }
+    }
+  }
+
+  const refreshedResult = await supabase
+    .from("toto_official_round_library")
+    .select("*");
+
+  throwIfError("Failed to reload toto official round library for cleanup", refreshedResult);
+  const pruneIds = collectPrunableOfficialRoundLibraryRowIds(
+    (refreshedResult.data ?? []) as TotoOfficialRoundLibraryRow[],
+  );
+
+  if (pruneIds.length > 0) {
+    const pruneResult = await supabase
+      .from("toto_official_round_library")
+      .delete()
+      .in("id", pruneIds);
+
+    if (pruneResult.error) {
+      warnings.push(`公式回ライブラリの古い終了回整理に失敗しました: ${pruneResult.error.message}`);
+    } else {
+      warnings.push(`公式回ライブラリの古い終了回・重複 ${pruneIds.length} 件を整理しました。`);
+    }
   }
 
   return {
@@ -3566,7 +3744,9 @@ export async function listTotoOfficialRoundLibrary(input?: {
   const result = await query;
   throwIfError("Failed to load toto official round library", result);
 
-  const entries = ((result.data as TotoOfficialRoundLibraryRow[]) ?? []).map(
+  const rawRows = ((result.data as TotoOfficialRoundLibraryRow[]) ?? []);
+  const { uniqueRows } = dedupeTotoOfficialRoundLibraryRows(rawRows);
+  const entries = Array.from(uniqueRows.values()).map(
     mapTotoOfficialRoundLibraryEntry,
   );
   const searchNeedle = normalizeFixtureKeyPart(input?.searchQuery);

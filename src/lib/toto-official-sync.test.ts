@@ -64,6 +64,93 @@ const goal3VoteRateHtml = `
   <div>販売期間 2026年04月18日(土) ～ 2026年04月25日(土)まで</div>
 `;
 
+const goal3VoteRateTableHtml = `
+  <table>
+    <tr>
+      <th>開催日</th>
+      <th>試合開始予定時間</th>
+      <th colspan="3">予想チーム</th>
+      <th colspan="4">投票口数 (投票率)</th>
+    </tr>
+    <tr>
+      <th>0点</th>
+      <th>1点</th>
+      <th>2点</th>
+      <th>3点以上</th>
+    </tr>
+    <tr>
+      <td>04/25</td>
+      <td>14:00</td>
+      <td>1</td>
+      <td>清水</td>
+      <td>ホーム</td>
+      <td>6,933（19.04%）</td>
+      <td>12,995（35.70%）</td>
+      <td>10,346（28.42%）</td>
+      <td>6,132（16.84%）</td>
+      <td>データ</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>名古屋</td>
+      <td>アウェイ</td>
+      <td>6,785（18.64%）</td>
+      <td>12,669（34.80%）</td>
+      <td>11,182（30.71%）</td>
+      <td>5,770（15.85%）</td>
+    </tr>
+    <tr>
+      <td>04/25</td>
+      <td>15:00</td>
+      <td>3</td>
+      <td>岡山</td>
+      <td>ホーム</td>
+      <td>8,701（23.90%）</td>
+      <td>14,663（40.27%）</td>
+      <td>8,707（23.92%）</td>
+      <td>4,335（11.91%）</td>
+      <td>データ</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>福岡</td>
+      <td>アウェイ</td>
+      <td>8,248（22.66%）</td>
+      <td>14,354（39.43%）</td>
+      <td>9,351（25.68%）</td>
+      <td>4,453（12.23%）</td>
+    </tr>
+    <tr>
+      <td>04/25</td>
+      <td>15:00</td>
+      <td>5</td>
+      <td>川崎Ｆ</td>
+      <td>ホーム</td>
+      <td>4,291（11.79%）</td>
+      <td>8,502（23.35%）</td>
+      <td>12,956（35.59%）</td>
+      <td>10,657（29.27%）</td>
+      <td>データ</td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td>千葉</td>
+      <td>アウェイ</td>
+      <td>11,792（32.39%）</td>
+      <td>13,869（38.09%）</td>
+      <td>7,106（19.52%）</td>
+      <td>3,639（10.00%）</td>
+    </tr>
+  </table>
+  <div>第1624回 totoGOAL3 投票状況</div>
+  <div>売上金額 3,527,500円 2,318,000円 1,209,500円</div>
+  <div>販売期間 2026年04月18日(土) ～ 2026年04月25日(土)まで</div>
+`;
+
+const goal3VoteRateUnavailableHtml = `
+  <p>ご指定の投票状況は表示できません。</p>
+`;
+
 const worldTotoLotInfoHtml = `
   <table>
     <tr><td>第1700回 ワールドtoto くじ情報</td></tr>
@@ -150,6 +237,44 @@ describe("toto official sync parser", () => {
     const goal3Round = result.rounds.find((entry) => entry.title === "第1624回 totoGOAL3");
     expect(goal3Round?.matches).toHaveLength(6);
     expect(goal3Round?.matches[0]?.officialVote3).toBeCloseTo(0.1702, 4);
+  });
+
+  it("parses GOAL3 vote-rate tables from the current official layout", async () => {
+    const result = await parseTotoOfficialHtmlSource({
+      rawText: goal3VoteRateTableHtml,
+      sourceUrl:
+        "https://store.toto-dream.com/dcs/subos/screen/pi09/spin003/PGSPIN00301InitVoteRate.form?holdCntId=1624&commodityId=02",
+    });
+
+    expect(result.rounds).toHaveLength(1);
+    expect(result.rounds[0]?.matches).toHaveLength(6);
+    expect(result.rounds[0]?.matches[0]?.homeTeam).toBe("清水");
+    expect(result.rounds[0]?.matches[0]?.officialVote0).toBeCloseTo(0.1904, 4);
+    expect(result.rounds[0]?.matches[1]?.awayTeam).toBe("清水");
+  });
+
+  it("keeps GOAL3 lot info without warning when vote-rate page is still unavailable", async () => {
+    const result = await parseTotoOfficialHtmlSource({
+      fetchText: async (url) => {
+        if (url.includes("holdCntId=1624&commodityId=02")) {
+          return goal3VoteRateUnavailableHtml;
+        }
+
+        if (url.includes("holdCntId=1624") || url.endsWith("/1624")) {
+          return lotInfoHtml;
+        }
+
+        throw new Error("detail not available");
+      },
+      includeMatches: true,
+      rawText: yahooScheduleHtml,
+      sourceUrl: "https://toto.yahoo.co.jp/schedule/toto",
+    });
+
+    expect(
+      result.warnings.some((warning) => warning.includes("totoGOAL3") && warning.includes("投票状況")),
+    ).toBe(false);
+    expect(result.rounds.map((entry) => entry.title)).toContain("第1624回 totoGOAL3");
   });
 
   it("detects official html-like payloads", () => {
