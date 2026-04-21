@@ -192,6 +192,14 @@ function OfficialScheduleImportPageContent() {
     );
   };
 
+  const updateDraftRow = (index: number, patch: Partial<OfficialScheduleDraft>) => {
+    setDraftRows((current) =>
+      current.map((entry, currentIndex) =>
+        currentIndex === index ? { ...entry, ...patch } : entry,
+      ),
+    );
+  };
+
   const handleCopyExtractorScript = async () => {
     if (!absoluteImportPageHref || typeof navigator === "undefined" || !navigator.clipboard) {
       setActionError(
@@ -472,9 +480,11 @@ function OfficialScheduleImportPageContent() {
         </p>
       </CollapsibleSectionCard>
 
-      <SectionCard
-        title="Paste"
-        description={`既存 Fixture Master: ${fixtureMaster.data?.length ?? 0} 件`}
+      <CollapsibleSectionCard
+        title="手貼り・URL調整"
+        description={`既存 Fixture Master: ${fixtureMaster.data?.length ?? 0} 件。ふだんは上の 1タップ取得 だけで足ります。`}
+        defaultOpen={fixtureSource !== "fifa_official_api" || fixtureConfidence !== "official"}
+        badge={<Badge tone="slate">補助入力</Badge>}
         actions={
           <button type="button" onClick={handleParse} className={buttonClassName}>
             Parse Preview
@@ -491,29 +501,21 @@ function OfficialScheduleImportPageContent() {
           {!sourceUrl.trim() ? <Badge tone="warning">sourceUrl 未入力</Badge> : null}
         </div>
 
-        <div className="rounded-[22px] border border-teal-200 bg-teal-50 px-4 py-4 text-sm leading-6 text-teal-950">
-          <p className="font-medium">FIFA公式 手貼りの既定URL</p>
+        <div className="rounded-[22px] border border-slate-200 bg-slate-50 px-4 py-4 text-sm leading-6 text-slate-700">
+          <p className="font-medium text-slate-950">既定の FIFA公式 URL</p>
           <p className="mt-2 break-all">{officialScheduleImportSourceUrl}</p>
           <div className="mt-3 flex flex-wrap gap-2">
             <button
               type="button"
               onClick={() => {
                 setSourceUrl(officialScheduleImportSourceUrl);
-                setFixtureSource("fifa_official_api");
-                setFixtureConfidence("official");
+                setFixtureSource("fifa_official_manual");
+                setFixtureConfidence("manual_official_source");
               }}
-              className={buttonClassName}
-            >
-              このURLをセット
-            </button>
-            <a
-              href={officialScheduleImportSourceUrl}
-              target="_blank"
-              rel="noreferrer"
               className={secondaryButtonClassName}
             >
-              開いて本文を貼る
-            </a>
+              既定URLに戻す
+            </button>
           </div>
         </div>
 
@@ -552,7 +554,7 @@ function OfficialScheduleImportPageContent() {
             placeholder="Thursday, 11 June 2026 ..."
           />
         </label>
-      </SectionCard>
+      </CollapsibleSectionCard>
 
       <SectionCard
         title="Parse Preview"
@@ -603,142 +605,216 @@ function OfficialScheduleImportPageContent() {
             まだ保存対象の行がありません。テキストを貼って Parse Preview を押すとここに一覧が出ます。
           </p>
         ) : (
-          <HorizontalScrollTable>
-            <table className="min-w-[1460px] text-left text-sm">
-              <thead>
-                <tr className="border-b border-slate-200 text-slate-500">
-                  <th className="px-3 py-3">date</th>
-                  <th className="px-3 py-3">kickoff</th>
-                  <th className="px-3 py-3">home</th>
-                  <th className="px-3 py-3">away</th>
-                  <th className="px-3 py-3">group</th>
-                  <th className="px-3 py-3">stage</th>
-                  <th className="px-3 py-3">venue</th>
-                  <th className="px-3 py-3">source</th>
-                  <th className="px-3 py-3">confidence</th>
-                </tr>
-              </thead>
-              <tbody>
-                {draftRows.map((row, index) => (
-                  <tr key={`${row.homeTeam}-${row.awayTeam}-${index}`} className="border-b border-slate-100">
-                    <td className="px-3 py-3">
+          <>
+            <div className="grid gap-4 lg:hidden">
+              {draftRows.map((row, index) => (
+                <div
+                  key={`${row.homeTeam}-${row.awayTeam}-${index}`}
+                  className="rounded-[24px] border border-slate-200 bg-slate-50/90 px-4 py-4"
+                >
+                  <div className="flex flex-wrap gap-2">
+                    <Badge tone="slate">{fixtureSourceLabel[row.source]}</Badge>
+                    <Badge tone={fixtureConfidenceTone[row.dataConfidence]}>
+                      {fixtureConfidenceLabel[row.dataConfidence]}
+                    </Badge>
+                  </div>
+
+                  <div className="mt-4 grid gap-3">
+                    <label className="space-y-2 text-sm">
+                      <span className="font-medium text-slate-700">date</span>
                       <input
                         value={row.matchDate ?? ""}
                         onChange={(event) =>
-                          setDraftRows((current) =>
-                            current.map((entry, currentIndex) =>
-                              currentIndex === index
-                                ? { ...entry, matchDate: event.currentTarget.value || null }
-                                : entry,
-                            ),
-                          )
+                          updateDraftRow(index, {
+                            matchDate: event.currentTarget.value || null,
+                          })
                         }
                         className={fieldClassName}
                       />
-                    </td>
-                    <td className="px-3 py-3">
+                    </label>
+                    <label className="space-y-2 text-sm">
+                      <span className="font-medium text-slate-700">kickoff</span>
                       <input
                         value={row.kickoffTime ?? ""}
                         onChange={(event) =>
-                          setDraftRows((current) =>
-                            current.map((entry, currentIndex) =>
-                              currentIndex === index
-                                ? { ...entry, kickoffTime: event.currentTarget.value || null }
-                                : entry,
-                            ),
-                          )
+                          updateDraftRow(index, {
+                            kickoffTime: event.currentTarget.value || null,
+                          })
                         }
                         className={fieldClassName}
                       />
-                    </td>
-                    <td className="px-3 py-3">
+                    </label>
+                    <label className="space-y-2 text-sm">
+                      <span className="font-medium text-slate-700">home</span>
                       <input
                         value={row.homeTeam}
                         onChange={(event) =>
-                          setDraftRows((current) =>
-                            current.map((entry, currentIndex) =>
-                              currentIndex === index
-                                ? { ...entry, homeTeam: event.currentTarget.value }
-                                : entry,
-                            ),
-                          )
+                          updateDraftRow(index, { homeTeam: event.currentTarget.value })
                         }
                         className={fieldClassName}
                       />
-                    </td>
-                    <td className="px-3 py-3">
+                    </label>
+                    <label className="space-y-2 text-sm">
+                      <span className="font-medium text-slate-700">away</span>
                       <input
                         value={row.awayTeam}
                         onChange={(event) =>
-                          setDraftRows((current) =>
-                            current.map((entry, currentIndex) =>
-                              currentIndex === index
-                                ? { ...entry, awayTeam: event.currentTarget.value }
-                                : entry,
-                            ),
-                          )
+                          updateDraftRow(index, { awayTeam: event.currentTarget.value })
                         }
                         className={fieldClassName}
                       />
-                    </td>
-                    <td className="px-3 py-3">
+                    </label>
+                    <label className="space-y-2 text-sm">
+                      <span className="font-medium text-slate-700">group</span>
                       <input
                         value={row.groupName ?? ""}
                         onChange={(event) =>
-                          setDraftRows((current) =>
-                            current.map((entry, currentIndex) =>
-                              currentIndex === index
-                                ? { ...entry, groupName: event.currentTarget.value || null }
-                                : entry,
-                            ),
-                          )
+                          updateDraftRow(index, {
+                            groupName: event.currentTarget.value || null,
+                          })
                         }
                         className={fieldClassName}
                       />
-                    </td>
-                    <td className="px-3 py-3">
+                    </label>
+                    <label className="space-y-2 text-sm">
+                      <span className="font-medium text-slate-700">stage</span>
                       <input
                         value={row.stage ?? ""}
                         onChange={(event) =>
-                          setDraftRows((current) =>
-                            current.map((entry, currentIndex) =>
-                              currentIndex === index
-                                ? { ...entry, stage: event.currentTarget.value || null }
-                                : entry,
-                            ),
-                          )
+                          updateDraftRow(index, {
+                            stage: event.currentTarget.value || null,
+                          })
                         }
                         className={fieldClassName}
                       />
-                    </td>
-                    <td className="px-3 py-3">
+                    </label>
+                    <label className="space-y-2 text-sm">
+                      <span className="font-medium text-slate-700">venue</span>
                       <input
                         value={row.venue ?? ""}
                         onChange={(event) =>
-                          setDraftRows((current) =>
-                            current.map((entry, currentIndex) =>
-                              currentIndex === index
-                                ? { ...entry, venue: event.currentTarget.value || null }
-                                : entry,
-                            ),
-                          )
+                          updateDraftRow(index, {
+                            venue: event.currentTarget.value || null,
+                          })
                         }
                         className={fieldClassName}
                       />
-                    </td>
-                    <td className="px-3 py-3">
-                      <Badge tone="slate">{fixtureSourceLabel[row.source]}</Badge>
-                    </td>
-                    <td className="px-3 py-3">
-                      <Badge tone={fixtureConfidenceTone[row.dataConfidence]}>
-                        {fixtureConfidenceLabel[row.dataConfidence]}
-                      </Badge>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </HorizontalScrollTable>
+                    </label>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="hidden lg:block">
+              <HorizontalScrollTable>
+                <table className="min-w-[1460px] text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-200 text-slate-500">
+                      <th className="px-3 py-3">date</th>
+                      <th className="px-3 py-3">kickoff</th>
+                      <th className="px-3 py-3">home</th>
+                      <th className="px-3 py-3">away</th>
+                      <th className="px-3 py-3">group</th>
+                      <th className="px-3 py-3">stage</th>
+                      <th className="px-3 py-3">venue</th>
+                      <th className="px-3 py-3">source</th>
+                      <th className="px-3 py-3">confidence</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {draftRows.map((row, index) => (
+                      <tr
+                        key={`${row.homeTeam}-${row.awayTeam}-${index}`}
+                        className="border-b border-slate-100"
+                      >
+                        <td className="px-3 py-3">
+                          <input
+                            value={row.matchDate ?? ""}
+                            onChange={(event) =>
+                              updateDraftRow(index, {
+                                matchDate: event.currentTarget.value || null,
+                              })
+                            }
+                            className={fieldClassName}
+                          />
+                        </td>
+                        <td className="px-3 py-3">
+                          <input
+                            value={row.kickoffTime ?? ""}
+                            onChange={(event) =>
+                              updateDraftRow(index, {
+                                kickoffTime: event.currentTarget.value || null,
+                              })
+                            }
+                            className={fieldClassName}
+                          />
+                        </td>
+                        <td className="px-3 py-3">
+                          <input
+                            value={row.homeTeam}
+                            onChange={(event) =>
+                              updateDraftRow(index, { homeTeam: event.currentTarget.value })
+                            }
+                            className={fieldClassName}
+                          />
+                        </td>
+                        <td className="px-3 py-3">
+                          <input
+                            value={row.awayTeam}
+                            onChange={(event) =>
+                              updateDraftRow(index, { awayTeam: event.currentTarget.value })
+                            }
+                            className={fieldClassName}
+                          />
+                        </td>
+                        <td className="px-3 py-3">
+                          <input
+                            value={row.groupName ?? ""}
+                            onChange={(event) =>
+                              updateDraftRow(index, {
+                                groupName: event.currentTarget.value || null,
+                              })
+                            }
+                            className={fieldClassName}
+                          />
+                        </td>
+                        <td className="px-3 py-3">
+                          <input
+                            value={row.stage ?? ""}
+                            onChange={(event) =>
+                              updateDraftRow(index, {
+                                stage: event.currentTarget.value || null,
+                              })
+                            }
+                            className={fieldClassName}
+                          />
+                        </td>
+                        <td className="px-3 py-3">
+                          <input
+                            value={row.venue ?? ""}
+                            onChange={(event) =>
+                              updateDraftRow(index, {
+                                venue: event.currentTarget.value || null,
+                              })
+                            }
+                            className={fieldClassName}
+                          />
+                        </td>
+                        <td className="px-3 py-3">
+                          <Badge tone="slate">{fixtureSourceLabel[row.source]}</Badge>
+                        </td>
+                        <td className="px-3 py-3">
+                          <Badge tone={fixtureConfidenceTone[row.dataConfidence]}>
+                            {fixtureConfidenceLabel[row.dataConfidence]}
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </HorizontalScrollTable>
+            </div>
+          </>
         )}
       </SectionCard>
     </div>

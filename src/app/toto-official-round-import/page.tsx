@@ -254,6 +254,13 @@ function TotoOfficialRoundImportPageContent() {
   const filterLabel =
     libraryProductType === "all" ? "すべて" : productTypeLabel[libraryProductType];
   const manualEntryOpen = Boolean(editingLibraryEntryId || sourceText.trim() || rows.length > 0);
+  const activeSyncPreset =
+    officialSourcePresets.find((preset) => preset.sourceUrl === syncSourceUrl) ?? null;
+  const syncOptionsOpen =
+    productType === "winner" ||
+    !includeMatchesInSync ||
+    autoApplyAfterSync ||
+    activeSyncPreset === null;
 
   const parsedPreview = useMemo(
     () =>
@@ -532,9 +539,11 @@ function TotoOfficialRoundImportPageContent() {
         description="この取り込みが、どの Round の公式対象回データとして使われるかを先に確認できます。"
       />
 
-      <SectionCard
-        title="おすすめ導線"
-        description="まずは toto / mini toto / WINNER のどれで回すか決めて、その商品に合った一覧や公式詳細URLへ寄せるのが最短です。"
+      <CollapsibleSectionCard
+        title="商品別の進め方"
+        description="まずは toto / mini toto / WINNER のどれで回すかだけ決めます。同期済み一覧があるときは、次のライブラリから選ぶだけで十分です。"
+        defaultOpen={(library.data?.length ?? 0) === 0}
+        badge={<Badge tone="sky">はじめに</Badge>}
       >
         <div className="grid gap-4 md:grid-cols-2">
           {officialProductFocusCards.map((card) => {
@@ -583,7 +592,7 @@ function TotoOfficialRoundImportPageContent() {
             );
           })}
         </div>
-      </SectionCard>
+      </CollapsibleSectionCard>
 
       {actionMessage ? (
         <div className="rounded-[22px] border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm text-emerald-800">
@@ -645,62 +654,78 @@ function TotoOfficialRoundImportPageContent() {
           })}
         </div>
 
-        <div className="grid gap-4 md:grid-cols-[1fr_auto_auto]">
-          <label className="space-y-2 text-sm">
-            <span className="font-medium text-slate-700">sourceUrl</span>
-            <input
-              value={syncSourceUrl}
-              onChange={(event) => setSyncSourceUrl(event.currentTarget.value)}
-              className={fieldClassName}
-              placeholder="https://..."
-            />
-          </label>
-          <label className="flex items-center justify-start gap-2 text-sm pt-7">
-            <input
-              type="checkbox"
-              checked={includeMatchesInSync}
-              onChange={(event) => setIncludeMatchesInSync(event.currentTarget.checked)}
-              className="h-4 w-4"
-            />
-            <span>試合明細まで取り込む</span>
-          </label>
-          <div className="pt-7">
-            <button
-              type="button"
-              onClick={() => void handleSyncOfficialRounds()}
-              className={buttonClassName}
-              disabled={syncing}
-            >
-              {syncing ? "同期中..." : "公式一覧を同期"}
-            </button>
-          </div>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Badge tone="info">現在の同期元 {activeSyncPreset?.label ?? hostLabel(syncSourceUrl)}</Badge>
+          <Badge tone="slate">試合明細 {includeMatchesInSync ? "含む" : "省略"}</Badge>
+          <Badge tone={autoApplyAfterSync ? "teal" : "slate"}>
+            {autoApplyAfterSync ? "同期後に Pick Room" : "一覧更新のみ"}
+          </Badge>
         </div>
 
         <div className="mt-4 flex flex-wrap gap-3">
-          <label className="flex items-center gap-2 rounded-3xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
-            <input
-              type="checkbox"
-              checked={autoApplyAfterSync}
-              onChange={(event) => setAutoApplyAfterSync(event.currentTarget.checked)}
-              className="h-4 w-4"
-            />
-            <span>保存後に最新1件をそのまま Pick Room を開く</span>
-          </label>
+          <button
+            type="button"
+            onClick={() => void handleSyncOfficialRounds()}
+            className={buttonClassName}
+            disabled={syncing}
+          >
+            {syncing ? "同期中..." : "いまの設定で同期"}
+          </button>
           <button
             type="button"
             onClick={() => void handleSyncOfficialRounds({ autoApplyToPickRoom: true })}
-            className={buttonClassName}
+            className={secondaryButtonClassName}
             disabled={syncing}
           >
             {syncing ? "同期しつつ反映中..." : "公式一覧を同期してPick Roomへ"}
           </button>
         </div>
 
-        {autoApplyAfterSync ? (
-          <p className="mt-3 rounded-[20px] border border-emerald-100 bg-emerald-50 px-4 py-3 text-xs leading-6 text-emerald-950">
-            「保存後に最新1件をそのまま Pick Room 開く」をONにすると、通常の `公式一覧を同期` でも同期した最新回をそのまま反映して Pick Room まで進みます。
-          </p>
-        ) : null}
+        <CollapsibleSectionCard
+          className="mt-4"
+          title="同期オプション"
+          description="URL を変えるとき、WINNER の公式詳細URLを入れるとき、または通常同期後に自動で Pick Room まで進めたいときだけ開きます。"
+          defaultOpen={syncOptionsOpen}
+          badge={<Badge tone="slate">オプション</Badge>}
+        >
+          <div className="grid gap-4 md:grid-cols-[1fr_auto]">
+            <label className="space-y-2 text-sm">
+              <span className="font-medium text-slate-700">sourceUrl</span>
+              <input
+                value={syncSourceUrl}
+                onChange={(event) => setSyncSourceUrl(event.currentTarget.value)}
+                className={fieldClassName}
+                placeholder="https://..."
+              />
+            </label>
+            <div className="grid gap-3 text-sm md:pt-7">
+              <label className="flex items-center gap-2 rounded-3xl border border-slate-200 bg-slate-50 px-3 py-2">
+                <input
+                  type="checkbox"
+                  checked={includeMatchesInSync}
+                  onChange={(event) => setIncludeMatchesInSync(event.currentTarget.checked)}
+                  className="h-4 w-4"
+                />
+                <span>試合明細まで取り込む</span>
+              </label>
+              <label className="flex items-center gap-2 rounded-3xl border border-slate-200 bg-slate-50 px-3 py-2">
+                <input
+                  type="checkbox"
+                  checked={autoApplyAfterSync}
+                  onChange={(event) => setAutoApplyAfterSync(event.currentTarget.checked)}
+                  className="h-4 w-4"
+                />
+                <span>通常同期でも最新1件で Pick Room を開く</span>
+              </label>
+            </div>
+          </div>
+
+          {productType === "winner" ? (
+            <p className="rounded-[20px] border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-6 text-amber-950">
+              WINNER は開催一覧より、実際の公式くじ情報URLを直接入れる方が安定します。既定の detail URL はサンプルなので、実回の URL に置き換えてから同期してください。
+            </p>
+          ) : null}
+        </CollapsibleSectionCard>
 
         {syncSummary ? (
           <div className="mt-4 rounded-[22px] border border-teal-200 bg-teal-50 px-4 py-4 text-sm text-teal-950">
@@ -1055,41 +1080,43 @@ function TotoOfficialRoundImportPageContent() {
             </div>
           ) : null}
 
-          <HorizontalScrollTable className="mt-4">
-            <table className="min-w-[1380px] text-left text-sm">
-              <thead>
-                <tr className="border-b border-slate-200 text-slate-500">
-                  <th className="px-3 py-3">no</th>
-                  <th className="px-3 py-3">fixture</th>
-                  <th className="px-3 py-3">kickoff</th>
-                  <th className="px-3 py-3">stage</th>
-                  <th className="px-3 py-3">vote1/0/2</th>
-                  <th className="px-3 py-3">fixture match</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row, index) => (
-                  <tr key={`${row.officialMatchNo}-${index}`} className="border-b border-slate-100">
-                    <td className="px-3 py-3">{row.officialMatchNo}</td>
-                    <td className="px-3 py-3">
-                      <div className="space-y-2">
-                        <input
-                          value={row.homeTeam}
-                          onChange={(event) =>
-                            updateRow(index, { homeTeam: event.currentTarget.value }, { rematch: true })
-                          }
-                          className={fieldClassName}
-                        />
-                        <input
-                          value={row.awayTeam}
-                          onChange={(event) =>
-                            updateRow(index, { awayTeam: event.currentTarget.value }, { rematch: true })
-                          }
-                          className={fieldClassName}
-                        />
-                      </div>
-                    </td>
-                    <td className="px-3 py-3">
+          <>
+            <div className="mt-4 grid gap-4 lg:hidden">
+              {rows.map((row, index) => (
+                <div
+                  key={`${row.officialMatchNo}-${index}`}
+                  className="rounded-[24px] border border-slate-200 bg-slate-50/90 px-4 py-4"
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge tone="slate">No.{row.officialMatchNo}</Badge>
+                    <Badge tone={row.fixtureMasterId ? "teal" : "warning"}>
+                      {row.fixtureMasterId ? "fixture 候補あり" : "fixture 未選択"}
+                    </Badge>
+                  </div>
+
+                  <div className="mt-4 grid gap-3">
+                    <label className="space-y-2 text-sm">
+                      <span className="font-medium text-slate-700">home</span>
+                      <input
+                        value={row.homeTeam}
+                        onChange={(event) =>
+                          updateRow(index, { homeTeam: event.currentTarget.value }, { rematch: true })
+                        }
+                        className={fieldClassName}
+                      />
+                    </label>
+                    <label className="space-y-2 text-sm">
+                      <span className="font-medium text-slate-700">away</span>
+                      <input
+                        value={row.awayTeam}
+                        onChange={(event) =>
+                          updateRow(index, { awayTeam: event.currentTarget.value }, { rematch: true })
+                        }
+                        className={fieldClassName}
+                      />
+                    </label>
+                    <label className="space-y-2 text-sm">
+                      <span className="font-medium text-slate-700">kickoff</span>
                       <input
                         value={row.kickoffTime ?? ""}
                         onChange={(event) =>
@@ -1101,8 +1128,9 @@ function TotoOfficialRoundImportPageContent() {
                         }
                         className={fieldClassName}
                       />
-                    </td>
-                    <td className="px-3 py-3">
+                    </label>
+                    <label className="space-y-2 text-sm">
+                      <span className="font-medium text-slate-700">stage</span>
                       <input
                         value={row.stage ?? ""}
                         onChange={(event) =>
@@ -1110,9 +1138,10 @@ function TotoOfficialRoundImportPageContent() {
                         }
                         className={fieldClassName}
                       />
-                    </td>
-                    <td className="px-3 py-3">
-                      <div className="space-y-2">
+                    </label>
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      <label className="space-y-2 text-sm">
+                        <span className="font-medium text-slate-700">vote 1</span>
                         <input
                           value={row.officialVote1 ?? ""}
                           onChange={(event) =>
@@ -1123,6 +1152,9 @@ function TotoOfficialRoundImportPageContent() {
                           className={fieldClassName}
                           inputMode="decimal"
                         />
+                      </label>
+                      <label className="space-y-2 text-sm">
+                        <span className="font-medium text-slate-700">vote 0</span>
                         <input
                           value={row.officialVote0 ?? ""}
                           onChange={(event) =>
@@ -1133,6 +1165,9 @@ function TotoOfficialRoundImportPageContent() {
                           className={fieldClassName}
                           inputMode="decimal"
                         />
+                      </label>
+                      <label className="space-y-2 text-sm">
+                        <span className="font-medium text-slate-700">vote 2</span>
                         <input
                           value={row.officialVote2 ?? ""}
                           onChange={(event) =>
@@ -1143,9 +1178,10 @@ function TotoOfficialRoundImportPageContent() {
                           className={fieldClassName}
                           inputMode="decimal"
                         />
-                      </div>
-                    </td>
-                    <td className="px-3 py-3">
+                      </label>
+                    </div>
+                    <label className="space-y-2 text-sm">
+                      <span className="font-medium text-slate-700">fixture match</span>
                       <select
                         value={row.fixtureMasterId ?? ""}
                         onChange={(event) =>
@@ -1160,12 +1196,126 @@ function TotoOfficialRoundImportPageContent() {
                           </option>
                         ))}
                       </select>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </HorizontalScrollTable>
+                    </label>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="hidden lg:block">
+              <HorizontalScrollTable className="mt-4">
+                <table className="min-w-[1380px] text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-200 text-slate-500">
+                      <th className="px-3 py-3">no</th>
+                      <th className="px-3 py-3">fixture</th>
+                      <th className="px-3 py-3">kickoff</th>
+                      <th className="px-3 py-3">stage</th>
+                      <th className="px-3 py-3">vote1/0/2</th>
+                      <th className="px-3 py-3">fixture match</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((row, index) => (
+                      <tr key={`${row.officialMatchNo}-${index}`} className="border-b border-slate-100">
+                        <td className="px-3 py-3">{row.officialMatchNo}</td>
+                        <td className="px-3 py-3">
+                          <div className="space-y-2">
+                            <input
+                              value={row.homeTeam}
+                              onChange={(event) =>
+                                updateRow(index, { homeTeam: event.currentTarget.value }, { rematch: true })
+                              }
+                              className={fieldClassName}
+                            />
+                            <input
+                              value={row.awayTeam}
+                              onChange={(event) =>
+                                updateRow(index, { awayTeam: event.currentTarget.value }, { rematch: true })
+                              }
+                              className={fieldClassName}
+                            />
+                          </div>
+                        </td>
+                        <td className="px-3 py-3">
+                          <input
+                            value={row.kickoffTime ?? ""}
+                            onChange={(event) =>
+                              updateRow(
+                                index,
+                                { kickoffTime: event.currentTarget.value || null },
+                                { rematch: true },
+                              )
+                            }
+                            className={fieldClassName}
+                          />
+                        </td>
+                        <td className="px-3 py-3">
+                          <input
+                            value={row.stage ?? ""}
+                            onChange={(event) =>
+                              updateRow(index, { stage: event.currentTarget.value || null })
+                            }
+                            className={fieldClassName}
+                          />
+                        </td>
+                        <td className="px-3 py-3">
+                          <div className="space-y-2">
+                            <input
+                              value={row.officialVote1 ?? ""}
+                              onChange={(event) =>
+                                updateRow(index, {
+                                  officialVote1: normalizeVote(event.currentTarget.value).normalized,
+                                })
+                              }
+                              className={fieldClassName}
+                              inputMode="decimal"
+                            />
+                            <input
+                              value={row.officialVote0 ?? ""}
+                              onChange={(event) =>
+                                updateRow(index, {
+                                  officialVote0: normalizeVote(event.currentTarget.value).normalized,
+                                })
+                              }
+                              className={fieldClassName}
+                              inputMode="decimal"
+                            />
+                            <input
+                              value={row.officialVote2 ?? ""}
+                              onChange={(event) =>
+                                updateRow(index, {
+                                  officialVote2: normalizeVote(event.currentTarget.value).normalized,
+                                })
+                              }
+                              className={fieldClassName}
+                              inputMode="decimal"
+                            />
+                          </div>
+                        </td>
+                        <td className="px-3 py-3">
+                          <select
+                            value={row.fixtureMasterId ?? ""}
+                            onChange={(event) =>
+                              updateRow(index, { fixtureMasterId: event.currentTarget.value || null })
+                            }
+                            className={fieldClassName}
+                          >
+                            <option value="">未選択</option>
+                            {row.fixtureCandidates.map((fixture) => (
+                              <option key={fixture.id} value={fixture.id}>
+                                {fixture.matchDate ?? "—"} {fixture.homeTeam} vs {fixture.awayTeam}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </HorizontalScrollTable>
+            </div>
+          </>
         </SectionCard>
       </CollapsibleSectionCard>
     </div>
