@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "audit:schema": "node scripts/check-schema-ref.js",
-    "check:supabase": "node --env-file .env.local scripts/check-production-supabase.js"
+    "check:supabase": "node scripts/check-production-supabase.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",

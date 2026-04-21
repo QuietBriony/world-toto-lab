@@ -380,7 +380,7 @@ GitHub Pages 上で読み込み失敗が出た場合、まず接続先 DB の実
 npm run check:supabase
 ```
 
-`.env.local`（または実行環境）に以下を設定して実行してください。
+`.env.local` / `.env` / 実行環境の環境変数に以下を設定して実行してください。
 
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co

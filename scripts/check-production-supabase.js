@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 
 const { createClient } = require("@supabase/supabase-js");
+const fs = require("node:fs");
+const path = require("node:path");
 
 const TABLES = [
   { name: "users", critical: true },
@@ -46,7 +48,43 @@ function isMissingRelationError(error) {
   );
 }
 
+const ENV_FILES = [
+  path.join(process.cwd(), ".env.local"),
+  path.join(process.cwd(), ".env"),
+];
+
+function loadDotEnv(pathName) {
+  if (!fs.existsSync(pathName)) {
+    return;
+  }
+
+  const text = fs.readFileSync(pathName, "utf8");
+  text.split(/\r?\n/).forEach((line) => {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) {
+      return;
+    }
+
+    const equals = trimmed.indexOf("=");
+    if (equals <= 0) {
+      return;
+    }
+
+    const key = trimmed.slice(0, equals).trim();
+    const raw = trimmed.slice(equals + 1).trim();
+    const value = raw.replace(/^"(.*)"$/, "$1");
+
+    if (key && !(key in process.env)) {
+      process.env[key] = value;
+    }
+  });
+}
+
 function loadConfig() {
+  for (const filePath of ENV_FILES) {
+    loadDotEnv(filePath);
+  }
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
