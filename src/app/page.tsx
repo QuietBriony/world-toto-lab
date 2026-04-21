@@ -378,6 +378,46 @@ export default function DashboardPage() {
     data?.users.filter((user) => user.role === "member").length ?? 0;
   const livePickCount = inventoryRounds.reduce((sum, round) => sum + round.pickCount, 0);
   const liveResultCount = inventoryRounds.reduce((sum, round) => sum + round.resultedCount, 0);
+  const createRoundJourneyCards = [
+    {
+      body: "2026本番のように、まだ toto が売り出していない回は確定日程から先に Round を作るのがいちばん自然です。",
+      ctaHref: appRoute.officialScheduleImport,
+      ctaLabel: "公式日程から始める",
+      secondaryHref: appRoute.fixtureSelector,
+      secondaryLabel: "Fixture Selector へ",
+      title: "販売前に始める",
+      tone: "teal" as const,
+    },
+    {
+      body: "売り出しが始まったら、公式対象回を同期してそのまま toto / mini toto の Round に流し込みます。",
+      ctaHref: buildOfficialRoundImportHref(undefined, {
+        autoSync: true,
+        productType: "toto13",
+        sourcePreset: "yahoo_toto_schedule",
+      }),
+      ctaLabel: "toto を同期して選ぶ",
+      secondaryHref: buildOfficialRoundImportHref(undefined, {
+        autoSync: true,
+        productType: "mini_toto",
+        sourcePreset: "yahoo_toto_schedule",
+      }),
+      secondaryLabel: "mini toto で始める",
+      title: "販売後に始める",
+      tone: "sky" as const,
+    },
+    {
+      body: "1試合の WINNER は、開催一覧より公式くじ情報URLから入るほうが安定します。BIG は別監視ページに切っています。",
+      ctaHref: buildOfficialRoundImportHref(undefined, {
+        productType: "winner",
+        sourcePreset: "toto_official_detail",
+      }),
+      ctaLabel: "WINNER で始める",
+      secondaryHref: appRoute.bigCarryover,
+      secondaryLabel: "BIG Carryover Monitor",
+      title: "1試合や別商品で見る",
+      tone: "amber" as const,
+    },
+  ];
 
   return (
     <div className="space-y-8">
@@ -1394,23 +1434,48 @@ export default function DashboardPage() {
             id="create-round"
             title="ラウンドを作成"
             description="販売前は公式日程ベース、販売後は toto公式回ベースで本番用ラウンドを作れます。"
-            actions={
+          >
+            <div className="mb-6 space-y-4">
+              <div className="rounded-[24px] border border-slate-200 bg-slate-50/90 px-5 py-4 text-sm leading-6 text-slate-700">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge tone="teal">状況で入口を分ける</Badge>
+                  <Badge tone="slate">迷ったらここ</Badge>
+                </div>
+                <p className="mt-3">
+                  まずは「販売前」「販売後」「1試合 / 別商品」のどれかを選べば十分です。
+                  そのあとで、必要なら下の手入力フォームに戻れば大丈夫です。
+                </p>
+              </div>
+
+              <div className="grid gap-4 xl:grid-cols-3">
+                {createRoundJourneyCards.map((card) => (
+                  <div
+                    key={card.title}
+                    className="rounded-[24px] border border-slate-200 bg-slate-50/90 p-5"
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge tone={card.tone}>{card.title}</Badge>
+                    </div>
+                    <p className="mt-3 text-sm leading-6 text-slate-600">{card.body}</p>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <Link href={card.ctaHref} className={buttonClassName}>
+                        {card.ctaLabel}
+                      </Link>
+                      <Link href={card.secondaryHref} className={secondaryButtonClassName}>
+                        {card.secondaryLabel}
+                      </Link>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
               <div className="flex flex-wrap gap-2">
-                <Link href={appRoute.officialScheduleImport} className={secondaryButtonClassName}>
-                  公式日程を取り込む
-                </Link>
+                <Badge tone="slate">その他の入口</Badge>
                 <Link href={appRoute.fixtureSelector} className={secondaryButtonClassName}>
                   Fixture Selector
                 </Link>
-                <Link
-                  href={buildOfficialRoundImportHref(undefined, {
-                    autoSync: true,
-                    productType: "toto13",
-                    sourcePreset: "yahoo_toto_schedule",
-                  })}
-                  className={secondaryButtonClassName}
-                >
-                  toto を同期して選ぶ
+                <Link href={appRoute.officialScheduleImport} className={secondaryButtonClassName}>
+                  公式日程を取り込む
                 </Link>
                 <Link
                   href={buildOfficialRoundImportHref(undefined, {
@@ -1422,32 +1487,6 @@ export default function DashboardPage() {
                 >
                   mini toto を同期して選ぶ
                 </Link>
-                <Link href={appRoute.bigCarryover} className={secondaryButtonClassName}>
-                  BIG Carryover Monitor
-                </Link>
-              </div>
-            }
-          >
-            <div className="mb-5 grid gap-3 md:grid-cols-2">
-              <div className="rounded-[22px] border border-teal-200 bg-teal-50 px-4 py-4">
-                <p className="text-sm font-semibold text-teal-950">販売前の main 導線</p>
-                <p className="mt-2 text-sm leading-6 text-teal-900">
-                  2026本番のように、まだ toto が売り出していない回は{" "}
-                  <span className="font-medium">
-                    公式日程を取り込む {"->"} Fixture Selector
-                  </span>{" "}
-                  で先に Round を作れます。
-                </p>
-              </div>
-              <div className="rounded-[22px] border border-amber-200 bg-amber-50 px-4 py-4">
-                <p className="text-sm font-semibold text-amber-950">販売後の導線</p>
-                <p className="mt-2 text-sm leading-6 text-amber-900">
-                  toto の販売が始まったら{" "}
-                  <span className="font-medium">
-                    toto を同期して選ぶ / mini toto を同期して選ぶ
-                  </span>{" "}
-                  で公式対象回を取り込みます。
-                </p>
               </div>
             </div>
 
