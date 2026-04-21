@@ -6,6 +6,7 @@ import {
   extractOfficialScheduleSourceTextFromFifaRichText,
   parseOfficialScheduleText,
   parseOfficialScheduleTransferPayload,
+  supplementOfficialScheduleSourceTextWithCalendarMatches,
 } from "@/lib/official-schedule";
 
 describe("official schedule parser", () => {
@@ -177,5 +178,67 @@ describe("official schedule parser", () => {
     expect(result.warnings).toEqual([
       "このソースには kickoff time が含まれていないため、時刻は未入力のままです。",
     ]);
+  });
+
+  it("supplements kickoff times from the official FIFA calendar API rows", () => {
+    const sourceText = [
+      "Thursday, 11 June 2026",
+      "Mexico v South Africa - Group A – Mexico City Stadium",
+      "Korea Republic v Czechia - Group A – Estadio Guadalajara",
+      "Sunday, 28 June 2026",
+      "Group A runners-up v Group B runners-up - Los Angeles Stadium",
+      "Saturday, 18 July 2026",
+      "Runner-up match 101 v Runner-up match 102 - Miami Stadium",
+    ].join("\n");
+
+    const supplemented = supplementOfficialScheduleSourceTextWithCalendarMatches(sourceText, [
+      {
+        Away: { TeamName: [{ Description: "South Africa" }] },
+        Date: "2026-06-11T19:00:00Z",
+        Home: { TeamName: [{ Description: "Mexico" }] },
+        LocalDate: "2026-06-11T13:00:00Z",
+        MatchNumber: 1,
+        Stadium: { Name: [{ Description: "Mexico City Stadium" }] },
+      },
+      {
+        Away: { TeamName: [{ Description: "Czechia" }] },
+        Date: "2026-06-12T02:00:00Z",
+        Home: { TeamName: [{ Description: "Korea Republic" }] },
+        LocalDate: "2026-06-11T20:00:00Z",
+        MatchNumber: 2,
+        Stadium: { Name: [{ Description: "Guadalajara Stadium" }] },
+      },
+      {
+        Date: "2026-06-28T19:00:00Z",
+        LocalDate: "2026-06-28T12:00:00Z",
+        MatchNumber: 73,
+        PlaceHolderA: "2A",
+        PlaceHolderB: "2B",
+        Stadium: { Name: [{ Description: "Los Angeles Stadium" }] },
+      },
+      {
+        Date: "2026-07-18T21:00:00Z",
+        LocalDate: "2026-07-18T17:00:00Z",
+        MatchNumber: 103,
+        PlaceHolderA: "RU101",
+        PlaceHolderB: "RU102",
+        Stadium: { Name: [{ Description: "Miami Stadium" }] },
+      },
+    ]);
+
+    expect(supplemented.sourceText).toContain(
+      "Mexico v South Africa - Group A – Mexico City Stadium - 13:00",
+    );
+    expect(supplemented.sourceText).toContain(
+      "Korea Republic v Czechia - Group A – Estadio Guadalajara - 20:00",
+    );
+    expect(supplemented.sourceText).toContain(
+      "Group A runners-up v Group B runners-up - Los Angeles Stadium - 12:00",
+    );
+    expect(supplemented.sourceText).toContain(
+      "Runner-up match 101 v Runner-up match 102 - Miami Stadium - 17:00",
+    );
+    expect(supplemented.supplementedCount).toBe(4);
+    expect(supplemented.unsupplementedCount).toBe(0);
   });
 });

@@ -243,8 +243,14 @@ function OfficialScheduleImportPageContent() {
       setSourceText(fetched.sourceText);
       setDraftRows(preview.fixtures);
       setParseWarnings([...fetched.warnings, ...buildPreviewWarnings(preview)]);
+      const kickoffSummary =
+        fetched.kickoffSupplementedCount > 0
+          ? fetched.kickoffMissingCount > 0
+            ? ` kickoff は ${fetched.kickoffSupplementedCount} 件補完、${fetched.kickoffMissingCount} 件は未入力です。`
+            : ` kickoff は ${fetched.kickoffSupplementedCount} 件補完しました。`
+          : "";
       setImportMessage(
-        `FIFA公式 API から ${preview.fixtures.length} 件の候補行を取得しました。${fetched.articleTitle ? `記事: ${fetched.articleTitle}` : ""}`,
+        `FIFA公式 API から ${preview.fixtures.length} 件の候補行を取得しました。${fetched.articleTitle ? `記事: ${fetched.articleTitle}。` : ""}${kickoffSummary}`,
       );
     } catch (nextError) {
       setActionError(errorMessage(nextError));
@@ -348,7 +354,7 @@ function OfficialScheduleImportPageContent() {
             [
               "2",
               "この画面で取得",
-              "FIFA公式 API から本文を直接読み、日付行と対戦カードをそのままプレビューへ入れます。",
+              "FIFA公式の記事本文を読み、日付行と対戦カードを整えます。kickoff が本文に無いときは、公式試合APIから時刻を補完します。",
             ],
             [
               "3",
@@ -390,9 +396,9 @@ function OfficialScheduleImportPageContent() {
           <p className="font-medium text-slate-950">抽出ルール</p>
           <p className="mt-2">
             まず FIFA公式の記事本文 JSON を取り、本文内の date heading と match line を抜きます。
-            記事に kickoff time が含まれていれば拾い、なければ null のまま保存します。ページ装飾や SNS
-            埋め込みは捨てるので、多少ページ構成が変わっても `何日 / 何時 / home / away / venue`
-            は維持しやすい構成です。
+            記事に kickoff time が無いときは、`scores-fixtures` と同系統の FIFA公式試合API
+            から現地 kickoff を補完します。ページ装飾や SNS 埋め込みは捨てるので、多少ページ構成が変わっても
+            `何日 / 何時 / home / away / venue` は維持しやすい構成です。
           </p>
         </div>
       </CollapsibleSectionCard>
