@@ -771,25 +771,52 @@ function throwIfError(
 
 type RelationMissingResult = {
   data: unknown;
-  error: { message: string } | null;
+  error:
+    | {
+        message?: string | null;
+        code?: string | null;
+        details?: string | null;
+        hint?: string | null;
+      }
+    | null;
 };
+
+function normalizeRelationMessage(error: RelationMissingResult["error"]) {
+  if (!error) {
+    return "";
+  }
+
+  return (error.message ?? "").toLowerCase();
+}
 
 function isMissingRelationError(error: RelationMissingResult["error"], table: string) {
   if (!error) {
     return false;
   }
 
-  const normalizedMessage = error.message.toLowerCase();
+  if (error.code && error.code === "42P01") {
+    return true;
+  }
+
+  const normalizedMessage = normalizeRelationMessage(error);
   const publicTablePattern = `public.${table}`;
+  const publicTableQuoted = `"${publicTablePattern}"`;
   const quotedPattern = `"${publicTablePattern}"`;
   const candidatePattern = table;
 
   return (
+    normalizedMessage.includes(`could not find table '${publicTablePattern}' in the schema cache`) ||
     normalizedMessage.includes(`could not find the table '${publicTablePattern}' in the schema cache`) ||
+    normalizedMessage.includes(`could not find table \"${publicTablePattern}\" in the schema cache`) ||
+    normalizedMessage.includes(`could not find the table \"${publicTablePattern}\" in the schema cache`) ||
+    normalizedMessage.includes(`relation ${candidatePattern} does not exist`) ||
+    normalizedMessage.includes(`relation ${publicTablePattern} does not exist`) ||
+    normalizedMessage.includes(`relation ${quotedPattern} does not exist`) ||
+    normalizedMessage.includes(`relation ${publicTableQuoted} does not exist`) ||
     normalizedMessage.includes(`relation ${quotedPattern} does not exist`) ||
     normalizedMessage.includes(`relation \"${candidatePattern}\" does not exist`) ||
-    normalizedMessage.includes(`relation ${quotedPattern}`) ||
-    normalizedMessage.includes(`relation ${publicTablePattern} does not exist`)
+    normalizedMessage.includes(`relation "${publicTablePattern}" does not exist`) ||
+    normalizedMessage.includes(`${publicTablePattern} is not in the schema cache`)
   );
 }
 
@@ -3765,11 +3792,16 @@ export async function replaceCandidateTickets(input: {
     .from("candidate_tickets")
     .select("id, label")
     .eq("round_id", input.roundId);
+  const safeExistingResult = isMissingRelationError(existingResult.error, "candidate_tickets")
+    ? { data: [], error: null }
+    : (existingResult as { data: Array<{ id: string; label: string }>; error: { message: string } | null });
 
-  throwIfError("Failed to load existing candidate tickets", existingResult);
+  if (safeExistingResult.error) {
+    throwIfError("Failed to load existing candidate tickets", safeExistingResult);
+  }
 
   const nextLabels = new Set(input.tickets.map((ticket) => ticket.label));
-  const staleIds = ((existingResult.data as Array<{ id: string; label: string }>) ?? [])
+  const staleIds = (safeExistingResult.data ?? [])
     .filter((row) => !nextLabels.has(row.label))
     .map((row) => row.id);
 
@@ -3809,6 +3841,10 @@ export async function replaceCandidateTickets(input: {
     },
   );
 
+  if (isMissingRelationError(result.error, "candidate_tickets")) {
+    return;
+  }
+
   throwIfError("Failed to save candidate tickets", result);
 }
 
@@ -3832,6 +3868,10 @@ export async function upsertCandidateVote(input: {
       onConflict: "round_id,candidate_ticket_id,user_id",
     },
   );
+
+  if (isMissingRelationError(result.error, "candidate_votes")) {
+    return;
+  }
 
   throwIfError("Failed to save candidate vote", result);
 }
