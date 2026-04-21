@@ -344,14 +344,32 @@ NEXT_PUBLIC_TOTO_OFFICIAL_ROUND_SYNC_FUNCTION_NAME=sync-toto-official-round-list
 
 ### 公式一覧の一発同期（推奨導線）
 
-`Toto Official Round Import` では、公式の一覧URLを入れて `公式一覧を同期` すると  
+`Round Builder` の `公式対象回を同期して選ぶ` から入ると、  
+`Toto Official Round Import` でおすすめソースをそのまま同期できます。
+
+現状のおすすめ同期元は次です。
+
+- `https://toto.yahoo.co.jp/schedule/toto`
+  - 開催回の一覧が安定していて、各回の `くじ情報を見る` から公式詳細ページへ辿れます
+  - Edge Function はこの一覧から販売中 / これからの回を拾い、公式詳細ページを追加取得して `toto / mini toto-A / mini toto-B` をライブラリ化します
+- `store.toto-dream.com` の個別 `くじ情報` URL
+  - 1回分だけ直接読みたいときの補助用です
+
+`Toto Official Round Import` で `公式一覧を同期` すると  
 `Supabase Edge Function` (`sync-toto-official-round-list`) を経由して取り込みます。
 
 Edge Function は次を行います。
 
 - 公開URLからHTML/JSON/CSVを取得
+- Yahoo! toto 販売スケジュールなら、開催回一覧を抽出し、必要な回だけ公式 `くじ情報` ページも追って詳細を埋める
+- `store.toto-dream.com` の `くじ情報` ページなら、`toto / mini toto-A / mini toto-B` の対象試合・販売終了・売上速報を抽出する
 - 取り得る形式を順に試行して回情報を正規化
 - 取り込めない場合は警告を返して、手入力フローへフォールバック
+
+注意:
+
+- `totoGOAL3` は現在の Round Builder の 1/0/2 モデルでは未対応なので、自動同期対象から外します
+- 公式人気 (`official_vote_1 / 0 / 2`) は一覧ページや `くじ情報` ページだけでは揃わない場合があるため、必要なら CSV / TSV で補完します
 
 GitHub Pages 側はこのFunction名を `NEXT_PUBLIC_TOTO_OFFICIAL_ROUND_SYNC_FUNCTION_NAME` から参照します。  
 未設定でも既定名 `sync-toto-official-round-list` を使います。

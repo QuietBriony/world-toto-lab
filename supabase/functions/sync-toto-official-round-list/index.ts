@@ -1,4 +1,8 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import {
+  looksLikeTotoOfficialHtml,
+  parseTotoOfficialHtmlSource,
+} from "../../../src/lib/toto-official-sync.ts";
 
 const corsHeaders = {
   "access-control-allow-origin": "*",
@@ -268,11 +272,14 @@ function coerceDecimal(value: unknown): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function parseAsJson(rawText: string, warnings: string[]) {
+function parseAsJson(rawText: string) {
+  if (!/^\s*[\[{]/.test(rawText)) {
+    return null;
+  }
+
   try {
     return JSON.parse(rawText);
   } catch {
-    warnings.push("JSONとして解析できる形式ではありませんでした。");
     return null;
   }
 }
@@ -487,7 +494,30 @@ serve(async (req: Request) => {
       );
     }
 
-    const rounds = parseRoundsFromPayload(rawText, sourceUrl, warnings);
+    const htmlParsed = looksLikeTotoOfficialHtml(rawText)
+      ? await parseTotoOfficialHtmlSource({
+        fetchText: async (url) => {
+          const detailResponse = await fetch(url, {
+            headers: {
+              "user-agent": "world-toto-lab-sync-bot",
+            },
+          });
+
+          if (!detailResponse.ok) {
+            throw new Error(`${detailResponse.status} ${detailResponse.statusText}`);
+          }
+
+          return await detailResponse.text();
+        },
+        includeMatches,
+        rawText,
+        sourceUrl,
+      })
+      : null;
+    const rounds = htmlParsed && htmlParsed.rounds.length > 0
+      ? htmlParsed.rounds
+      : parseRoundsFromPayload(rawText, sourceUrl, warnings);
+    warnings.push(...(htmlParsed?.warnings ?? []));
     if (rounds.length === 0) {
       return new Response(
         JSON.stringify({

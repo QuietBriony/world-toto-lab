@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 
 import { RoundContextCard } from "@/components/app/round-context-card";
 import {
@@ -52,6 +52,38 @@ const csvSample = [
   "2,Korea Republic,Czechia,2026-06-11 22:00,Estadio Guadalajara,Group A,32,28,40",
 ].join("\n");
 
+const officialSourcePresets = [
+  {
+    blurb: "開催回一覧から公式くじ情報ページを辿って、販売中 / これからの回をライブラリへ同期します。おすすめです。",
+    id: "yahoo_toto_schedule",
+    label: "Yahoo! toto 販売スケジュール",
+    sourceUrl: "https://toto.yahoo.co.jp/schedule/toto",
+  },
+  {
+    blurb: "1回分の公式詳細ページを直接読む補助用です。個別の holdCntId URL を入れたいときに使います。",
+    id: "toto_official_detail",
+    label: "スポーツくじオフィシャル くじ情報URL",
+    sourceUrl:
+      "https://store.toto-dream.com/dcs/subos/screen/pi01/spin000/PGSPIN00001DisptotoLotInfo.form?holdCntId=1624",
+  },
+] as const;
+
+function resolveOfficialSourcePreset(id: string | null) {
+  return officialSourcePresets.find((preset) => preset.id === id) ?? null;
+}
+
+function hostLabel(url: string | null) {
+  if (!url) {
+    return "未設定";
+  }
+
+  try {
+    return new URL(url).host;
+  } catch {
+    return url;
+  }
+}
+
 function buildSourceText(rows: Array<{
   awayTeam: string;
   homeTeam: string;
@@ -99,6 +131,9 @@ function TotoOfficialRoundImportPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const roundId = getSingleSearchParam(searchParams.get("round"));
+  const sourcePresetId = getSingleSearchParam(searchParams.get("sourcePreset"));
+  const autoSyncRequested = getSingleSearchParam(searchParams.get("autoSync")) === "1";
+  const initialSourcePreset = resolveOfficialSourcePreset(sourcePresetId);
   const [title, setTitle] = useState("toto公式対象回");
   const [productType, setProductType] = useState<ProductType>("toto13");
   const [officialRoundName, setOfficialRoundName] = useState("");
@@ -108,7 +143,9 @@ function TotoOfficialRoundImportPageContent() {
   const [stakeYen, setStakeYen] = useState("100");
   const [totalSalesYen, setTotalSalesYen] = useState("");
   const [carryoverYen, setCarryoverYen] = useState("0");
-  const [syncSourceUrl, setSyncSourceUrl] = useState("https://toto.yahoo.co.jp/schedule/toto");
+  const [syncSourceUrl, setSyncSourceUrl] = useState<string>(
+    initialSourcePreset?.sourceUrl ?? "https://toto.yahoo.co.jp/schedule/toto",
+  );
   const [includeMatchesInSync, setIncludeMatchesInSync] = useState(true);
   const [autoApplyAfterSync, setAutoApplyAfterSync] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -130,6 +167,7 @@ function TotoOfficialRoundImportPageContent() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [savedRoundId, setSavedRoundId] = useState<string | null>(roundId);
+  const autoSyncTriggeredRef = useRef(false);
   const fixtures = useFixtureMaster({ competition: "fifa_world_cup_2026" });
   const library = useTotoOfficialRoundLibrary({
     productType: libraryProductType === "all" ? null : libraryProductType,
@@ -148,14 +186,6 @@ function TotoOfficialRoundImportPageContent() {
       }),
     [fixtures.data, sourceText],
   );
-
-  if (!isSupabaseConfigured()) {
-    return <ConfigurationNotice />;
-  }
-
-  if (fixtures.error) {
-    return <ErrorNotice error={fixtures.error} onRetry={() => void fixtures.refresh()} />;
-  }
 
   const handleParse = () => {
     setRows(parsedPreview.rows);
@@ -186,9 +216,43 @@ function TotoOfficialRoundImportPageContent() {
     setActionMessage(`「${entry.title}」を編集フォームに読み込みました。`);
   };
 
+  const handleUseLibraryEntry = async (
+    entry: TotoOfficialRoundLibraryEntry,
+    mode: "apply" | "load",
+  ) => {
+    if (mode === "load") {
+      hydrateFromLibraryEntry(entry);
+      return;
+    }
+
+    setLibraryBusyId(entry.id);
+    setActionError(null);
+    setActionMessage(null);
+
+    try {
+      const nextRoundId = await instantiateTotoOfficialRoundLibraryEntry({
+        entryId: entry.id,
+        roundId,
+        status: "analyzing",
+        title: entry.title,
+      });
+      await refreshCandidateTicketsForRound({
+        force: true,
+        roundId: nextRoundId,
+      });
+      setSavedRoundId(nextRoundId);
+      router.push(buildRoundHref(appRoute.pickRoom, nextRoundId));
+    } catch (nextError) {
+      setActionError(errorMessage(nextError));
+    } finally {
+      setLibraryBusyId(null);
+    }
+  };
+
   const handleSyncOfficialRounds = async (options?: { autoApplyToPickRoom?: boolean }) => {
+    const shouldAutoApply = options?.autoApplyToPickRoom ?? autoApplyAfterSync;
     setSyncing(true);
-    setLibraryBusyId(options?.autoApplyToPickRoom ? "sync-auto" : null);
+    setLibraryBusyId(shouldAutoApply ? "sync-auto" : null);
     setActionError(null);
     setActionMessage(null);
     setSyncWarnings([]);
@@ -214,7 +278,7 @@ function TotoOfficialRoundImportPageContent() {
       });
       setSyncWarnings(combinedWarnings);
       await library.refresh();
-      if (options?.autoApplyToPickRoom) {
+      if (shouldAutoApply) {
         const syncedEntries = await loadTotoOfficialRoundLibraryEntries({
           productType: libraryProductType === "all" ? null : libraryProductType,
           searchQuery: librarySearchQuery,
@@ -241,6 +305,27 @@ function TotoOfficialRoundImportPageContent() {
       setSyncing(false);
     }
   };
+
+  const runAutoSync = useEffectEvent(() => {
+    void handleSyncOfficialRounds();
+  });
+
+  useEffect(() => {
+    if (!autoSyncRequested || autoSyncTriggeredRef.current || syncing) {
+      return;
+    }
+
+    autoSyncTriggeredRef.current = true;
+    runAutoSync();
+  }, [autoSyncRequested, syncing]);
+
+  if (!isSupabaseConfigured()) {
+    return <ConfigurationNotice />;
+  }
+
+  if (fixtures.error) {
+    return <ErrorNotice error={fixtures.error} onRetry={() => void fixtures.refresh()} />;
+  }
 
   const handleSave = async () => {
     setSaving(true);
@@ -303,45 +388,12 @@ function TotoOfficialRoundImportPageContent() {
     }
   };
 
-  const handleUseLibraryEntry = async (
-    entry: TotoOfficialRoundLibraryEntry,
-    mode: "apply" | "load",
-  ) => {
-    if (mode === "load") {
-      hydrateFromLibraryEntry(entry);
-      return;
-    }
-
-    setLibraryBusyId(entry.id);
-    setActionError(null);
-    setActionMessage(null);
-
-    try {
-      const nextRoundId = await instantiateTotoOfficialRoundLibraryEntry({
-        entryId: entry.id,
-        roundId,
-        status: "analyzing",
-        title: entry.title,
-      });
-      await refreshCandidateTicketsForRound({
-        force: true,
-        roundId: nextRoundId,
-      });
-      setSavedRoundId(nextRoundId);
-      router.push(buildRoundHref(appRoute.pickRoom, nextRoundId));
-    } catch (nextError) {
-      setActionError(errorMessage(nextError));
-    } finally {
-      setLibraryBusyId(null);
-    }
-  };
-
   return (
     <div className="space-y-8">
       <PageHeader
         eyebrow="Admin"
         title="Toto Official Round Import"
-        description="toto公式から取り込んで保存した回の一覧から選ぶか、CSV / TSV で新しくライブラリ登録して round に反映します。"
+        description="公式ソースから開催回を同期して一覧から選ぶか、CSV / TSV で足りない回だけ追加して Round に反映します。"
         actions={
           <div className="flex flex-wrap gap-3">
             <button
@@ -403,8 +455,53 @@ function TotoOfficialRoundImportPageContent() {
 
       <SectionCard
         title="公式一覧を同期"
-        description="公式一覧URLから公式回情報を一発で取り込んで、ライブラリへ保存します。未対応時はCSV/TSV手入力にフォールバックできます。"
+        description="おすすめは Yahoo! toto 販売スケジュールです。開催回一覧から公式くじ情報ページを辿って、Round Builder で選べるライブラリを更新します。"
       >
+        <div className="grid gap-3 lg:grid-cols-2">
+          {officialSourcePresets.map((preset) => {
+            const isActive = syncSourceUrl === preset.sourceUrl;
+
+            return (
+              <div
+                key={preset.id}
+                className={`rounded-[24px] border px-4 py-4 ${isActive ? "border-teal-300 bg-teal-50" : "border-slate-200 bg-slate-50/90"}`}
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge tone={preset.id === "yahoo_toto_schedule" ? "teal" : "slate"}>
+                    {preset.id === "yahoo_toto_schedule" ? "おすすめ" : "補助"}
+                  </Badge>
+                  <span className="font-semibold text-slate-950">{preset.label}</span>
+                </div>
+                <p className="mt-3 text-sm leading-6 text-slate-600">{preset.blurb}</p>
+                <p className="mt-3 break-all text-xs leading-5 text-slate-500">{preset.sourceUrl}</p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSyncSourceUrl(preset.sourceUrl);
+                      setActionMessage(`同期元を「${preset.label}」に切り替えました。`);
+                    }}
+                    className={secondaryButtonClassName}
+                  >
+                    このソースを使う
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSyncSourceUrl(preset.sourceUrl);
+                      void handleSyncOfficialRounds();
+                    }}
+                    className={buttonClassName}
+                    disabled={syncing}
+                  >
+                    {syncing && isActive ? "同期中..." : "このソースで同期"}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
         <div className="grid gap-4 md:grid-cols-[1fr_auto_auto]">
           <label className="space-y-2 text-sm">
             <span className="font-medium text-slate-700">sourceUrl</span>
@@ -458,7 +555,7 @@ function TotoOfficialRoundImportPageContent() {
 
         {autoApplyAfterSync ? (
           <p className="mt-3 rounded-[20px] border border-emerald-100 bg-emerald-50 px-4 py-3 text-xs leading-6 text-emerald-950">
-            「保存後に最新1件をそのまま Pick Room 開く」をONにすると、同期した最新回を保存して即座に反映し、候補生成まで通して Pick Room を開きます。
+            「保存後に最新1件をそのまま Pick Room 開く」をONにすると、通常の `公式一覧を同期` でも同期した最新回をそのまま反映して Pick Room まで進みます。
           </p>
         ) : null}
 
@@ -488,8 +585,8 @@ function TotoOfficialRoundImportPageContent() {
         title="公式回ライブラリ"
         description={
           roundId
-            ? "保存済みの公式回から、この Round にそのまま反映して Pick Room まで進めます。"
-            : "保存済みの公式回から、新しい Round を作ってそのまま Pick Room へ進めます。"
+            ? "同期済みの公式回から、この Round にそのまま反映して Pick Room まで進めます。"
+            : "同期済みの公式回から、新しい Round を作ってそのまま Pick Room へ進めます。"
         }
       >
         <div className="grid gap-4 lg:grid-cols-[0.8fr_0.35fr]">
@@ -529,7 +626,7 @@ function TotoOfficialRoundImportPageContent() {
           <LoadingNotice title="公式回ライブラリを読み込み中" />
         ) : (library.data?.length ?? 0) === 0 ? (
           <div className="rounded-[24px] border border-dashed border-slate-300 bg-slate-50/90 px-5 py-5 text-sm leading-7 text-slate-600">
-            まだ保存済みの公式回がありません。先に下の CSV / TSV 手入力で保存すると、次回からここに並んで 1クリック反映できます。
+            まだ保存済みの公式回がありません。まず上の `公式一覧を同期` でソースサイトから取り込むのがおすすめです。未取得の回だけ、下の CSV / TSV で補完できます。
           </div>
         ) : (
           <div className="grid gap-4 xl:grid-cols-2">
@@ -550,7 +647,9 @@ function TotoOfficialRoundImportPageContent() {
                         {entry.officialRoundNumber !== null ? (
                           <Badge tone="sky">第{entry.officialRoundNumber}回</Badge>
                         ) : null}
-                        {entry.resultStatus === "selling" ? <Badge tone="positive">販売中想定</Badge> : null}
+                        {entry.resultStatus === "selling" ? <Badge tone="positive">販売中</Badge> : null}
+                        {entry.resultStatus === "draft" ? <Badge tone="amber">これから</Badge> : null}
+                        {entry.resultStatus === "closed" ? <Badge tone="slate">終了</Badge> : null}
                       </div>
                       <h3 className="mt-3 font-semibold text-slate-950">{entry.title}</h3>
                       <p className="mt-2 text-sm leading-6 text-slate-600">
@@ -561,9 +660,9 @@ function TotoOfficialRoundImportPageContent() {
 
                   <div className="mt-4 grid gap-2 text-sm text-slate-600 sm:grid-cols-2">
                     <div>開始目安: {kickoff ? formatDateTime(kickoff) : "未設定"}</div>
+                    <div>販売終了: {entry.salesEndAt ? formatDateTime(entry.salesEndAt) : "未設定"}</div>
                     <div>売上想定: {formatCurrency(entry.totalSalesYen)}</div>
-                    <div>キャリー: {formatCurrency(entry.carryoverYen)}</div>
-                    <div>払戻率: {formatPercent(entry.returnRate, 0)}</div>
+                    <div>ソース: {hostLabel(entry.sourceUrl)}</div>
                   </div>
 
                   <div className="mt-4 flex flex-wrap gap-2">
@@ -601,6 +700,8 @@ function TotoOfficialRoundImportPageContent() {
 
                   <div className="mt-4 flex flex-wrap gap-2 text-xs text-slate-500">
                     <span>回名 {entry.officialRoundName ?? "未設定"}</span>
+                    <span>払戻率 {formatPercent(entry.returnRate, 0)}</span>
+                    <span>キャリー {formatCurrency(entry.carryoverYen)}</span>
                     <span>更新 {formatDateTime(entry.updatedAt)}</span>
                   </div>
                 </div>

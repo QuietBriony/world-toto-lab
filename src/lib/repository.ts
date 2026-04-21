@@ -3257,11 +3257,13 @@ type SyncedRoundIdentityInput = {
 };
 
 function libraryIdentityMatchKey(input: SyncedRoundIdentityInput) {
+  const nameKey = normalizeSyncRoundValue(input.officialRoundName) || normalizeSyncRoundValue(input.title) || "no-round-name";
+
   if (input.officialRoundNumber !== null) {
-    return `n:${input.productType}:${input.officialRoundNumber}`;
+    return `n:${input.productType}:${input.officialRoundNumber}:${nameKey}`;
   }
 
-  return `t:${input.productType}:${normalizeSyncRoundValue(input.officialRoundName) || "no-round-name"}:${normalizeSyncRoundValue(input.title) || "no-title"}`;
+  return `t:${input.productType}:${nameKey}:${normalizeSyncRoundValue(input.title) || "no-title"}`;
 }
 
 function hasSyncEntryCoreChange(
@@ -3358,9 +3360,7 @@ export async function upsertTotoOfficialRoundLibraryFromSync(input: {
     .select(
       "id, title, notes, product_type, required_match_count, outcome_set_json, source_note, void_handling, official_round_name, official_round_number, sales_start_at, sales_end_at, result_status, stake_yen, total_sales_yen, return_rate, first_prize_share, carryover_yen, payout_cap_yen, source_url, source_text, matches_json",
     );
-  const existingResult = sourceUrl === null
-    ? await existingQuery.is("source_url", null)
-    : await existingQuery.eq("source_url", sourceUrl);
+  const existingResult = await existingQuery;
 
   throwIfError("Failed to load existing official round library for sync", existingResult);
   const existingRows = (existingResult.data ?? []) as TotoOfficialRoundLibraryRow[];
@@ -3368,34 +3368,21 @@ export async function upsertTotoOfficialRoundLibraryFromSync(input: {
   const byNumber = new Map<string, TotoOfficialRoundLibraryRow>();
   const byTitle = new Map<string, TotoOfficialRoundLibraryRow>();
   existingRows.forEach((existing) => {
+    const identityKey = libraryIdentityMatchKey(existing as unknown as SyncedTotoOfficialRoundEntry);
     if (existing.official_round_number !== null) {
-      byNumber.set(
-        `n:${existing.product_type}:${existing.official_round_number}`,
-        existing,
-      );
+      byNumber.set(identityKey, existing);
     }
 
-    byTitle.set(libraryIdentityMatchKey(existing as unknown as SyncedTotoOfficialRoundEntry), existing);
+    byTitle.set(identityKey, existing);
   });
 
   const seenKeys = new Set<string>();
-  const seenNumberKeys = new Set<string>();
   let insertedCount = 0;
   let updatedCount = 0;
   let skippedCount = 0;
 
   for (const entry of rows) {
     const identityKey = libraryIdentityMatchKey(entry);
-    if (entry.officialRoundNumber !== null) {
-      const numberKey = `n:${entry.productType}:${entry.officialRoundNumber}`;
-      if (seenNumberKeys.has(numberKey)) {
-        warnings.push(`${entry.title} は同一回Noの重複としてスキップしました。`);
-        skippedCount += 1;
-        continue;
-      }
-      seenNumberKeys.add(numberKey);
-    }
-
     if (seenKeys.has(identityKey)) {
       warnings.push(`${entry.title} は入力内で重複があったため先頭を採用します。`);
       skippedCount += 1;
@@ -3422,14 +3409,14 @@ export async function upsertTotoOfficialRoundLibraryFromSync(input: {
       firstPrizeShare: entry.firstPrizeShare,
       carryoverYen: entry.carryoverYen,
       payoutCapYen: entry.payoutCapYen,
-      sourceUrl,
+      sourceUrl: normalizeSyncRoundValue(entry.sourceUrl) || sourceUrl,
       sourceText: entry.sourceText,
       rows: entry.matches,
     });
 
     const nextMatchJson = normalizeLibraryRoundMatchJson(payload.matches_json);
     const target = entry.officialRoundNumber !== null
-      ? byNumber.get(`n:${entry.productType}:${entry.officialRoundNumber}`) ?? byTitle.get(identityKey)
+      ? byNumber.get(identityKey) ?? byTitle.get(identityKey)
       : byTitle.get(identityKey);
 
     if (!target) {

@@ -26,7 +26,7 @@
 
 - `公式日程を取り込む` -> `/official-schedule-import?round=<roundId>`
 - `Fixture Selector` -> `/fixture-selector?round=<roundId>`
-- `公式対象回ライブラリ / CSV` -> `/toto-official-round-import?round=<roundId>`
+- `公式対象回を同期して選ぶ` -> `/toto-official-round-import?round=<roundId>&autoSync=1&sourcePreset=yahoo_toto_schedule`
 - `Simple View` -> `/simple-view?round=<roundId>&user=<userId>`
 - `Friend Pick Room` -> `/pick-room?round=<roundId>&user=<userId>`
 

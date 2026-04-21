@@ -274,7 +274,10 @@ function WorkspacePageContent() {
           label: "fixture-selector",
         },
         {
-          href: buildRoundHref(appRoute.totoOfficialRoundImport, data.round.id),
+          href: buildRoundHref(appRoute.totoOfficialRoundImport, data.round.id, {
+            autoSync: 1,
+            sourcePreset: "yahoo_toto_schedule",
+          }),
           label: "toto-official-round-import",
         },
         {
@@ -467,7 +470,7 @@ function WorkspacePageContent() {
 
           <CollapsibleSectionCard
             title="Round Builder"
-            description="公式日程取り込み、Fixture 選択、公式対象回ライブラリ / CSV、Friend Pick Room への導線です。"
+            description="公式日程取り込み、Fixture 選択、公式対象回の同期と選択、Friend Pick Room への導線です。"
             defaultOpen={data.round.matches.length === 0}
             badge={<Badge tone="sky">導線</Badge>}
           >
@@ -485,10 +488,13 @@ function WorkspacePageContent() {
                 Fixture Selector
               </Link>
               <Link
-                href={buildRoundHref(appRoute.totoOfficialRoundImport, data.round.id)}
+                href={buildRoundHref(appRoute.totoOfficialRoundImport, data.round.id, {
+                  autoSync: 1,
+                  sourcePreset: "yahoo_toto_schedule",
+                })}
                 className={secondaryButtonClassName}
               >
-                公式対象回ライブラリ / CSV
+                公式対象回を同期して選ぶ
               </Link>
               <Link
                 href={buildRoundHref(appRoute.simpleView, data.round.id, {

@@ -1402,7 +1402,7 @@ export default function DashboardPage() {
                   Fixture Selector
                 </Link>
                 <Link href={appRoute.totoOfficialRoundImport} className={secondaryButtonClassName}>
-                  公式対象回ライブラリ / CSV
+                  公式対象回を同期して選ぶ
                 </Link>
               </div>
             }

@@ -35,7 +35,7 @@ npm run check:pages
 - `/world-toto-lab/` を開く
 - `公式日程を取り込む`
 - `Fixture Selector`
-- `公式対象回ライブラリ / CSV`
+- `公式対象回を同期して選ぶ`
 - 3 ボタンがそれぞれ画面遷移する
 
 ### 2. Round Detail
@@ -44,7 +44,7 @@ npm run check:pages
 - `Round Builder` が見える
 - `公式日程を取り込む`
 - `Fixture Selector`
-- `公式対象回ライブラリ / CSV`
+- `公式対象回を同期して選ぶ`
 - `Simple View`
 - `Friend Pick Room`
 - 5 ボタンすべてが反応し、URL に `round=<roundId>` が残る
