@@ -289,6 +289,7 @@ function WorkspacePageContent() {
         },
         {
           href: buildOfficialRoundImportHref(data.round.id, {
+            autoApply: true,
             autoSync: true,
             productType: "toto13",
             sourcePreset: "yahoo_toto_schedule",
@@ -297,6 +298,7 @@ function WorkspacePageContent() {
         },
         {
           href: buildOfficialRoundImportHref(data.round.id, {
+            autoApply: true,
             autoSync: true,
             productType: "mini_toto",
             sourcePreset: "yahoo_toto_schedule",
@@ -307,6 +309,8 @@ function WorkspacePageContent() {
           ? [
               {
                 href: buildOfficialRoundImportHref(data.round.id, {
+                  autoApply: true,
+                  autoSync: true,
                   productType: "winner",
                   sourcePreset: "toto_official_detail",
                 }),
@@ -344,6 +348,7 @@ function WorkspacePageContent() {
           badgeTone: "teal" as const,
           body: "13試合の本命導線です。公式回を同期して、この Round に反映してから Friend Pick Room まで進みます。",
           href: buildOfficialRoundImportHref(data.round.id, {
+            autoApply: true,
             autoSync: true,
             productType: "toto13",
             sourcePreset: "yahoo_toto_schedule",
@@ -355,6 +360,7 @@ function WorkspacePageContent() {
           badgeTone: "sky" as const,
           body: "5試合で軽く回したいときの導線です。mini toto を一覧から選んで、そのまま投票会を始められます。",
           href: buildOfficialRoundImportHref(data.round.id, {
+            autoApply: true,
             autoSync: true,
             productType: "mini_toto",
             sourcePreset: "yahoo_toto_schedule",
@@ -368,6 +374,8 @@ function WorkspacePageContent() {
                 badgeTone: "amber" as const,
                 body: "1試合の WINNER を回すときは、公式くじ情報URLを直接読む導線が安定です。取り込み後は WINNER Value Board へ進めます。",
                 href: buildOfficialRoundImportHref(data.round.id, {
+                  autoApply: true,
+                  autoSync: true,
                   productType: "winner",
                   sourcePreset: "toto_official_detail",
                 }),
@@ -596,7 +604,10 @@ function WorkspacePageContent() {
                 href={buildOfficialRoundImportHref(data.round.id, {
                   autoSync: true,
                   productType: data.round.productType,
-                  sourcePreset: "yahoo_toto_schedule",
+                  sourcePreset:
+                    data.round.productType === "winner"
+                      ? "toto_official_detail"
+                      : "yahoo_toto_schedule",
                 })}
                 className={secondaryButtonClassName}
               >

@@ -88,21 +88,21 @@ npm run check:pages
 - 画面が真っ白にならない
 - `Friend Pick Room` に行ける
 - `Advanced View` に戻れる
-- `winner` / 1試合回なら `WINNER Value` が見える
+- `WINNER` / 1試合回なら `WINNER Value` が見える
 - 1 / 0 / 2 ボタンが押せる
 
 ### 7. Friend Pick Room
 
 - 候補カードが 0 件でも説明文が出る
 - `Simple View` に戻れる
-- `winner` / 1試合回なら `WINNER Value` に行ける
+- `WINNER` / 1試合回なら `WINNER Value` に行ける
 - メンバー切り替えボタンが押せる
 - `Data Quality Card` が見える
 
 ### 8. WINNER Value Board
 
 - `/winner-value?round=<roundId>` を開く
-- `winner` / 1試合回なら outcome 比較表が出る
+- `WINNER` / 1試合回なら outcome 比較表が出る
 - 複数試合回なら `優位ボードへ` の補助導線が見える
 
 ### 9. 詳細候補配分

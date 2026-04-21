@@ -54,6 +54,13 @@ async function main() {
     buildUrl(baseUrl, "/official-schedule-import/", { round: roundId }),
     buildUrl(baseUrl, "/fixture-selector/", { round: roundId }),
     buildUrl(baseUrl, "/toto-official-round-import/", { round: roundId }),
+    buildUrl(baseUrl, "/toto-official-round-import/", {
+      round: roundId,
+      autoApply: "1",
+      autoSync: "1",
+      productType: "winner",
+      sourcePreset: "toto_official_detail",
+    }),
     buildUrl(baseUrl, "/simple-view/", { round: roundId, user: userId || undefined }),
     buildUrl(baseUrl, "/pick-room/", { round: roundId, user: userId || undefined }),
     buildUrl(baseUrl, "/winner-value/", { round: roundId, user: userId || undefined }),

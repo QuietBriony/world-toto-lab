@@ -38,12 +38,14 @@ export function getSingleSearchParam(value: string | null) {
 export function buildOfficialRoundImportHref(
   roundId?: string | null,
   options: {
+    autoApply?: boolean;
     autoSync?: boolean;
     productType?: ProductType;
     sourcePreset?: string;
   } = {},
 ) {
   return buildRoundHref(appRoute.totoOfficialRoundImport, roundId, {
+    autoApply: options.autoApply ? 1 : undefined,
     autoSync: options.autoSync ? 1 : undefined,
     productType: options.productType,
     sourcePreset: options.sourcePreset,

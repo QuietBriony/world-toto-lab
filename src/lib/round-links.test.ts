@@ -14,12 +14,13 @@ describe("round links", () => {
   it("builds an official import href with product and auto-sync options", () => {
     expect(
       buildOfficialRoundImportHref("round-123", {
+        autoApply: true,
         autoSync: true,
         productType: "mini_toto",
         sourcePreset: "yahoo_toto_schedule",
       }),
     ).toBe(
-      "/toto-official-round-import?round=round-123&autoSync=1&productType=mini_toto&sourcePreset=yahoo_toto_schedule",
+      "/toto-official-round-import?round=round-123&autoApply=1&autoSync=1&productType=mini_toto&sourcePreset=yahoo_toto_schedule",
     );
   });
 

@@ -21,6 +21,7 @@
 追加確認:
 
 - `/winner-value?round=<id>` が live GitHub Pages で `200` 応答
+- `/toto-official-round-import?round=<id>&productType=winner&sourcePreset=toto_official_detail` が live GitHub Pages で `200` 応答
 
 ## Playwright 実クリック確認
 

@@ -160,6 +160,7 @@ function TotoOfficialRoundImportPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const roundId = getSingleSearchParam(searchParams.get("round"));
+  const autoApplyRequested = getSingleSearchParam(searchParams.get("autoApply")) === "1";
   const sourcePresetId = getSingleSearchParam(searchParams.get("sourcePreset"));
   const autoSyncRequested = getSingleSearchParam(searchParams.get("autoSync")) === "1";
   const requestedProductType = (() => {
@@ -182,7 +183,7 @@ function TotoOfficialRoundImportPageContent() {
     initialSourcePreset?.sourceUrl ?? "https://toto.yahoo.co.jp/schedule/toto",
   );
   const [includeMatchesInSync, setIncludeMatchesInSync] = useState(true);
-  const [autoApplyAfterSync, setAutoApplyAfterSync] = useState(false);
+  const [autoApplyAfterSync, setAutoApplyAfterSync] = useState(autoApplyRequested);
   const [syncing, setSyncing] = useState(false);
   const [syncSummary, setSyncSummary] = useState<{
     fetchedAt: string | null;
@@ -346,7 +347,9 @@ function TotoOfficialRoundImportPageContent() {
   };
 
   const runAutoSync = useEffectEvent(() => {
-    void handleSyncOfficialRounds();
+    void handleSyncOfficialRounds({
+      autoApplyToPickRoom: autoApplyRequested,
+    });
   });
 
   useEffect(() => {

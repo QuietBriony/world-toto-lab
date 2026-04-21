@@ -40,7 +40,7 @@ function FixtureSelectorPageContent() {
   const [groupName, setGroupName] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [title, setTitle] = useState("公式日程から作るRound");
-  const [productType, setProductType] = useState<ProductType>("toto13");
+  const [productTypeOverride, setProductTypeOverride] = useState<ProductType | null>(null);
   const [saving, setSaving] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [createdRoundId, setCreatedRoundId] = useState<string | null>(existingRoundId);
@@ -82,6 +82,7 @@ function FixtureSelectorPageContent() {
         : selectedIds.length === 1
           ? "winner"
           : "custom";
+  const selectedProductType = productTypeOverride ?? recommendedProductType;
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -98,9 +99,9 @@ function FixtureSelectorPageContent() {
         budgetYen: null,
         fixtureIds: selectedIds,
         notes: null,
-        productType,
+        productType: selectedProductType,
         requiredMatchCount:
-          productType === "custom" ? selectedIds.length : undefined,
+          selectedProductType === "custom" ? selectedIds.length : undefined,
         roundId: existingRoundId,
         sourceNote: "Fixture Selector から選択",
         status: "analyzing",
@@ -191,8 +192,10 @@ function FixtureSelectorPageContent() {
             <label className="space-y-2 text-sm">
               <span className="font-medium text-slate-700">productType</span>
               <select
-                value={productType}
-                onChange={(event) => setProductType(event.currentTarget.value as ProductType)}
+                value={selectedProductType}
+                onChange={(event) =>
+                  setProductTypeOverride(event.currentTarget.value as ProductType)
+                }
                 className={fieldClassName}
               >
                 {productTypeOptions.map((option) => (

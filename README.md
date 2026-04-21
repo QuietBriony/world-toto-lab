@@ -166,7 +166,7 @@ GitHub Pages は静的配信なので、build 後に増える Round を動的ル
 
 - `Official Schedule Import Wizard` で FIFA公式由来のテキストを貼り付けて preview
 - `Fixture Master` に保存
-- `Fixture Selector` で試合を選び、`toto13 / mini_toto / winner / custom` の Round を作成
+- `Fixture Selector` で試合を選び、`toto / mini toto / WINNER / custom` の Round を作成
 - MVP は貼り付け / CSV 優先で、外部サイト自動取得は前提にしていません
 
 ### 11. Toto Official Round Import
@@ -271,7 +271,7 @@ sum(log(modelProb_selected))
 
 1. `Fixture Selector` を開く
 2. 試合をチェックする
-3. 13試合なら `toto13`、5試合なら `mini_toto`、1試合なら `winner`、それ以外は `custom` を選ぶ
+3. 13試合なら `toto`、5試合なら `mini toto`、1試合なら `WINNER`、それ以外は `custom` を選ぶ
 4. Round を作成する
 
 ### 4. toto公式対象試合を取り込む方法
@@ -428,7 +428,7 @@ WORLD_TOTO_LAB_ROUND_ID=47f5d6b8-5120-46a3-b434-7312b11cb98a
 WORLD_TOTO_LAB_USER_ID=<optional-user-id>
 ```
 
-チェック対象は `/workspace`, `/big-carryover`, `/big-carryover` の共有URL復元, `/official-schedule-import`, `/fixture-selector`, `/toto-official-round-import`, `/simple-view`, `/pick-room`, `/winner-value`, `/consensus`, `/edge-board`, `/review`, `/ticket-generator` です。
+チェック対象は `/workspace`, `/big-carryover`, `/big-carryover` の共有URL復元, `/official-schedule-import`, `/fixture-selector`, `/toto-official-round-import`, `/toto-official-round-import` の WINNER 導線, `/simple-view`, `/pick-room`, `/winner-value`, `/consensus`, `/edge-board`, `/review`, `/ticket-generator` です。
 
 ### 3.4 まだ候補系テーブルがない場合（`candidate_tickets` / `candidate_votes`）
 
