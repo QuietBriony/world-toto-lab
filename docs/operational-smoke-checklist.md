@@ -63,6 +63,7 @@ npm run check:pages
 ### 3. Official Schedule Import
 
 - `Round Context` が出る
+- 新規導線なら `新規Round向け` と出れば正常
 - `Round Detailへ戻る` が押せる
 - `Fixture Selector` が押せる
 - `Parse Preview` が押せる
@@ -120,7 +121,8 @@ npm run check:pages
 - `読み込みに失敗しました`
   - まず `npm run check:supabase`
 - `Round ID が見つかりません`
-  - URL の `round` query を確認
+  - 既存 Round を開く導線なら URL の `round` query を確認
+  - 新規作成導線なら `新規Round向け` が出るのが正常
 - `candidate_tickets` 系の schema cache
   - `supabase/schema.sql` を再適用
 - route は 200 だが中身が変

@@ -185,7 +185,7 @@ function BigCarryoverPageContent() {
           ) : null}
         </div>
         <p className="mt-4 text-sm leading-6 text-slate-600">
-          現在は固定テンプレでも見られますが、公式同期が通ると売上とキャリーをそのまま monitor に流し込めます。
+          公式同期 snapshot を優先表示しつつ、必要なときだけ下の固定テンプレへ切り替えて比較できます。
         </p>
         {officialWatch.error ? (
           <p className="mt-3 text-sm text-rose-700">BIG公式同期: {officialWatch.error}</p>

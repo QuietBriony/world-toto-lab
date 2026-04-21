@@ -49,7 +49,7 @@ GitHub Pages 配信時は Next.js の `basePath` により、実 URL は `/world
 ## Supabase 取得失敗時の挙動
 
 - 既存の `ErrorNotice` はそのまま活かしつつ、import 系 3 画面の上部に `Round Context` カードを追加しました。
-- `round` が無いときは「Round ID が見つかりません。Round詳細から開き直してください。」
+- `round` が無い新規導線では「新規Round向け」と表示し、そのまま作業を進められます。
 - `round` はあるが取得失敗したときは「Roundデータを取得できませんでした。round idまたはSupabase接続を確認してください。」
 
 ## iPhone 幅での確認結果
