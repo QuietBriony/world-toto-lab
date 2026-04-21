@@ -23,6 +23,8 @@ import {
 } from "@/components/ui";
 import {
   officialScheduleImportSample,
+  officialScheduleImportSourceLabel,
+  officialScheduleImportSourceUrl,
   parseOfficialScheduleText,
   type OfficialScheduleDraft,
 } from "@/lib/official-schedule";
@@ -66,7 +68,7 @@ function OfficialScheduleImportPageContent() {
   const roundId = getSingleSearchParam(searchParams.get("round"));
   const [sourceText, setSourceText] = useState("");
   const [competition, setCompetition] = useState("fifa_world_cup_2026");
-  const [sourceUrl, setSourceUrl] = useState("");
+  const [sourceUrl, setSourceUrl] = useState(officialScheduleImportSourceUrl);
   const [draftRows, setDraftRows] = useState<OfficialScheduleDraft[]>([]);
   const [parseWarnings, setParseWarnings] = useState<string[]>([]);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
@@ -164,11 +166,22 @@ function OfficialScheduleImportPageContent() {
             ) : null}
             <button
               type="button"
-              onClick={() => setSourceText(officialScheduleImportSample)}
+              onClick={() => {
+                setSourceUrl(officialScheduleImportSourceUrl);
+                setSourceText(officialScheduleImportSample);
+              }}
               className={buttonClassName}
             >
               サンプル貼り付け
             </button>
+            <a
+              href={officialScheduleImportSourceUrl}
+              target="_blank"
+              rel="noreferrer"
+              className={secondaryButtonClassName}
+            >
+              FIFA公式日程を開く
+            </a>
           </div>
         }
       />
@@ -216,7 +229,30 @@ function OfficialScheduleImportPageContent() {
           <Badge tone="teal">{fixtureSourceLabel.fifa_official_manual}</Badge>
           <Badge tone="teal">{fixtureConfidenceLabel.manual_official_source}</Badge>
           <Badge tone="slate">{competition}</Badge>
+          <Badge tone="info">{officialScheduleImportSourceLabel}</Badge>
           {!sourceUrl.trim() ? <Badge tone="warning">sourceUrl 未入力</Badge> : null}
+        </div>
+
+        <div className="rounded-[22px] border border-teal-200 bg-teal-50 px-4 py-4 text-sm leading-6 text-teal-950">
+          <p className="font-medium">FIFA公式 手貼りの既定URL</p>
+          <p className="mt-2 break-all">{officialScheduleImportSourceUrl}</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setSourceUrl(officialScheduleImportSourceUrl)}
+              className={buttonClassName}
+            >
+              このURLをセット
+            </button>
+            <a
+              href={officialScheduleImportSourceUrl}
+              target="_blank"
+              rel="noreferrer"
+              className={secondaryButtonClassName}
+            >
+              開いて本文を貼る
+            </a>
+          </div>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">

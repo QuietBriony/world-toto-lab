@@ -272,7 +272,7 @@ sum(log(modelProb_selected))
 ### 1. FIFA公式日程の取り込み方法
 
 1. `Official Schedule Import Wizard` を開く
-2. FIFA公式由来のテキストを貼る
+2. 既定で入っている FIFA公式日程 URL を開き、本文の試合行を貼る
 3. Parse Preview で home / away / date / group / venue を確認する
 4. `Fixture Master` に保存する
 

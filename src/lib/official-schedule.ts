@@ -22,6 +22,11 @@ export type OfficialScheduleParseResult = {
   warnings: string[];
 };
 
+export const officialScheduleImportSourceUrl =
+  "https://www.fifa.com/en/tournaments/mens/worldcup/canadamexicousa2026/articles/match-schedule-fixtures-results-teams-stadiums";
+
+export const officialScheduleImportSourceLabel = "FIFA World Cup 2026 match schedule";
+
 const dashPattern = /\s*[‐‑‒–—―-]\s*/;
 const teamSeparatorPattern = /\s+(?:v|vs|対)\s+/i;
 
