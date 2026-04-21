@@ -786,7 +786,11 @@ function normalizeRelationMessage(error: RelationMissingResult["error"]) {
     return "";
   }
 
-  return (error.message ?? "").toLowerCase();
+  const message = error.message ?? "";
+  const details = (error as { details?: string | null }).details ?? "";
+  const hint = (error as { hint?: string | null }).hint ?? "";
+
+  return `${message} ${details} ${hint}`.toLowerCase();
 }
 
 function isMissingRelationError(error: RelationMissingResult["error"], table: string) {
@@ -794,13 +798,14 @@ function isMissingRelationError(error: RelationMissingResult["error"], table: st
     return false;
   }
 
-  if (error.code && error.code === "42P01") {
+  const missingCodes = new Set(["42P01", "PGRST204", "PGRST205", "PGRST116", "PGRST201"]);
+
+  if (error.code && missingCodes.has(error.code)) {
     return true;
   }
 
   const normalizedMessage = normalizeRelationMessage(error);
   const publicTablePattern = `public.${table}`;
-  const publicTableQuoted = `"${publicTablePattern}"`;
   const quotedPattern = `"${publicTablePattern}"`;
   const candidatePattern = table;
 
@@ -809,13 +814,13 @@ function isMissingRelationError(error: RelationMissingResult["error"], table: st
     normalizedMessage.includes(`could not find the table '${publicTablePattern}' in the schema cache`) ||
     normalizedMessage.includes(`could not find table \"${publicTablePattern}\" in the schema cache`) ||
     normalizedMessage.includes(`could not find the table \"${publicTablePattern}\" in the schema cache`) ||
-    normalizedMessage.includes(`relation ${candidatePattern} does not exist`) ||
     normalizedMessage.includes(`relation ${publicTablePattern} does not exist`) ||
-    normalizedMessage.includes(`relation ${quotedPattern} does not exist`) ||
-    normalizedMessage.includes(`relation ${publicTableQuoted} does not exist`) ||
-    normalizedMessage.includes(`relation ${quotedPattern} does not exist`) ||
     normalizedMessage.includes(`relation \"${candidatePattern}\" does not exist`) ||
-    normalizedMessage.includes(`relation "${publicTablePattern}" does not exist`) ||
+    normalizedMessage.includes(`relation \"${publicTablePattern}\" does not exist`) ||
+    normalizedMessage.includes(`relation ${quotedPattern} does not exist`) ||
+    normalizedMessage.includes(`relation ${candidatePattern} does not exist`) ||
+    normalizedMessage.includes(`${publicTablePattern} does not exist`) ||
+    normalizedMessage.includes(`${candidatePattern} does not exist`) ||
     normalizedMessage.includes(`${publicTablePattern} is not in the schema cache`)
   );
 }
@@ -1749,12 +1754,12 @@ export async function getRoundWorkspace(roundId: string): Promise<RoundWorkspace
     "candidate_tickets",
     [],
   );
-  const safeCandidateVotesResult = isMissingRelationError(candidateVotesResult.error, "candidate_votes")
-    ? { data: [], error: null }
-    : (candidateVotesResult as { data: CandidateVoteRow[]; error: { message: string } | null });
-  if (safeCandidateVotesResult.error) {
-    throwIfError("Failed to load candidate votes", safeCandidateVotesResult);
-  }
+  const safeCandidateVotesResult = ignoreMissingRelation(
+    candidateVotesResult,
+    "candidate_votes",
+    [],
+  );
+  throwIfError("Failed to load candidate votes", safeCandidateVotesResult);
   throwIfError("Failed to load candidate tickets", safeCandidateTicketsResult);
   throwIfError("Failed to load toto official round", totoOfficialRoundResult);
   throwIfError("Failed to load toto official matches", totoOfficialMatchesResult);
@@ -3792,9 +3797,11 @@ export async function replaceCandidateTickets(input: {
     .from("candidate_tickets")
     .select("id, label")
     .eq("round_id", input.roundId);
-  const safeExistingResult = isMissingRelationError(existingResult.error, "candidate_tickets")
-    ? { data: [], error: null }
-    : (existingResult as { data: Array<{ id: string; label: string }>; error: { message: string } | null });
+  const safeExistingResult = ignoreMissingRelation<Array<{ id: string; label: string }>>(
+    existingResult,
+    "candidate_tickets",
+    [],
+  );
 
   if (safeExistingResult.error) {
     throwIfError("Failed to load existing candidate tickets", safeExistingResult);
