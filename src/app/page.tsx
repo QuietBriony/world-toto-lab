@@ -440,9 +440,6 @@ export default function DashboardPage() {
                 ラウンドを作成
               </a>
             )}
-            <a href="#demo-lab" className={secondaryButtonClassName}>
-              デモを見る
-            </a>
           </div>
         }
       />
@@ -1470,29 +1467,10 @@ export default function DashboardPage() {
                 ))}
               </div>
 
-              <details className="rounded-[24px] border border-slate-200 bg-slate-50/90 px-4 py-4">
-                <summary className="cursor-pointer list-none font-semibold text-slate-900">
-                  補助リンク
-                </summary>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <Link href={appRoute.fixtureSelector} className={secondaryButtonClassName}>
-                    Fixture Selector
-                  </Link>
-                  <Link href={appRoute.officialScheduleImport} className={secondaryButtonClassName}>
-                    公式日程を取り込む
-                  </Link>
-                  <Link
-                    href={buildOfficialRoundImportHref(undefined, {
-                      autoSync: true,
-                      productType: "mini_toto",
-                      sourcePreset: "yahoo_toto_schedule",
-                    })}
-                    className={secondaryButtonClassName}
-                  >
-                    mini toto を同期して選ぶ
-                  </Link>
-                </div>
-              </details>
+              <div className="rounded-[24px] border border-slate-200 bg-slate-50/90 px-4 py-4 text-sm leading-6 text-slate-600">
+                上の 3 枚で入口は足ります。販売前は `公式日程を取り込む → Fixture Selector`、
+                販売後は `toto / mini toto を選ぶ`、1試合商品は `WINNER` を選ぶ、だけ覚えておけば十分です。
+              </div>
             </div>
 
             <CollapsibleSectionCard
@@ -1711,14 +1689,6 @@ export default function DashboardPage() {
                         </Badge>
                         <Badge tone="sky">{roundStatusLabel[round.status]}</Badge>
                         <Link
-                          href={buildRoundHref(appRoute.simpleView, round.id, {
-                            user: roundUsers[0]?.id,
-                          })}
-                          className={secondaryButtonClassName}
-                        >
-                          Simple View
-                        </Link>
-                        <Link
                           href={buildRoundHref(appRoute.pickRoom, round.id, {
                             user: roundUsers[0]?.id,
                           })}
@@ -1726,16 +1696,6 @@ export default function DashboardPage() {
                         >
                           Pick Room
                         </Link>
-                        {winnerLike ? (
-                          <Link
-                            href={buildRoundHref(appRoute.winnerValue, round.id, {
-                              user: roundUsers[0]?.id,
-                            })}
-                            className={secondaryButtonClassName}
-                          >
-                            WINNER Value
-                          </Link>
-                        ) : null}
                         <Link
                           href={buildRoundHref(appRoute.workspace, round.id)}
                           className={secondaryButtonClassName}
@@ -1836,6 +1796,27 @@ export default function DashboardPage() {
                           >
                             ラウンドを開く
                           </Link>
+                        </div>
+                        <div className="mt-3 flex flex-wrap gap-x-3 gap-y-2 text-xs text-slate-500">
+                          <span>補助導線:</span>
+                          <Link
+                            href={buildRoundHref(appRoute.simpleView, round.id, {
+                              user: roundUsers[0]?.id,
+                            })}
+                            className="font-medium text-slate-700 underline underline-offset-2"
+                          >
+                            Simple View
+                          </Link>
+                          {winnerLike ? (
+                            <Link
+                              href={buildRoundHref(appRoute.winnerValue, round.id, {
+                                user: roundUsers[0]?.id,
+                              })}
+                              className="font-medium text-slate-700 underline underline-offset-2"
+                            >
+                              WINNER Value
+                            </Link>
+                          ) : null}
                         </div>
                         <div className="mt-4 flex flex-wrap gap-2 text-xs text-slate-500">
                           <span>設定 {formatPercent(progress.setupCompletion)}</span>

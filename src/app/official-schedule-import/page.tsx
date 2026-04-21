@@ -398,8 +398,8 @@ function OfficialScheduleImportPageContent() {
       </CollapsibleSectionCard>
 
       <CollapsibleSectionCard
-        title="Fallback: FIFA URL から抜き出す"
-        description="もしブラウザからの直接取得が通らないときは、FIFAページ上で本文を抜き出してこの画面へ戻す fallback も残しています。"
+        title="困ったときだけ: FIFA URL から抜き出す"
+        description="もしブラウザからの直接取得が通らないときだけ、FIFAページ上で本文を抜き出してこの画面へ戻す fallback を使います。"
         defaultOpen={false}
         badge={<Badge tone="sky">fallback</Badge>}
       >
@@ -480,82 +480,6 @@ function OfficialScheduleImportPageContent() {
         </p>
       </CollapsibleSectionCard>
 
-      <CollapsibleSectionCard
-        title="手貼り・URL調整"
-        description={`既存 Fixture Master: ${fixtureMaster.data?.length ?? 0} 件。ふだんは上の 1タップ取得 だけで足ります。`}
-        defaultOpen={fixtureSource !== "fifa_official_api" || fixtureConfidence !== "official"}
-        badge={<Badge tone="slate">補助入力</Badge>}
-        actions={
-          <button type="button" onClick={handleParse} className={buttonClassName}>
-            Parse Preview
-          </button>
-        }
-      >
-        <div className="flex flex-wrap gap-2">
-          <Badge tone="teal">{fixtureSourceLabel[fixtureSource]}</Badge>
-          <Badge tone={fixtureConfidenceTone[fixtureConfidence]}>
-            {fixtureConfidenceLabel[fixtureConfidence]}
-          </Badge>
-          <Badge tone="slate">{competition}</Badge>
-          <Badge tone="info">{officialScheduleImportSourceLabel}</Badge>
-          {!sourceUrl.trim() ? <Badge tone="warning">sourceUrl 未入力</Badge> : null}
-        </div>
-
-        <div className="rounded-[22px] border border-slate-200 bg-slate-50 px-4 py-4 text-sm leading-6 text-slate-700">
-          <p className="font-medium text-slate-950">既定の FIFA公式 URL</p>
-          <p className="mt-2 break-all">{officialScheduleImportSourceUrl}</p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                setSourceUrl(officialScheduleImportSourceUrl);
-                setFixtureSource("fifa_official_manual");
-                setFixtureConfidence("manual_official_source");
-              }}
-              className={secondaryButtonClassName}
-            >
-              既定URLに戻す
-            </button>
-          </div>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2">
-          <label className="space-y-2 text-sm">
-            <span className="font-medium text-slate-700">competition</span>
-            <input
-              value={competition}
-              onChange={(event) => setCompetition(event.currentTarget.value)}
-              className={fieldClassName}
-            />
-          </label>
-          <label className="space-y-2 text-sm">
-            <span className="font-medium text-slate-700">sourceUrl</span>
-            <input
-              value={sourceUrl}
-              onChange={(event) => setSourceUrl(event.currentTarget.value)}
-              className={fieldClassName}
-              placeholder="https://..."
-            />
-          </label>
-        </div>
-
-        {!sourceUrl.trim() ? (
-          <div className="rounded-[22px] border border-amber-200 bg-amber-50 px-4 py-4 text-sm leading-6 text-amber-950">
-            貼り付け元の URL がないと、あとで「この日程はどこから持ってきたか」を追いにくくなります。公開ページやメモの URL があれば一緒に残してください。
-          </div>
-        ) : null}
-
-        <label className="block space-y-2 text-sm">
-          <span className="font-medium text-slate-700">公式日程テキスト</span>
-          <textarea
-            value={sourceText}
-            onChange={(event) => setSourceText(event.currentTarget.value)}
-            className={textAreaClassName}
-            placeholder="Thursday, 11 June 2026 ..."
-          />
-        </label>
-      </CollapsibleSectionCard>
-
       <SectionCard
         title="Parse Preview"
         description="抽出された試合を保存前に編集できます。source と confidence もここで確認できます。"
@@ -602,7 +526,8 @@ function OfficialScheduleImportPageContent() {
 
         {draftRows.length === 0 ? (
           <p className="text-sm leading-6 text-slate-600">
-            まだ保存対象の行がありません。テキストを貼って Parse Preview を押すとここに一覧が出ます。
+            まだ保存対象の行がありません。上の `この画面で取得` か、下の `手貼り・URL調整`
+            から Parse Preview を押すとここに一覧が出ます。
           </p>
         ) : (
           <>
@@ -817,6 +742,82 @@ function OfficialScheduleImportPageContent() {
           </>
         )}
       </SectionCard>
+
+      <CollapsibleSectionCard
+        title="手貼り・URL調整"
+        description={`既存 Fixture Master: ${fixtureMaster.data?.length ?? 0} 件。ふだんは上の 1タップ取得 だけで足ります。`}
+        defaultOpen={fixtureSource !== "fifa_official_api" || fixtureConfidence !== "official"}
+        badge={<Badge tone="slate">補助入力</Badge>}
+        actions={
+          <button type="button" onClick={handleParse} className={buttonClassName}>
+            Parse Preview
+          </button>
+        }
+      >
+        <div className="flex flex-wrap gap-2">
+          <Badge tone="teal">{fixtureSourceLabel[fixtureSource]}</Badge>
+          <Badge tone={fixtureConfidenceTone[fixtureConfidence]}>
+            {fixtureConfidenceLabel[fixtureConfidence]}
+          </Badge>
+          <Badge tone="slate">{competition}</Badge>
+          <Badge tone="info">{officialScheduleImportSourceLabel}</Badge>
+          {!sourceUrl.trim() ? <Badge tone="warning">sourceUrl 未入力</Badge> : null}
+        </div>
+
+        <div className="rounded-[22px] border border-slate-200 bg-slate-50 px-4 py-4 text-sm leading-6 text-slate-700">
+          <p className="font-medium text-slate-950">既定の FIFA公式 URL</p>
+          <p className="mt-2 break-all">{officialScheduleImportSourceUrl}</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setSourceUrl(officialScheduleImportSourceUrl);
+                setFixtureSource("fifa_official_manual");
+                setFixtureConfidence("manual_official_source");
+              }}
+              className={secondaryButtonClassName}
+            >
+              既定URLに戻す
+            </button>
+          </div>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <label className="space-y-2 text-sm">
+            <span className="font-medium text-slate-700">competition</span>
+            <input
+              value={competition}
+              onChange={(event) => setCompetition(event.currentTarget.value)}
+              className={fieldClassName}
+            />
+          </label>
+          <label className="space-y-2 text-sm">
+            <span className="font-medium text-slate-700">sourceUrl</span>
+            <input
+              value={sourceUrl}
+              onChange={(event) => setSourceUrl(event.currentTarget.value)}
+              className={fieldClassName}
+              placeholder="https://..."
+            />
+          </label>
+        </div>
+
+        {!sourceUrl.trim() ? (
+          <div className="rounded-[22px] border border-amber-200 bg-amber-50 px-4 py-4 text-sm leading-6 text-amber-950">
+            貼り付け元の URL がないと、あとで「この日程はどこから持ってきたか」を追いにくくなります。公開ページやメモの URL があれば一緒に残してください。
+          </div>
+        ) : null}
+
+        <label className="block space-y-2 text-sm">
+          <span className="font-medium text-slate-700">公式日程テキスト</span>
+          <textarea
+            value={sourceText}
+            onChange={(event) => setSourceText(event.currentTarget.value)}
+            className={textAreaClassName}
+            placeholder="Thursday, 11 June 2026 ..."
+          />
+        </label>
+      </CollapsibleSectionCard>
     </div>
   );
 }

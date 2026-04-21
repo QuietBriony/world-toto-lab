@@ -341,99 +341,9 @@ function WorkspacePageContent() {
           : []),
       ]
     : [];
-  const fixturePreparationLinks = data
-    ? [
-        {
-          badgeTone: "teal" as const,
-          body: "toto発売前でも、FIFA公式由来の確定日程を貼って Fixture Master を作れます。2026本番の下準備はこちらが主導線です。",
-          href: buildRoundHref(appRoute.officialScheduleImport, data.round.id),
-          label: "公式日程を取り込む",
-          productLabel: "販売前",
-        },
-        {
-          badgeTone: "sky" as const,
-          body: "取り込んだ試合から 13試合 / 5試合 / 1試合 を選んで Round を作ります。売り出し前の予想会はここから始められます。",
-          href: buildRoundHref(appRoute.fixtureSelector, data.round.id),
-          label: "Fixture Selector で Round を作る",
-          productLabel: "確定日程",
-        },
-      ]
-    : [];
-  const primaryOfficialImportLinks = data
-    ? [
-        {
-          badgeTone: "teal" as const,
-          body: "13試合の本命導線です。公式回を同期して、この Round に反映してから Friend Pick Room まで進みます。",
-          href: buildOfficialRoundImportHref(data.round.id, {
-            autoApply: true,
-            autoSync: true,
-            productType: "toto13",
-            sourcePreset: "yahoo_toto_schedule",
-          }),
-          label: "toto で作る",
-          productLabel: "toto",
-        },
-        {
-          badgeTone: "sky" as const,
-          body: "5試合で軽く回したいときの導線です。mini toto を一覧から選んで、そのまま投票会を始められます。",
-          href: buildOfficialRoundImportHref(data.round.id, {
-            autoApply: true,
-            autoSync: true,
-            productType: "mini_toto",
-            sourcePreset: "yahoo_toto_schedule",
-          }),
-          label: "mini toto で作る",
-          productLabel: "mini toto",
-        },
-        ...(winnerLike
-          ? [
-              {
-                badgeTone: "amber" as const,
-                body: "1試合の WINNER を回すときは、公式くじ情報URLを直接読む導線が安定です。取り込み後は WINNER Value Board へ進めます。",
-                href: buildOfficialRoundImportHref(data.round.id, {
-                  autoApply: true,
-                  productType: "winner",
-                  sourcePreset: "toto_official_detail",
-                }),
-                label: "WINNER で作る",
-                productLabel: "WINNER",
-              },
-            ]
-          : []),
-      ]
-    : [];
-  const roundViewerLinks = data
-    ? [
-        {
-          body: "まず並びをざっと見る入口です。友人に共有する前の確認にも向いています。",
-          href: buildRoundHref(appRoute.simpleView, data.round.id, {
-            user: data.users[0]?.id,
-          }),
-          label: "Simple View",
-        },
-        {
-          body: "友人がどれにするかをポチポチ選ぶ本番導線です。",
-          href: buildRoundHref(appRoute.pickRoom, data.round.id, {
-            user: data.users[0]?.id,
-          }),
-          label: "Friend Pick Room",
-        },
-        ...(winnerLike
-          ? [
-              {
-                body: "1試合回なら、公式人気との差分を outcome ごとに見るのが速いです。",
-                href: buildRoundHref(appRoute.winnerValue, data.round.id, {
-                  user: data.users[0]?.id,
-                }),
-                label: "WINNER Value Board",
-              },
-            ]
-          : []),
-      ]
-    : [];
   const roundBuilderSpotlightCards = data
-    ? [
-        {
+    ? (() => {
+        const materialCard = {
           badge: data.round.matches.length === 0 ? "まずここ" : "素材更新",
           body:
             data.round.matches.length === 0
@@ -466,8 +376,8 @@ function WorkspacePageContent() {
               : "確定日程ベースで見直す",
           title: data.round.matches.length === 0 ? "試合素材を入れる" : "Round の素材を整える",
           tone: "teal" as const,
-        },
-        {
+        };
+        const productCard = {
           badge: productTypeLabel[data.round.productType],
           body:
             data.round.productType === "winner"
@@ -495,8 +405,8 @@ function WorkspacePageContent() {
             data.round.productType === "winner" ? "Pick Room へ" : "Fixture Selector へ",
           title: "いまの productType で進める",
           tone: "sky" as const,
-        },
-        {
+        };
+        const sharingCard = {
           badge: data.round.matches.length > 0 ? "共有導線" : "準備後に使う",
           body:
             data.round.matches.length > 0
@@ -512,8 +422,12 @@ function WorkspacePageContent() {
           secondaryLabel: "Simple View で確認",
           title: "みんなで見る・投票する",
           tone: "amber" as const,
-        },
-      ]
+        };
+
+        return data.round.matches.length > 0
+          ? [sharingCard, productCard, materialCard]
+          : [materialCard, productCard, sharingCard];
+      })()
     : [];
 
   useEffect(() => {
@@ -662,11 +576,52 @@ function WorkspacePageContent() {
         }
         actions={
           data ? (
-            <div className="flex flex-wrap items-center gap-2">
-              {isDemoRound ? <Badge tone="amber">デモ</Badge> : null}
-              <Badge tone="teal">{productTypeLabel[data.round.productType]}</Badge>
-              <Badge tone="slate">{roundSourceLabel[data.round.roundSource]}</Badge>
-              <Badge tone="sky">{roundStatusLabel[data.round.status]}</Badge>
+            <div className="flex flex-col gap-3 sm:items-end">
+              <div className="flex flex-wrap gap-2">
+                {data.round.matches.length === 0 ? (
+                  <>
+                    <Link
+                      href={buildRoundHref(appRoute.officialScheduleImport, data.round.id)}
+                      className={buttonClassName}
+                    >
+                      試合素材を入れる
+                    </Link>
+                    <Link
+                      href={buildRoundHref(appRoute.fixtureSelector, data.round.id)}
+                      className={secondaryButtonClassName}
+                    >
+                      Fixture Selector
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <Link
+                      href={buildRoundHref(appRoute.pickRoom, data.round.id, {
+                        user: data.users[0]?.id,
+                      })}
+                      className={buttonClassName}
+                    >
+                      Friend Pick Room
+                    </Link>
+                    {winnerLike ? (
+                      <Link
+                        href={buildRoundHref(appRoute.winnerValue, data.round.id, {
+                          user: data.users[0]?.id,
+                        })}
+                        className={secondaryButtonClassName}
+                      >
+                        WINNER Value
+                      </Link>
+                    ) : null}
+                  </>
+                )}
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {isDemoRound ? <Badge tone="amber">デモ</Badge> : null}
+                <Badge tone="teal">{productTypeLabel[data.round.productType]}</Badge>
+                <Badge tone="slate">{roundSourceLabel[data.round.roundSource]}</Badge>
+                <Badge tone="sky">{roundStatusLabel[data.round.status]}</Badge>
+              </div>
             </div>
           ) : undefined
         }
@@ -735,7 +690,7 @@ function WorkspacePageContent() {
 
               <details className="rounded-[24px] border border-slate-200 bg-slate-50/90 px-4 py-4">
                 <summary className="cursor-pointer list-none font-semibold text-slate-900">
-                  補助リンクと進め方メモ
+                  進め方メモ
                 </summary>
                 <div className="mt-4 space-y-4">
                   <div className="grid gap-4 lg:grid-cols-2">
@@ -757,23 +712,10 @@ function WorkspacePageContent() {
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap gap-2">
-                    <Badge tone="slate">その他の入口</Badge>
-                    {fixturePreparationLinks.map((entry) => (
-                      <Link key={entry.label} href={entry.href} className={secondaryButtonClassName}>
-                        {entry.label}
-                      </Link>
-                    ))}
-                    {primaryOfficialImportLinks.map((entry) => (
-                      <Link key={entry.label} href={entry.href} className={secondaryButtonClassName}>
-                        {entry.label}
-                      </Link>
-                    ))}
-                    {roundViewerLinks.map((entry) => (
-                      <Link key={entry.label} href={entry.href} className={secondaryButtonClassName}>
-                        {entry.label}
-                      </Link>
-                    ))}
+                  <div className="rounded-[22px] border border-slate-200 bg-white/85 px-4 py-4 text-sm leading-6 text-slate-600">
+                    上の 3 枚から入れば十分です。販売前は `試合素材を入れる`、販売後は
+                    `いまの productType で進める`、素材がそろったら `みんなで見る・投票する`
+                    を開く、の順でほとんどの作業が済みます。
                   </div>
                 </div>
               </details>
