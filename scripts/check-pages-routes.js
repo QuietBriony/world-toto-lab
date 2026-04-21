@@ -47,6 +47,7 @@ async function main() {
     buildUrl(baseUrl, "/toto-official-round-import/", { round: roundId }),
     buildUrl(baseUrl, "/simple-view/", { round: roundId, user: userId || undefined }),
     buildUrl(baseUrl, "/pick-room/", { round: roundId, user: userId || undefined }),
+    buildUrl(baseUrl, "/winner-value/", { round: roundId, user: userId || undefined }),
     buildUrl(baseUrl, "/consensus/", { round: roundId }),
     buildUrl(baseUrl, "/edge-board/", { round: roundId }),
     buildUrl(baseUrl, "/review/", { round: roundId }),

@@ -73,6 +73,12 @@ const pageGuideMeta: Partial<
     description: "どの候補が強そうかを比べる画面です。スコア名をここで翻訳しています。",
     summary: "AI・予想者・ウォッチ支持を重ねて注目候補を絞る段階です。",
   },
+  [appRoute.winnerValue]: {
+    badge: "1試合向け",
+    title: "WINNER Value Board で見る言葉",
+    description: "1試合の 1 / 0 / 2 を、公式人気との差として読むための短い辞書です。",
+    summary: "WINNER や 1試合回で、outcome ごとの差分を比較する段階です。",
+  },
   [appRoute.ticketGenerator]: {
     badge: "初見向け",
     title: "候補配分で見る言葉",
@@ -269,6 +275,28 @@ const pageGlossaryEntries: Partial<Record<GuideRoute, GlossaryEntry[]>> = {
     {
       term: "ウォッチ支持",
       body: "ウォッチ側がどの候補に乗っているかの偏りです。",
+      tone: "lime",
+    },
+  ],
+  [appRoute.winnerValue]: [
+    {
+      term: "edge",
+      body: "AIモデル確率と公式人気の差です。プラスなら、公式人気より上に見ている意味です。",
+      tone: "teal",
+    },
+    {
+      term: "valueRatio",
+      body: "modelProb / officialVote です。1 を大きく超えるほど、人気に対してモデル側が強めに見ています。",
+      tone: "sky",
+    },
+    {
+      term: "人気過多",
+      body: "公式人気は高いのに、モデル側がそこまで強く見ていない outcome です。",
+      tone: "amber",
+    },
+    {
+      term: "引分警報",
+      body: "0 が人力やモデル上で相対的に浮いている試合です。",
       tone: "lime",
     },
   ],

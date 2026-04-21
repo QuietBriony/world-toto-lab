@@ -48,11 +48,7 @@ export function defaultRequiredMatchCount(productType: ProductType) {
   return null;
 }
 
-export function defaultOutcomeSetForProductType(productType: ProductType) {
-  if (productType === "winner") {
-    return ["home", "draw", "away"];
-  }
-
+export function defaultOutcomeSetForProductType() {
   return [...DEFAULT_OUTCOME_SET];
 }
 
@@ -73,7 +69,7 @@ export function normalizeRequiredMatchCount(
 }
 
 export function normalizeOutcomeSet(
-  productType: ProductType,
+  _productType: ProductType,
   outcomeSet?: string[] | null,
 ) {
   const base = outcomeSet?.map((value) => value.trim()).filter(Boolean) ?? [];
@@ -81,7 +77,7 @@ export function normalizeOutcomeSet(
     return Array.from(new Set(base));
   }
 
-  return defaultOutcomeSetForProductType(productType);
+  return defaultOutcomeSetForProductType();
 }
 
 export function buildProductRule(input: {

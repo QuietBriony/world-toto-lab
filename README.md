@@ -57,6 +57,7 @@ GitHub Pages は静的配信なので、build 後に増える Round を動的ル
   - `/toto-official-round-import`
   - `/simple-view`
   - `/pick-room`
+  - `/winner-value`
 - 対象 Round は `?round=<id>` で切り替え
 - 対象 User は `?user=<id>` で切り替え
 - Match Editor は `?round=<id>&match=<id>` で開く
@@ -426,7 +427,7 @@ WORLD_TOTO_LAB_ROUND_ID=47f5d6b8-5120-46a3-b434-7312b11cb98a
 WORLD_TOTO_LAB_USER_ID=<optional-user-id>
 ```
 
-チェック対象は `/workspace`, `/official-schedule-import`, `/fixture-selector`, `/toto-official-round-import`, `/simple-view`, `/pick-room`, `/consensus`, `/edge-board`, `/review`, `/ticket-generator` です。
+チェック対象は `/workspace`, `/official-schedule-import`, `/fixture-selector`, `/toto-official-round-import`, `/simple-view`, `/pick-room`, `/winner-value`, `/consensus`, `/edge-board`, `/review`, `/ticket-generator` です。
 
 ### 3.4 まだ候補系テーブルがない場合（`candidate_tickets` / `candidate_votes`）
 

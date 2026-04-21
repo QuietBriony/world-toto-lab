@@ -85,6 +85,7 @@ import { isSupabaseConfigured } from "@/lib/supabase";
 import { budgetFromCandidateLimit, candidateLimitFromBudget } from "@/lib/tickets";
 import { useRoundWorkspace } from "@/lib/use-app-data";
 import { filterPredictors } from "@/lib/users";
+import { isWinnerLikeRound } from "@/lib/winner-value";
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "不明なエラーです。";
@@ -263,6 +264,14 @@ function WorkspacePageContent() {
       : sharedMembersHref;
   const detectedBasePath = detectWorkspaceBasePath(pathname);
   const currentRoundScope = data?.round.id ?? "none";
+  const winnerLike = data
+    ? isWinnerLikeRound({
+        activeMatchCount: data.round.activeMatchCount,
+        matchCount: data.round.matches.length,
+        productType: data.round.productType,
+        requiredMatchCount: data.round.requiredMatchCount,
+      })
+    : false;
   const hasVisibleUnsavedChanges = dirtyScope === currentRoundScope;
   const visibleSubmitError =
     submitError?.scope === currentRoundScope ? submitError.message : null;
@@ -306,6 +315,16 @@ function WorkspacePageContent() {
           }),
           label: "pick-room",
         },
+        ...(winnerLike
+          ? [
+              {
+                href: buildRoundHref(appRoute.winnerValue, data.round.id, {
+                  user: data.users[0]?.id,
+                }),
+                label: "winner-value",
+              },
+            ]
+          : []),
       ]
     : [];
   const primaryOfficialImportLinks = data
@@ -574,6 +593,16 @@ function WorkspacePageContent() {
               >
                 Friend Pick Room
               </Link>
+              {winnerLike ? (
+                <Link
+                  href={buildRoundHref(appRoute.winnerValue, data.round.id, {
+                    user: data.users[0]?.id,
+                  })}
+                  className={secondaryButtonClassName}
+                >
+                  WINNER Value Board
+                </Link>
+              ) : null}
             </div>
 
             {debugMode ? (

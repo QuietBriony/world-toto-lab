@@ -55,6 +55,7 @@ export const appRoute = {
   workspace: "/workspace",
   simpleView: "/simple-view",
   pickRoom: "/pick-room",
+  winnerValue: "/winner-value",
   picks: "/picks",
   scoutCards: "/scout-cards",
   consensus: "/consensus",

@@ -36,6 +36,7 @@ import { appRoute, buildRoundHref, getSingleSearchParam } from "@/lib/round-link
 import { replacePicks } from "@/lib/repository";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { useRoundWorkspace } from "@/lib/use-app-data";
+import { isWinnerLikeRound } from "@/lib/winner-value";
 import type { OutcomeValue } from "@/lib/domain";
 import type { RoundSource } from "@/lib/types";
 
@@ -233,6 +234,12 @@ function SimpleViewPageContent() {
     return <RoundRequiredNotice />;
   }
 
+  const winnerLike = isWinnerLikeRound({
+    activeMatchCount: data.round.activeMatchCount,
+    matchCount: data.round.matches.length,
+    productType: data.round.productType,
+    requiredMatchCount: data.round.requiredMatchCount,
+  });
   const remainingCount = Math.max(data.round.matches.length - summary.filledCount, 0);
 
   const handleSave = async (event: FormEvent<HTMLFormElement>) => {
@@ -273,6 +280,14 @@ function SimpleViewPageContent() {
         description="試合一覧を軽く追いながら、そのまま 1 / 0 / 2 を入れて保存できるシンプル入力画面です。"
         actions={
           <div className="flex flex-wrap gap-3">
+            {winnerLike ? (
+              <Link
+                href={buildRoundHref(appRoute.winnerValue, data.round.id, { user: activeUser.id })}
+                className={secondaryButtonClassName}
+              >
+                WINNER Value
+              </Link>
+            ) : null}
             <Link
               href={buildRoundHref(appRoute.pickRoom, data.round.id, { user: activeUser.id })}
               className={buttonClassName}
@@ -296,6 +311,14 @@ function SimpleViewPageContent() {
         userId={activeUser.id}
         items={[
           { href: buildRoundHref(appRoute.simpleView, data.round.id, { user: activeUser.id }), label: "Simple View" },
+          ...(winnerLike
+            ? [
+                {
+                  href: buildRoundHref(appRoute.winnerValue, data.round.id, { user: activeUser.id }),
+                  label: "WINNER Value",
+                },
+              ]
+            : []),
           { href: buildRoundHref(appRoute.pickRoom, data.round.id, { user: activeUser.id }), label: "Friend Pick Room" },
           { href: buildRoundHref(appRoute.picks, data.round.id, { user: activeUser.id }), label: "詳細入力" },
           { href: buildRoundHref(appRoute.workspace, data.round.id), label: "Advanced View" },

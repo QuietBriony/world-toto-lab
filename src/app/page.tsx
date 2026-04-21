@@ -74,6 +74,7 @@ import {
   describeMemberInventoryStatus,
 } from "@/lib/member-usage";
 import { useDashboardData } from "@/lib/use-app-data";
+import { isWinnerLikeRound } from "@/lib/winner-value";
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "不明なエラーです。";
@@ -1612,6 +1613,11 @@ export default function DashboardPage() {
                   scoutReports: round.scoutReports,
                   users: roundUsers,
                 });
+                const winnerLike = isWinnerLikeRound({
+                  matchCount: round.matchCount,
+                  productType: round.productType,
+                  requiredMatchCount: round.requiredMatchCount,
+                });
 
                 return (
                   <SectionCard
@@ -1643,6 +1649,16 @@ export default function DashboardPage() {
                         >
                           Pick Room
                         </Link>
+                        {winnerLike ? (
+                          <Link
+                            href={buildRoundHref(appRoute.winnerValue, round.id, {
+                              user: roundUsers[0]?.id,
+                            })}
+                            className={secondaryButtonClassName}
+                          >
+                            WINNER Value
+                          </Link>
+                        ) : null}
                         <Link
                           href={buildRoundHref(appRoute.workspace, round.id)}
                           className={secondaryButtonClassName}
