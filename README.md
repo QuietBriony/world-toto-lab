@@ -338,7 +338,22 @@ npm install
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-public-anon-key
+NEXT_PUBLIC_TOTO_OFFICIAL_ROUND_SYNC_FUNCTION_NAME=sync-toto-official-round-list
 ```
+
+### 公式一覧の一発同期（推奨導線）
+
+`Toto Official Round Import` では、公式の一覧URLを入れて `公式一覧を同期` すると  
+`Supabase Edge Function` (`sync-toto-official-round-list`) を経由して取り込みます。
+
+Edge Function は次を行います。
+
+- 公開URLからHTML/JSON/CSVを取得
+- 取り得る形式を順に試行して回情報を正規化
+- 取り込めない場合は警告を返して、手入力フローへフォールバック
+
+GitHub Pages 側はこのFunction名を `NEXT_PUBLIC_TOTO_OFFICIAL_ROUND_SYNC_FUNCTION_NAME` から参照します。  
+未設定でも既定名 `sync-toto-official-round-list` を使います。
 
 ### 3. Supabase にテーブルを作る
 

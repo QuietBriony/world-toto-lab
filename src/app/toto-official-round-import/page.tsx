@@ -25,9 +25,11 @@ import { productTypeOptions } from "@/lib/product-rules";
 import { appRoute, buildRoundHref, getSingleSearchParam } from "@/lib/round-links";
 import {
   instantiateTotoOfficialRoundLibraryEntry,
+  syncTotoOfficialRoundListFromOfficial,
   refreshCandidateTicketsForRound,
   saveTotoOfficialRoundImport,
   saveTotoOfficialRoundLibraryEntry,
+  upsertTotoOfficialRoundLibraryFromSync,
 } from "@/lib/repository";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import {
@@ -104,6 +106,17 @@ function TotoOfficialRoundImportPageContent() {
   const [stakeYen, setStakeYen] = useState("100");
   const [totalSalesYen, setTotalSalesYen] = useState("");
   const [carryoverYen, setCarryoverYen] = useState("0");
+  const [syncSourceUrl, setSyncSourceUrl] = useState("https://toto.yahoo.co.jp/schedule/toto");
+  const [includeMatchesInSync, setIncludeMatchesInSync] = useState(true);
+  const [syncing, setSyncing] = useState(false);
+  const [syncSummary, setSyncSummary] = useState<{
+    fetchedAt: string | null;
+    insertedCount: number;
+    updatedCount: number;
+    skippedCount: number;
+    warnings: string[];
+  } | null>(null);
+  const [syncWarnings, setSyncWarnings] = useState<string[]>([]);
   const [rows, setRows] = useState<TotoOfficialImportRow[]>([]);
   const [parseWarnings, setParseWarnings] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
@@ -164,6 +177,43 @@ function TotoOfficialRoundImportPageContent() {
     setParseWarnings(matchedRows.flatMap((row) => row.warnings));
     setActionError(null);
     setActionMessage(`「${entry.title}」を編集フォームに読み込みました。`);
+  };
+
+  const handleSyncOfficialRounds = async () => {
+    setSyncing(true);
+    setActionError(null);
+    setActionMessage(null);
+    setSyncWarnings([]);
+    setSyncSummary(null);
+
+    try {
+      const syncResult = await syncTotoOfficialRoundListFromOfficial({
+        includeMatches: includeMatchesInSync,
+        sourceUrl: syncSourceUrl || undefined,
+      });
+      const upsertResult = await upsertTotoOfficialRoundLibraryFromSync({
+        entries: syncResult.rounds,
+        sourceUrl: syncResult.sourceUrl || syncSourceUrl || null,
+      });
+
+      const combinedWarnings = [...syncResult.warnings, ...upsertResult.warnings];
+      setSyncSummary({
+        fetchedAt: syncResult.fetchedAt,
+        insertedCount: upsertResult.insertedCount,
+        updatedCount: upsertResult.updatedCount,
+        skippedCount: upsertResult.skippedCount,
+        warnings: combinedWarnings,
+      });
+      setSyncWarnings(combinedWarnings);
+      await library.refresh();
+      setActionMessage(
+        `公式一覧を反映しました。追加 ${upsertResult.insertedCount} / 更新 ${upsertResult.updatedCount} / 未変更 ${upsertResult.skippedCount}`,
+      );
+    } catch (nextError) {
+      setActionError(errorMessage(nextError));
+    } finally {
+      setSyncing(false);
+    }
   };
 
   const handleSave = async () => {
@@ -313,6 +363,63 @@ function TotoOfficialRoundImportPageContent() {
           {actionError}
         </div>
       ) : null}
+
+      <SectionCard
+        title="公式一覧を同期"
+        description="公式一覧URLから公式回情報を一発で取り込んで、ライブラリへ保存します。未対応時はCSV/TSV手入力にフォールバックできます。"
+      >
+        <div className="grid gap-4 md:grid-cols-[1fr_auto_auto]">
+          <label className="space-y-2 text-sm">
+            <span className="font-medium text-slate-700">sourceUrl</span>
+            <input
+              value={syncSourceUrl}
+              onChange={(event) => setSyncSourceUrl(event.currentTarget.value)}
+              className={fieldClassName}
+              placeholder="https://..."
+            />
+          </label>
+          <label className="flex items-center justify-start gap-2 text-sm pt-7">
+            <input
+              type="checkbox"
+              checked={includeMatchesInSync}
+              onChange={(event) => setIncludeMatchesInSync(event.currentTarget.checked)}
+              className="h-4 w-4"
+            />
+            <span>試合明細まで取り込む</span>
+          </label>
+          <div className="pt-7">
+            <button
+              type="button"
+              onClick={() => void handleSyncOfficialRounds()}
+              className={buttonClassName}
+              disabled={syncing}
+            >
+              {syncing ? "同期中..." : "公式一覧を同期"}
+            </button>
+          </div>
+        </div>
+
+        {syncSummary ? (
+          <div className="mt-4 rounded-[22px] border border-teal-200 bg-teal-50 px-4 py-4 text-sm text-teal-950">
+            <p>
+              同期結果: 追加 {syncSummary.insertedCount} / 更新 {syncSummary.updatedCount} / 未変更{" "}
+              {syncSummary.skippedCount}
+            </p>
+            {syncSummary.fetchedAt ? <p>取得時刻: {syncSummary.fetchedAt}</p> : null}
+            <p>
+              対象件数: {syncSummary.insertedCount + syncSummary.updatedCount + syncSummary.skippedCount}
+            </p>
+          </div>
+        ) : null}
+
+        {syncWarnings.length > 0 ? (
+          <div className="mt-4 rounded-[22px] border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-950">
+            {syncWarnings.map((warning) => (
+              <p key={warning}>{warning}</p>
+            ))}
+          </div>
+        ) : null}
+      </SectionCard>
 
       <SectionCard
         title="公式回ライブラリ"

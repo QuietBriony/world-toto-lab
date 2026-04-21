@@ -798,6 +798,318 @@ type TotoOfficialRoundImportInput = {
   voidHandling?: VoidHandling;
 };
 
+type SyncTotoOfficialRoundApiInput = {
+  includeMatches?: boolean;
+  sourceUrl?: string;
+};
+
+type SyncedTotoOfficialRoundMatchInput = {
+  actualResult: "ONE" | "DRAW" | "TWO" | null;
+  awayTeam: string;
+  fixtureMasterId: string | null;
+  homeTeam: string;
+  kickoffTime: string | null;
+  matchStatus: TotoOfficialMatchStatus;
+  officialMatchNo: number;
+  officialVote0: number | null;
+  officialVote1: number | null;
+  officialVote2: number | null;
+  sourceText: string | null;
+  stage: string | null;
+  venue: string | null;
+};
+
+export type SyncedTotoOfficialRoundEntry = {
+  title: string;
+  notes: string | null;
+  officialRoundName: string | null;
+  officialRoundNumber: number | null;
+  productType: ProductType;
+  requiredMatchCount: number | null;
+  outcomeSetJson: string[] | null;
+  sourceNote: string | null;
+  voidHandling: VoidHandling;
+  resultStatus: TotoOfficialResultStatus;
+  salesStartAt: string | null;
+  salesEndAt: string | null;
+  stakeYen: number;
+  totalSalesYen: number | null;
+  returnRate: number;
+  firstPrizeShare: number | null;
+  carryoverYen: number;
+  payoutCapYen: number | null;
+  sourceUrl: string | null;
+  sourceText: string | null;
+  matches: SyncedTotoOfficialRoundMatchInput[];
+};
+
+export type SyncTotoOfficialRoundListResponse = {
+  fetchedAt: string | null;
+  rounds: SyncedTotoOfficialRoundEntry[];
+  sourceText: string | null;
+  sourceUrl: string;
+  warnings: string[];
+};
+
+export type UpsertTotoOfficialRoundLibraryFromSyncResult = {
+  insertedCount: number;
+  updatedCount: number;
+  skippedCount: number;
+  warnings: string[];
+};
+
+function normalizeSyncRoundValue(value: unknown) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function normalizeSyncRoundNumber(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  const parsed = Number(value);
+  if (Number.isFinite(parsed)) {
+    return Math.trunc(parsed);
+  }
+
+  return null;
+}
+
+function normalizeSyncRoundRatio(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    return null;
+  }
+
+  return parsed;
+}
+
+function isKnownSyncProductType(value: unknown): value is ProductType {
+  return (
+    value === "toto13" ||
+    value === "mini_toto" ||
+    value === "winner" ||
+    value === "custom"
+  );
+}
+
+function parseSyncPercentInput(value: unknown, label: string, warnings: string[]) {
+  const raw = normalizeSyncRoundValue(value);
+  if (!raw) {
+    return null;
+  }
+
+  const normalized = raw.replace(/%/g, "");
+  const parsed = Number(normalized);
+  if (!Number.isFinite(parsed)) {
+    warnings.push(`${label} は数値に変換できませんでした: ${raw}`);
+    return null;
+  }
+
+  if (parsed > 1 && parsed <= 100) {
+    warnings.push(`${label} は ${parsed} と解釈されるため、百分率として ${parsed / 100} に変換しました。`);
+    return parsed / 100;
+  }
+
+  if (parsed < 0 || parsed > 1) {
+    warnings.push(`${label} は想定範囲外です（0〜1 または 0〜100）: ${raw}`);
+    return null;
+  }
+
+  return parsed;
+}
+
+function parseSyncReturnRateInput(
+  value: unknown,
+  label: string,
+  warnings: string[],
+) {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  const raw = normalizeSyncRoundValue(value);
+  if (!raw) {
+    return null;
+  }
+
+  const normalized = raw.replace(/%/g, "");
+  const parsed = Number(normalized);
+  if (!Number.isFinite(parsed)) {
+    warnings.push(`${label} は数値に変換できませんでした: ${raw}`);
+    return null;
+  }
+
+  if (parsed > 1 && parsed <= 100) {
+    const ratio = parsed / 100;
+    warnings.push(`${label} は ${parsed} と解釈されるため、百分率として ${ratio} に変換しました。`);
+    return ratio;
+  }
+
+  if (parsed < 0 || parsed > 1) {
+    warnings.push(`${label} は想定範囲外です（0〜1 または 0〜100）: ${raw}`);
+    return null;
+  }
+
+  return parsed;
+}
+
+function isKnownSyncResultStatus(value: unknown): value is TotoOfficialResultStatus {
+  return (
+    value === "draft" ||
+    value === "selling" ||
+    value === "closed" ||
+    value === "resulted" ||
+    value === "cancelled" ||
+    value === "unknown"
+  );
+}
+
+function parseSyncApiResponse(
+  raw: unknown,
+  fallbackSourceUrl: string,
+): SyncTotoOfficialRoundListResponse {
+  const data = (raw ?? {}) as Record<string, unknown>;
+  const roundsRaw = Array.isArray(data.rounds) ? data.rounds : [];
+  const warnings: string[] = [];
+  const normalizedSourceUrl = normalizeSyncRoundValue(fallbackSourceUrl);
+  const parentSourceUrl = normalizedSourceUrl || null;
+  const parentSourceText = dataSourceTextFromPayload(raw);
+  const parseMatches = (row: unknown): SyncedTotoOfficialRoundMatchInput[] => {
+    if (!Array.isArray((row as { matches?: unknown[] }).matches)) {
+      return [];
+    }
+
+    const normalizedMatches: SyncedTotoOfficialRoundMatchInput[] = [];
+    for (const entry of (row as { matches: unknown[] }).matches) {
+      const record = (entry ?? {}) as Record<string, unknown>;
+      const no = normalizeSyncRoundNumber(record.officialMatchNo);
+      if (no === null) {
+        continue;
+      }
+
+      normalizedMatches.push({
+        actualResult: null,
+        awayTeam: normalizeSyncRoundValue(record.awayTeam) || "未設定",
+        fixtureMasterId: null,
+        homeTeam: normalizeSyncRoundValue(record.homeTeam) || "未設定",
+        kickoffTime: normalizeSyncRoundValue(record.kickoffTime) || null,
+        matchStatus: normalizeSyncMatchStatus(record.matchStatus),
+        officialMatchNo: no,
+        officialVote0: parseSyncPercentInput(
+          record.officialVote0,
+          `公式回 ${normalizeSyncRoundValue(record.officialMatchNo)} 試合 vote0`,
+          warnings,
+        ),
+        officialVote1: parseSyncPercentInput(
+          record.officialVote1,
+          `公式回 ${normalizeSyncRoundValue(record.officialMatchNo)} 試合 vote1`,
+          warnings,
+        ),
+        officialVote2: parseSyncPercentInput(
+          record.officialVote2,
+          `公式回 ${normalizeSyncRoundValue(record.officialMatchNo)} 試合 vote2`,
+          warnings,
+        ),
+        stage: normalizeSyncRoundValue(record.stage) || null,
+        venue: normalizeSyncRoundValue(record.venue) || null,
+        sourceText:
+          normalizeSyncRoundValue(record.sourceText) || parentSourceText || null,
+      });
+    }
+
+    return normalizedMatches;
+  };
+
+  return {
+    fetchedAt: normalizeSyncRoundValue(data.fetchedAt) || null,
+    rounds: roundsRaw.map((entry) => {
+      const record = (entry ?? {}) as Record<string, unknown>;
+      return {
+        title: normalizeSyncRoundValue(record.title) || "公式回",
+        notes: normalizeSyncRoundValue(record.notes) || null,
+        officialRoundName: normalizeSyncRoundValue(record.officialRoundName) || null,
+        officialRoundNumber: normalizeSyncRoundNumber(record.officialRoundNumber),
+        productType: isKnownSyncProductType(record.productType)
+          ? record.productType
+          : "toto13",
+        requiredMatchCount: normalizeSyncRoundNumber(record.requiredMatchCount),
+        outcomeSetJson:
+          Array.isArray(record.outcomeSetJson) && record.outcomeSetJson.length > 0
+            ? record.outcomeSetJson.filter((value): value is string => typeof value === "string")
+            : null,
+        sourceNote: normalizeSyncRoundValue(record.sourceNote) || null,
+        voidHandling: record.voidHandling === "manual" ? "manual"
+          : record.voidHandling === "all_outcomes_valid" ? "all_outcomes_valid"
+          : record.voidHandling === "exclude_from_combo" ? "exclude_from_combo"
+          : record.voidHandling === "keep_as_pending" ? "keep_as_pending"
+          : "manual",
+        resultStatus: isKnownSyncResultStatus(record.resultStatus)
+          ? record.resultStatus
+          : "unknown",
+        salesStartAt: normalizeSyncRoundValue(record.salesStartAt) || null,
+        salesEndAt: normalizeSyncRoundValue(record.salesEndAt) || null,
+        stakeYen: normalizeSyncRoundNumber(record.stakeYen) ?? 100,
+        totalSalesYen:
+          record.totalSalesYen === null
+            ? null
+            : normalizeSyncRoundRatio(record.totalSalesYen),
+        returnRate:
+          parseSyncReturnRateInput(record.returnRate, "returnRate", warnings) ??
+          normalizeSyncRoundRatio(record.returnRate) ??
+          0.5,
+        firstPrizeShare:
+          record.firstPrizeShare === null
+            ? null
+            : parseSyncReturnRateInput(record.firstPrizeShare, "firstPrizeShare", warnings) ??
+              normalizeSyncRoundRatio(record.firstPrizeShare),
+        carryoverYen: normalizeSyncRoundNumber(record.carryoverYen) ?? 0,
+        payoutCapYen:
+          record.payoutCapYen === null ? null : normalizeSyncRoundRatio(record.payoutCapYen),
+        sourceUrl: normalizeSyncRoundValue(record.sourceUrl) || parentSourceUrl,
+        sourceText: normalizeSyncRoundValue(record.sourceText) || dataSourceTextFromPayload(raw),
+        matches: parseMatches(record),
+      } satisfies SyncedTotoOfficialRoundEntry;
+    }),
+    sourceText: dataSourceTextFromPayload(raw),
+    sourceUrl: parentSourceUrl || "",
+    warnings: [
+      ...warnings,
+      ...(Array.isArray(data.warnings) && data.warnings.length > 0
+        ? data.warnings.filter((value): value is string => typeof value === "string")
+        : []),
+    ],
+  };
+}
+
+function isKnownSyncMatchStatus(value: unknown): value is TotoOfficialMatchStatus {
+  return (
+    value === "scheduled" ||
+    value === "played" ||
+    value === "cancelled" ||
+    value === "postponed" ||
+    value === "void" ||
+    value === "unknown"
+  );
+}
+
+function normalizeSyncMatchStatus(input: unknown): TotoOfficialMatchStatus {
+  if (isKnownSyncMatchStatus(input)) {
+    return input;
+  }
+
+  return "scheduled";
+}
+
+function dataSourceTextFromPayload(raw: unknown) {
+  const payload = raw as { sourceText?: unknown } | null;
+  return payload ? normalizeSyncRoundValue(payload.sourceText) || null : null;
+}
+
 function deriveRoundSummary(
   round: Round,
   candidateTicketCount: number,
@@ -2687,6 +2999,347 @@ function buildTotoOfficialRoundLibraryPayload(
     source_text: input.sourceText,
     matches_json: input.rows.map((row) => mapTotoOfficialRoundLibraryMatch(row)),
   };
+}
+
+export async function syncTotoOfficialRoundListFromOfficial(input: SyncTotoOfficialRoundApiInput) {
+  const sourceUrl =
+    normalizeSyncRoundValue(input.sourceUrl) || "https://toto.yahoo.co.jp/schedule/toto";
+  const functionName =
+    normalizeSyncRoundValue(process.env.NEXT_PUBLIC_TOTO_OFFICIAL_ROUND_SYNC_FUNCTION_NAME) ||
+    "sync-toto-official-round-list";
+  const supabaseUrl = normalizeSyncRoundValue(process.env.NEXT_PUBLIC_SUPABASE_URL);
+  const supabaseAnonKey = normalizeSyncRoundValue(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+
+  if (!supabaseUrl) {
+    throw new Error("NEXT_PUBLIC_SUPABASE_URL が未設定です。");
+  }
+
+  if (!supabaseAnonKey) {
+    throw new Error("NEXT_PUBLIC_SUPABASE_ANON_KEY が未設定です。");
+  }
+
+  const requestBody = {
+    includeMatches: input.includeMatches ?? false,
+    sourceUrl,
+  };
+  const functionEndpoint = `${supabaseUrl}/functions/v1/${functionName}`;
+
+  const response = await fetch(functionEndpoint, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${supabaseAnonKey}`,
+      apikey: supabaseAnonKey,
+      "content-type": "application/json",
+      "x-client-info": "world-toto-lab",
+    },
+    body: JSON.stringify(requestBody),
+  });
+
+  if (!response.ok) {
+    const rawText = await response.text();
+    throw new Error(
+      `公式一覧の同期 API 呼び出しに失敗しました: ${response.status} ${response.statusText}${
+        rawText ? ` / ${rawText}` : ""
+      }`,
+    );
+  }
+
+  const payload = await response.json();
+  return parseSyncApiResponse(payload, sourceUrl);
+}
+
+function normalizeLibraryRoundMatchJson(rows: SyncedTotoOfficialRoundMatchInput[] | null) {
+  return JSON.stringify(
+    (rows ?? [])
+      .slice()
+      .sort((left, right) => {
+        if (left.officialMatchNo !== right.officialMatchNo) {
+          return left.officialMatchNo - right.officialMatchNo;
+        }
+
+        const leftHome = left.homeTeam.toLowerCase();
+        const rightHome = right.homeTeam.toLowerCase();
+        if (leftHome !== rightHome) {
+          return leftHome.localeCompare(rightHome, "ja");
+        }
+
+        return left.awayTeam.toLowerCase().localeCompare(right.awayTeam.toLowerCase(), "ja");
+      })
+      .map((row) => ({
+        actualResult: row.actualResult,
+        awayTeam: row.awayTeam,
+        fixtureMasterId: row.fixtureMasterId,
+        homeTeam: row.homeTeam,
+        kickoffTime: row.kickoffTime,
+        matchStatus: row.matchStatus,
+        officialMatchNo: row.officialMatchNo,
+        officialVote0: row.officialVote0,
+        officialVote1: row.officialVote1,
+        officialVote2: row.officialVote2,
+        sourceText: row.sourceText,
+        stage: row.stage,
+        venue: row.venue,
+      })),
+  );
+}
+
+function normalizeLibraryRoundMatchRows(value: unknown): SyncedTotoOfficialRoundMatchInput[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((entry) => {
+      const row = entry as Record<string, unknown>;
+      const no = normalizeSyncRoundNumber(row.officialMatchNo);
+      if (no === null) {
+        return null;
+      }
+
+      return {
+        actualResult: (row.actualResult as SyncedTotoOfficialRoundMatchInput["actualResult"]) ?? null,
+        awayTeam: normalizeSyncRoundValue(row.awayTeam) || "未設定",
+        fixtureMasterId:
+          typeof row.fixtureMasterId === "string" ? row.fixtureMasterId : null,
+        homeTeam: normalizeSyncRoundValue(row.homeTeam) || "未設定",
+        kickoffTime: normalizeSyncRoundValue(row.kickoffTime) || null,
+        matchStatus: normalizeSyncMatchStatus(row.matchStatus),
+        officialMatchNo: no,
+        officialVote0: normalizeSyncRoundRatio(row.officialVote0),
+        officialVote1: normalizeSyncRoundRatio(row.officialVote1),
+        officialVote2: normalizeSyncRoundRatio(row.officialVote2),
+        sourceText: normalizeSyncRoundValue(row.sourceText) || null,
+        stage: normalizeSyncRoundValue(row.stage) || null,
+        venue: normalizeSyncRoundValue(row.venue) || null,
+      } satisfies SyncedTotoOfficialRoundMatchInput;
+    })
+    .filter((entry): entry is SyncedTotoOfficialRoundMatchInput => Boolean(entry));
+}
+
+type SyncedRoundIdentityInput = {
+  officialRoundNumber: number | null;
+  officialRoundName: string | null;
+  productType: ProductType;
+  title: string | null;
+};
+
+function libraryIdentityMatchKey(input: SyncedRoundIdentityInput) {
+  if (input.officialRoundNumber !== null) {
+    return `n:${input.productType}:${input.officialRoundNumber}`;
+  }
+
+  return `t:${input.productType}:${normalizeSyncRoundValue(input.officialRoundName) || "no-round-name"}:${normalizeSyncRoundValue(input.title) || "no-title"}`;
+}
+
+function hasSyncEntryCoreChange(
+  existing: {
+    title: string;
+    notes: string | null;
+    official_round_name: string | null;
+    official_round_number: number | null;
+    required_match_count: number | null;
+    outcome_set_json: string[] | null;
+    source_note: string | null;
+    void_handling: VoidHandling;
+    result_status: TotoOfficialResultStatus;
+    sales_start_at: string | null;
+    sales_end_at: string | null;
+    stake_yen: number;
+    total_sales_yen: number | null;
+    return_rate: number;
+    first_prize_share: number | null;
+    carryover_yen: number;
+    payout_cap_yen: number | null;
+    source_url: string | null;
+    source_text: string | null;
+  },
+  payload: ReturnType<typeof buildTotoOfficialRoundLibraryPayload>,
+) {
+  const payloadCore = {
+    title: payload.title,
+    notes: payload.notes,
+    official_round_name: payload.official_round_name,
+    official_round_number: payload.official_round_number,
+    required_match_count: payload.required_match_count,
+    outcome_set_json: payload.outcome_set_json,
+    source_note: payload.source_note,
+    void_handling: payload.void_handling,
+    result_status: payload.result_status,
+    sales_start_at: payload.sales_start_at,
+    sales_end_at: payload.sales_end_at,
+    stake_yen: payload.stake_yen,
+    total_sales_yen: payload.total_sales_yen,
+    return_rate: payload.return_rate,
+    first_prize_share: payload.first_prize_share,
+    carryover_yen: payload.carryover_yen,
+    payout_cap_yen: payload.payout_cap_yen,
+    source_url: payload.source_url ?? null,
+    source_text: payload.source_text,
+  };
+  const existingCore = {
+    title: existing.title,
+    notes: existing.notes,
+    official_round_name: existing.official_round_name,
+    official_round_number: existing.official_round_number,
+    required_match_count: existing.required_match_count,
+    outcome_set_json: existing.outcome_set_json,
+    source_note: existing.source_note,
+    void_handling: existing.void_handling,
+    result_status: existing.result_status,
+    sales_start_at: existing.sales_start_at,
+    sales_end_at: existing.sales_end_at,
+    stake_yen: existing.stake_yen,
+    total_sales_yen: existing.total_sales_yen,
+    return_rate: existing.return_rate,
+    first_prize_share: existing.first_prize_share,
+    carryover_yen: existing.carryover_yen,
+    payout_cap_yen: existing.payout_cap_yen,
+    source_url: existing.source_url,
+    source_text: existing.source_text,
+  };
+
+  return (
+    JSON.stringify(payloadCore.outcome_set_json ?? []) !==
+      JSON.stringify(existingCore.outcome_set_json ?? []) ||
+    JSON.stringify(payloadCore) !== JSON.stringify(existingCore)
+  );
+}
+
+export async function upsertTotoOfficialRoundLibraryFromSync(input: {
+  entries: SyncedTotoOfficialRoundEntry[];
+  sourceUrl: string | null;
+}) {
+  const supabase = requireSupabaseClient();
+  const sourceUrl = normalizeSyncRoundValue(input.sourceUrl) || null;
+  const warnings: string[] = [];
+  const rows = input.entries.filter((entry) => {
+    if (!entry.title) {
+      warnings.push("タイトル不明の回をスキップしました。");
+      return false;
+    }
+    return true;
+  });
+
+  const existingQuery = supabase
+    .from("toto_official_round_library")
+    .select(
+      "id, title, notes, product_type, required_match_count, outcome_set_json, source_note, void_handling, official_round_name, official_round_number, sales_start_at, sales_end_at, result_status, stake_yen, total_sales_yen, return_rate, first_prize_share, carryover_yen, payout_cap_yen, source_url, source_text, matches_json",
+    );
+  const existingResult = sourceUrl === null
+    ? await existingQuery.is("source_url", null)
+    : await existingQuery.eq("source_url", sourceUrl);
+
+  throwIfError("Failed to load existing official round library for sync", existingResult);
+  const existingRows = (existingResult.data ?? []) as TotoOfficialRoundLibraryRow[];
+
+  const byNumber = new Map<string, TotoOfficialRoundLibraryRow>();
+  const byTitle = new Map<string, TotoOfficialRoundLibraryRow>();
+  existingRows.forEach((existing) => {
+    if (existing.official_round_number !== null) {
+      byNumber.set(
+        `n:${existing.product_type}:${existing.official_round_number}`,
+        existing,
+      );
+    }
+
+    byTitle.set(libraryIdentityMatchKey(existing as unknown as SyncedTotoOfficialRoundEntry), existing);
+  });
+
+  const seenKeys = new Set<string>();
+  const seenNumberKeys = new Set<string>();
+  let insertedCount = 0;
+  let updatedCount = 0;
+  let skippedCount = 0;
+
+  for (const entry of rows) {
+    const identityKey = libraryIdentityMatchKey(entry);
+    if (entry.officialRoundNumber !== null) {
+      const numberKey = `n:${entry.productType}:${entry.officialRoundNumber}`;
+      if (seenNumberKeys.has(numberKey)) {
+        warnings.push(`${entry.title} は同一回Noの重複としてスキップしました。`);
+        skippedCount += 1;
+        continue;
+      }
+      seenNumberKeys.add(numberKey);
+    }
+
+    if (seenKeys.has(identityKey)) {
+      warnings.push(`${entry.title} は入力内で重複があったため先頭を採用します。`);
+      skippedCount += 1;
+      continue;
+    }
+    seenKeys.add(identityKey);
+
+    const payload = buildTotoOfficialRoundLibraryPayload({
+      title: entry.title,
+      notes: entry.notes,
+      officialRoundName: entry.officialRoundName,
+      officialRoundNumber: entry.officialRoundNumber,
+      productType: entry.productType,
+      requiredMatchCount: entry.requiredMatchCount,
+      outcomeSetJson: entry.outcomeSetJson ?? undefined,
+      sourceNote: entry.sourceNote,
+      voidHandling: entry.voidHandling,
+      resultStatus: entry.resultStatus,
+      salesStartAt: entry.salesStartAt,
+      salesEndAt: entry.salesEndAt,
+      stakeYen: entry.stakeYen,
+      totalSalesYen: entry.totalSalesYen,
+      returnRate: entry.returnRate,
+      firstPrizeShare: entry.firstPrizeShare,
+      carryoverYen: entry.carryoverYen,
+      payoutCapYen: entry.payoutCapYen,
+      sourceUrl,
+      sourceText: entry.sourceText,
+      rows: entry.matches,
+    });
+
+    const nextMatchJson = normalizeLibraryRoundMatchJson(payload.matches_json);
+    const target = entry.officialRoundNumber !== null
+      ? byNumber.get(`n:${entry.productType}:${entry.officialRoundNumber}`) ?? byTitle.get(identityKey)
+      : byTitle.get(identityKey);
+
+    if (!target) {
+      const insertResult = await supabase.from("toto_official_round_library").insert(payload).select("id");
+
+      if (insertResult.error) {
+        warnings.push(`${entry.title} の保存に失敗しました: ${insertResult.error.message}`);
+        continue;
+      }
+      insertedCount += 1;
+      continue;
+    }
+
+    const currentMatchJson = normalizeLibraryRoundMatchJson(
+      normalizeLibraryRoundMatchRows(target.matches_json),
+    );
+    const hasCoreChange = hasSyncEntryCoreChange(target, payload);
+    const hasMatchChange = nextMatchJson !== currentMatchJson;
+
+    if (!hasCoreChange && !hasMatchChange) {
+      skippedCount += 1;
+      continue;
+    }
+
+    const updateResult = await supabase
+      .from("toto_official_round_library")
+      .update(payload)
+      .eq("id", target.id);
+
+    if (updateResult.error) {
+      warnings.push(`${entry.title} の更新に失敗しました: ${updateResult.error.message}`);
+      continue;
+    }
+
+    updatedCount += 1;
+  }
+
+  return {
+    insertedCount,
+    updatedCount,
+    skippedCount,
+    warnings,
+  } satisfies UpsertTotoOfficialRoundLibraryFromSyncResult;
 }
 
 async function getTotoOfficialRoundLibraryEntry(entryId: string) {
