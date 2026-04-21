@@ -370,6 +370,8 @@ npm run audit:schema
 ズレがない場合は「`all repository tables are present in schema.sql`」で終了します。  
 ズレがある場合は不足テーブル名を赤字で一覧表示します。
 
+CI でも `npm run audit:schema` を通し、`main` への push 時点でスキーマ参照不整合を検知できるようにしています。
+
 ### 3.1. まだ候補系テーブルがない場合（`candidate_tickets` / `candidate_votes`）
 
 次のエラーが出る場合は、実運用DBへ候補系テーブルが未反映です。
