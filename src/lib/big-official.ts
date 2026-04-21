@@ -24,6 +24,18 @@ export type BigHeatBand = {
   label: string;
 };
 
+export function formatBigCarryoverDisplay(value: number | null | undefined) {
+  if (value === null || value === undefined || !Number.isFinite(value)) {
+    return "—";
+  }
+
+  if (value <= 0) {
+    return "なし";
+  }
+
+  return `${value.toLocaleString("ja-JP")}円`;
+}
+
 function isKnownPositiveNumber(value: number | null | undefined): value is number {
   return typeof value === "number" && Number.isFinite(value) && value > 0;
 }
@@ -115,6 +127,16 @@ function buildBigCarryoverEventSnapshot(input: {
       statusLabel: "分岐付近",
       status: "near_break_even",
       tone: "warning",
+    };
+  }
+
+  if (input.eventType === "high_return_watch" && input.summary.carryoverUplift === 0) {
+    return {
+      headline: `${label} はキャリーなしの平時回です`,
+      nextAction: "キャリー発生や特別回の告知が出るまでは、通常還元の監視メモとして見ます。",
+      statusLabel: "キャリーなし",
+      status: "watch",
+      tone: "info",
     };
   }
 

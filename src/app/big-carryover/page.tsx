@@ -23,6 +23,7 @@ import {
 import {
   buildBigCarryoverQueryFromOfficialSnapshot,
   buildBigOfficialWatch,
+  formatBigCarryoverDisplay,
   pickFeaturedBigOfficialSnapshot,
 } from "@/lib/big-official";
 import {
@@ -230,7 +231,7 @@ function BigCarryoverPageContent() {
                   <div className="rounded-[18px] border border-slate-200 bg-white/80 px-4 py-3 text-sm">
                     <p className="text-slate-500">キャリー</p>
                     <p className="mt-1 font-semibold text-slate-950">
-                      {formatCurrency(snapshot.carryoverYen)}
+                      {formatBigCarryoverDisplay(snapshot.carryoverYen)}
                     </p>
                   </div>
                 </div>
@@ -336,7 +337,7 @@ function BigCarryoverPageContent() {
                 <div className="mt-4 flex flex-wrap gap-3 text-xs text-slate-500">
                   <span>概算 {formatPercent(presetSummary.approxEvMultiple)}</span>
                   <span>売上 {formatCurrency(preset.salesYen)}</span>
-                  <span>キャリー {formatCurrency(preset.carryoverYen)}</span>
+                  <span>キャリー {formatBigCarryoverDisplay(preset.carryoverYen)}</span>
                 </div>
                 <p className="mt-3 text-xs leading-5 text-slate-500">{presetBand.hint}</p>
                 <div className="mt-4 flex flex-wrap gap-2">

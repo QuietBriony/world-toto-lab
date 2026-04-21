@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildBigCarryoverQueryFromOfficialSnapshot,
   buildBigOfficialWatch,
+  formatBigCarryoverDisplay,
   parseBigOfficialWatchHtml,
   pickFeaturedBigOfficialSnapshot,
 } from "@/lib/big-official";
@@ -76,5 +77,16 @@ describe("big official sync parser", () => {
     expect(query.eventType).toBe("carryover_event");
     expect(query.sales).toBe(484_739_700);
     expect(query.carryover).toBe(3_239_484_780);
+  });
+
+  it("treats zero carryover as no carryover for display", () => {
+    const payload = parseBigOfficialWatchHtml({
+      fetchedAt: "2026-04-21T13:45:00.000Z",
+      html: sampleHtml,
+    });
+    const miniBig = payload.snapshots.find((snapshot) => snapshot.productKey === "mini_big");
+
+    expect(formatBigCarryoverDisplay(miniBig?.carryoverYen)).toBe("なし");
+    expect(buildBigOfficialWatch(miniBig!).eventSnapshot.statusLabel).toBe("キャリーなし");
   });
 });
