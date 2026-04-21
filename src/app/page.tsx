@@ -61,9 +61,9 @@ import {
 } from "@/lib/big-official";
 import {
   bigCarryoverPresets,
+  buildBigShockAlert,
   calculateBigCarryoverSummary,
   classifyBigHeatBand,
-  detectBigShockSignal,
 } from "@/lib/big-carryover";
 import { resolveRoundParticipantUsers } from "@/lib/round-participants";
 import { deriveRoundProgressSummary, matchHasSetupInput } from "@/lib/round-progress";
@@ -519,20 +519,22 @@ export default function DashboardPage() {
     : null;
   const bigOfficialAttentionCount = useMemo(
     () =>
-      bigOfficialSnapshots.filter((snapshot) => {
-        const watch = buildBigOfficialWatch(snapshot);
-        return watch.summary.approxEvMultiple !== null && (watch.summary.approxEvMultiple ?? 0) >= 1;
-      }).length,
+      bigOfficialSnapshots.filter((snapshot) => buildBigOfficialWatch(snapshot).requiresAttention)
+        .length,
     [bigOfficialSnapshots],
   );
   const bigOfficialShockCount = useMemo(
     () =>
-      bigOfficialSnapshots.filter((snapshot) => detectBigShockSignal(snapshot.sourceText) !== "none").length,
+      bigOfficialSnapshots.filter((snapshot) => buildBigOfficialWatch(snapshot).shockSignal !== "none")
+        .length,
     [bigOfficialSnapshots],
   );
-  const featuredBigShockSignal = featuredBigOfficialSnapshot
-    ? detectBigShockSignal(featuredBigOfficialSnapshot.sourceText)
-    : "none";
+  const featuredBigShockAlert = featuredBigOfficial
+    ? buildBigShockAlert({
+        signal: featuredBigOfficial.shockSignal,
+        summary: featuredBigOfficial.summary,
+      })
+    : null;
   const createRoundAnchor = "#create-round";
   const roundListAnchor = "#round-list";
 
@@ -613,13 +615,23 @@ export default function DashboardPage() {
           <div className="rounded-[24px] border border-slate-200 bg-slate-50/90 p-5">
             <div className="flex flex-wrap items-center gap-2">
               <Badge tone="amber">BIG ウォッチ</Badge>
-              <Badge tone={featuredBigOfficial?.heatBand.badgeTone ?? featuredBigHeat.badgeTone}>
-                {featuredBigOfficial?.heatBand.label ?? featuredBigHeat.label}
+              <Badge
+                tone={
+                  featuredBigOfficial
+                    ? featuredBigOfficial.heatBand.badgeTone
+                    : "info"
+                }
+              >
+                {featuredBigOfficial?.heatBand.label ?? "テンプレ比較"}
               </Badge>
               <Badge tone="slate">
                 {bigOfficialWatch.data ? `同期 ${bigOfficialSnapshots.length}商品` : "テンプレ"}
               </Badge>
-              {featuredBigShockSignal !== "none" ? <Badge tone="warning">特記事項あり</Badge> : null}
+              {featuredBigOfficial?.shockSignal !== "none" && featuredBigShockAlert ? (
+                <Badge tone={featuredBigShockAlert.badgeTone}>
+                  {featuredBigShockAlert.label}
+                </Badge>
+              ) : null}
             </div>
             <h3 className="mt-3 font-display text-[1.35rem] font-semibold tracking-[-0.05em] text-slate-950">
               {featuredBigOfficialSnapshot
@@ -637,7 +649,7 @@ export default function DashboardPage() {
                   ? `要確認 ${bigOfficialAttentionCount}商品`
                   : `例: ${featuredBigPreset.eventLabel}`}
               </span>
-              {bigOfficialShockCount > 0 ? <span>特記事項 {bigOfficialShockCount}商品</span> : null}
+              {bigOfficialShockCount > 0 ? <span>ショック候補 {bigOfficialShockCount}商品</span> : null}
               <span>
                 概算倍率{" "}
                 {formatPercent(
@@ -655,7 +667,9 @@ export default function DashboardPage() {
               {featuredBigOfficial?.heatBand.hint ?? featuredBigHeat.hint}
             </p>
             <p className="mt-2 text-[11px] leading-5 text-slate-500">
-              いまの判定は主に `売上 + キャリー` 由来です。台風などの中止・成立条件の上振れは、別ロジックで追加する前提です。
+              {featuredBigOfficial?.shockSignal !== "none" && featuredBigShockAlert
+                ? featuredBigShockAlert.hint
+                : "いまの判定は主に `売上 + キャリー` 由来です。台風などの中止・成立条件の上振れは、別ロジックで追加する前提です。"}
             </p>
             {bigOfficialWatch.error ? (
               <p className="mt-3 text-xs text-rose-700">BIG公式同期: {bigOfficialWatch.error}</p>

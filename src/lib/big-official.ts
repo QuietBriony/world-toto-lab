@@ -1,3 +1,5 @@
+import { detectBigShockSignal, type BigShockSignal } from "@/lib/big-carryover";
+
 export type BigEventType = "carryover_event" | "high_return_watch";
 
 export type BigCarryoverSummary = {
@@ -242,6 +244,8 @@ export type BigOfficialWatch = {
   eventType: BigEventType;
   heatBand: BigHeatBand;
   label: string;
+  requiresAttention: boolean;
+  shockSignal: BigShockSignal;
   snapshot: BigOfficialSnapshot;
   summary: BigCarryoverSummary;
 };
@@ -469,12 +473,18 @@ export function buildBigOfficialWatch(
     eventType,
     summary,
   });
+  const shockSignal = detectBigShockSignal(snapshot.sourceText);
+  const requiresAttention =
+    shockSignal !== "none" ||
+    (summary.approxEvMultiple !== null && summary.approxEvMultiple >= 1);
 
   return {
     eventSnapshot,
     eventType,
     heatBand,
     label,
+    requiresAttention,
+    shockSignal,
     snapshot,
     summary,
   } satisfies BigOfficialWatch;
@@ -486,6 +496,28 @@ export function pickFeaturedBigOfficialSnapshot(snapshots: BigOfficialSnapshot[]
     .sort((left, right) => {
       const leftWatch = buildBigOfficialWatch(left);
       const rightWatch = buildBigOfficialWatch(right);
+      const leftShockPriority =
+        leftWatch.shockSignal === "strong"
+          ? 2
+          : leftWatch.shockSignal === "possible"
+            ? 1
+            : 0;
+      const rightShockPriority =
+        rightWatch.shockSignal === "strong"
+          ? 2
+          : rightWatch.shockSignal === "possible"
+            ? 1
+            : 0;
+      if (leftShockPriority !== rightShockPriority) {
+        return rightShockPriority - leftShockPriority;
+      }
+
+      const leftAttentionPriority = leftWatch.requiresAttention ? 1 : 0;
+      const rightAttentionPriority = rightWatch.requiresAttention ? 1 : 0;
+      if (leftAttentionPriority !== rightAttentionPriority) {
+        return rightAttentionPriority - leftAttentionPriority;
+      }
+
       const leftEv = leftWatch.summary.approxEvMultiple ?? -1;
       const rightEv = rightWatch.summary.approxEvMultiple ?? -1;
       if (leftEv !== rightEv) {

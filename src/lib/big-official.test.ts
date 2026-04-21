@@ -91,4 +91,24 @@ describe("big official sync parser", () => {
     expect(formatBigCarryoverDisplay(miniBig?.carryoverYen)).toBe("なし");
     expect(buildBigOfficialWatch(miniBig!).eventSnapshot.statusLabel).toBe("キャリーなし");
   });
+
+  it("prioritizes official shock notes when picking the featured snapshot", () => {
+    const payload = parseBigOfficialWatchHtml({
+      fetchedAt: "2026-04-21T13:45:00.000Z",
+      html: sampleHtml,
+    });
+    const bigSnapshot = payload.snapshots.find((snapshot) => snapshot.productKey === "big");
+    const miniBig = payload.snapshots.find((snapshot) => snapshot.productKey === "mini_big");
+    const shockMiniBig = {
+      ...miniBig!,
+      sourceText: `${miniBig!.sourceText}\n台風による試合中止の特例を要確認`,
+    };
+
+    const watch = buildBigOfficialWatch(shockMiniBig);
+    const featured = pickFeaturedBigOfficialSnapshot([bigSnapshot!, shockMiniBig]);
+
+    expect(watch.shockSignal).toBe("strong");
+    expect(watch.requiresAttention).toBe(true);
+    expect(featured?.productKey).toBe("mini_big");
+  });
 });

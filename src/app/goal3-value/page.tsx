@@ -47,7 +47,13 @@ export default function Goal3ValuePage() {
   const [loadingSnapshot, setLoadingSnapshot] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
-  const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
+  const [selectedEntryParam, setSelectedEntryParam] = useState<string | null>(() => {
+    if (typeof window === "undefined") {
+      return null;
+    }
+
+    return new URL(window.location.href).searchParams.get("entry");
+  });
   const [liveSnapshotsByEntryId, setLiveSnapshotsByEntryId] = useState<
     Record<string, SyncedTotoOfficialRoundEntry>
   >({});
@@ -66,8 +72,8 @@ export default function Goal3ValuePage() {
   );
 
   const effectiveSelectedEntryId =
-    selectedEntryId && goal3Entries.some((entry) => entry.id === selectedEntryId)
-      ? selectedEntryId
+    selectedEntryParam && goal3Entries.some((entry) => entry.id === selectedEntryParam)
+      ? selectedEntryParam
       : featuredEntry?.id ?? null;
 
   const selectedEntry =
@@ -87,6 +93,18 @@ export default function Goal3ValuePage() {
         : [],
     [liveSnapshot, selectedEntry],
   );
+
+  const handleSelectEntry = (entryId: string) => {
+    setSelectedEntryParam(entryId);
+
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const nextUrl = new URL(window.location.href);
+    nextUrl.searchParams.set("entry", entryId);
+    window.history.replaceState({}, "", nextUrl.toString());
+  };
 
   useEffect(() => {
     if (
@@ -240,7 +258,7 @@ export default function Goal3ValuePage() {
 
       <SectionCard
         title="期待値ウォッチ"
-        description="キャリーが大きい回を先に拾い、GOAL3 専用ページで見ます。BIG は別 monitor、WINNER は既存 Value Board に分けています。"
+        description="キャリーが大きい回を先に拾い、GOAL3 専用ページで見ます。選んだ回は URL に残るので、そのまま共有や再訪にも使えます。"
       >
         <div className="grid gap-4 xl:grid-cols-3">
           <div className="rounded-[24px] border border-slate-200 bg-slate-50/90 p-5">
@@ -261,9 +279,22 @@ export default function Goal3ValuePage() {
                 : "Yahoo! toto 販売スケジュールに GOAL3 回が載っている時期だけ、ここへ同期して並べます。"}
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
-              <Link href={appRoute.goal3Value} className={buttonClassName}>
-                GOAL3 を開く
-              </Link>
+              <button
+                type="button"
+                onClick={() => {
+                  if (featuredEntry) {
+                    handleSelectEntry(featuredEntry.id);
+                  }
+                }}
+                className={buttonClassName}
+                disabled={!featuredEntry || selectedEntry?.id === featuredEntry.id}
+              >
+                {!featuredEntry
+                  ? "GOAL3 回を待つ"
+                  : selectedEntry?.id === featuredEntry.id
+                    ? "この回を表示中"
+                    : "この回を詳しく見る"}
+              </button>
               <button type="button" onClick={() => void handleSync()} className={secondaryButtonClassName} disabled={syncing}>
                 公式一覧を同期して GOAL3 を探す
               </button>
@@ -278,10 +309,10 @@ export default function Goal3ValuePage() {
               </Badge>
             </div>
             <h3 className="mt-3 font-display text-[1.35rem] font-semibold tracking-[-0.05em] text-slate-950">
-              BIG の激アツ回は別 monitor
+              BIG の激アツ回は別監視ページ
             </h3>
             <p className="mt-3 text-sm leading-6 text-slate-600">
-              BIG は公式同期 watch に対応済みで、同期エラーや取得失敗のときだけテンプレ条件へ切り替えて比較します。
+              BIG は公式同期ウォッチに対応済みで、同期エラーや取得失敗のときだけテンプレ条件へ切り替えて比較します。
               売上・キャリーが取れれば、高還元ウォッチとしてプラス圏かどうかをすぐ見られます。
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
@@ -300,7 +331,7 @@ export default function Goal3ValuePage() {
               1試合の妙味は WINNER Value Board
             </h3>
             <p className="mt-3 text-sm leading-6 text-slate-600">
-              公式人気との差は WINNER 側の board で見るのが自然です。GOAL3 と混ぜず、別の導線に分けています。
+              公式人気との差は WINNER 側のボードで見るのが自然です。GOAL3 と混ぜず、別の導線に分けています。
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
               <Link
@@ -352,7 +383,7 @@ export default function Goal3ValuePage() {
                   <button
                     key={entry.id}
                     type="button"
-                    onClick={() => setSelectedEntryId(entry.id)}
+                    onClick={() => handleSelectEntry(entry.id)}
                     className={`rounded-[24px] border px-5 py-5 text-left transition ${
                       isSelected
                         ? "border-teal-300 bg-teal-50/80"
