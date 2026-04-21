@@ -805,10 +805,30 @@ function isMissingRelationError(error: RelationMissingResult["error"], table: st
   }
 
   const normalizedMessage = normalizeRelationMessage(error);
+  const normalizedTable = table.toLowerCase();
+  const hasTableMention =
+    normalizedMessage.includes(`public.${normalizedTable}`) ||
+    normalizedMessage.includes(`public.` + `"${normalizedTable}"`) ||
+    normalizedMessage.includes(`"${normalizedTable}"`) ||
+    normalizedMessage.includes(`'${normalizedTable}'`) ||
+    normalizedMessage.includes("`" + normalizedTable + "`") ||
+    normalizedMessage.includes(normalizedTable);
+  const hasMissingHint =
+    normalizedMessage.includes("schema cache") ||
+    normalizedMessage.includes("does not exist") ||
+    normalizedMessage.includes("is not in the schema cache") ||
+    normalizedMessage.includes("is missing") ||
+    normalizedMessage.includes("is missing from the schema cache") ||
+    normalizedMessage.includes("relation") ||
+    normalizedMessage.includes("table");
   const publicTablePattern = `public.${table}`;
   const quotedPattern = `"${publicTablePattern}"`;
   const bareQuotedPattern = `"${table}"`;
   const candidatePattern = table;
+
+  if (hasTableMention && hasMissingHint) {
+    return true;
+  }
 
   return (
     normalizedMessage.includes(`could not find table '${publicTablePattern}' in the schema cache`) ||
