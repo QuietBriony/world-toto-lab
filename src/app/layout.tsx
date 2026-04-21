@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { JetBrains_Mono, Space_Grotesk } from "next/font/google";
-import { Badge, cx } from "@/components/ui";
+import { Badge, cx, secondaryButtonClassName } from "@/components/ui";
+import { appRoute } from "@/lib/round-links";
 import "./globals.css";
 
 const displayFont = Space_Grotesk({
@@ -61,7 +63,10 @@ export default function RootLayout({
                       共有MVP
                     </span>
                   </div>
-                  <div className="grid gap-3 lg:grid-cols-[auto_1fr] lg:items-end">
+                  <Link
+                    href={appRoute.dashboard}
+                    className="grid gap-3 rounded-[24px] outline-none transition hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-emerald-200/70 lg:grid-cols-[auto_1fr] lg:items-end"
+                  >
                     <div className="relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-[20px] border border-emerald-200/20 bg-[linear-gradient(180deg,rgba(8,32,20,0.95),rgba(10,60,34,0.96))] font-display text-xl font-bold text-white shadow-[0_24px_70px_-38px_rgba(0,0,0,0.9)] before:absolute before:inset-[10px] before:rounded-[14px] before:border before:border-white/35 before:content-[''] after:absolute after:left-1/2 after:top-[10px] after:h-[calc(100%-20px)] after:w-px after:-translate-x-1/2 after:bg-white/30 after:content-['']">
                       <span className="relative z-10">WT</span>
                     </div>
@@ -75,13 +80,23 @@ export default function RootLayout({
                         サッカーtotoの共有ラボ
                       </h1>
                     </div>
-                  </div>
+                  </Link>
                 </div>
                 <div className="grid gap-3 lg:max-w-xl lg:grid-cols-[1fr_auto] lg:items-end">
-                  <p className="text-sm leading-6 text-emerald-50/78">
-                    友人グループで W杯toto/WINNER の見立てを持ち寄り、
-                    人力コンセンサスとモデル優位差を振り返るための MVP です。
-                  </p>
+                  <div className="space-y-3">
+                    <p className="text-sm leading-6 text-emerald-50/78">
+                      友人グループで W杯toto/WINNER の見立てを持ち寄り、
+                      人力コンセンサスとモデル優位差を振り返るための MVP です。
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <Link href={appRoute.dashboard} className={secondaryButtonClassName}>
+                        ダッシュボードへ
+                      </Link>
+                      <Link href={`${appRoute.dashboard}#create-round`} className={secondaryButtonClassName}>
+                        新規ラウンド
+                      </Link>
+                    </div>
+                  </div>
                   <div className="rounded-[20px] border border-white/12 bg-[linear-gradient(180deg,rgba(2,8,6,0.88),rgba(12,19,14,0.94))] px-4 py-3 text-right shadow-[0_20px_50px_-36px_rgba(0,0,0,0.8)]">
                     <div className="font-display text-[11px] uppercase tracking-[0.32em] text-emerald-100/52">
                       進行メモ
