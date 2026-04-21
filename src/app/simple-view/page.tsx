@@ -14,6 +14,7 @@ import { RoundNav } from "@/components/round-nav";
 import {
   Badge,
   buttonClassName,
+  CollapsibleSectionCard,
   cx,
   PageHeader,
   SectionCard,
@@ -325,103 +326,6 @@ function SimpleViewPageContent() {
         ]}
       />
 
-      <SectionCard
-        title="この画面の見方"
-        description="補助表示の出どころと保存ルールを先に見ておくと、スマホでも迷いにくくなります。"
-        actions={
-          data.round.totoOfficialRound?.sourceUrl ? (
-            <a
-              href={data.round.totoOfficialRound.sourceUrl}
-              target="_blank"
-              rel="noreferrer"
-              className={secondaryButtonClassName}
-            >
-              元の公式ソース
-            </a>
-          ) : null
-        }
-      >
-        <div className="flex flex-wrap gap-2">
-          <Badge tone={roundSourceTone[data.round.roundSource]}>
-            出どころ {roundSourceLabel[data.round.roundSource]}
-          </Badge>
-          <Badge tone={productTypeBadgeTone[data.round.productType]}>
-            {productTypeLabel[data.round.productType]}
-          </Badge>
-          <Badge tone={activeUser.role === "admin" ? "teal" : "info"}>
-            入力中 {activeUser.name}
-          </Badge>
-          {data.round.totoOfficialRound ? <Badge tone="teal">toto公式人気あり</Badge> : null}
-        </div>
-
-        <div className="grid gap-4 lg:grid-cols-2">
-          <div className="space-y-3 text-sm leading-6 text-slate-600">
-            <p>{roundSourceHint(data.round.roundSource)}</p>
-            <p>
-              公式人気は crowd の見え方、AI候補はモデル確率、人力は管理者の手入力予想です。どれも補助表示なので、最終判断は自分で選んでください。
-            </p>
-            <p>
-              {data.round.sourceNote
-                ? `管理メモ: ${data.round.sourceNote}`
-                : "管理メモは未設定です。気になるときは Advanced View の元データも確認してください。"}
-            </p>
-          </div>
-          <div className="rounded-[22px] border border-amber-200 bg-amber-50 px-4 py-4 text-sm leading-6 text-amber-950">
-            <p className="font-semibold">保存は明示操作です。</p>
-            <p className="mt-2">
-              1 / 0 / 2 をタップしただけでは round に反映されません。下の固定バーの
-              「自分の予想を保存」を押した時点で保存されます。
-            </p>
-          </div>
-        </div>
-      </SectionCard>
-
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-        <StatCard label="Round" value={data.round.title} compact />
-        <StatCard label="対象試合数" value={data.round.matches.length} compact />
-        <StatCard label="入力済み" value={`${summary.filledCount}/${data.round.matches.length}`} compact />
-        <StatCard label="AI一致率" value={formatPercent(summary.aiAligned / Math.max(data.round.matches.length, 1), 0)} compact />
-        <StatCard label="人力一致率" value={formatPercent(summary.humanAligned / Math.max(data.round.matches.length, 1), 0)} compact />
-      </div>
-
-      <SectionCard
-        title="いま出ている候補"
-        description="細かい比較は Friend Pick Room 側で行い、この画面では並びをざっと確認できます。"
-        actions={
-          <Link
-            href={buildRoundHref(appRoute.pickRoom, data.round.id, { user: activeUser.id })}
-            className={secondaryButtonClassName}
-          >
-            候補を詳しく見る
-          </Link>
-        }
-      >
-        {candidatePreviewTickets.length === 0 ? (
-          <p className="text-sm leading-6 text-slate-600">
-            まだ候補カードがありません。Friend Pick Room を開くと、自動更新された候補が並ぶことがあります。
-          </p>
-        ) : (
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            {candidatePreviewTickets.map((ticket) => (
-              <div
-                key={ticket.id}
-                className="rounded-[22px] border border-slate-200 bg-white/90 px-4 py-4 shadow-[0_18px_42px_-34px_rgba(15,23,42,0.28)]"
-              >
-                <div className="flex flex-wrap gap-2">
-                  <Badge tone="slate">{ticket.label}</Badge>
-                  <Badge tone={ticket.evPercent !== null ? "teal" : "sky"}>
-                    {ticket.evPercent !== null ? `推定EV ${ticket.evPercent.toFixed(0)}%` : `Proxy ${ticket.proxyScore?.toFixed(2) ?? "—"}`}
-                  </Badge>
-                </div>
-                <p className="mt-3 font-mono text-sm tracking-[0.24em] text-slate-900">
-                  {ticket.picks.map((pick) => pick.pick).join(" ")}
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
-      </SectionCard>
-
       <SectionCard title="メンバー" description="誰の13予想を入れるかを選びます。スマホでは横にスワイプできます。">
         <div className="rounded-[22px] border border-slate-200 bg-slate-50/90 px-4 py-4">
           <div className="flex flex-wrap items-center gap-2">
@@ -562,6 +466,120 @@ function SimpleViewPageContent() {
           </div>
         </form>
       </SectionCard>
+
+      <SectionCard
+        title="いま出ている候補"
+        description="細かい比較は Friend Pick Room 側で行い、この画面では並びをざっと確認できます。"
+        actions={
+          <Link
+            href={buildRoundHref(appRoute.pickRoom, data.round.id, { user: activeUser.id })}
+            className={secondaryButtonClassName}
+          >
+            候補を詳しく見る
+          </Link>
+        }
+      >
+        {candidatePreviewTickets.length === 0 ? (
+          <p className="text-sm leading-6 text-slate-600">
+            まだ候補カードがありません。Friend Pick Room を開くと、自動更新された候補が並ぶことがあります。
+          </p>
+        ) : (
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {candidatePreviewTickets.map((ticket) => (
+              <div
+                key={ticket.id}
+                className="rounded-[22px] border border-slate-200 bg-white/90 px-4 py-4 shadow-[0_18px_42px_-34px_rgba(15,23,42,0.28)]"
+              >
+                <div className="flex flex-wrap gap-2">
+                  <Badge tone="slate">{ticket.label}</Badge>
+                  <Badge tone={ticket.evPercent !== null ? "teal" : "sky"}>
+                    {ticket.evPercent !== null ? `推定EV ${ticket.evPercent.toFixed(0)}%` : `Proxy ${ticket.proxyScore?.toFixed(2) ?? "—"}`}
+                  </Badge>
+                </div>
+                <p className="mt-3 font-mono text-sm tracking-[0.24em] text-slate-900">
+                  {ticket.picks.map((pick) => pick.pick).join(" ")}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+      </SectionCard>
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+        <StatCard label="Round" value={data.round.title} compact />
+        <StatCard label="対象試合数" value={data.round.matches.length} compact />
+        <StatCard
+          label="入力済み"
+          value={`${summary.filledCount}/${data.round.matches.length}`}
+          compact
+        />
+        <StatCard
+          label="AI一致率"
+          value={formatPercent(summary.aiAligned / Math.max(data.round.matches.length, 1), 0)}
+          compact
+        />
+        <StatCard
+          label="人力一致率"
+          value={formatPercent(
+            summary.humanAligned / Math.max(data.round.matches.length, 1),
+            0,
+          )}
+          compact
+        />
+      </div>
+
+      <CollapsibleSectionCard
+        title="この画面の見方"
+        description="補助表示の出どころと保存ルールを先に見ておくと、スマホでも迷いにくくなります。"
+        defaultOpen={false}
+        badge={<Badge tone="slate">補助説明</Badge>}
+        actions={
+          data.round.totoOfficialRound?.sourceUrl ? (
+            <a
+              href={data.round.totoOfficialRound.sourceUrl}
+              target="_blank"
+              rel="noreferrer"
+              className={secondaryButtonClassName}
+            >
+              元の公式ソース
+            </a>
+          ) : null
+        }
+      >
+        <div className="flex flex-wrap gap-2">
+          <Badge tone={roundSourceTone[data.round.roundSource]}>
+            出どころ {roundSourceLabel[data.round.roundSource]}
+          </Badge>
+          <Badge tone={productTypeBadgeTone[data.round.productType]}>
+            {productTypeLabel[data.round.productType]}
+          </Badge>
+          <Badge tone={activeUser.role === "admin" ? "teal" : "info"}>
+            入力中 {activeUser.name}
+          </Badge>
+          {data.round.totoOfficialRound ? <Badge tone="teal">toto公式人気あり</Badge> : null}
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-2">
+          <div className="space-y-3 text-sm leading-6 text-slate-600">
+            <p>{roundSourceHint(data.round.roundSource)}</p>
+            <p>
+              公式人気は crowd の見え方、AI候補はモデル確率、人力は管理者の手入力予想です。どれも補助表示なので、最終判断は自分で選んでください。
+            </p>
+            <p>
+              {data.round.sourceNote
+                ? `管理メモ: ${data.round.sourceNote}`
+                : "管理メモは未設定です。気になるときは Advanced View の元データも確認してください。"}
+            </p>
+          </div>
+          <div className="rounded-[22px] border border-amber-200 bg-amber-50 px-4 py-4 text-sm leading-6 text-amber-950">
+            <p className="font-semibold">保存は明示操作です。</p>
+            <p className="mt-2">
+              1 / 0 / 2 をタップしただけでは round に反映されません。下の固定バーの
+              「自分の予想を保存」を押した時点で保存されます。
+            </p>
+          </div>
+        </div>
+      </CollapsibleSectionCard>
 
       {actionError ? (
         <SectionCard title="操作エラー">

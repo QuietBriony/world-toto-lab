@@ -2,6 +2,7 @@ import { EditingStatusNotice } from "@/components/app/editing-status";
 import {
   Badge,
   buttonClassName,
+  CollapsibleSectionCard,
   cx,
   HorizontalScrollTable,
   SectionCard,
@@ -300,9 +301,11 @@ export function CandidateComparisonTable(props: {
   tickets: CandidateTicket[];
 }) {
   return (
-    <SectionCard
+    <CollapsibleSectionCard
       title="Candidate Comparison"
       description="王道・人力・EV候補の出どころと注意点までまとめて比較できます。"
+      defaultOpen={false}
+      badge={<Badge tone="slate">比較表</Badge>}
     >
       <HorizontalScrollTable>
         <table className="min-w-[1320px] text-left text-sm">
@@ -370,6 +373,6 @@ export function CandidateComparisonTable(props: {
           </tbody>
         </table>
       </HorizontalScrollTable>
-    </SectionCard>
+    </CollapsibleSectionCard>
   );
 }

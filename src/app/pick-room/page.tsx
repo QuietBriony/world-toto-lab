@@ -20,6 +20,7 @@ import { RoundNav } from "@/components/round-nav";
 import {
   Badge,
   buttonClassName,
+  CollapsibleSectionCard,
   PageHeader,
   SectionCard,
   StatCard,
@@ -294,7 +295,7 @@ function PickRoomPageContent() {
             ) : null}
             <Link
               href={buildRoundHref(appRoute.simpleView, data.round.id, { user: activeUser?.id })}
-              className={secondaryButtonClassName}
+              className={buttonClassName}
             >
               Simple View
             </Link>
@@ -304,7 +305,7 @@ function PickRoomPageContent() {
                 autoRefreshIdentityRef.current = null;
                 void refresh();
               }}
-              className={buttonClassName}
+              className={secondaryButtonClassName}
               disabled={busyKey === "refresh"}
             >
               候補を再読み込み
@@ -335,8 +336,136 @@ function PickRoomPageContent() {
       />
 
       <SectionCard
+        title="メンバー"
+        description="誰の視点で投票・コメントするかを選びます。スマホでは横にスワイプできます。"
+      >
+        <div className="rounded-[22px] border border-slate-200 bg-slate-50/90 px-4 py-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge tone={activeUser?.role === "admin" ? "teal" : "info"}>
+              {activeUser?.role === "admin" ? "予想者" : "メンバー"}
+            </Badge>
+            <p className="text-sm leading-6 text-slate-600">
+              今は <span className="font-semibold text-slate-950">{activeUser?.name}</span> の投票を編集しています。
+            </p>
+          </div>
+        </div>
+
+        <div className="-mx-1 overflow-x-auto pb-1">
+          <div className="flex w-max gap-2 px-1 sm:w-auto sm:flex-wrap">
+            {data.users.map((user) => (
+              <button
+                key={user.id}
+                type="button"
+                onClick={() =>
+                  router.push(buildRoundHref(appRoute.pickRoom, data.round.id, { user: user.id }))
+                }
+                className={user.id === activeUser?.id ? buttonClassName : secondaryButtonClassName}
+              >
+                {user.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      </SectionCard>
+
+      <SectionCard
+        title="Candidate Cards"
+        description="まずはここだけ見れば大丈夫です。横スワイプで候補を比べて、そのままリアクションを残せます。"
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <Badge tone="slate">候補 {candidateTickets.length}</Badge>
+            <Badge tone={activeUser?.role === "admin" ? "teal" : "info"}>
+              視点 {activeUser?.name ?? "未選択"}
+            </Badge>
+          </div>
+        }
+      >
+        {candidateTickets.length === 0 ? (
+          <p className="text-sm leading-6 text-slate-600">
+            まだ候補カードがありません。試合データや AI 確率をそろえてから再読み込みしてください。
+          </p>
+        ) : (
+          <div className="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory">
+            {candidateTickets.map((candidate) => {
+              const activeVote =
+                data.round.candidateVotes.find(
+                  (vote) => vote.candidateTicketId === candidate.id && vote.userId === activeUser?.id,
+                )?.vote ?? null;
+
+              return (
+                <CandidateCard
+                  key={candidate.id}
+                  activeVote={activeVote}
+                  busyVote={
+                    busyKey?.startsWith(candidate.id) && busyKey.includes(":")
+                      ? (busyKey.split(":")[1] as CandidateVoteValue | "comment")
+                      : null
+                  }
+                  candidate={candidate}
+                  onComment={() => void handleComment(candidate.id)}
+                  onVote={(vote) => void handleVote(candidate.id, vote)}
+                  voteSummary={
+                    candidateVoteSummary.get(candidate.id) ?? {
+                      boughtMyself: 0,
+                      comments: 0,
+                      like: 0,
+                      maybe: 0,
+                      pass: 0,
+                    }
+                  }
+                />
+              );
+            })}
+          </div>
+        )}
+      </SectionCard>
+
+      {actionError ? (
+        <SectionCard title="操作エラー">
+          <p className="text-sm text-rose-700">{actionError}</p>
+        </SectionCard>
+      ) : null}
+      {actionMessage ? (
+        <SectionCard title="保存しました">
+          <p className="text-sm text-emerald-700">{actionMessage}</p>
+        </SectionCard>
+      ) : null}
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+        <StatCard label="対象試合数" value={data.round.matches.length} compact />
+        <StatCard label="公式人気" value={officialReadyLabel} compact />
+        <StatCard label="AI試算" value={aiReadyLabel} compact />
+        <StatCard label="人力予想人数" value={dataQualitySummary.humanPickUserCount} compact />
+        <StatCard
+          label="EV計算"
+          value={evModeLabel}
+          compact
+          badge={
+            <Badge tone={productTypeBadgeTone[data.round.productType]}>
+              {productTypeLabel[data.round.productType]}
+            </Badge>
+          }
+        />
+      </div>
+
+      <DataQualityCard
+        summary={dataQualitySummary}
+        extraLines={[
+          "推定EVは、入力されたモデル確率・公式人気・売上想定・配当原資想定から計算した参考値です。的中や利益を保証するものではありません。",
+          data.round.totoOfficialRound
+            ? "公式人気や売上前提は、管理者が取り込んだ toto公式対象回の情報を優先して使います。"
+            : "toto公式対象回の取り込み前でも候補は見られますが、EVは Proxy 表示になりやすいです。",
+          dataQualitySummary.isDemoData
+            ? "このRoundにはデモデータが含まれています。本番分析には使わないでください。"
+            : "実際の購入判断は各自で行い、この画面は候補比較と合意形成の補助として使ってください。",
+        ]}
+      />
+
+      <CollapsibleSectionCard
         title="このRoomの前提"
         description="候補の出どころと注意点を先にそろえておくと、投票の意味がぶれません。"
+        defaultOpen={dataQualitySummary.isDemoData || !data.round.totoOfficialRound}
+        badge={<Badge tone="slate">補助説明</Badge>}
         actions={
           data.round.totoOfficialRound?.sourceUrl ? (
             <a
@@ -404,131 +533,7 @@ function PickRoomPageContent() {
             </div>
           </div>
         </div>
-      </SectionCard>
-
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-        <StatCard label="対象試合数" value={data.round.matches.length} compact />
-        <StatCard label="公式人気" value={officialReadyLabel} compact />
-        <StatCard label="AI試算" value={aiReadyLabel} compact />
-        <StatCard label="人力予想人数" value={dataQualitySummary.humanPickUserCount} compact />
-        <StatCard
-          label="EV計算"
-          value={evModeLabel}
-          compact
-          badge={
-            <Badge tone={productTypeBadgeTone[data.round.productType]}>
-              {productTypeLabel[data.round.productType]}
-            </Badge>
-          }
-        />
-      </div>
-
-      <SectionCard
-        title="メンバー"
-        description="誰の視点で投票・コメントするかを選びます。スマホでは横にスワイプできます。"
-      >
-        <div className="rounded-[22px] border border-slate-200 bg-slate-50/90 px-4 py-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge tone={activeUser?.role === "admin" ? "teal" : "info"}>
-              {activeUser?.role === "admin" ? "予想者" : "メンバー"}
-            </Badge>
-            <p className="text-sm leading-6 text-slate-600">
-              今は <span className="font-semibold text-slate-950">{activeUser?.name}</span> の投票を編集しています。
-            </p>
-          </div>
-        </div>
-
-        <div className="-mx-1 overflow-x-auto pb-1">
-          <div className="flex w-max gap-2 px-1 sm:w-auto sm:flex-wrap">
-            {data.users.map((user) => (
-              <button
-                key={user.id}
-                type="button"
-                onClick={() =>
-                  router.push(buildRoundHref(appRoute.pickRoom, data.round.id, { user: user.id }))
-                }
-                className={user.id === activeUser?.id ? buttonClassName : secondaryButtonClassName}
-              >
-                {user.name}
-              </button>
-            ))}
-          </div>
-        </div>
-      </SectionCard>
-
-      <DataQualityCard
-        summary={dataQualitySummary}
-        extraLines={[
-          "推定EVは、入力されたモデル確率・公式人気・売上想定・配当原資想定から計算した参考値です。的中や利益を保証するものではありません。",
-          data.round.totoOfficialRound
-            ? "公式人気や売上前提は、管理者が取り込んだ toto公式対象回の情報を優先して使います。"
-            : "toto公式対象回の取り込み前でも候補は見られますが、EVは Proxy 表示になりやすいです。",
-          dataQualitySummary.isDemoData
-            ? "このRoundにはデモデータが含まれています。本番分析には使わないでください。"
-            : "実際の購入判断は各自で行い、この画面は候補比較と合意形成の補助として使ってください。",
-        ]}
-      />
-
-      {actionError ? (
-        <SectionCard title="操作エラー">
-          <p className="text-sm text-rose-700">{actionError}</p>
-        </SectionCard>
-      ) : null}
-      {actionMessage ? (
-        <SectionCard title="保存しました">
-          <p className="text-sm text-emerald-700">{actionMessage}</p>
-        </SectionCard>
-      ) : null}
-
-      <SectionCard
-        title="Candidate Cards"
-        description="表示は数本だけに絞っています。スマホでは横スワイプしながら比較し、気になる候補だけコメントを添えてください。"
-        actions={
-          <div className="flex flex-wrap gap-2">
-            <Badge tone="slate">候補 {candidateTickets.length}</Badge>
-            <Badge tone="slate">横スワイプ対応</Badge>
-          </div>
-        }
-      >
-        {candidateTickets.length === 0 ? (
-          <p className="text-sm leading-6 text-slate-600">
-            まだ候補カードがありません。試合データや AI 確率をそろえてから再読み込みしてください。
-          </p>
-        ) : (
-          <div className="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory">
-            {candidateTickets.map((candidate) => {
-              const activeVote =
-                data.round.candidateVotes.find(
-                  (vote) => vote.candidateTicketId === candidate.id && vote.userId === activeUser?.id,
-                )?.vote ?? null;
-
-              return (
-                <CandidateCard
-                  key={candidate.id}
-                  activeVote={activeVote}
-                  busyVote={
-                    busyKey?.startsWith(candidate.id) && busyKey.includes(":")
-                      ? (busyKey.split(":")[1] as CandidateVoteValue | "comment")
-                      : null
-                  }
-                  candidate={candidate}
-                  onComment={() => void handleComment(candidate.id)}
-                  onVote={(vote) => void handleVote(candidate.id, vote)}
-                  voteSummary={
-                    candidateVoteSummary.get(candidate.id) ?? {
-                      boughtMyself: 0,
-                      comments: 0,
-                      like: 0,
-                      maybe: 0,
-                      pass: 0,
-                    }
-                  }
-                />
-              );
-            })}
-          </div>
-        )}
-      </SectionCard>
+      </CollapsibleSectionCard>
 
       <CandidateComparisonTable
         tickets={candidateTickets}

@@ -191,6 +191,8 @@ export function SectionCard({
 }
 
 type CollapsibleSectionCardProps = HTMLAttributes<HTMLDetailsElement> & {
+  action?: ReactNode;
+  actions?: ReactNode;
   badge?: ReactNode;
   children: ReactNode;
   contentClassName?: string;
@@ -200,6 +202,8 @@ type CollapsibleSectionCardProps = HTMLAttributes<HTMLDetailsElement> & {
 };
 
 export function CollapsibleSectionCard({
+  action,
+  actions,
   badge,
   children,
   className,
@@ -209,6 +213,8 @@ export function CollapsibleSectionCard({
   title,
   ...props
 }: CollapsibleSectionCardProps) {
+  const resolvedAction = action ?? actions;
+
   return (
     <details
       open={defaultOpen}
@@ -219,22 +225,25 @@ export function CollapsibleSectionCard({
       {...props}
     >
       <summary className="relative z-10 flex cursor-pointer list-none items-start justify-between gap-4 px-5 py-5 [&::-webkit-details-marker]:hidden sm:px-6 sm:py-6">
-        <div className="space-y-2">
-          <div className="flex flex-wrap items-center gap-2">
-            {badge ? <div>{badge}</div> : null}
-            {typeof title === "string" ? (
-              <h2 className="font-display text-lg font-semibold tracking-[-0.04em] text-slate-950 sm:text-[1.2rem]">
-                {title}
-              </h2>
+        <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              {badge ? <div>{badge}</div> : null}
+              {typeof title === "string" ? (
+                <h2 className="font-display text-lg font-semibold tracking-[-0.04em] text-slate-950 sm:text-[1.2rem]">
+                  {title}
+                </h2>
+              ) : (
+                title
+              )}
+            </div>
+            {typeof description === "string" ? (
+              <p className="max-w-2xl text-sm leading-6 text-slate-600">{description}</p>
             ) : (
-              title
+              description
             )}
           </div>
-          {typeof description === "string" ? (
-            <p className="max-w-2xl text-sm leading-6 text-slate-600">{description}</p>
-          ) : (
-            description
-          )}
+          {resolvedAction ? <div className="shrink-0">{resolvedAction}</div> : null}
         </div>
         <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/88 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500 shadow-[0_12px_24px_-22px_rgba(15,23,42,0.55)]">
           <svg
