@@ -22,9 +22,11 @@ import {
 import {
   bigEventTypeDescription,
   bigEventTypeLabel,
+  bigCarryoverPresets,
   buildBigCarryoverEventSnapshot,
   buildBigCarryoverScenarioRows,
   calculateBigCarryoverSummary,
+  classifyBigHeatBand,
   normalizeBigEventType,
 } from "@/lib/big-carryover";
 import { appRoute, buildHref } from "@/lib/round-links";
@@ -119,6 +121,7 @@ function BigCarryoverPageContent() {
         : summary.approxEvMultiple >= 0.9
           ? { label: "ほぼ拮抗", tone: "info" as const }
           : { label: "還元不足", tone: "warning" as const };
+  const heatBand = classifyBigHeatBand(summary);
 
   return (
     <div className="space-y-8">
@@ -180,6 +183,58 @@ function BigCarryoverPageContent() {
               売上とキャリーを入れて、平時の 50% 還元からどれだけ上に乗っているかをすぐ確認できます。
             </p>
           </div>
+        </div>
+      </SectionCard>
+
+      <SectionCard
+        title="まずはここから"
+        description="よく見る温度感をテンプレ化しました。売上・キャリーの感覚がまだ曖昧でも、1タップで比較を始められます。"
+      >
+        <div className="grid gap-4 xl:grid-cols-3">
+          {bigCarryoverPresets.map((preset) => {
+            const presetSummary = calculateBigCarryoverSummary({
+              carryoverYen: preset.carryoverYen,
+              returnRate: preset.returnRatePercent / 100,
+              salesYen: preset.salesYen,
+              spendYen: preset.spendYen,
+            });
+            const presetBand = classifyBigHeatBand(presetSummary);
+            const presetHref = buildHref(appRoute.bigCarryover, {
+              carryover: preset.carryoverYen,
+              eventType: preset.eventType,
+              label: preset.eventLabel,
+              returnRate: preset.returnRatePercent,
+              sales: preset.salesYen,
+              spend: preset.spendYen,
+            });
+
+            return (
+              <div
+                key={preset.id}
+                className="rounded-[24px] border border-slate-200 bg-slate-50/90 p-5"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge tone={presetBand.badgeTone}>{presetBand.label}</Badge>
+                  <Badge tone="slate">{bigEventTypeLabel[preset.eventType]}</Badge>
+                </div>
+                <h3 className="mt-3 font-display text-[1.25rem] font-semibold tracking-[-0.05em] text-slate-950">
+                  {preset.eventLabel}
+                </h3>
+                <p className="mt-3 text-sm leading-6 text-slate-600">{preset.description}</p>
+                <div className="mt-4 flex flex-wrap gap-3 text-xs text-slate-500">
+                  <span>概算 {formatPercent(presetSummary.approxEvMultiple)}</span>
+                  <span>売上 {formatCurrency(preset.salesYen)}</span>
+                  <span>キャリー {formatCurrency(preset.carryoverYen)}</span>
+                </div>
+                <p className="mt-3 text-xs leading-5 text-slate-500">{presetBand.hint}</p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Link href={presetHref} className={buttonClassName}>
+                    この条件で開く
+                  </Link>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </SectionCard>
 
@@ -321,6 +376,12 @@ function BigCarryoverPageContent() {
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard
+          label="熱量判定"
+          value={heatBand.label}
+          hint={heatBand.hint}
+          tone={heatBand.badgeTone === "positive" ? "positive" : heatBand.badgeTone === "warning" ? "warning" : "default"}
+        />
+        <StatCard
           label="概算EV"
           value={summary.approxEvMultiple !== null ? formatPercent(summary.approxEvMultiple) : "—"}
           hint="returnRate + carryover / totalSales"
@@ -347,6 +408,41 @@ function BigCarryoverPageContent() {
           tone="default"
         />
       </section>
+
+      <SectionCard
+        title="激アツ判定の見方"
+        description="BIG 側でまず見たいのは、分岐越え・分岐付近・監視中のどこにいるかです。"
+      >
+        <div className="grid gap-4 lg:grid-cols-3">
+          <div className="rounded-[24px] border border-teal-200 bg-teal-50/80 p-5">
+            <div className="flex items-center gap-2">
+              <Badge tone="teal">期待値大</Badge>
+              <h3 className="font-semibold text-slate-950">概算 EV が 100% 以上</h3>
+            </div>
+            <p className="mt-3 text-sm leading-6 text-slate-700">
+              `returnRate + carryover / sales` が 1.00 を超える状態です。売上急増で薄まる前に、次の更新だけは追います。
+            </p>
+          </div>
+          <div className="rounded-[24px] border border-amber-200 bg-amber-50/80 p-5">
+            <div className="flex items-center gap-2">
+              <Badge tone="warning">分岐付近</Badge>
+              <h3 className="font-semibold text-slate-950">あと一押しで届く</h3>
+            </div>
+            <p className="mt-3 text-sm leading-6 text-slate-700">
+              損益分岐との差が小さい回です。キャリーがもう少し乗るか、売上見込みが鈍ると一気に見え方が変わります。
+            </p>
+          </div>
+          <div className="rounded-[24px] border border-slate-200 bg-slate-50/90 p-5">
+            <div className="flex items-center gap-2">
+              <Badge tone="info">監視中</Badge>
+              <h3 className="font-semibold text-slate-950">まだ平時寄り</h3>
+            </div>
+            <p className="mt-3 text-sm leading-6 text-slate-700">
+              すぐ投下判断というより、話題回の比較メモとして残す段階です。次に同系統イベントが来たときの基準値に使えます。
+            </p>
+          </div>
+        </div>
+      </SectionCard>
 
       <SectionCard
         title="判断メモ"

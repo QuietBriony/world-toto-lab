@@ -35,6 +35,56 @@ export type BigCarryoverEventSnapshot = {
   tone: "info" | "positive" | "warning";
 };
 
+export type BigCarryoverPreset = {
+  carryoverYen: number;
+  description: string;
+  eventLabel: string;
+  eventType: BigEventType;
+  id: string;
+  returnRatePercent: number;
+  salesYen: number;
+  spendYen: number;
+};
+
+export type BigHeatBand = {
+  badgeTone: "info" | "positive" | "warning";
+  hint: string;
+  label: string;
+};
+
+export const bigCarryoverPresets: BigCarryoverPreset[] = [
+  {
+    carryoverYen: 4_000_000_000,
+    description: "売上 80億に対して 40億キャリー。分岐ラインを跨ぐかどうかの目安です。",
+    eventLabel: "BIG 分岐ライン確認",
+    eventType: "carryover_event",
+    id: "break-even-check",
+    returnRatePercent: 50,
+    salesYen: 8_000_000_000,
+    spendYen: 10_000,
+  },
+  {
+    carryoverYen: 6_000_000_000,
+    description: "かなり厚いキャリーが乗った話題回をざっくり再現します。",
+    eventLabel: "BIG 激アツ仮定",
+    eventType: "carryover_event",
+    id: "hot-event",
+    returnRatePercent: 50,
+    salesYen: 8_000_000_000,
+    spendYen: 10_000,
+  },
+  {
+    carryoverYen: 3_200_000_000,
+    description: "高還元ウォッチとして、あと一押しで分岐へ届く水準を見るテンプレです。",
+    eventLabel: "BIG 高還元ウォッチ",
+    eventType: "high_return_watch",
+    id: "high-return-watch",
+    returnRatePercent: 50,
+    salesYen: 7_000_000_000,
+    spendYen: 10_000,
+  },
+];
+
 function isKnownPositiveNumber(value: number | null | undefined): value is number {
   return typeof value === "number" && Number.isFinite(value) && value > 0;
 }
@@ -159,5 +209,37 @@ export function buildBigCarryoverEventSnapshot(input: {
     statusLabel: "監視中",
     status: "watch",
     tone: "info",
+  };
+}
+
+export function classifyBigHeatBand(summary: BigCarryoverSummary): BigHeatBand {
+  if (summary.approxEvMultiple === null) {
+    return {
+      badgeTone: "info",
+      hint: "売上とキャリーが揃うと、ここで一次判定できます。",
+      label: "入力待ち",
+    };
+  }
+
+  if (summary.approxEvMultiple >= 1) {
+    return {
+      badgeTone: "positive",
+      hint: "平時還元を超えていて、概算ではプラス圏です。",
+      label: "期待値大",
+    };
+  }
+
+  if (summary.overBreakEven !== null && summary.overBreakEven >= -0.08) {
+    return {
+      badgeTone: "warning",
+      hint: "あと少しのキャリー増や売上減速で分岐を超える近さです。",
+      label: "分岐付近",
+    };
+  }
+
+  return {
+    badgeTone: "info",
+    hint: "まだ監視段階ですが、比較材料として残す価値があります。",
+    label: "監視中",
   };
 }

@@ -54,9 +54,14 @@ import {
   isGoal3LibraryEntry,
   pickFeaturedGoal3Entry,
 } from "@/lib/goal3";
+import {
+  bigCarryoverPresets,
+  calculateBigCarryoverSummary,
+  classifyBigHeatBand,
+} from "@/lib/big-carryover";
 import { resolveRoundParticipantUsers } from "@/lib/round-participants";
 import { deriveRoundProgressSummary, matchHasSetupInput } from "@/lib/round-progress";
-import { appRoute, buildOfficialRoundImportHref, buildRoundHref } from "@/lib/round-links";
+import { appRoute, buildHref, buildOfficialRoundImportHref, buildRoundHref } from "@/lib/round-links";
 import {
   createDemoRound,
   createInitialUsers,
@@ -471,6 +476,22 @@ export default function DashboardPage() {
     data && winnerWatchRound
       ? resolveRoundParticipantUsers(data.users, winnerWatchRound.participantIds)
       : [];
+  const featuredBigPreset = bigCarryoverPresets[0];
+  const featuredBigSummary = calculateBigCarryoverSummary({
+    carryoverYen: featuredBigPreset.carryoverYen,
+    returnRate: featuredBigPreset.returnRatePercent / 100,
+    salesYen: featuredBigPreset.salesYen,
+    spendYen: featuredBigPreset.spendYen,
+  });
+  const featuredBigHeat = classifyBigHeatBand(featuredBigSummary);
+  const featuredBigHref = buildHref(appRoute.bigCarryover, {
+    carryover: featuredBigPreset.carryoverYen,
+    eventType: featuredBigPreset.eventType,
+    label: featuredBigPreset.eventLabel,
+    returnRate: featuredBigPreset.returnRatePercent,
+    sales: featuredBigPreset.salesYen,
+    spend: featuredBigPreset.spendYen,
+  });
   const createRoundAnchor = "#create-round";
   const roundListAnchor = "#round-list";
 
@@ -545,17 +566,26 @@ export default function DashboardPage() {
           <div className="rounded-[24px] border border-slate-200 bg-slate-50/90 p-5">
             <div className="flex flex-wrap items-center gap-2">
               <Badge tone="amber">BIG ウォッチ</Badge>
-              <Badge tone="slate">monitor</Badge>
+              <Badge tone={featuredBigHeat.badgeTone}>{featuredBigHeat.label}</Badge>
             </div>
             <h3 className="mt-3 font-display text-[1.35rem] font-semibold tracking-[-0.05em] text-slate-950">
               激アツ判定は BIG Carryover Monitor
             </h3>
             <p className="mt-3 text-sm leading-6 text-slate-600">
-              BIG はいまのところ公式同期までは繋げていないので、売上とキャリーを入れて高還元ウォッチとして見ます。
+              BIG はいまのところ公式同期までは繋げていませんが、売上とキャリーから `分岐付近 / 期待値大 / 監視中` をすぐ見られます。
             </p>
+            <div className="mt-4 flex flex-wrap gap-3 text-xs text-slate-500">
+              <span>例: {featuredBigPreset.eventLabel}</span>
+              <span>概算 {formatPercent(featuredBigSummary.approxEvMultiple)}</span>
+              <span>売上 {formatCurrency(featuredBigPreset.salesYen)}</span>
+            </div>
+            <p className="mt-3 text-xs leading-5 text-slate-500">{featuredBigHeat.hint}</p>
             <div className="mt-4 flex flex-wrap gap-2">
               <Link href={appRoute.bigCarryover} className={buttonClassName}>
                 BIG Carryover Monitor
+              </Link>
+              <Link href={featuredBigHref} className={secondaryButtonClassName}>
+                テンプレで開く
               </Link>
             </div>
           </div>
