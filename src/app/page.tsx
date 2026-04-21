@@ -643,6 +643,9 @@ export default function DashboardPage() {
             <p className="mt-3 text-xs leading-5 text-slate-500">
               {featuredBigOfficial?.heatBand.hint ?? featuredBigHeat.hint}
             </p>
+            <p className="mt-2 text-[11px] leading-5 text-slate-500">
+              いまの判定は主に `売上 + キャリー` 由来です。台風などの中止・成立条件の上振れは、別ロジックで追加する前提です。
+            </p>
             {bigOfficialWatch.error ? (
               <p className="mt-3 text-xs text-rose-700">BIG公式同期: {bigOfficialWatch.error}</p>
             ) : bigOfficialWatch.loading && !bigOfficialWatch.data ? (

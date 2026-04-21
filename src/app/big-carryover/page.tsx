@@ -188,6 +188,9 @@ function BigCarryoverPageContent() {
         <p className="mt-4 text-sm leading-6 text-slate-600">
           公式同期 snapshot を優先表示しつつ、必要なときだけ下の固定テンプレへ切り替えて比較できます。
         </p>
+        <p className="mt-2 text-xs leading-5 text-slate-500">
+          いまの自動判定は `売上 + キャリー` ベースです。台風などで成立条件が変わる上振れは、別シグナルとして後段で足します。
+        </p>
         {officialWatch.error ? (
           <p className="mt-3 text-sm text-rose-700">BIG公式同期: {officialWatch.error}</p>
         ) : null}

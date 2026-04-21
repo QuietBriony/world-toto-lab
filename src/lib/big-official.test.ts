@@ -71,7 +71,8 @@ describe("big official sync parser", () => {
 
     const watch = buildBigOfficialWatch(featured!);
     expect(watch.summary.approxEvMultiple).toBeGreaterThan(1);
-    expect(watch.heatBand.label).toBe("期待値大");
+    expect(watch.heatBand.label).toBe("特大上振れ候補");
+    expect(watch.eventSnapshot.statusLabel).toBe("特大上振れ");
 
     const query = buildBigCarryoverQueryFromOfficialSnapshot(featured!);
     expect(query.eventType).toBe("carryover_event");

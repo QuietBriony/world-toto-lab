@@ -88,6 +88,14 @@ describe("big carryover monitor", () => {
         spendYen: 10_000,
       }),
     );
+    const surgeBand = classifyBigHeatBand(
+      calculateBigCarryoverSummary({
+        carryoverYen: 10_000_000_000,
+        returnRate: 0.5,
+        salesYen: 8_000_000_000,
+        spendYen: 10_000,
+      }),
+    );
     const watchBand = classifyBigHeatBand(
       calculateBigCarryoverSummary({
         carryoverYen: 1_000_000_000,
@@ -98,6 +106,7 @@ describe("big carryover monitor", () => {
     );
 
     expect(plusBand.label).toBe("期待値大");
+    expect(surgeBand.label).toBe("特大上振れ候補");
     expect(watchBand.label).toBe("監視中");
   });
 

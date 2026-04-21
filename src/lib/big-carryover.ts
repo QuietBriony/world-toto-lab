@@ -175,6 +175,19 @@ export function buildBigCarryoverEventSnapshot(input: {
   }
 
   if (input.summary.approxEvMultiple >= 1) {
+    if (input.summary.approxEvMultiple >= 1.7) {
+      return {
+        headline: `${label} は特大上振れ候補です`,
+        nextAction:
+          input.eventType === "carryover_event"
+            ? "キャリーだけでなく、売上の急増や中止・成立条件の扱いまで追加で確認したい強い水準です。"
+            : "売上・キャリー由来だけでもかなり強いので、特別回や成立条件の変化がないかを確認します。",
+        statusLabel: "特大上振れ",
+        status: "plus_ev",
+        tone: "positive",
+      };
+    }
+
     return {
       headline: `${label} はプラス期待値圏です`,
       nextAction:
@@ -218,6 +231,14 @@ export function classifyBigHeatBand(summary: BigCarryoverSummary): BigHeatBand {
       badgeTone: "info",
       hint: "売上とキャリーが揃うと、ここで一次判定できます。",
       label: "入力待ち",
+    };
+  }
+
+  if (summary.approxEvMultiple >= 1.7) {
+    return {
+      badgeTone: "positive",
+      hint: "かなり強い上振れです。売上の急増や成立条件の変更がないかを追加で確認したい水準です。",
+      label: "特大上振れ候補",
     };
   }
 
