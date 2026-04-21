@@ -98,11 +98,11 @@ export default function RootLayout({
 
               <div
                 className={cx(
-                  "overflow-x-auto rounded-[24px] border border-white/12 bg-[linear-gradient(135deg,rgba(33,15,4,0.88),rgba(87,48,12,0.78))] px-3 py-3",
+                  "-mx-1 overflow-x-auto rounded-[24px] border border-white/12 bg-[linear-gradient(135deg,rgba(33,15,4,0.88),rgba(87,48,12,0.78))] px-3 py-3 sm:mx-0",
                   "shadow-[0_24px_80px_-40px_rgba(0,0,0,0.55)]",
                 )}
               >
-                <div className="flex min-w-max gap-2">
+                <div className="flex min-w-max gap-2 px-1 sm:min-w-0 sm:flex-wrap sm:px-0">
                   {complianceNotes.map((note) => (
                     <span
                       key={note}

@@ -101,8 +101,8 @@ export function RoundNav({
             {roundStatus ? <Badge tone="info">{roundStatus}</Badge> : null}
           </div>
 
-          <div className="overflow-x-auto pb-1 no-scrollbar">
-            <div className="flex min-w-max gap-2">
+          <div className="-mx-1 overflow-x-auto pb-1 no-scrollbar lg:mx-0 lg:overflow-visible">
+            <div className="flex min-w-max gap-2 px-1 lg:min-w-0 lg:flex-wrap lg:justify-end lg:px-0">
               <Link
                 href={appRoute.dashboard}
                 className={cx(
