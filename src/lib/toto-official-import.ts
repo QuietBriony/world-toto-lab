@@ -26,6 +26,9 @@ export type TotoOfficialImportResult = {
   warnings: string[];
 };
 
+export const multipleFixtureCandidatesWarning =
+  "Fixture候補が複数あります。管理者確認をおすすめします。";
+
 function normalizeSearch(value: string | null | undefined) {
   return (value ?? "")
     .toLowerCase()
@@ -42,7 +45,7 @@ function splitLine(line: string) {
   return line.split(",").map((part) => part.trim());
 }
 
-function normalizeVote(raw: string) {
+export function normalizeVote(raw: string) {
   const value = raw.trim();
   if (!value) {
     return {
@@ -156,6 +159,9 @@ export function matchOfficialRowsToFixtures(
   fixtures: FixtureMaster[],
 ) {
   return rows.map((row) => {
+    const baseWarnings = row.warnings.filter(
+      (warning) => warning !== multipleFixtureCandidatesWarning,
+    );
     const candidates = fixtures
       .map((fixture) => ({
         fixture,
@@ -168,11 +174,13 @@ export function matchOfficialRowsToFixtures(
     return {
       ...row,
       fixtureCandidates: candidates.slice(0, 3),
-      fixtureMasterId: candidates[0]?.id ?? row.fixtureMasterId,
+      fixtureMasterId: candidates.some((candidate) => candidate.id === row.fixtureMasterId)
+        ? row.fixtureMasterId
+        : (candidates[0]?.id ?? null),
       warnings:
         candidates.length > 1
-          ? [...row.warnings, "Fixture候補が複数あります。管理者確認をおすすめします。"]
-          : row.warnings,
+          ? [...baseWarnings, multipleFixtureCandidatesWarning]
+          : baseWarnings,
     } satisfies TotoOfficialImportRow;
   });
 }

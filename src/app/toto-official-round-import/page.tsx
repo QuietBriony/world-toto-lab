@@ -36,6 +36,7 @@ import {
 import { isSupabaseConfigured } from "@/lib/supabase";
 import {
   matchOfficialRowsToFixtures,
+  normalizeVote,
   parseTotoOfficialRoundCsv,
   type TotoOfficialImportRow,
 } from "@/lib/toto-official-import";
@@ -44,6 +45,38 @@ import type { ProductType, TotoOfficialRoundLibraryEntry } from "@/lib/types";
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "不明なエラーです。";
+}
+
+function dedupeWarnings(warnings: Array<string | null | undefined>) {
+  return Array.from(new Set(warnings.filter((warning): warning is string => Boolean(warning))));
+}
+
+function normalizeEditableVoteValue(value: number | null) {
+  if (value === null) {
+    return null;
+  }
+
+  return normalizeVote(String(value)).normalized;
+}
+
+function collectRowWarnings(rows: TotoOfficialImportRow[]) {
+  return dedupeWarnings(
+    rows.flatMap((row) => {
+      const warnings = [...row.warnings];
+      const total =
+        (normalizeEditableVoteValue(row.officialVote1) ?? 0) +
+        (normalizeEditableVoteValue(row.officialVote0) ?? 0) +
+        (normalizeEditableVoteValue(row.officialVote2) ?? 0);
+
+      if (total > 0 && Math.abs(total - 1) > 0.04) {
+        warnings.push(
+          `No.${row.officialMatchNo} の公式投票率1/0/2の合計が1から大きくズレています。`,
+        );
+      }
+
+      return warnings;
+    }),
+  );
 }
 
 const csvSample = [
@@ -229,13 +262,36 @@ function TotoOfficialRoundImportPageContent() {
       }),
     [fixtures.data, sourceText],
   );
+  const rowWarnings = useMemo(() => collectRowWarnings(rows), [rows]);
+  const previewWarnings = useMemo(
+    () => dedupeWarnings([...parseWarnings, ...rowWarnings]),
+    [parseWarnings, rowWarnings],
+  );
+
+  const rematchRows = (nextRows: TotoOfficialImportRow[]) => {
+    const matchedRows = matchOfficialRowsToFixtures(nextRows, fixtures.data ?? []);
+    setRows(matchedRows);
+    return matchedRows;
+  };
+
+  const updateRow = (
+    index: number,
+    patch: Partial<TotoOfficialImportRow>,
+    options?: {
+      rematch?: boolean;
+    },
+  ) => {
+    setRows((current) => {
+      const nextRows = current.map((entry, currentIndex) =>
+        currentIndex === index ? { ...entry, ...patch } : entry,
+      );
+      return options?.rematch ? matchOfficialRowsToFixtures(nextRows, fixtures.data ?? []) : nextRows;
+    });
+  };
 
   const handleParse = () => {
     setRows(parsedPreview.rows);
-    setParseWarnings([
-      ...parsedPreview.warnings,
-      ...parsedPreview.rows.flatMap((row) => row.warnings),
-    ]);
+    setParseWarnings(parsedPreview.warnings);
     setActionError(null);
     setActionMessage(null);
   };
@@ -254,7 +310,7 @@ function TotoOfficialRoundImportPageContent() {
     setTotalSalesYen(entry.totalSalesYen?.toString() ?? "");
     setCarryoverYen(String(entry.carryoverYen ?? 0));
     setRows(matchedRows);
-    setParseWarnings(matchedRows.flatMap((row) => row.warnings));
+    setParseWarnings([]);
     setActionError(null);
     setActionMessage(`「${entry.title}」を編集フォームに読み込みました。`);
   };
@@ -406,9 +462,9 @@ function TotoOfficialRoundImportPageContent() {
           kickoffTime: row.kickoffTime,
           matchStatus: row.matchStatus,
           officialMatchNo: row.officialMatchNo,
-          officialVote0: row.officialVote0,
-          officialVote1: row.officialVote1,
-          officialVote2: row.officialVote2,
+          officialVote0: normalizeEditableVoteValue(row.officialVote0),
+          officialVote1: normalizeEditableVoteValue(row.officialVote1),
+          officialVote2: normalizeEditableVoteValue(row.officialVote2),
           sourceText: row.sourceText,
           stage: row.stage,
           venue: row.venue,
@@ -933,18 +989,36 @@ function TotoOfficialRoundImportPageContent() {
         title="Preview"
         description={`抽出 ${rows.length} 件。fixture master 候補も併記します。`}
         actions={
-          <button
-            type="button"
-            onClick={() => void handleSave()}
-            className={buttonClassName}
-            disabled={saving || rows.length === 0}
-          >
-            {saving
-              ? "保存中..."
-              : editingLibraryEntryId
-                ? "一覧を更新してRound反映"
-                : "一覧に保存してRound反映"}
-          </button>
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                const matchedRows = rematchRows(rows);
+                setActionError(null);
+                setActionMessage(
+                  matchedRows.length > 0
+                    ? "現在の入力内容で Fixture 候補を再照合しました。"
+                    : "再照合する行がまだありません。",
+                );
+              }}
+              className={secondaryButtonClassName}
+              disabled={rows.length === 0}
+            >
+              Fixture候補を再照合
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleSave()}
+              className={buttonClassName}
+              disabled={saving || rows.length === 0}
+            >
+              {saving
+                ? "保存中..."
+                : editingLibraryEntryId
+                  ? "一覧を更新してRound反映"
+                  : "一覧に保存してRound反映"}
+            </button>
+          </div>
         }
       >
         <div className="flex flex-wrap gap-2">
@@ -953,9 +1027,14 @@ function TotoOfficialRoundImportPageContent() {
           {editingLibraryEntryId ? <Badge tone="info">既存ライブラリを更新</Badge> : <Badge tone="sky">新規ライブラリ追加</Badge>}
         </div>
 
-        {parseWarnings.length > 0 ? (
+        <p className="mt-3 text-xs leading-6 text-slate-500">
+          vote 1/0/2 は `0.52` / `52%` / `52` のどれでも扱えます。Preview 上で `52`
+          と入れた値も、保存時には `0.52` としてそろえます。
+        </p>
+
+        {previewWarnings.length > 0 ? (
           <div className="mt-4 rounded-[22px] border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-950">
-            {parseWarnings.map((warning) => (
+            {previewWarnings.map((warning) => (
               <p key={warning}>{warning}</p>
             ))}
           </div>
@@ -987,22 +1066,14 @@ function TotoOfficialRoundImportPageContent() {
                       <input
                         value={row.homeTeam}
                         onChange={(event) =>
-                          setRows((current) =>
-                            current.map((entry, currentIndex) =>
-                              currentIndex === index ? { ...entry, homeTeam: event.currentTarget.value } : entry,
-                            ),
-                          )
+                          updateRow(index, { homeTeam: event.currentTarget.value }, { rematch: true })
                         }
                         className={fieldClassName}
                       />
                       <input
                         value={row.awayTeam}
                         onChange={(event) =>
-                          setRows((current) =>
-                            current.map((entry, currentIndex) =>
-                              currentIndex === index ? { ...entry, awayTeam: event.currentTarget.value } : entry,
-                            ),
-                          )
+                          updateRow(index, { awayTeam: event.currentTarget.value }, { rematch: true })
                         }
                         className={fieldClassName}
                       />
@@ -1012,12 +1083,10 @@ function TotoOfficialRoundImportPageContent() {
                     <input
                       value={row.kickoffTime ?? ""}
                       onChange={(event) =>
-                        setRows((current) =>
-                          current.map((entry, currentIndex) =>
-                            currentIndex === index
-                              ? { ...entry, kickoffTime: event.currentTarget.value || null }
-                              : entry,
-                          ),
+                        updateRow(
+                          index,
+                          { kickoffTime: event.currentTarget.value || null },
+                          { rematch: true },
                         )
                       }
                       className={fieldClassName}
@@ -1027,11 +1096,7 @@ function TotoOfficialRoundImportPageContent() {
                     <input
                       value={row.stage ?? ""}
                       onChange={(event) =>
-                        setRows((current) =>
-                          current.map((entry, currentIndex) =>
-                            currentIndex === index ? { ...entry, stage: event.currentTarget.value || null } : entry,
-                          ),
-                        )
+                        updateRow(index, { stage: event.currentTarget.value || null })
                       }
                       className={fieldClassName}
                     />
@@ -1041,41 +1106,32 @@ function TotoOfficialRoundImportPageContent() {
                       <input
                         value={row.officialVote1 ?? ""}
                         onChange={(event) =>
-                          setRows((current) =>
-                            current.map((entry, currentIndex) =>
-                              currentIndex === index
-                                ? { ...entry, officialVote1: event.currentTarget.value ? Number(event.currentTarget.value) : null }
-                                : entry,
-                            ),
-                          )
+                          updateRow(index, {
+                            officialVote1: normalizeVote(event.currentTarget.value).normalized,
+                          })
                         }
                         className={fieldClassName}
+                        inputMode="decimal"
                       />
                       <input
                         value={row.officialVote0 ?? ""}
                         onChange={(event) =>
-                          setRows((current) =>
-                            current.map((entry, currentIndex) =>
-                              currentIndex === index
-                                ? { ...entry, officialVote0: event.currentTarget.value ? Number(event.currentTarget.value) : null }
-                                : entry,
-                            ),
-                          )
+                          updateRow(index, {
+                            officialVote0: normalizeVote(event.currentTarget.value).normalized,
+                          })
                         }
                         className={fieldClassName}
+                        inputMode="decimal"
                       />
                       <input
                         value={row.officialVote2 ?? ""}
                         onChange={(event) =>
-                          setRows((current) =>
-                            current.map((entry, currentIndex) =>
-                              currentIndex === index
-                                ? { ...entry, officialVote2: event.currentTarget.value ? Number(event.currentTarget.value) : null }
-                                : entry,
-                            ),
-                          )
+                          updateRow(index, {
+                            officialVote2: normalizeVote(event.currentTarget.value).normalized,
+                          })
                         }
                         className={fieldClassName}
+                        inputMode="decimal"
                       />
                     </div>
                   </td>
@@ -1083,13 +1139,7 @@ function TotoOfficialRoundImportPageContent() {
                     <select
                       value={row.fixtureMasterId ?? ""}
                       onChange={(event) =>
-                        setRows((current) =>
-                          current.map((entry, currentIndex) =>
-                            currentIndex === index
-                              ? { ...entry, fixtureMasterId: event.currentTarget.value || null }
-                              : entry,
-                          ),
-                        )
+                        updateRow(index, { fixtureMasterId: event.currentTarget.value || null })
                       }
                       className={fieldClassName}
                     >

@@ -61,6 +61,23 @@ function FixtureSelectorPageContent() {
     () => fixtures.data?.filter((fixture) => selectedIds.includes(fixture.id)) ?? [],
     [fixtures.data, selectedIds],
   );
+  const visibleFixtureIds = useMemo(
+    () => fixtures.data?.map((fixture) => fixture.id) ?? [],
+    [fixtures.data],
+  );
+  const visibleSelectedCount = useMemo(
+    () => visibleFixtureIds.filter((id) => selectedIds.includes(id)).length,
+    [selectedIds, visibleFixtureIds],
+  );
+
+  const addVisibleFixtures = () => {
+    setSelectedIds((current) => Array.from(new Set([...current, ...visibleFixtureIds])));
+  };
+
+  const removeVisibleFixtures = () => {
+    const visibleIdSet = new Set(visibleFixtureIds);
+    setSelectedIds((current) => current.filter((id) => !visibleIdSet.has(id)));
+  };
 
   if (!isSupabaseConfigured()) {
     return <ConfigurationNotice />;
@@ -209,8 +226,36 @@ function FixtureSelectorPageContent() {
 
           <div className="flex flex-wrap gap-2">
             <Badge tone="slate">選択 {selectedIds.length}</Badge>
+            <Badge tone="sky">表示中で選択 {visibleSelectedCount}</Badge>
             <Badge tone="info">おすすめ {productTypeLabel[recommendedProductType]}</Badge>
             {existingRoundId ? <Badge tone="warning">既存Roundを置換</Badge> : <Badge tone="teal">新規Round作成</Badge>}
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={addVisibleFixtures}
+              className={secondaryButtonClassName}
+              disabled={visibleFixtureIds.length === 0}
+            >
+              表示中を全部選択
+            </button>
+            <button
+              type="button"
+              onClick={removeVisibleFixtures}
+              className={secondaryButtonClassName}
+              disabled={visibleSelectedCount === 0}
+            >
+              表示中を解除
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedIds([])}
+              className={secondaryButtonClassName}
+              disabled={selectedIds.length === 0}
+            >
+              選択をクリア
+            </button>
           </div>
 
           {actionError ? <p className="text-sm text-rose-700">{actionError}</p> : null}
@@ -224,6 +269,26 @@ function FixtureSelectorPageContent() {
       <SectionCard
         title="Fixtures"
         description={`表示 ${fixtures.data?.length ?? 0} 件 / 選択 ${selectedFixtures.length} 件`}
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={addVisibleFixtures}
+              className={secondaryButtonClassName}
+              disabled={visibleFixtureIds.length === 0}
+            >
+              表示中を全部選択
+            </button>
+            <button
+              type="button"
+              onClick={removeVisibleFixtures}
+              className={secondaryButtonClassName}
+              disabled={visibleSelectedCount === 0}
+            >
+              表示中を解除
+            </button>
+          </div>
+        }
       >
         <HorizontalScrollTable>
           <table className="min-w-[1100px] text-left text-sm">
@@ -250,7 +315,7 @@ function FixtureSelectorPageContent() {
                         onChange={(event) =>
                           setSelectedIds((current) =>
                             event.currentTarget.checked
-                              ? [...current, fixture.id]
+                              ? Array.from(new Set([...current, fixture.id]))
                               : current.filter((id) => id !== fixture.id),
                           )
                         }

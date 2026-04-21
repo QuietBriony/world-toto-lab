@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   matchOfficialRowsToFixtures,
+  multipleFixtureCandidatesWarning,
+  normalizeVote,
   parseTotoOfficialRoundCsv,
 } from "@/lib/toto-official-import";
 import type { FixtureMaster } from "@/lib/types";
@@ -75,5 +77,37 @@ describe("toto official import parser", () => {
 
     expect(matched[0]?.fixtureCandidates).toHaveLength(2);
     expect(matched[0]?.warnings.join(" ")).toContain("管理者確認");
+  });
+
+  it("keeps a manually selected fixture candidate on rematch and avoids duplicate warnings", () => {
+    const row = {
+      ...parseTotoOfficialRoundCsv({
+        sourceText: [
+          "official_match_no,home_team,away_team,kickoff_time,venue,stage,official_vote_1,official_vote_0,official_vote_2",
+          "1,Mexico,South Africa,2026-06-11 19:00,Mexico City Stadium,Group A,0.52,0.28,0.2",
+        ].join("\n"),
+      }).rows[0]!,
+      fixtureMasterId: "fixture-b",
+      warnings: [multipleFixtureCandidatesWarning],
+    };
+
+    const matched = matchOfficialRowsToFixtures(
+      [row],
+      [
+        buildFixture({ id: "fixture-a" }),
+        buildFixture({ id: "fixture-b", venue: "Mexico City Stadium Annex" }),
+      ],
+    );
+
+    expect(matched[0]?.fixtureMasterId).toBe("fixture-b");
+    expect(
+      matched[0]?.warnings.filter((warning) => warning === multipleFixtureCandidatesWarning),
+    ).toHaveLength(1);
+  });
+
+  it("normalizes editable percentage text consistently", () => {
+    expect(normalizeVote("52").normalized).toBeCloseTo(0.52);
+    expect(normalizeVote("52%").normalized).toBeCloseTo(0.52);
+    expect(normalizeVote("0.52").normalized).toBeCloseTo(0.52);
   });
 });
