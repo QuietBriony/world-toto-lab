@@ -25,6 +25,7 @@ import { productTypeOptions } from "@/lib/product-rules";
 import { appRoute, buildRoundHref, getSingleSearchParam } from "@/lib/round-links";
 import {
   instantiateTotoOfficialRoundLibraryEntry,
+  listTotoOfficialRoundLibrary as loadTotoOfficialRoundLibraryEntries,
   syncTotoOfficialRoundListFromOfficial,
   refreshCandidateTicketsForRound,
   saveTotoOfficialRoundImport,
@@ -108,6 +109,7 @@ function TotoOfficialRoundImportPageContent() {
   const [carryoverYen, setCarryoverYen] = useState("0");
   const [syncSourceUrl, setSyncSourceUrl] = useState("https://toto.yahoo.co.jp/schedule/toto");
   const [includeMatchesInSync, setIncludeMatchesInSync] = useState(true);
+  const [autoApplyAfterSync, setAutoApplyAfterSync] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncSummary, setSyncSummary] = useState<{
     fetchedAt: string | null;
@@ -179,8 +181,9 @@ function TotoOfficialRoundImportPageContent() {
     setActionMessage(`「${entry.title}」を編集フォームに読み込みました。`);
   };
 
-  const handleSyncOfficialRounds = async () => {
+  const handleSyncOfficialRounds = async (options?: { autoApplyToPickRoom?: boolean }) => {
     setSyncing(true);
+    setLibraryBusyId(options?.autoApplyToPickRoom ? "sync-auto" : null);
     setActionError(null);
     setActionMessage(null);
     setSyncWarnings([]);
@@ -206,12 +209,30 @@ function TotoOfficialRoundImportPageContent() {
       });
       setSyncWarnings(combinedWarnings);
       await library.refresh();
+      if (options?.autoApplyToPickRoom) {
+        const syncedEntries = await loadTotoOfficialRoundLibraryEntries({
+          productType: libraryProductType === "all" ? null : libraryProductType,
+          searchQuery: librarySearchQuery,
+        });
+        const latestEntry = syncedEntries[0] ?? null;
+
+        if (!latestEntry) {
+          throw new Error("同期結果を Pick Room に反映するための公式回がありませんでした。");
+        }
+
+        setActionMessage(
+          `公式一覧を同期しました。最新の「${latestEntry.title}」で Pick Room を開きます。`,
+        );
+        await handleUseLibraryEntry(latestEntry, "apply");
+        return;
+      }
       setActionMessage(
         `公式一覧を反映しました。追加 ${upsertResult.insertedCount} / 更新 ${upsertResult.updatedCount} / 未変更 ${upsertResult.skippedCount}`,
       );
     } catch (nextError) {
       setActionError(errorMessage(nextError));
     } finally {
+      setLibraryBusyId(null);
       setSyncing(false);
     }
   };
@@ -398,6 +419,32 @@ function TotoOfficialRoundImportPageContent() {
             </button>
           </div>
         </div>
+
+        <div className="mt-4 flex flex-wrap gap-3">
+          <label className="flex items-center gap-2 rounded-3xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
+            <input
+              type="checkbox"
+              checked={autoApplyAfterSync}
+              onChange={(event) => setAutoApplyAfterSync(event.currentTarget.checked)}
+              className="h-4 w-4"
+            />
+            <span>保存後に最新1件をそのまま Pick Room を開く</span>
+          </label>
+          <button
+            type="button"
+            onClick={() => void handleSyncOfficialRounds({ autoApplyToPickRoom: true })}
+            className={buttonClassName}
+            disabled={syncing}
+          >
+            {syncing ? "同期しつつ反映中..." : "公式一覧を同期してPick Roomへ"}
+          </button>
+        </div>
+
+        {autoApplyAfterSync ? (
+          <p className="mt-3 rounded-[20px] border border-emerald-100 bg-emerald-50 px-4 py-3 text-xs leading-6 text-emerald-950">
+            「保存後に最新1件をそのまま Pick Room 開く」をONにすると、同期した最新回を保存して即座に反映し、候補生成まで通して Pick Room を開きます。
+          </p>
+        ) : null}
 
         {syncSummary ? (
           <div className="mt-4 rounded-[22px] border border-teal-200 bg-teal-50 px-4 py-4 text-sm text-teal-950">
