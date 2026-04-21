@@ -7,6 +7,8 @@ on:
     paths:
       - "supabase/functions/**"
       - "supabase/config.toml"
+      - "src/lib/big-official.ts"
+      - "src/lib/big-carryover.ts"
       - ".github/workflows/deploy-supabase-functions.yml"
   workflow_dispatch:
 
