@@ -392,7 +392,25 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 `MISSING_COLUMN` や `MISSING_RELATION` が出た場合は、本番 Supabase に `supabase/schema.sql` を再適用してください。  
 `candidate_tickets` / `candidate_votes` は現状 UI 側でフェイルセーフを入れていますが、`missing` が出るなら SQL 再実行が推奨です。
 
-### 3.3 まだ候補系テーブルがない場合（`candidate_tickets` / `candidate_votes`）
+### 3.3 GitHub Pages ルートの疎通チェック
+
+公開 URL の route が生きているかは、次でまとめて確認できます。
+
+```bash
+npm run check:pages
+```
+
+必要に応じて次を上書きしてください。
+
+```bash
+WORLD_TOTO_LAB_BASE_URL=https://quietbriony.github.io/world-toto-lab
+WORLD_TOTO_LAB_ROUND_ID=47f5d6b8-5120-46a3-b434-7312b11cb98a
+WORLD_TOTO_LAB_USER_ID=<optional-user-id>
+```
+
+チェック対象は `/workspace`, `/official-schedule-import`, `/fixture-selector`, `/toto-official-round-import`, `/simple-view`, `/pick-room`, `/consensus`, `/edge-board`, `/review`, `/ticket-generator` です。
+
+### 3.4 まだ候補系テーブルがない場合（`candidate_tickets` / `candidate_votes`）
 
 次のエラーが出る場合は、実運用DBへ候補系テーブルが未反映です。
 
@@ -557,3 +575,4 @@ F = ① + ② + ③ + ④ + M
 - Dashboard からサンプル 10 人を投入できます
 - Match Editor は静的 route の都合で `/match-editor?round=...&match=...` です
 - GitHub Pages 対応を優先するため、動的 route より query param 方式を採用しています
+- 実運用前の確認順は [docs/operational-smoke-checklist.md](/C:/workspace/world-toto-lab/docs/operational-smoke-checklist.md) にまとめています
