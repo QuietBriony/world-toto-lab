@@ -359,6 +359,17 @@ GitHub Pages 側はこのFunction名を `NEXT_PUBLIC_TOTO_OFFICIAL_ROUND_SYNC_FU
 
 Supabase SQL Editor で [supabase/schema.sql](/C:/workspace/world-toto-lab/supabase/schema.sql) を実行してください。
 
+### 3.1 コードとスキーマの整合監査
+
+デプロイ前に、`repository.ts` で参照しているテーブル名と `schema.sql` の定義ズレを検査できます。
+
+```bash
+npm run audit:schema
+```
+
+ズレがない場合は「`all repository tables are present in schema.sql`」で終了します。  
+ズレがある場合は不足テーブル名を赤字で一覧表示します。
+
 ### 3.1. まだ候補系テーブルがない場合（`candidate_tickets` / `candidate_votes`）
 
 次のエラーが出る場合は、実運用DBへ候補系テーブルが未反映です。
