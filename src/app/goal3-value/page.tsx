@@ -268,14 +268,14 @@ export default function Goal3ValuePage() {
           <div className="rounded-[24px] border border-slate-200 bg-slate-50/90 p-5">
             <div className="flex flex-wrap items-center gap-2">
               <Badge tone="amber">BIG ウォッチ</Badge>
-              <Badge tone="slate">手入力 / 共有URL</Badge>
+              <Badge tone="slate">公式同期 / テンプレ</Badge>
             </div>
             <h3 className="mt-3 font-display text-[1.35rem] font-semibold tracking-[-0.05em] text-slate-950">
               BIG の激アツ回は別 monitor
             </h3>
             <p className="mt-3 text-sm leading-6 text-slate-600">
-              BIG はいまのところ公式同期までは繋いでいません。売上・キャリーを入れると、
-              高還元ウォッチとしてプラス圏かどうかをすぐ見られます。
+              BIG は公式同期 watch に対応済みで、live 側が未反映のときはテンプレ条件へ fallback します。
+              売上・キャリーが取れれば、高還元ウォッチとしてプラス圏かどうかをすぐ見られます。
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
               <Link href={appRoute.bigCarryover} className={secondaryButtonClassName}>

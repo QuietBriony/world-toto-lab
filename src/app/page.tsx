@@ -1389,13 +1389,13 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-2">
                   <Badge tone="amber">まだない</Badge>
                   <h3 className="font-display text-lg font-semibold tracking-[-0.04em] text-slate-950">
-                    外部API直取得と本格モデル自動分析は未実装
+                    本格モデル自動運用と全面自動化はまだ未対応
                   </h3>
                 </div>
                 <ul className="mt-4 space-y-2 text-sm leading-7 text-slate-700">
-                  <li>公式一覧の半自動同期や CSV / 貼り付け取り込みはありますが、外部 API から全面自動で埋まる構成ではありません。</li>
+                  <li>FIFA日程取得、公式回一覧の半自動同期、BIG / GOAL3 の watch はありますが、全部が無人で埋まり続ける構成ではありません。</li>
                   <li>AI確率は補助的な試算までで、本格モデルをこのサイト内で自動運用する段階ではありません。</li>
-                  <li>なので現状は、公式取り込みを使うか、試合編集で実データを入れて使う MVP です。</li>
+                  <li>なので現状は、公式取り込みを主導線にしつつ、必要なところだけ手入力や確認を差し込む MVP です。</li>
                 </ul>
               </div>
             </div>
