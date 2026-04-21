@@ -36,6 +36,8 @@ export function getSingleSearchParam(value: string | null) {
 export const appRoute = {
   dashboard: "/",
   workspace: "/workspace",
+  simpleView: "/simple-view",
+  pickRoom: "/pick-room",
   picks: "/picks",
   scoutCards: "/scout-cards",
   consensus: "/consensus",
@@ -43,4 +45,7 @@ export const appRoute = {
   ticketGenerator: "/ticket-generator",
   review: "/review",
   matchEditor: "/match-editor",
+  officialScheduleImport: "/official-schedule-import",
+  fixtureSelector: "/fixture-selector",
+  totoOfficialRoundImport: "/toto-official-round-import",
 } as const;

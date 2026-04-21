@@ -3,6 +3,8 @@ import type {
   Outcome,
   Pick,
   ProvisionalCall,
+  ProductType,
+  RoundSource,
   RoundStatus,
   TicketMode,
   User,
@@ -139,6 +141,27 @@ export const roundStatusOptions: RoundStatus[] = [
   "resulted",
   "reviewed",
 ];
+
+export const productTypeBadgeTone: Record<ProductType, BadgeTone> = {
+  toto13: "teal",
+  mini_toto: "sky",
+  winner: "amber",
+  custom: "slate",
+};
+
+export const productTypeLabel: Record<ProductType, string> = {
+  toto13: "toto13",
+  mini_toto: "mini toto風",
+  winner: "WINNER風",
+  custom: "custom",
+};
+
+export const roundSourceLabel: Record<RoundSource, string> = {
+  fixture_master: "Fixture Master",
+  toto_official_manual: "toto公式対象",
+  user_manual: "手入力",
+  demo_sample: "デモ",
+};
 
 export const categoryLabel: Record<MatchCategory, string> = {
   fixed: "固定寄り",

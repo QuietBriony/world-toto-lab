@@ -31,6 +31,7 @@ import {
 } from "@/lib/demo-data";
 import {
   parseIntOrNull,
+  parseProductType,
   parseRoundStatus,
   stringValue,
   stringValues,
@@ -41,9 +42,12 @@ import {
   formatDateTime,
   formatPercent,
   formatSignedPercent,
+  productTypeLabel,
+  roundSourceLabel,
   roundStatusLabel,
   roundStatusOptions,
 } from "@/lib/domain";
+import { defaultRequiredMatchCount, productTypeOptions } from "@/lib/product-rules";
 import { resolveRoundParticipantUsers } from "@/lib/round-participants";
 import { deriveRoundProgressSummary, matchHasSetupInput } from "@/lib/round-progress";
 import { appRoute, buildRoundHref } from "@/lib/round-links";
@@ -56,6 +60,7 @@ import {
   updateUserProfile,
 } from "@/lib/repository";
 import { budgetFromCandidateLimit, candidateLimitFromBudget } from "@/lib/tickets";
+import type { ProductType } from "@/lib/types";
 import {
   filterPredictors,
   nextPredictorLineName,
@@ -101,6 +106,10 @@ export default function DashboardPage() {
   const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
   const [duplicatingPredictorId, setDuplicatingPredictorId] = useState<string | null>(null);
   const [memberActionError, setMemberActionError] = useState<string | null>(null);
+  const [createProductType, setCreateProductType] = useState<ProductType>("toto13");
+  const [createMatchCount, setCreateMatchCount] = useState(13);
+  const requiredMatchCountHint =
+    defaultRequiredMatchCount(createProductType) ?? createMatchCount;
 
   const handleCreateInitialUsers = async () => {
     setBusy("members");
@@ -125,6 +134,7 @@ export default function DashboardPage() {
       const formData = new FormData(event.currentTarget);
       const candidateLimit = parseIntOrNull(stringValue(formData, "candidateLimit"));
       const matchCount = parseIntOrNull(stringValue(formData, "matchCount")) ?? 13;
+      const productType = parseProductType(stringValue(formData, "productType"));
       const shouldBootstrapMembers =
         (data?.users.length ?? 0) === 0 && formData.get("bootstrapMembers") === "on";
       const participantIds = stringValues(formData, "participantUserId");
@@ -145,6 +155,10 @@ export default function DashboardPage() {
         matchCount,
         notes: nullableString(formData, "notes"),
         participantIds,
+        productType,
+        requiredMatchCount: productType === "custom" ? matchCount : null,
+        roundSource: "user_manual",
+        sourceNote: nullableString(formData, "sourceNote"),
       });
 
       await refresh();
@@ -405,9 +419,11 @@ export default function DashboardPage() {
         <ErrorNotice error={error} onRetry={() => void refresh()} />
       ) : data ? (
         <>
-          <SectionCard
+          <CollapsibleSectionCard
             title="初めてならここから"
             description="totoを知らなくても、まずは `デモで流れを見る` か `本番セットを始める` のどちらかを選べば大丈夫です。"
+            defaultOpen={liveRoundCount === 0}
+            badge={<Badge tone="teal">スタートガイド</Badge>}
           >
             <div className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
               <div className="rounded-[28px] border border-emerald-200 bg-[linear-gradient(145deg,rgba(236,253,245,0.96),rgba(239,246,255,0.92))] p-5 shadow-[0_24px_60px_-40px_rgba(15,23,42,0.45)]">
@@ -523,7 +539,7 @@ export default function DashboardPage() {
                 </div>
               </div>
             </div>
-          </SectionCard>
+          </CollapsibleSectionCard>
 
           <SectionCard
             title="本番セットアップ"
@@ -1377,6 +1393,19 @@ export default function DashboardPage() {
             id="create-round"
             title="ラウンドを作成"
             description="本番用のラウンドを作ります。指定した試合数ぶんのプレースホルダーを作り、初回なら本番メンバー初期化も一緒に進められます。"
+            actions={
+              <div className="flex flex-wrap gap-2">
+                <Link href={appRoute.officialScheduleImport} className={secondaryButtonClassName}>
+                  公式日程を取り込む
+                </Link>
+                <Link href={appRoute.fixtureSelector} className={secondaryButtonClassName}>
+                  Fixture Selector
+                </Link>
+                <Link href={appRoute.totoOfficialRoundImport} className={secondaryButtonClassName}>
+                  公式対象回ライブラリ / CSV
+                </Link>
+              </div>
+            }
           >
             <form onSubmit={handleCreateRound} className="grid gap-5 md:grid-cols-2">
               <label className="grid gap-2 text-sm font-medium text-slate-700">
@@ -1400,6 +1429,29 @@ export default function DashboardPage() {
               </label>
 
               <label className="grid gap-2 text-sm font-medium text-slate-700">
+                productType
+                <select
+                  name="productType"
+                  className={fieldClassName}
+                  value={createProductType}
+                  onChange={(event) => {
+                    const nextProductType = event.currentTarget.value as ProductType;
+                    setCreateProductType(nextProductType);
+                    const fixedCount = defaultRequiredMatchCount(nextProductType);
+                    if (fixedCount !== null) {
+                      setCreateMatchCount(fixedCount);
+                    }
+                  }}
+                >
+                  {productTypeOptions.map((productType) => (
+                    <option key={productType} value={productType}>
+                      {productTypeLabel[productType]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="grid gap-2 text-sm font-medium text-slate-700">
                 試合数
                 <input
                   name="matchCount"
@@ -1407,7 +1459,15 @@ export default function DashboardPage() {
                   min={1}
                   max={20}
                   step={1}
-                  defaultValue={13}
+                  value={createMatchCount}
+                  onChange={(event) =>
+                    setCreateMatchCount(
+                      Math.min(
+                        Math.max(Number(event.currentTarget.value || 1), 1),
+                        20,
+                      ),
+                    )
+                  }
                   className={fieldClassName}
                 />
               </label>
@@ -1426,8 +1486,19 @@ export default function DashboardPage() {
               </label>
 
               <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-950/5 p-4 text-sm text-slate-600">
+                `toto13 = 13試合 / mini toto風 = 5試合 / WINNER風 = 1試合 / custom = 任意` を目安にしてください。
+                現在の requiredMatchCount は {requiredMatchCountHint} 試合として扱います。
                 金銭、配当、代理購入、精算は扱いません。ここでの上位候補数は、候補配分画面で何案まで並べるかの目安です。
               </div>
+
+              <label className="grid gap-2 text-sm font-medium text-slate-700 md:col-span-2">
+                sourceNote
+                <input
+                  name="sourceNote"
+                  className={fieldClassName}
+                  placeholder="手入力で作る仮想Round / 友人会テスト用 など"
+                />
+              </label>
 
               {data.users.length > 0 ? (
                 <div className="grid gap-3 rounded-3xl border border-slate-200 bg-slate-50/88 p-4 text-sm text-slate-700 md:col-span-2">
@@ -1531,9 +1602,30 @@ export default function DashboardPage() {
                     title={round.title}
                     description={round.notes ?? "ラウンドメモはまだありません。"}
                     actions={
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <Badge tone="slate">{roundUsers.length}人</Badge>
+                        <Badge tone="teal">{productTypeLabel[round.productType as ProductType]}</Badge>
+                        <Badge tone="slate">{roundSourceLabel[round.roundSource]}</Badge>
+                        <Badge tone="slate">
+                          要件 {round.requiredMatchCount ?? round.matchCount}試合
+                        </Badge>
                         <Badge tone="sky">{roundStatusLabel[round.status]}</Badge>
+                        <Link
+                          href={buildRoundHref(appRoute.simpleView, round.id, {
+                            user: roundUsers[0]?.id,
+                          })}
+                          className={secondaryButtonClassName}
+                        >
+                          Simple View
+                        </Link>
+                        <Link
+                          href={buildRoundHref(appRoute.pickRoom, round.id, {
+                            user: roundUsers[0]?.id,
+                          })}
+                          className={secondaryButtonClassName}
+                        >
+                          Pick Room
+                        </Link>
                         <Link
                           href={buildRoundHref(appRoute.workspace, round.id)}
                           className={secondaryButtonClassName}
@@ -1543,7 +1635,7 @@ export default function DashboardPage() {
                       </div>
                     }
                   >
-                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
                       <StatCard
                         label="試合設定"
                         value={progressValue(progress.configuredMatches, round.matchCount)}
@@ -1562,6 +1654,11 @@ export default function DashboardPage() {
                       <StatCard
                         label="結果入力"
                         value={progressValue(round.resultedCount, round.matchCount)}
+                        compact
+                      />
+                      <StatCard
+                        label="候補カード"
+                        value={round.candidateTicketCount}
                         compact
                       />
                     </div>

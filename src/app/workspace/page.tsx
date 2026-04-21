@@ -44,6 +44,8 @@ import {
   formatSignedPercent,
   humanConsensusOutcomes,
   humanOverlayBadge,
+  productTypeLabel,
+  roundSourceLabel,
   roundStatusLabel,
   roundStatusOptions,
 } from "@/lib/domain";
@@ -63,10 +65,14 @@ import { deriveRoundProgressSummary, matchHasSetupInput } from "@/lib/round-prog
 import {
   nullableString,
   parseIntOrNull,
+  parseProductType,
+  parseRoundSource,
   parseRoundStatus,
+  parseVoidHandling,
   stringValue,
   stringValues,
 } from "@/lib/forms";
+import { productTypeOptions, voidHandlingLabel, voidHandlingOptions } from "@/lib/product-rules";
 import { fixtureImportTemplate, parseFixtureImportText } from "@/lib/fixture-import";
 import { appRoute, buildRoundHref, getSingleSearchParam } from "@/lib/round-links";
 import { bulkUpdateRoundMatches, estimateRoundAiModel, updateRound } from "@/lib/repository";
@@ -258,6 +264,7 @@ function WorkspacePageContent() {
     try {
       const formData = new FormData(event.currentTarget);
       const candidateLimit = parseIntOrNull(stringValue(formData, "candidateLimit"));
+      const productType = parseProductType(stringValue(formData, "productType"));
       const participantIds = stringValues(formData, "participantUserId");
 
       if (!isDemoRound && data.availableUsers.length > 0 && participantIds.length === 0) {
@@ -272,6 +279,11 @@ function WorkspacePageContent() {
           candidateLimit !== null ? budgetFromCandidateLimit(candidateLimit) : null,
         notes: nullableString(formData, "notes"),
         participantIds,
+        productType,
+        requiredMatchCount: parseIntOrNull(stringValue(formData, "requiredMatchCount")),
+        roundSource: parseRoundSource(stringValue(formData, "roundSource")),
+        sourceNote: nullableString(formData, "sourceNote"),
+        voidHandling: parseVoidHandling(stringValue(formData, "voidHandling")),
       });
       setDirtyScope(null);
       setSaveMessage({
@@ -373,6 +385,8 @@ function WorkspacePageContent() {
           data ? (
             <div className="flex flex-wrap items-center gap-2">
               {isDemoRound ? <Badge tone="amber">デモ</Badge> : null}
+              <Badge tone="teal">{productTypeLabel[data.round.productType]}</Badge>
+              <Badge tone="slate">{roundSourceLabel[data.round.roundSource]}</Badge>
               <Badge tone="sky">{roundStatusLabel[data.round.status]}</Badge>
             </div>
           ) : undefined
@@ -395,6 +409,47 @@ function WorkspacePageContent() {
             roundStatus={roundStatusLabel[data.round.status]}
             currentPath={appRoute.workspace}
           />
+
+          <CollapsibleSectionCard
+            title="Round Builder"
+            description="公式日程取り込み、Fixture 選択、公式対象回ライブラリ / CSV、Friend Pick Room への導線です。"
+            defaultOpen={data.round.matches.length === 0}
+            badge={<Badge tone="sky">導線</Badge>}
+          >
+            <div className="flex flex-wrap gap-3">
+              <Link href={appRoute.officialScheduleImport} className={secondaryButtonClassName}>
+                公式日程を取り込む
+              </Link>
+              <Link
+                href={buildRoundHref(appRoute.fixtureSelector, data.round.id)}
+                className={secondaryButtonClassName}
+              >
+                Fixture Selector
+              </Link>
+              <Link
+                href={buildRoundHref(appRoute.totoOfficialRoundImport, data.round.id)}
+                className={secondaryButtonClassName}
+              >
+                公式対象回ライブラリ / CSV
+              </Link>
+              <Link
+                href={buildRoundHref(appRoute.simpleView, data.round.id, {
+                  user: data.users[0]?.id,
+                })}
+                className={buttonClassName}
+              >
+                Simple View
+              </Link>
+              <Link
+                href={buildRoundHref(appRoute.pickRoom, data.round.id, {
+                  user: data.users[0]?.id,
+                })}
+                className={buttonClassName}
+              >
+                Friend Pick Room
+              </Link>
+            </div>
+          </CollapsibleSectionCard>
 
           <RoundProgressCallout
             currentPath={appRoute.workspace}
@@ -441,18 +496,20 @@ function WorkspacePageContent() {
           ) : null}
 
           {isDemoRound ? (
-            <SectionCard
+            <CollapsibleSectionCard
               title="このデモで最初に見る順番"
               description={
                 demoNotePreview ??
                 "AI基準線と人力上書きの流れを、実データ入りの 1 ラウンドでそのまま追えます。"
               }
-              actions={
+              defaultOpen
+              badge={<Badge tone="amber">デモガイド</Badge>}
+            >
+              <div className="flex flex-wrap gap-2">
                 <a href="#overview-cards" className={secondaryButtonClassName}>
                   確認カードへ
                 </a>
-              }
-            >
+              </div>
               <div className="grid gap-4 xl:grid-cols-[1.08fr_0.92fr]">
                 <div className="grid gap-3 sm:grid-cols-2">
                   {demoWalkthroughSteps.map((step, index) => {
@@ -543,7 +600,7 @@ function WorkspacePageContent() {
                   </div>
                 </div>
               </div>
-            </SectionCard>
+            </CollapsibleSectionCard>
           ) : null}
 
           <SectionCard
@@ -763,7 +820,7 @@ function WorkspacePageContent() {
 
           <SectionCard
             title="ラウンド設定"
-            description="候補上限、参加メンバー、ステータス、当日の観戦メモをここで更新します。"
+            description="productType、試合数要件、source、候補上限、参加メンバー、ステータス、当日の観戦メモをここで更新します。"
           >
             <form
               id="workspace-round-form"
@@ -801,6 +858,34 @@ function WorkspacePageContent() {
               </label>
 
               <label className="grid gap-2 text-sm font-medium text-slate-700">
+                productType
+                <select
+                  name="productType"
+                  className={fieldClassName}
+                  defaultValue={data.round.productType}
+                >
+                  {productTypeOptions.map((productType) => (
+                    <option key={productType} value={productType}>
+                      {productTypeLabel[productType]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="grid gap-2 text-sm font-medium text-slate-700">
+                requiredMatchCount
+                <input
+                  name="requiredMatchCount"
+                  type="number"
+                  min={1}
+                  max={20}
+                  step={1}
+                  defaultValue={data.round.requiredMatchCount ?? data.round.matches.length}
+                  className={fieldClassName}
+                />
+              </label>
+
+              <label className="grid gap-2 text-sm font-medium text-slate-700">
                 上位候補数
                 <input
                   name="candidateLimit"
@@ -816,6 +901,48 @@ function WorkspacePageContent() {
               <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-950/5 p-4 text-sm text-slate-600">
                 候補配分は、ここで決めた上位候補数をもとに並びます。
                 現在の設定: {candidateLimitFromBudget(data.round.budgetYen ?? 500)} 案
+              </div>
+
+              <label className="grid gap-2 text-sm font-medium text-slate-700">
+                roundSource
+                <select
+                  name="roundSource"
+                  className={fieldClassName}
+                  defaultValue={data.round.roundSource}
+                >
+                  {(
+                    [
+                      "fixture_master",
+                      "toto_official_manual",
+                      "user_manual",
+                      "demo_sample",
+                    ] as const
+                  ).map((source) => (
+                    <option key={source} value={source}>
+                      {roundSourceLabel[source]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="grid gap-2 text-sm font-medium text-slate-700">
+                voidHandling
+                <select
+                  name="voidHandling"
+                  className={fieldClassName}
+                  defaultValue={data.round.voidHandling}
+                >
+                  {voidHandlingOptions.map((voidHandling) => (
+                    <option key={voidHandling} value={voidHandling}>
+                      {voidHandlingLabel[voidHandling]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-950/5 p-4 text-sm text-slate-600 md:col-span-2">
+                activeMatchCount {data.round.activeMatchCount ?? data.round.matches.length} / outcomeSet{" "}
+                {data.round.outcomeSetJson?.join(" / ") ?? "1 / 0 / 2"}
               </div>
 
               {!isDemoRound ? (
@@ -857,6 +984,16 @@ function WorkspacePageContent() {
                   </div>
                 </div>
               ) : null}
+
+              <label className="grid gap-2 text-sm font-medium text-slate-700 md:col-span-2">
+                sourceNote
+                <input
+                  name="sourceNote"
+                  defaultValue={data.round.sourceNote ?? ""}
+                  className={fieldClassName}
+                  placeholder="Fixture Selector から作成 / toto公式貼り付け / 仮想Round など"
+                />
+              </label>
 
               <label className="grid gap-2 text-sm font-medium text-slate-700 md:col-span-2">
                 メモ
@@ -917,7 +1054,7 @@ function WorkspacePageContent() {
                     貼り付けのコツ
                   </h3>
                   <p className="mt-3 text-sm leading-6 text-slate-600">
-                    まず FIFA公式の日程ページやスプレッドシートから 13 行を持ってきて、ここに貼るのがいちばん速いです。
+                    まず FIFA公式の日程ページやスプレッドシートから必要試合数ぶんの行を持ってきて、ここに貼るのがいちばん速いです。
                   </p>
                 </div>
                 <ul className="space-y-2 text-sm leading-7 text-slate-700">

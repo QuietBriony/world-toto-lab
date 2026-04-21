@@ -28,9 +28,11 @@ import {
 import {
   buildAdvantageRows,
   drawPolicyLabel,
+  formatCurrency,
   formatNumber,
   formatPercent,
   formatSignedPercent,
+  productTypeLabel,
   roundStatusLabel,
   ticketModeLabel,
   ticketModeOptions,
@@ -46,12 +48,15 @@ import { replaceGeneratedTickets } from "@/lib/repository";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import {
   budgetFromCandidateLimit,
-  candidateLimitFromBudget,
+  candidateLimitCapForMatchCount,
+  defaultCandidateLimit,
+  defaultMaxContrarianMatches,
   generateAllModeTickets,
+  resolveCandidateLimit,
   type GeneratorSettings,
   type TicketPayload,
 } from "@/lib/tickets";
-import type { TicketMode } from "@/lib/types";
+import type { RoundWorkspace, TicketMode } from "@/lib/types";
 import { useRoundWorkspace } from "@/lib/use-app-data";
 
 type StoredTicket = TicketPayload & {
@@ -105,6 +110,23 @@ function parseStoredTicket(raw: string): StoredTicket | null {
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "不明なエラーです。";
+}
+
+function resolveRoundMatchCount(round: RoundWorkspace["round"] | null | undefined) {
+  if (!round) {
+    return null;
+  }
+
+  const candidates = [
+    round.matches.length,
+    round.activeMatchCount,
+    round.requiredMatchCount,
+  ].filter(
+    (value): value is number =>
+      typeof value === "number" && Number.isFinite(value) && value > 0,
+  );
+
+  return candidates[0] ?? null;
 }
 
 function summarizeTicketReasons(ticket: StoredTicket): ReasonChip[] {
@@ -205,15 +227,42 @@ function TicketGeneratorPageContent() {
   };
 
   const lastSettings = parsedTickets[0]?.parsed.settings;
+  const roundMatchCount = resolveRoundMatchCount(data?.round);
+  const candidateLimitCap = candidateLimitCapForMatchCount(roundMatchCount);
+  const fallbackCandidateLimit = defaultCandidateLimit(roundMatchCount);
+  const fallbackBudgetYen = budgetFromCandidateLimit(
+    fallbackCandidateLimit,
+    roundMatchCount,
+  );
+  const storedBudgetYen =
+    lastSettings?.budgetYen ?? data?.round.budgetYen ?? fallbackBudgetYen;
+  const effectiveCandidateLimit = resolveCandidateLimit(
+    {
+      budgetYen: storedBudgetYen,
+      candidateLimit: lastSettings?.candidateLimit,
+    },
+    roundMatchCount,
+  );
+  const compatibilityBudgetYen = budgetFromCandidateLimit(
+    effectiveCandidateLimit,
+    roundMatchCount,
+  );
+  const maxContrarianMatchesCap = Math.max(roundMatchCount ?? 1, 1);
 
   const effectiveSettings: GeneratorSettings = {
-    budgetYen: lastSettings?.budgetYen ?? data?.round.budgetYen ?? budgetFromCandidateLimit(5),
+    budgetYen: compatibilityBudgetYen,
+    candidateLimit: effectiveCandidateLimit,
     humanWeight: lastSettings?.humanWeight ?? 0.65,
-    maxContrarianMatches: lastSettings?.maxContrarianMatches ?? 3,
+    maxContrarianMatches: Math.min(
+      Math.max(
+        lastSettings?.maxContrarianMatches ??
+          defaultMaxContrarianMatches(roundMatchCount),
+        0,
+      ),
+      maxContrarianMatchesCap,
+    ),
     includeDrawPolicy: lastSettings?.includeDrawPolicy ?? "medium",
   };
-  const effectiveCandidateLimit = candidateLimitFromBudget(effectiveSettings.budgetYen);
-  const maxContrarianMatchesCap = Math.max(data?.round.matches.length ?? 13, 1);
 
   const pushCandidates = data
     ? (() => {
@@ -263,17 +312,26 @@ function TicketGeneratorPageContent() {
     try {
       const formData = new FormData(event.currentTarget);
       const candidateLimit = Math.min(
-        Math.max(parseIntOrNull(stringValue(formData, "candidateLimit")) ?? 5, 1),
-        8,
+        Math.max(
+          parseIntOrNull(stringValue(formData, "candidateLimit")) ??
+            fallbackCandidateLimit,
+          1,
+        ),
+        candidateLimitCap,
       );
       const settings: GeneratorSettings = {
-        budgetYen: budgetFromCandidateLimit(candidateLimit),
+        budgetYen: budgetFromCandidateLimit(candidateLimit, roundMatchCount),
+        candidateLimit,
         humanWeight: Math.min(
           Math.max(parseFloatOrNull(stringValue(formData, "humanWeight")) ?? 0.6, 0),
           1,
         ),
         maxContrarianMatches: Math.min(
-          Math.max(parseIntOrNull(stringValue(formData, "maxContrarianMatches")) ?? 3, 0),
+          Math.max(
+            parseIntOrNull(stringValue(formData, "maxContrarianMatches")) ??
+              defaultMaxContrarianMatches(roundMatchCount),
+            0,
+          ),
           maxContrarianMatchesCap,
         ),
         includeDrawPolicy:
@@ -291,7 +349,7 @@ function TicketGeneratorPageContent() {
         },
         settings,
       );
-      const maxTickets = candidateLimitFromBudget(settings.budgetYen);
+      const maxTickets = resolveCandidateLimit(settings, roundMatchCount);
 
       await replaceGeneratedTickets({
         roundId: data.round.id,
@@ -489,16 +547,35 @@ function TicketGeneratorPageContent() {
 
           <SectionCard
             title="生成設定"
-            description="上位何案まで並べるか、どこまで穴候補を混ぜるかをここで調整します。"
+            description={`${productTypeLabel[data.round.productType]} / ${roundMatchCount ?? data.round.matches.length} 試合に合わせて、上位何案まで並べるかと、どこまで穴候補を混ぜるかを調整します。`}
           >
-            <form onSubmit={handleGenerate} className="grid gap-5 md:grid-cols-2 lg:grid-cols-5">
+            <div className="rounded-[24px] border border-slate-200 bg-slate-50/90 p-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge tone="slate">{productTypeLabel[data.round.productType]}</Badge>
+                <Badge tone="sky">{roundMatchCount ?? data.round.matches.length} 試合</Badge>
+                <Badge tone="teal">候補上限 {candidateLimitCap} 案</Badge>
+              </div>
+              <p className="mt-3 text-sm leading-6 text-slate-600">
+                保存上の予算値は既存データ互換のための換算値です。生成結果の上位
+                {effectiveCandidateLimit} 案を round の budget 欄に
+                {formatCurrency(effectiveSettings.budgetYen)} として残しますが、ここで扱うのは実際の購入金額ではなく、
+                <span className="font-mono text-[0.92em]">100円 = 1案</span>
+                の互換メモです。
+              </p>
+            </div>
+            <form onSubmit={handleGenerate} className="mt-5 grid gap-5 md:grid-cols-2 lg:grid-cols-5">
               <label className="grid gap-2 text-sm font-medium text-slate-700">
-                上位候補数
+                <span className="flex items-center justify-between gap-3">
+                  <span>上位候補数</span>
+                  <span className="text-xs font-normal text-slate-500">
+                    1 - {candidateLimitCap} 案
+                  </span>
+                </span>
                 <input
                   name="candidateLimit"
                   type="number"
                   min={1}
-                  max={8}
+                  max={candidateLimitCap}
                   step={1}
                   defaultValue={effectiveCandidateLimit}
                   className={fieldClassName}

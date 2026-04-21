@@ -49,9 +49,14 @@ GitHub Pages は静的配信なので、build 後に増える Round を動的ル
   - `/scout-cards`
   - `/consensus`
   - `/edge-board`
-  - `/ticket-generator`
-  - `/review`
-  - `/match-editor`
+- `/ticket-generator`
+- `/review`
+- `/match-editor`
+- `/official-schedule-import`
+- `/fixture-selector`
+- `/toto-official-round-import`
+- `/simple-view`
+- `/pick-room`
 - 対象 Round は `?round=<id>` で切り替え
 - 対象 User は `?user=<id>` で切り替え
 - Match Editor は `?round=<id>&match=<id>` で開く
@@ -153,6 +158,170 @@ GitHub Pages は静的配信なので、build 後に増える Round を動的ル
 - drawAlert / exceptionFlag の振り返り
 - 一致 / 対立パターンの振り返り
 - 反省メモ
+
+### 10. Fixture Master / 公式日程取り込み
+
+- `Official Schedule Import Wizard` で FIFA公式由来のテキストを貼り付けて preview
+- `Fixture Master` に保存
+- `Fixture Selector` で試合を選び、`toto13 / mini_toto / winner / custom` の Round を作成
+- MVP は貼り付け / CSV 優先で、外部サイト自動取得は前提にしていません
+
+### 11. Toto Official Round Import
+
+- `Toto Official Round Import` で対象試合 CSV / TSV を preview
+- 公式投票率 `0.52 / 52% / 52` をすべて受け付けます
+- 合計が 1 から大きくズレる場合は警告します
+- `toto_official_rounds / toto_official_matches` に公式スナップショットを保存しつつ、既存 `matches` にも同期します
+- 売上・キャリー・配当前提は `round_ev_assumptions` に反映します
+
+### 12. Candidate Cards / Friend Pick Room
+
+- `Friend Pick Room` は友人向けのシンプル画面です
+- 表示候補は数本だけです。大量購入を促すための画面ではありません
+- 候補カードは次を並べます
+  - 王道モデル
+  - 公式人気
+  - 人力コンセンサス
+  - EVハンターA〜E
+  - 眠ってる期待値
+  - 引き分け警報
+  - 荒れ狙い
+- 友人は `これ推し / 迷う / パス / 自分はこれで買った / コメント` を記録できます
+- `買った` は記録だけで、決済や精算は扱いません
+
+### 13. Simple View / 自分の13予想
+
+- `Simple View` は友人向けの軽い閲覧・入力画面です
+- 13試合または N試合の一覧
+- 自分の `1 / 0 / 2` をその場で保存
+- 公式人気、AI候補、人力コンセンサス、引き分け警報を補助表示
+- 入力後は AI一致率、人力一致率、公式人気一致率、逆張り数、引き分け数を見られます
+
+## EV と Proxy
+
+### 推定EVの計算式
+
+```text
+pModelCombo(t) = Π modelProb_i(selectedOutcome_i)
+pPublicCombo(t) = Π officialVote_i(selectedOutcome_i)
+
+totalTicketsEstimate = totalSalesYen / stakeYen
+firstPrizePoolEstimate = totalSalesYen * returnRate * firstPrizeShare + carryoverYen
+expectedOtherWinners = max(0, (totalTicketsEstimate - 1) * pPublicCombo)
+estimatedPayoutIfHit = firstPrizePoolEstimate / (1 + expectedOtherWinners)
+
+if payoutCapYen is set:
+  estimatedPayoutIfHit = min(estimatedPayoutIfHit, payoutCapYen)
+
+grossEVYen = pModelCombo * estimatedPayoutIfHit
+evMultiple = grossEVYen / stakeYen
+evPercent = evMultiple * 100
+```
+
+### EV Proxy とは
+
+売上や配当原資の前提が未入力のときは、厳密 EV を出さず `Proxy` 表示にします。
+
+```text
+proxyScore =
+sum(log(modelProb_selected))
++ alpha * sum(modelProb_selected - officialVote_selected)
++ beta * sum(1 - officialVote_selected)
++ gamma * humanAlignmentScore
+- upsetPenalty
+```
+
+- `officialVote` が不足していると Proxy 寄りになります
+- `totalSalesYen` が未入力なら厳密 EV は出しません
+- `EV 200%以上候補なし` をそのまま表示します
+- 無理に候補を捏造しません
+
+### なぜ推定EVは保証ではないか
+
+- モデル確率、公式人気、売上想定、キャリー、配当原資想定はすべて入力値依存です
+- 実際の購入分布や同着人数は事前に確定しません
+- そのため、的中や利益を保証するものではありません
+
+## 公式データとデモデータ
+
+- `Fixture Master` は `source` と `dataConfidence` を持ちます
+- `Round` 側でも `roundSource` を保持します
+- `Friend Pick Room` では `FIFA公式日程 / toto公式対象 / 手入力 / デモ / Proxy EV` などの由来を表示します
+- デモデータが混じる Round では「本番分析には使わないでください」と明示します
+- 公式人気が未入力の試合がある場合は「EVはProxy表示です」と出します
+
+## Official Flow
+
+### 1. FIFA公式日程の取り込み方法
+
+1. `Official Schedule Import Wizard` を開く
+2. FIFA公式由来のテキストを貼る
+3. Parse Preview で home / away / date / group / venue を確認する
+4. `Fixture Master` に保存する
+
+### 2. Fixture Master とは何か
+
+- W杯全体の日程を再利用可能なマスターデータとして持つテーブルです
+- Round はこのマスターから何度でも組み直せます
+
+### 3. 公式日程から Round を作る方法
+
+1. `Fixture Selector` を開く
+2. 試合をチェックする
+3. 13試合なら `toto13`、5試合なら `mini_toto`、1試合なら `winner`、それ以外は `custom` を選ぶ
+4. Round を作成する
+
+### 4. toto公式対象試合を取り込む方法
+
+1. `Toto Official Round Import` を開く
+2. 対象試合 CSV / TSV を貼る
+3. 公式人気や fixture candidate を確認する
+4. 保存して Round に反映する
+
+### 5. 公式人気・売上・キャリーの入力方法
+
+- 対象試合ごとの `official_vote_1 / 0 / 2`
+- Round ごとの `stakeYen / totalSalesYen / returnRate / firstPrizeShare / carryoverYen / payoutCapYen`
+- 公式情報として入った値は `toto_official_*` と `round_ev_assumptions` に保存します
+
+## Candidate Cards の意味
+
+- 王道モデル: 各試合で modelProb 最大を選ぶ比較軸
+- 公式人気候補: toto民が一番選びそうな並びの比較軸
+- 人力コンセンサス: Human Scout Card と Human Picks を使った人力推し
+- EVハンター候補: 公式人気と被りにくさと modelProb のバランスを見た候補
+- 眠ってる期待値: 王道から数試合だけ高 edge outcome を混ぜた候補
+- 引き分け警報: avgD が高い試合で 0 を拾う候補
+- 荒れ狙い: ネタ枠を明示した逆張り候補
+
+## Friend Pick Room の使い方
+
+1. `Simple View` で round の全体像を見る
+2. `Friend Pick Room` で候補カードを比べる
+3. `これ推し / 迷う / パス / 自分はこれで買った / コメント` を記録する
+4. 必要なら `Simple View` で自分の13予想を更新する
+
+## 将来拡張メモ
+
+将来的には `Semantic Trading` 的な発想で、市場関係グラフを持てるようにします。
+
+- MarketNode 例
+  - FIFA公式日程
+  - toto公式対象試合
+  - Polymarket の優勝市場
+  - グループ首位 / 突破市場
+  - 個別試合市場
+  - 選手出場市場
+  - 怪我ニュース
+  - 人力スコア
+- MarketRelation 例
+  - `same_outcome`
+  - `opposite_outcome`
+  - `leader_follower`
+  - `weak_signal`
+  - `causal`
+
+MVP では未実装で、README 上の将来設計メモとして残しています。
 
 ## ローカル起動
 

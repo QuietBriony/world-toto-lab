@@ -21,6 +21,7 @@ export type GeneratorInput = {
 
 export type GeneratorSettings = {
   budgetYen: number;
+  candidateLimit?: number;
   humanWeight: number;
   maxContrarianMatches: number;
   includeDrawPolicy: DrawPolicy;
@@ -114,16 +115,95 @@ const MODE_WEIGHTS: Record<
   },
 };
 
-function normalizeCandidateLimit(value: number) {
-  return Math.min(Math.max(Math.floor(value), 1), 8);
+const COMPATIBILITY_BUDGET_STEP_YEN = 100;
+const DEFAULT_CANDIDATE_LIMIT = 5;
+const DEFAULT_MAX_CONTRARIAN_MATCHES = 3;
+const MAX_CANDIDATE_LIMIT = 8;
+
+function normalizeMatchCount(value?: number | null) {
+  if (value === null || value === undefined || Number.isNaN(value)) {
+    return null;
+  }
+
+  return Math.max(Math.floor(value), 0);
 }
 
-export function candidateLimitFromBudget(budgetYen: number) {
-  return normalizeCandidateLimit(Math.floor(budgetYen / 100));
+export function candidateLimitCapForMatchCount(matchCount?: number | null) {
+  const normalizedMatchCount = normalizeMatchCount(matchCount);
+
+  if (normalizedMatchCount === null) {
+    return MAX_CANDIDATE_LIMIT;
+  }
+
+  return Math.min(
+    MAX_CANDIDATE_LIMIT,
+    Math.max(1, Math.floor(3 ** Math.min(normalizedMatchCount, 20))),
+  );
 }
 
-export function budgetFromCandidateLimit(candidateLimit: number) {
-  return normalizeCandidateLimit(candidateLimit) * 100;
+function normalizeCandidateLimit(value: number, matchCount?: number | null) {
+  return Math.min(
+    Math.max(Math.floor(value), 1),
+    candidateLimitCapForMatchCount(matchCount),
+  );
+}
+
+export function defaultCandidateLimit(matchCount?: number | null) {
+  return normalizeCandidateLimit(DEFAULT_CANDIDATE_LIMIT, matchCount);
+}
+
+export function defaultMaxContrarianMatches(matchCount?: number | null) {
+  const normalizedMatchCount = normalizeMatchCount(matchCount);
+
+  if (normalizedMatchCount === null) {
+    return DEFAULT_MAX_CONTRARIAN_MATCHES;
+  }
+
+  if (normalizedMatchCount === 0) {
+    return 0;
+  }
+
+  return Math.min(
+    normalizedMatchCount,
+    Math.max(1, Math.round(normalizedMatchCount / 4)),
+  );
+}
+
+export function candidateLimitFromBudget(budgetYen: number, matchCount?: number | null) {
+  return normalizeCandidateLimit(
+    Math.floor(budgetYen / COMPATIBILITY_BUDGET_STEP_YEN),
+    matchCount,
+  );
+}
+
+export function budgetFromCandidateLimit(candidateLimit: number, matchCount?: number | null) {
+  return (
+    normalizeCandidateLimit(candidateLimit, matchCount) * COMPATIBILITY_BUDGET_STEP_YEN
+  );
+}
+
+export function resolveCandidateLimit(
+  settings: {
+    budgetYen: GeneratorSettings["budgetYen"];
+    candidateLimit?: GeneratorSettings["candidateLimit"] | null;
+  },
+  matchCount?: number | null,
+) {
+  if (settings.candidateLimit !== null && settings.candidateLimit !== undefined) {
+    return normalizeCandidateLimit(settings.candidateLimit, matchCount);
+  }
+
+  return candidateLimitFromBudget(settings.budgetYen, matchCount);
+}
+
+function resolveMaxContrarianMatches(
+  maxContrarianMatches: number,
+  matchCount: number,
+) {
+  return Math.min(
+    Math.max(Math.floor(maxContrarianMatches), 0),
+    Math.max(Math.floor(matchCount), 0),
+  );
 }
 
 function selectionReasonSet(match: MatchLike, row: AdvantageRow) {
@@ -436,7 +516,15 @@ export function generateTicketsForMode(
   settings: GeneratorSettings,
   mode: TicketMode,
 ) {
-  const maxTickets = candidateLimitFromBudget(settings.budgetYen);
+  const maxTickets = resolveCandidateLimit(settings, input.matches.length);
+  const effectiveSettings: GeneratorSettings = {
+    ...settings,
+    candidateLimit: maxTickets,
+    maxContrarianMatches: resolveMaxContrarianMatches(
+      settings.maxContrarianMatches,
+      input.matches.length,
+    ),
+  };
   const advantageRows = buildAdvantageRows({
     matches: input.matches,
     picks: input.picks ?? [],
@@ -454,7 +542,7 @@ export function generateTicketsForMode(
       advantageRows: rowsByMatchId.get(match.id) ?? [],
       match,
       mode,
-      settings,
+      settings: effectiveSettings,
     });
 
     if (candidates.length > 0) {
@@ -469,7 +557,7 @@ export function generateTicketsForMode(
     return fallbackRow ? [buildSelection(match, fallbackRow)] : [];
   });
 
-  return expandAll(matchCandidates, maxTickets, settings, mode);
+  return expandAll(matchCandidates, maxTickets, effectiveSettings, mode);
 }
 
 export function generateAllModeTickets(input: GeneratorInput, settings: GeneratorSettings) {

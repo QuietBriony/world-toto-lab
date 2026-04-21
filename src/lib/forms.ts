@@ -1,10 +1,14 @@
 import { clamp, outcomeToEnum } from "@/lib/domain";
+import { productTypeOptions, voidHandlingOptions } from "@/lib/product-rules";
 import type {
   MatchCategory,
   Outcome,
+  ProductType,
   ProvisionalCall,
+  RoundSource,
   RoundStatus,
   TicketMode,
+  VoidHandling,
 } from "@/lib/types";
 
 function stringFromUnknown(value: FormDataEntryValue | null) {
@@ -64,6 +68,30 @@ export function parseRoundStatus(raw: string): RoundStatus {
     "reviewed",
   ];
   return values.includes(raw as RoundStatus) ? (raw as RoundStatus) : "draft";
+}
+
+export function parseProductType(raw: string): ProductType {
+  return productTypeOptions.includes(raw as ProductType)
+    ? (raw as ProductType)
+    : "toto13";
+}
+
+export function parseRoundSource(raw: string): RoundSource {
+  const values: RoundSource[] = [
+    "fixture_master",
+    "toto_official_manual",
+    "user_manual",
+    "demo_sample",
+  ];
+  return values.includes(raw as RoundSource)
+    ? (raw as RoundSource)
+    : "user_manual";
+}
+
+export function parseVoidHandling(raw: string): VoidHandling {
+  return voidHandlingOptions.includes(raw as VoidHandling)
+    ? (raw as VoidHandling)
+    : "manual";
 }
 
 export function parseCategory(raw: string): MatchCategory | null {

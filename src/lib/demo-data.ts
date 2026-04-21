@@ -154,6 +154,7 @@ export function isDemoRoundTitle(title: string | null | undefined) {
 
 export const demoTicketSettings: GeneratorSettings = {
   budgetYen: 2000,
+  candidateLimit: 8,
   humanWeight: 0.68,
   includeDrawPolicy: "medium",
   maxContrarianMatches: 3,

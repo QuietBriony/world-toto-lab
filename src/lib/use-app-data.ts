@@ -2,9 +2,19 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import { listDashboardData, getRoundWorkspace } from "@/lib/repository";
+import {
+  getRoundWorkspace,
+  listDashboardData,
+  listFixtureMaster,
+  listTotoOfficialRoundLibrary,
+} from "@/lib/repository";
 import { isSupabaseConfigured } from "@/lib/supabase";
-import type { DashboardData, RoundWorkspace } from "@/lib/types";
+import type {
+  DashboardData,
+  FixtureMaster,
+  RoundWorkspace,
+  TotoOfficialRoundLibraryEntry,
+} from "@/lib/types";
 
 type ResourceState<T> = {
   data: T | null;
@@ -100,5 +110,27 @@ export function useRoundWorkspace(roundId: string | null) {
     loader,
     isSupabaseConfigured() && Boolean(roundId),
     [roundId],
+  );
+}
+
+export function useFixtureMaster(filters?: Parameters<typeof listFixtureMaster>[0]) {
+  const loader = useCallback(async () => listFixtureMaster(filters), [filters]);
+
+  return useAsyncResource<FixtureMaster[]>(
+    loader,
+    isSupabaseConfigured(),
+    [filters],
+  );
+}
+
+export function useTotoOfficialRoundLibrary(
+  filters?: Parameters<typeof listTotoOfficialRoundLibrary>[0],
+) {
+  const loader = useCallback(async () => listTotoOfficialRoundLibrary(filters), [filters]);
+
+  return useAsyncResource<TotoOfficialRoundLibraryEntry[]>(
+    loader,
+    isSupabaseConfigured(),
+    [filters],
   );
 }
