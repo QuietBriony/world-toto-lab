@@ -807,21 +807,34 @@ function isMissingRelationError(error: RelationMissingResult["error"], table: st
   const normalizedMessage = normalizeRelationMessage(error);
   const publicTablePattern = `public.${table}`;
   const quotedPattern = `"${publicTablePattern}"`;
+  const bareQuotedPattern = `"${table}"`;
   const candidatePattern = table;
 
   return (
     normalizedMessage.includes(`could not find table '${publicTablePattern}' in the schema cache`) ||
     normalizedMessage.includes(`could not find the table '${publicTablePattern}' in the schema cache`) ||
+    normalizedMessage.includes(`could not find table '${candidatePattern}' in the schema cache`) ||
+    normalizedMessage.includes(`could not find the table '${candidatePattern}' in the schema cache`) ||
     normalizedMessage.includes(`could not find table \"${publicTablePattern}\" in the schema cache`) ||
     normalizedMessage.includes(`could not find the table \"${publicTablePattern}\" in the schema cache`) ||
+    normalizedMessage.includes(`could not find table \"${candidatePattern}\" in the schema cache`) ||
+    normalizedMessage.includes(`could not find the table \"${candidatePattern}\" in the schema cache`) ||
     normalizedMessage.includes(`relation ${publicTablePattern} does not exist`) ||
     normalizedMessage.includes(`relation \"${candidatePattern}\" does not exist`) ||
     normalizedMessage.includes(`relation \"${publicTablePattern}\" does not exist`) ||
     normalizedMessage.includes(`relation ${quotedPattern} does not exist`) ||
+    normalizedMessage.includes(`relation "${candidatePattern}" in the from clause does not exist`) ||
+    normalizedMessage.includes(`relation '${candidatePattern}' in the from clause does not exist`) ||
     normalizedMessage.includes(`relation ${candidatePattern} does not exist`) ||
+    normalizedMessage.includes(`relation ${bareQuotedPattern} does not exist`) ||
     normalizedMessage.includes(`${publicTablePattern} does not exist`) ||
     normalizedMessage.includes(`${candidatePattern} does not exist`) ||
-    normalizedMessage.includes(`${publicTablePattern} is not in the schema cache`)
+    normalizedMessage.includes(`${publicTablePattern} is not in the schema cache`) ||
+    normalizedMessage.includes(`${candidatePattern} is not in the schema cache`) ||
+    normalizedMessage.includes(`relation "${publicTablePattern}" is missing`) ||
+    normalizedMessage.includes(`relation "${candidatePattern}" is missing`) ||
+    normalizedMessage.includes(`relation ${publicTablePattern} is missing`) ||
+    normalizedMessage.includes(`relation ${candidatePattern} is missing`)
   );
 }
 
