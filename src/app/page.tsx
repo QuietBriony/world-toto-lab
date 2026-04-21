@@ -418,15 +418,6 @@ export default function DashboardPage() {
   const liveResultCount = inventoryRounds.reduce((sum, round) => sum + round.resultedCount, 0);
   const createRoundJourneyCards = [
     {
-      body: "2026本番のように、まだ toto が売り出していない回は確定日程から先に Round を作るのがいちばん自然です。",
-      ctaHref: appRoute.officialScheduleImport,
-      ctaLabel: "公式日程から始める",
-      secondaryHref: appRoute.fixtureSelector,
-      secondaryLabel: "Fixture Selector へ",
-      title: "販売前に始める",
-      tone: "teal" as const,
-    },
-    {
       body: "売り出しが始まったら、公式対象回を同期してそのまま toto / mini toto の Round に流し込みます。",
       ctaHref: buildOfficialRoundImportHref(undefined, {
         autoSync: true,
@@ -454,6 +445,15 @@ export default function DashboardPage() {
       secondaryLabel: "BIG Carryover Monitor",
       title: "1試合や別商品で見る",
       tone: "amber" as const,
+    },
+    {
+      body: "FIFA全試合の取り込みは、公式対象回がまだ出ていない時だけ使う補助導線です。発売前に遊び用Roundを先に作りたいときだけ開けば十分です。",
+      ctaHref: appRoute.officialScheduleImport,
+      ctaLabel: "販売前の手動準備へ",
+      secondaryHref: appRoute.fixtureSelector,
+      secondaryLabel: "13試合を手で選ぶ",
+      title: "販売前に先に遊ぶ",
+      tone: "teal" as const,
     },
   ];
   const goal3Entries = useMemo(
@@ -1678,7 +1678,7 @@ export default function DashboardPage() {
           <SectionCard
             id="create-round"
             title="ラウンドを作成"
-            description="販売前は公式日程ベース、販売後は toto公式回ベースで本番用ラウンドを作れます。"
+            description="主導線は toto公式の対象回取り込みです。FIFA全試合から組む流れは、発売前に先に遊ぶときだけ使う補助導線に寄せています。"
           >
             <div className="mb-6 space-y-4">
               <div className="rounded-[24px] border border-slate-200 bg-slate-50/90 px-5 py-4 text-sm leading-6 text-slate-700">
@@ -1687,8 +1687,8 @@ export default function DashboardPage() {
                   <Badge tone="slate">迷ったらここ</Badge>
                 </div>
                 <p className="mt-3">
-                  まずは「販売前」「販売後」「1試合 / 別商品」のどれかを選べば十分です。
-                  URLや同期を使わずに細かく作りたいときだけ、下の `手入力で細かく作る`
+                  ふだんは「販売後」か「1試合 / 別商品」から入れば十分です。
+                  まだ公式対象回が出ていない時だけ「販売前に先に遊ぶ」を使い、URLや同期を使わずに細かく作りたいときだけ、下の `手入力で細かく作る`
                   を開けば大丈夫です。
                 </p>
               </div>
@@ -1716,8 +1716,8 @@ export default function DashboardPage() {
               </div>
 
               <div className="rounded-[24px] border border-slate-200 bg-slate-50/90 px-4 py-4 text-sm leading-6 text-slate-600">
-                上の 3 枚で入口は足ります。販売前は `公式日程を取り込む → Fixture Selector`、
-                販売後は `toto / mini toto を選ぶ`、1試合商品は `WINNER` を選ぶ、だけ覚えておけば十分です。
+                上の 3 枚で入口は足ります。ふだんは `toto / mini toto を選ぶ`、1試合商品は
+                `WINNER`、まだ公式対象回が出ていない時だけ `販売前に先に遊ぶ` を開けば十分です。
               </div>
             </div>
 

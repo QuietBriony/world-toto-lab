@@ -347,11 +347,20 @@ function WorkspacePageContent() {
           badge: data.round.matches.length === 0 ? "まずここ" : "素材更新",
           body:
             data.round.matches.length === 0
-              ? "この Round にはまだ試合が入っていません。販売前なら確定日程から、販売後なら公式対象回から入れるのが最短です。"
-              : "試合素材を入れ直したいときの入口です。販売前は確定日程、販売後は公式対象回を使い分けます。",
+              ? data.round.productType === "winner"
+                ? "この Round にはまだ試合が入っていません。WINNER は公式くじ情報URLから入れるのが最短です。"
+                : "この Round にはまだ試合が入っていません。まずは公式対象回を取り込み、まだ未発表なら確定日程ベースの手動準備へ回ります。"
+              : "試合素材を入れ直したいときの入口です。ふだんは公式対象回で更新し、発売前の仮Roundだけ確定日程ベースを使います。",
           ctaHref:
             data.round.matches.length === 0
-              ? buildRoundHref(appRoute.officialScheduleImport, data.round.id)
+              ? buildOfficialRoundImportHref(data.round.id, {
+                  autoSync: data.round.productType === "winner" ? false : true,
+                  productType: data.round.productType,
+                  sourcePreset:
+                    data.round.productType === "winner"
+                      ? "toto_official_detail"
+                      : "yahoo_toto_schedule",
+                })
               : buildOfficialRoundImportHref(data.round.id, {
                   autoSync: data.round.productType === "winner" ? false : true,
                   productType: data.round.productType,
@@ -361,18 +370,18 @@ function WorkspacePageContent() {
                       : "yahoo_toto_schedule",
                 }),
           ctaLabel:
-            data.round.matches.length === 0
-              ? "公式日程から始める"
-              : data.round.productType === "winner"
-                ? "公式URLから更新する"
+            data.round.productType === "winner"
+              ? "公式URLから更新する"
+              : data.round.matches.length === 0
+                ? "公式対象回から始める"
                 : "公式回を同期して更新する",
           secondaryHref:
             data.round.matches.length === 0
-              ? buildRoundHref(appRoute.fixtureSelector, data.round.id)
+              ? buildRoundHref(appRoute.officialScheduleImport, data.round.id)
               : buildRoundHref(appRoute.officialScheduleImport, data.round.id),
           secondaryLabel:
             data.round.matches.length === 0
-              ? "Fixture Selector へ"
+              ? "販売前の手動準備へ"
               : "確定日程ベースで見直す",
           title: data.round.matches.length === 0 ? "試合素材を入れる" : "Round の素材を整える",
           tone: "teal" as const,
@@ -644,12 +653,12 @@ function WorkspacePageContent() {
             currentPath={appRoute.workspace}
           />
 
-          <CollapsibleSectionCard
-            title="Round Builder"
-            description="販売前は公式日程ベース、販売開始後は toto公式回ベースで進めます。`2026 6 World Toto 本番` のような先行Roundは、まず確定日程から組めるようにしています。"
-            defaultOpen={data.round.matches.length === 0}
-            badge={<Badge tone="sky">導線</Badge>}
-          >
+      <CollapsibleSectionCard
+        title="Round Builder"
+        description="主導線は toto公式の対象回取り込みです。FIFA全試合から組む流れは、販売前に先に遊ぶ時だけ使う補助導線に寄せています。"
+        defaultOpen={data.round.matches.length === 0}
+        badge={<Badge tone="sky">導線</Badge>}
+      >
             <div className="space-y-6">
               <div className="rounded-[24px] border border-slate-200 bg-slate-50/90 px-5 py-4 text-sm leading-6 text-slate-700">
                 <div className="flex flex-wrap items-center gap-2">
@@ -660,7 +669,7 @@ function WorkspacePageContent() {
                 </div>
                 <p className="mt-3">
                   {data.round.matches.length === 0
-                    ? "この Round はまだ材料が入っていません。販売前なら確定日程、販売後なら公式対象回から入れるのが最短です。"
+                    ? "この Round はまだ材料が入っていません。まずは公式対象回を試し、まだ未発表なら確定日程ベースの手動準備へ回るのが自然です。"
                     : "この Round には試合素材があります。更新したいときだけ取り込みへ戻り、ふだんは Simple View と Friend Pick Room を使えば十分です。"}
                 </p>
               </div>
@@ -695,15 +704,15 @@ function WorkspacePageContent() {
                 <div className="mt-4 space-y-4">
                   <div className="grid gap-4 lg:grid-cols-2">
                     <div className="rounded-[22px] border border-teal-200 bg-teal-50 px-4 py-4">
-                      <p className="text-sm font-semibold text-teal-950">販売前の基本形</p>
+                      <p className="text-sm font-semibold text-teal-950">販売前の補助導線</p>
                       <p className="mt-2 text-sm leading-6 text-teal-900">
-                        確定日程が先にある回は{" "}
+                        公式対象回がまだ出ていない時だけ{" "}
                         <span className="font-medium">公式日程を取り込む → Fixture Selector</span>{" "}
-                        の順で Round を組みます。
+                        の順で仮Roundを組みます。
                       </p>
                     </div>
                     <div className="rounded-[22px] border border-amber-200 bg-amber-50 px-4 py-4">
-                      <p className="text-sm font-semibold text-amber-950">販売後の基本形</p>
+                      <p className="text-sm font-semibold text-amber-950">ふだんの主導線</p>
                       <p className="mt-2 text-sm leading-6 text-amber-900">
                         売り出し後は{" "}
                         <span className="font-medium">公式回を同期して選ぶ</span>{" "}

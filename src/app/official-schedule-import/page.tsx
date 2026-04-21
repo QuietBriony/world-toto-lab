@@ -304,7 +304,7 @@ function OfficialScheduleImportPageContent() {
       <PageHeader
         eyebrow="Admin"
         title="Official Schedule Import Wizard"
-        description="FIFA公式由来の確定日程を貼り付けて、Fixture Master に取り込みます。toto発売前の本番準備は、この導線を main にしています。"
+        description="FIFA公式由来の確定日程を Fixture Master に入れる補助導線です。公式対象回がまだ出ていない時に、発売前の手動準備として使います。"
         actions={
           <div className="flex flex-wrap gap-3">
             <Link href={fixtureSelectorHref} className={secondaryButtonClassName}>
@@ -335,7 +335,7 @@ function OfficialScheduleImportPageContent() {
       <RoundContextCard
         roundId={roundId}
         backHref={roundDetailHref}
-        description="公式日程の貼り付けはできますが、いまどの Round の準備として開いているかを先にそろえます。"
+        description="販売前の手動準備として使う画面です。いまどの Round の素材づくりかをここで確認します。"
       />
 
       <CollapsibleSectionCard

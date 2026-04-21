@@ -154,7 +154,7 @@ function FixtureSelectorPageContent() {
       <PageHeader
         eyebrow="Admin"
         title="Fixture Selector"
-        description="Fixture Master に入った大会全体の試合から、今回遊ぶ13試合を手で選んで Round 化します。公式対象13試合が出たあとは Toto Official Round Import の方が本番向きです。"
+        description="販売前の手動準備として、Fixture Master に入った大会全体の試合から今回遊ぶ13試合を選んで Round 化します。公式対象13試合が出たあとは Toto Official Round Import の方が本番向きです。"
         actions={
           <div className="flex flex-wrap gap-3">
             <Link href={officialScheduleHref} className={secondaryButtonClassName}>
