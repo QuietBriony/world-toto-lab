@@ -310,7 +310,6 @@ function WorkspacePageContent() {
               {
                 href: buildOfficialRoundImportHref(data.round.id, {
                   autoApply: true,
-                  autoSync: true,
                   productType: "winner",
                   sourcePreset: "toto_official_detail",
                 }),
@@ -375,7 +374,6 @@ function WorkspacePageContent() {
                 body: "1試合の WINNER を回すときは、公式くじ情報URLを直接読む導線が安定です。取り込み後は WINNER Value Board へ進めます。",
                 href: buildOfficialRoundImportHref(data.round.id, {
                   autoApply: true,
-                  autoSync: true,
                   productType: "winner",
                   sourcePreset: "toto_official_detail",
                 }),
@@ -602,7 +600,7 @@ function WorkspacePageContent() {
               </Link>
               <Link
                 href={buildOfficialRoundImportHref(data.round.id, {
-                  autoSync: true,
+                  autoSync: data.round.productType === "winner" ? false : true,
                   productType: data.round.productType,
                   sourcePreset:
                     data.round.productType === "winner"

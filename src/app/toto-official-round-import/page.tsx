@@ -69,6 +69,9 @@ const officialSourcePresets = [
   },
 ] as const;
 
+const defaultOfficialDetailSourceUrl =
+  officialSourcePresets.find((preset) => preset.id === "toto_official_detail")?.sourceUrl ?? "";
+
 const officialProductFocusCards: Array<{
   badgeTone: "amber" | "sky" | "teal";
   body: string;
@@ -299,6 +302,15 @@ function TotoOfficialRoundImportPageContent() {
     setSyncSummary(null);
 
     try {
+      if (
+        productType === "winner" &&
+        syncSourceUrl.trim() === defaultOfficialDetailSourceUrl
+      ) {
+        throw new Error(
+          "WINNER は個別の公式くじ情報URLを貼ってから同期してください。既定のURLはサンプルです。",
+        );
+      }
+
       const syncResult = await syncTotoOfficialRoundListFromOfficial({
         includeMatches: includeMatchesInSync,
         sourceUrl: syncSourceUrl || undefined,
@@ -519,7 +531,9 @@ function TotoOfficialRoundImportPageContent() {
                         setSyncSourceUrl(preset.sourceUrl);
                       }
                       setActionMessage(
-                        preset
+                        card.productType === "winner" && preset
+                          ? `WINNER 向けに切り替えました。同期元は「${preset.label}」の入力欄を開いています。サンプルURLは置き換えて、実際の公式くじ情報URLを貼ってください。`
+                          : preset
                           ? `${productTypeLabel[card.productType]} 向けに切り替えました。同期元も「${preset.label}」へ合わせています。`
                           : `${productTypeLabel[card.productType]} の一覧に切り替えました。`,
                       );
