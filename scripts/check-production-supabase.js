@@ -5,20 +5,285 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const TABLES = [
-  { name: "users", critical: true },
-  { name: "rounds", critical: true },
-  { name: "matches", critical: true },
-  { name: "picks", critical: true },
-  { name: "human_scout_reports", critical: true },
-  { name: "generated_tickets", critical: false },
-  { name: "round_ev_assumptions", critical: true },
-  { name: "candidate_tickets", critical: false },
-  { name: "candidate_votes", critical: false },
-  { name: "fixture_master", critical: true },
-  { name: "review_notes", critical: false },
-  { name: "toto_official_round_library", critical: false },
-  { name: "toto_official_rounds", critical: false },
-  { name: "toto_official_matches", critical: false },
+  {
+    name: "users",
+    critical: true,
+    columns: ["id", "name", "role", "created_at", "updated_at"],
+  },
+  {
+    name: "rounds",
+    critical: true,
+    columns: [
+      "id",
+      "title",
+      "status",
+      "budget_yen",
+      "notes",
+      "product_type",
+      "required_match_count",
+      "active_match_count",
+      "round_source",
+      "source_note",
+      "outcome_set_json",
+      "void_handling",
+      "created_at",
+      "updated_at",
+    ],
+  },
+  {
+    name: "matches",
+    critical: true,
+    columns: [
+      "id",
+      "round_id",
+      "fixture_master_id",
+      "official_match_no",
+      "match_no",
+      "home_team",
+      "away_team",
+      "kickoff_time",
+      "venue",
+      "stage",
+      "official_vote_1",
+      "official_vote_0",
+      "official_vote_2",
+      "market_prob_1",
+      "market_prob_0",
+      "market_prob_2",
+      "model_prob_1",
+      "model_prob_0",
+      "model_prob_2",
+      "consensus_f",
+      "consensus_d",
+      "consensus_call",
+      "disagreement_score",
+      "exception_count",
+      "confidence",
+      "category",
+      "recommended_outcomes",
+      "tactical_note",
+      "injury_note",
+      "motivation_note",
+      "admin_note",
+      "actual_result",
+      "created_at",
+      "updated_at",
+    ],
+  },
+  {
+    name: "picks",
+    critical: true,
+    columns: ["id", "round_id", "match_id", "user_id", "pick", "note", "created_at", "updated_at"],
+  },
+  {
+    name: "human_scout_reports",
+    critical: true,
+    columns: [
+      "id",
+      "round_id",
+      "match_id",
+      "user_id",
+      "score_strength_form",
+      "note_strength_form",
+      "score_availability",
+      "note_availability",
+      "score_conditions",
+      "note_conditions",
+      "score_tactical_matchup",
+      "note_tactical_matchup",
+      "score_micro",
+      "note_micro",
+      "draw_alert",
+      "note_draw_alert",
+      "direction_score_f",
+      "provisional_call",
+      "exception_flag",
+      "exception_note",
+      "created_at",
+      "updated_at",
+    ],
+  },
+  {
+    name: "generated_tickets",
+    critical: false,
+    columns: [
+      "id",
+      "round_id",
+      "mode",
+      "ticket_json",
+      "ticket_score",
+      "estimated_hit_prob",
+      "contrarian_score",
+      "created_at",
+    ],
+  },
+  {
+    name: "round_ev_assumptions",
+    critical: true,
+    columns: [
+      "id",
+      "round_id",
+      "stake_yen",
+      "total_sales_yen",
+      "return_rate",
+      "first_prize_share",
+      "carryover_yen",
+      "payout_cap_yen",
+      "note",
+      "created_at",
+      "updated_at",
+    ],
+  },
+  {
+    name: "candidate_tickets",
+    critical: false,
+    columns: [
+      "id",
+      "round_id",
+      "label",
+      "strategy_type",
+      "picks_json",
+      "p_model_combo",
+      "p_public_combo",
+      "estimated_payout_yen",
+      "gross_ev_yen",
+      "ev_multiple",
+      "ev_percent",
+      "proxy_score",
+      "hit_probability",
+      "public_overlap_score",
+      "contrarian_count",
+      "draw_count",
+      "human_alignment_score",
+      "data_quality",
+      "rationale",
+      "warning",
+      "created_at",
+      "updated_at",
+    ],
+  },
+  {
+    name: "candidate_votes",
+    critical: false,
+    columns: [
+      "id",
+      "round_id",
+      "candidate_ticket_id",
+      "user_id",
+      "vote",
+      "comment",
+      "created_at",
+      "updated_at",
+    ],
+  },
+  {
+    name: "fixture_master",
+    critical: true,
+    columns: [
+      "id",
+      "competition",
+      "source",
+      "source_url",
+      "source_text",
+      "external_fixture_id",
+      "match_date",
+      "kickoff_time",
+      "timezone",
+      "home_team",
+      "away_team",
+      "group_name",
+      "stage",
+      "venue",
+      "city",
+      "country",
+      "data_confidence",
+      "created_at",
+      "updated_at",
+    ],
+  },
+  {
+    name: "review_notes",
+    critical: false,
+    columns: ["id", "round_id", "match_id", "user_id", "note", "created_at"],
+  },
+  {
+    name: "toto_official_round_library",
+    critical: false,
+    columns: [
+      "id",
+      "title",
+      "notes",
+      "product_type",
+      "required_match_count",
+      "outcome_set_json",
+      "source_note",
+      "void_handling",
+      "official_round_name",
+      "official_round_number",
+      "sales_start_at",
+      "sales_end_at",
+      "result_status",
+      "stake_yen",
+      "total_sales_yen",
+      "return_rate",
+      "first_prize_share",
+      "carryover_yen",
+      "payout_cap_yen",
+      "source_url",
+      "source_text",
+      "matches_json",
+      "created_at",
+      "updated_at",
+    ],
+  },
+  {
+    name: "toto_official_rounds",
+    critical: false,
+    columns: [
+      "id",
+      "round_id",
+      "product_type",
+      "official_round_name",
+      "official_round_number",
+      "sales_start_at",
+      "sales_end_at",
+      "result_status",
+      "stake_yen",
+      "total_sales_yen",
+      "return_rate",
+      "first_prize_share",
+      "carryover_yen",
+      "payout_cap_yen",
+      "source_url",
+      "source_text",
+      "created_at",
+      "updated_at",
+    ],
+  },
+  {
+    name: "toto_official_matches",
+    critical: false,
+    columns: [
+      "id",
+      "round_id",
+      "match_id",
+      "fixture_master_id",
+      "official_match_no",
+      "home_team",
+      "away_team",
+      "kickoff_time",
+      "venue",
+      "stage",
+      "official_vote_1",
+      "official_vote_0",
+      "official_vote_2",
+      "actual_result",
+      "match_status",
+      "source_text",
+      "created_at",
+      "updated_at",
+    ],
+  },
 ];
 
 function getErrorMessage(error) {
@@ -26,7 +291,19 @@ function getErrorMessage(error) {
     return "";
   }
 
-  return (error.message || "").toString();
+  const parts = [error.code, error.message, error.details, error.hint]
+    .filter((value) => value != null && String(value).trim() !== "")
+    .map((value) => String(value).trim());
+
+  if (parts.length > 0) {
+    return parts.join(" | ");
+  }
+
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return String(error);
+  }
 }
 
 function isMissingRelationError(error) {
@@ -46,6 +323,19 @@ function isMissingRelationError(error) {
     message.includes("schema cache") ||
     message.includes("does not exist")
   );
+}
+
+function isMissingColumnError(error) {
+  if (!error) {
+    return false;
+  }
+
+  if (error.code === "42703") {
+    return true;
+  }
+
+  const message = getErrorMessage(error).toLowerCase();
+  return message.includes("column") && message.includes("does not exist");
 }
 
 const ENV_FILES = [
@@ -105,11 +395,17 @@ async function checkTables(supabase) {
     try {
       const result = await supabase
         .from(table.name)
-        .select("*", { count: "exact", head: true });
+        .select(table.columns.join(","), { count: "exact", head: true });
 
       if (result.error) {
         if (isMissingRelationError(result.error)) {
           check.error = `MISSING_RELATION: ${getErrorMessage(result.error)}`;
+          results.push(check);
+          continue;
+        }
+
+        if (isMissingColumnError(result.error)) {
+          check.error = `MISSING_COLUMN: ${getErrorMessage(result.error)}`;
           results.push(check);
           continue;
         }
@@ -131,9 +427,43 @@ async function checkTables(supabase) {
   return results;
 }
 
+async function loadDetailedRestError(url, anonKey, tableName, columns) {
+  try {
+    const query = encodeURIComponent(columns.join(","));
+    const response = await fetch(
+      `${url}/rest/v1/${tableName}?select=${query}&limit=1`,
+      {
+        headers: {
+          apikey: anonKey,
+          Authorization: `Bearer ${anonKey}`,
+        },
+      },
+    );
+
+    if (response.ok) {
+      return null;
+    }
+
+    const text = await response.text();
+    if (!text) {
+      return `${response.status} ${response.statusText}`;
+    }
+
+    try {
+      const payload = JSON.parse(text);
+      return getErrorMessage(payload);
+    } catch {
+      return `${response.status} ${response.statusText} | ${text}`;
+    }
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error);
+  }
+}
+
 function printResult(results) {
   const criticalFailures = results.filter((row) => row.critical && !row.ok);
   const softFailures = results.filter((row) => !row.critical && !row.ok);
+  const allFailures = results.filter((row) => !row.ok);
 
   console.log("[world-toto-lab] production supabase table check");
   console.log(`[env] url=${process.env.NEXT_PUBLIC_SUPABASE_URL}`);
@@ -153,6 +483,14 @@ function printResult(results) {
   console.log(`critical failures: ${criticalFailures.length}`);
   console.log(`optional failures: ${softFailures.length}`);
 
+  if (allFailures.length > 0) {
+    console.log("");
+    console.log("[details]");
+    allFailures.forEach((row) => {
+      console.log(`- ${row.name}: ${row.error}`);
+    });
+  }
+
   if (criticalFailures.length > 0) {
     console.log("Please check supabase/sql apply and anon key permissions.");
     process.exit(1);
@@ -164,6 +502,23 @@ async function main() {
   const { url, anon } = loadConfig();
   const supabase = createClient(url, anon);
   const results = await checkTables(supabase);
+
+  for (const row of results) {
+    if (row.ok || !row.error || row.error !== "{\"message\":\"\"}") {
+      continue;
+    }
+
+    const table = TABLES.find((table) => table.name === row.name);
+    if (!table) {
+      continue;
+    }
+
+    const detailedError = await loadDetailedRestError(url, anon, row.name, table.columns);
+    if (detailedError) {
+      row.error = detailedError;
+    }
+  }
+
   printResult(results);
 }
 

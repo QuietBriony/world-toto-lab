@@ -387,7 +387,8 @@ NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 ```
 
-`critical` が全て `OK` の場合は接続レベルの整合は取れています。  
+`critical` が全て `OK` の場合は、接続先DBに必要テーブルと主要カラムが揃っています。  
+`MISSING_COLUMN` や `MISSING_RELATION` が出た場合は、本番 Supabase に `supabase/schema.sql` を再適用してください。  
 `candidate_tickets` / `candidate_votes` は現状 UI 側でフェイルセーフを入れていますが、`missing` が出るなら SQL 再実行が推奨です。
 
 ### 3.1. まだ候補系テーブルがない場合（`candidate_tickets` / `candidate_votes`）
