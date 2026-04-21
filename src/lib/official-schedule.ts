@@ -36,6 +36,7 @@ export const officialScheduleImportSourceUrl =
 export const officialScheduleImportSourceLabel = "FIFA World Cup 2026 match schedule";
 export const officialScheduleTransferPayloadKind = "world_toto_lab_official_schedule_import";
 export const officialScheduleTransferPayloadVersion = 1;
+export const fifaOfficialApiBaseUrl = "https://cxm-api.fifa.com/fifaplusweb/api";
 
 const dashPattern = /\s*[‐‑‒–—―-]\s*/;
 const dashTokenPattern = /[‐‑‒–—―-]/;
@@ -51,6 +52,34 @@ export const officialScheduleImportSample = [
   "USA v Paraguay - Group D – Los Angeles Stadium",
 ].join("\n");
 
+type FifaOfficialPageResponse = {
+  pageId?: string;
+  sections?: Array<{
+    entryEndpoint?: string;
+    entryId?: string;
+    entryType?: string;
+  }>;
+};
+
+type FifaOfficialRichTextNode = {
+  content?: FifaOfficialRichTextNode[];
+  nodeType?: string;
+  value?: string;
+};
+
+type FifaOfficialArticleResponse = {
+  articleTitle?: string;
+  richtext?: FifaOfficialRichTextNode;
+};
+
+export type FifaOfficialScheduleFetchResult = {
+  articleTitle: string | null;
+  pageApiUrl: string;
+  sourceText: string;
+  sourceUrl: string;
+  warnings: string[];
+};
+
 function normalizeKeyPart(value: string | null | undefined) {
   return (value ?? "")
     .toLowerCase()
@@ -63,6 +92,110 @@ function normalizeSourceLine(value: string) {
     .replace(/\u00a0/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function isBlockNode(nodeType: string | undefined) {
+  return Boolean(
+    nodeType &&
+      (nodeType === "paragraph" ||
+        nodeType === "blockquote" ||
+        nodeType === "list-item" ||
+        /^heading-/.test(nodeType)),
+  );
+}
+
+function flattenFifaRichTextInline(node: FifaOfficialRichTextNode | undefined): string {
+  if (!node) {
+    return "";
+  }
+
+  if (node.nodeType === "text") {
+    return node.value ?? "";
+  }
+
+  return (node.content ?? []).map(flattenFifaRichTextInline).join("");
+}
+
+function collectFifaRichTextBlocks(
+  node: FifaOfficialRichTextNode | undefined,
+  blocks: string[],
+) {
+  if (!node) {
+    return;
+  }
+
+  if (isBlockNode(node.nodeType)) {
+    const text = flattenFifaRichTextInline(node).trim();
+    if (text) {
+      blocks.push(text);
+    }
+    return;
+  }
+
+  (node.content ?? []).forEach((child) => collectFifaRichTextBlocks(child, blocks));
+}
+
+export function extractOfficialScheduleSourceTextFromFifaRichText(
+  richText: FifaOfficialRichTextNode | null | undefined,
+) {
+  const blocks: string[] = [];
+  collectFifaRichTextBlocks(richText ?? undefined, blocks);
+  return blocks.join("\n");
+}
+
+export function buildFifaOfficialPageApiUrl(sourceUrl: string) {
+  const source = new URL(sourceUrl);
+  if (!/(^|\.)fifa\.com$/i.test(source.hostname)) {
+    throw new Error("FIFA公式URLだけ利用できます。");
+  }
+
+  const pathname = source.pathname.replace(/\/+$/, "");
+  if (!pathname || !/\/articles\//.test(pathname)) {
+    throw new Error("FIFA公式の記事URLを入力してください。");
+  }
+
+  return `${fifaOfficialApiBaseUrl}/pages${pathname}`;
+}
+
+export async function fetchOfficialScheduleFromFifaArticle(sourceUrl: string) {
+  const pageApiUrl = buildFifaOfficialPageApiUrl(sourceUrl);
+  const warnings: string[] = [];
+  const pageResponse = await fetch(pageApiUrl);
+  if (!pageResponse.ok) {
+    throw new Error(`FIFA公式ページ情報の取得に失敗しました: ${pageResponse.status}`);
+  }
+
+  const page = (await pageResponse.json()) as FifaOfficialPageResponse;
+  const articleSection = page.sections?.find((section) => section.entryType === "article");
+  const articleEndpoint = articleSection?.entryEndpoint?.replace(/^\/+/, "");
+  if (!articleEndpoint) {
+    throw new Error("FIFA公式ページから記事本文の取得先を見つけられませんでした。");
+  }
+
+  const articleUrl = `${fifaOfficialApiBaseUrl}/${articleEndpoint}`;
+  const articleResponse = await fetch(articleUrl);
+  if (!articleResponse.ok) {
+    throw new Error(`FIFA公式記事本文の取得に失敗しました: ${articleResponse.status}`);
+  }
+
+  const article = (await articleResponse.json()) as FifaOfficialArticleResponse;
+  const sourceText = extractOfficialScheduleSourceTextFromFifaRichText(article.richtext);
+  if (!sourceText.trim()) {
+    throw new Error("FIFA公式記事から本文テキストを抽出できませんでした。");
+  }
+
+  const normalizedSourceText = normalizeOfficialScheduleSourceText(sourceText);
+  if (!normalizedSourceText.trim()) {
+    warnings.push("本文は取得できましたが、試合行として解釈できるテキストが見つかりませんでした。");
+  }
+
+  return {
+    articleTitle: article.articleTitle ?? null,
+    pageApiUrl,
+    sourceText: normalizedSourceText,
+    sourceUrl,
+    warnings,
+  } satisfies FifaOfficialScheduleFetchResult;
 }
 
 function isLikelyMatchLine(line: string) {

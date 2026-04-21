@@ -164,11 +164,11 @@ GitHub Pages は静的配信なので、build 後に増える Round を動的ル
 
 ### 10. Fixture Master / 公式日程取り込み
 
-- `Official Schedule Import Wizard` で FIFA公式由来のテキストを貼り付けて preview
+- `Official Schedule Import Wizard` で FIFA公式記事 URL からその場で日程を取得できます
 - `FIFA抽出ブックマーク` または抽出スクリプトで、FIFA公式ページの本文をこの画面へ持ち帰れます
 - `Fixture Master` に保存
 - `Fixture Selector` で試合を選び、`toto / mini toto / WINNER / custom` の Round を作成
-- GitHub Pages から FIFA本文を直接 fetch するのではなく、FIFAページ上で body text を抜いて戻す方式を main にしています
+- main は `FIFA公式 API -> article richtext -> date/match line 抽出` で、fallback として body text 抽出も残しています
 
 ### 11. Toto Official Round Import
 
@@ -273,14 +273,14 @@ sum(log(modelProb_selected))
 ### 1. FIFA公式日程の取り込み方法
 
 1. `Official Schedule Import Wizard` を開く
-2. `FIFA抽出ブックマーク` を保存するか、`抽出スクリプトをコピー` します
-3. 既定で入っている FIFA公式日程 URL を開き、FIFAページ上で抽出を実行します
-4. この画面に戻ったら自動で preview が入るので、home / away / date / group / venue を確認します
+2. 既定で入っている FIFA公式日程 URL を確認して、`この画面で取得` を押します
+3. FIFA公式 API から本文を読み、date / match line を自動で preview に入れます
+4. home / away / date / group / venue を確認します
 5. `Fixture Master` に保存します
 
 補足:
-- FIFA公式ページは JavaScript 描画なので、このアプリから直接 fetch して本文を読むより、FIFAページ上で `document.body.innerText` を抜いて戻す方が安定します
-- ブックマークレットが使いづらい端末では、コピーしたスクリプトをブラウザ Console で実行しても同じです
+- main 導線は FIFA公式 API の article richtext を読むので、スマホでも別タブ往復なしで使えます
+- もし直接取得が通らない環境では、fallback の `FIFA抽出ブックマーク` または抽出スクリプトを使えます
 
 ### 2. Fixture Master とは何か
 

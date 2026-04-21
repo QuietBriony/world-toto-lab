@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildFifaOfficialPageApiUrl,
   buildOfficialScheduleBookmarklet,
+  extractOfficialScheduleSourceTextFromFifaRichText,
   parseOfficialScheduleText,
   parseOfficialScheduleTransferPayload,
 } from "@/lib/official-schedule";
@@ -99,5 +101,61 @@ describe("official schedule parser", () => {
     expect(bookmarklet.startsWith("javascript:(() => {")).toBe(true);
     expect(bookmarklet).toContain("window.name = JSON.stringify(payload)");
     expect(bookmarklet).toContain("quietbriony.github.io/world-toto-lab/official-schedule-import/?round=test-round");
+  });
+
+  it("builds a FIFA official page API url from an article url", () => {
+    expect(
+      buildFifaOfficialPageApiUrl(
+        "https://www.fifa.com/en/tournaments/mens/worldcup/canadamexicousa2026/articles/match-schedule-fixtures-results-teams-stadiums",
+      ),
+    ).toBe(
+      "https://cxm-api.fifa.com/fifaplusweb/api/pages/en/tournaments/mens/worldcup/canadamexicousa2026/articles/match-schedule-fixtures-results-teams-stadiums",
+    );
+  });
+
+  it("extracts schedule-looking text from FIFA richtext blocks", () => {
+    const richtext = {
+      nodeType: "document",
+      content: [
+        {
+          nodeType: "heading-3",
+          content: [{ nodeType: "text", value: "FIFA World Cup 2026 Group Stage fixtures" }],
+        },
+        {
+          nodeType: "heading-4",
+          content: [{ nodeType: "text", value: "Thursday, 11 June 2026" }],
+        },
+        {
+          nodeType: "paragraph",
+          content: [
+            {
+              nodeType: "hyperlink",
+              content: [{ nodeType: "text", value: "Mexico v South Africa" }],
+            },
+            { nodeType: "text", value: " - " },
+            { nodeType: "text", value: "Group A" },
+            { nodeType: "text", value: " – " },
+            { nodeType: "text", value: "Mexico City Stadium" },
+            { nodeType: "text", value: "\n" },
+            {
+              nodeType: "hyperlink",
+              content: [{ nodeType: "text", value: "Korea Republic v Czechia" }],
+            },
+            { nodeType: "text", value: " - " },
+            { nodeType: "text", value: "Group A" },
+            { nodeType: "text", value: " – " },
+            { nodeType: "text", value: "Estadio Guadalajara" },
+          ],
+        },
+      ],
+    };
+
+    expect(extractOfficialScheduleSourceTextFromFifaRichText(richtext)).toBe(
+      [
+        "FIFA World Cup 2026 Group Stage fixtures",
+        "Thursday, 11 June 2026",
+        "Mexico v South Africa - Group A – Mexico City Stadium\nKorea Republic v Czechia - Group A – Estadio Guadalajara",
+      ].join("\n"),
+    );
   });
 });

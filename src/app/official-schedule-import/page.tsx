@@ -24,6 +24,7 @@ import {
 import {
   buildOfficialScheduleBookmarklet,
   buildOfficialScheduleExtractorScript,
+  fetchOfficialScheduleFromFifaArticle,
   officialScheduleImportSample,
   officialScheduleImportSourceLabel,
   officialScheduleImportSourceUrl,
@@ -89,6 +90,8 @@ function OfficialScheduleImportPageContent() {
       transferredSchedule
         ? parseOfficialScheduleText({
             competition: defaultCompetition,
+            dataConfidence: "manual_official_source",
+            source: "fifa_official_manual",
             sourceText: transferredSchedule.sourceText,
             sourceUrl: transferredSchedule.sourceUrl ?? officialScheduleImportSourceUrl,
           })
@@ -101,6 +104,12 @@ function OfficialScheduleImportPageContent() {
   const [competition, setCompetition] = useState(defaultCompetition);
   const [sourceUrl, setSourceUrl] = useState(
     () => transferredSchedule?.sourceUrl ?? officialScheduleImportSourceUrl,
+  );
+  const [fixtureSource, setFixtureSource] = useState<FixtureSource>(() =>
+    transferredSchedule ? "fifa_official_manual" : "fifa_official_api",
+  );
+  const [fixtureConfidence, setFixtureConfidence] = useState<FixtureDataConfidence>(() =>
+    transferredSchedule ? "manual_official_source" : "official",
   );
   const [draftRows, setDraftRows] = useState<OfficialScheduleDraft[]>(
     () => initialTransferPreview?.fixtures ?? [],
@@ -116,6 +125,7 @@ function OfficialScheduleImportPageContent() {
   const [bookmarkletCopied, setBookmarkletCopied] = useState<string | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [fetchingFromFifa, setFetchingFromFifa] = useState(false);
   const [saving, setSaving] = useState(false);
   const fixtureMaster = useFixtureMaster({ competition });
 
@@ -123,10 +133,12 @@ function OfficialScheduleImportPageContent() {
     () =>
       parseOfficialScheduleText({
         competition,
+        dataConfidence: fixtureConfidence,
+        source: fixtureSource,
         sourceText,
         sourceUrl,
       }),
-    [competition, sourceText, sourceUrl],
+    [competition, fixtureConfidence, fixtureSource, sourceText, sourceUrl],
   );
   const absoluteImportPageHref = useMemo(() => {
     if (typeof window === "undefined") {
@@ -199,6 +211,40 @@ function OfficialScheduleImportPageContent() {
     }
   };
 
+  const handleFetchFromFifa = async () => {
+    setFetchingFromFifa(true);
+    setActionError(null);
+    setSaveMessage(null);
+    setBookmarkletCopied(null);
+
+    try {
+      const fetched = await fetchOfficialScheduleFromFifaArticle(
+        sourceUrl.trim() || officialScheduleImportSourceUrl,
+      );
+      const preview = parseOfficialScheduleText({
+        competition,
+        dataConfidence: "official",
+        source: "fifa_official_api",
+        sourceText: fetched.sourceText,
+        sourceUrl: fetched.sourceUrl,
+      });
+
+      setFixtureSource("fifa_official_api");
+      setFixtureConfidence("official");
+      setSourceUrl(fetched.sourceUrl);
+      setSourceText(fetched.sourceText);
+      setDraftRows(preview.fixtures);
+      setParseWarnings([...fetched.warnings, ...buildPreviewWarnings(preview)]);
+      setImportMessage(
+        `FIFA公式 API から ${preview.fixtures.length} 件の候補行を取得しました。${fetched.articleTitle ? `記事: ${fetched.articleTitle}` : ""}`,
+      );
+    } catch (nextError) {
+      setActionError(errorMessage(nextError));
+    } finally {
+      setFetchingFromFifa(false);
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     setActionError(null);
@@ -257,9 +303,19 @@ function OfficialScheduleImportPageContent() {
             ) : null}
             <button
               type="button"
+              onClick={() => void handleFetchFromFifa()}
+              className={buttonClassName}
+              disabled={fetchingFromFifa}
+            >
+              {fetchingFromFifa ? "FIFA公式から取得中..." : "FIFA公式から取得"}
+            </button>
+            <button
+              type="button"
               onClick={() => {
                 setSourceUrl(officialScheduleImportSourceUrl);
                 setSourceText(officialScheduleImportSample);
+                setFixtureSource("demo_sample");
+                setFixtureConfidence("demo");
                 setImportMessage("サンプル日程をセットしました。Parse Preview を押すとプレビューできます。");
               }}
               className={buttonClassName}
@@ -285,10 +341,75 @@ function OfficialScheduleImportPageContent() {
       />
 
       <CollapsibleSectionCard
-        title="FIFA URL から抜き出す"
-        description="FIFA公式ページは JavaScript で本文を描画するため、このアプリから直接 fetch するより、FIFAページ上で本文を抜き出して戻す方が安定します。"
-        defaultOpen={!sourceText.trim()}
-        badge={<Badge tone="sky">URL抽出</Badge>}
+        title="FIFA公式から取得"
+        description="スマホでは、この画面のまま FIFA公式 API から本文を取得できます。URL を変えたときも、その記事 URL から本文と対戦カードを抜きます。"
+        defaultOpen
+        badge={<Badge tone="teal">1タップ取得</Badge>}
+      >
+        <div className="grid gap-3 md:grid-cols-3">
+          {[
+            [
+              "1",
+              "URL を確認",
+              "既定の FIFA公式日程 URL が入っています。別の記事URLでも、FIFA公式の記事ならそのまま使えます。",
+            ],
+            [
+              "2",
+              "この画面で取得",
+              "FIFA公式 API から本文を直接読み、日付行と対戦カードをそのままプレビューへ入れます。",
+            ],
+            [
+              "3",
+              "確認して保存",
+              "home / away / group / venue / kickoff を軽く整えて Fixture Master に保存します。",
+            ],
+          ].map(([step, title, body]) => (
+            <div
+              key={step}
+              className="rounded-[22px] border border-slate-200 bg-slate-50/90 px-4 py-4"
+            >
+              <Badge tone="slate">Step {step}</Badge>
+              <p className="mt-3 font-semibold text-slate-950">{title}</p>
+              <p className="mt-2 text-sm leading-6 text-slate-600">{body}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={() => void handleFetchFromFifa()}
+            className={buttonClassName}
+            disabled={fetchingFromFifa}
+          >
+            {fetchingFromFifa ? "FIFA公式から取得中..." : "この画面で取得"}
+          </button>
+          <a
+            href={officialScheduleImportSourceUrl}
+            target="_blank"
+            rel="noreferrer"
+            className={secondaryButtonClassName}
+          >
+            FIFA公式ページを開く
+          </a>
+        </div>
+
+        <div className="rounded-[22px] border border-slate-200 bg-slate-50 px-4 py-4 text-sm leading-6 text-slate-700">
+          <p className="font-medium text-slate-950">抽出ルール</p>
+          <p className="mt-2">
+            まず FIFA公式の記事本文 JSON を取り、本文内の date heading と match line を抜きます。
+            記事に kickoff time が含まれていれば拾い、なければ null のまま保存します。ページ装飾や SNS
+            埋め込みは捨てるので、多少ページ構成が変わっても `何日 / 何時 / home / away / venue`
+            は維持しやすい構成です。
+          </p>
+        </div>
+      </CollapsibleSectionCard>
+
+      <CollapsibleSectionCard
+        title="Fallback: FIFA URL から抜き出す"
+        description="もしブラウザからの直接取得が通らないときは、FIFAページ上で本文を抜き出してこの画面へ戻す fallback も残しています。"
+        defaultOpen={false}
+        badge={<Badge tone="sky">fallback</Badge>}
       >
         <div className="grid gap-3 md:grid-cols-3">
           {[
@@ -332,14 +453,6 @@ function OfficialScheduleImportPageContent() {
           >
             抽出スクリプトをコピー
           </button>
-          <a
-            href={officialScheduleImportSourceUrl}
-            target="_blank"
-            rel="noreferrer"
-            className={secondaryButtonClassName}
-          >
-            FIFA公式ページを開く
-          </a>
         </div>
 
         <div className="rounded-[22px] border border-slate-200 bg-slate-50 px-4 py-4 text-sm leading-6 text-slate-700">
@@ -397,8 +510,10 @@ function OfficialScheduleImportPageContent() {
         }
       >
         <div className="flex flex-wrap gap-2">
-          <Badge tone="teal">{fixtureSourceLabel.fifa_official_manual}</Badge>
-          <Badge tone="teal">{fixtureConfidenceLabel.manual_official_source}</Badge>
+          <Badge tone="teal">{fixtureSourceLabel[fixtureSource]}</Badge>
+          <Badge tone={fixtureConfidenceTone[fixtureConfidence]}>
+            {fixtureConfidenceLabel[fixtureConfidence]}
+          </Badge>
           <Badge tone="slate">{competition}</Badge>
           <Badge tone="info">{officialScheduleImportSourceLabel}</Badge>
           {!sourceUrl.trim() ? <Badge tone="warning">sourceUrl 未入力</Badge> : null}
@@ -410,7 +525,11 @@ function OfficialScheduleImportPageContent() {
           <div className="mt-3 flex flex-wrap gap-2">
             <button
               type="button"
-              onClick={() => setSourceUrl(officialScheduleImportSourceUrl)}
+              onClick={() => {
+                setSourceUrl(officialScheduleImportSourceUrl);
+                setFixtureSource("fifa_official_api");
+                setFixtureConfidence("official");
+              }}
               className={buttonClassName}
             >
               このURLをセット
