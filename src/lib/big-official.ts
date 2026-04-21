@@ -6,7 +6,7 @@ import {
   type BigCarryoverSummary,
   type BigEventType,
   type BigHeatBand,
-} from "@/lib/big-carryover";
+} from "./big-carryover";
 
 export type BigOfficialProductKey =
   | "big"
