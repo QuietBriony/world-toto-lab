@@ -78,6 +78,7 @@ describe("big official sync parser", () => {
     expect(query.eventType).toBe("carryover_event");
     expect(query.sales).toBe(484_739_700);
     expect(query.carryover).toBe(3_239_484_780);
+    expect(query.note).toContain("前開催回からの繰越金");
   });
 
   it("treats zero carryover as no carryover for display", () => {

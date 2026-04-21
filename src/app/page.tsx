@@ -63,6 +63,7 @@ import {
   bigCarryoverPresets,
   calculateBigCarryoverSummary,
   classifyBigHeatBand,
+  detectBigShockSignal,
 } from "@/lib/big-carryover";
 import { resolveRoundParticipantUsers } from "@/lib/round-participants";
 import { deriveRoundProgressSummary, matchHasSetupInput } from "@/lib/round-progress";
@@ -524,6 +525,14 @@ export default function DashboardPage() {
       }).length,
     [bigOfficialSnapshots],
   );
+  const bigOfficialShockCount = useMemo(
+    () =>
+      bigOfficialSnapshots.filter((snapshot) => detectBigShockSignal(snapshot.sourceText) !== "none").length,
+    [bigOfficialSnapshots],
+  );
+  const featuredBigShockSignal = featuredBigOfficialSnapshot
+    ? detectBigShockSignal(featuredBigOfficialSnapshot.sourceText)
+    : "none";
   const createRoundAnchor = "#create-round";
   const roundListAnchor = "#round-list";
 
@@ -610,6 +619,7 @@ export default function DashboardPage() {
               <Badge tone="slate">
                 {bigOfficialWatch.data ? `同期 ${bigOfficialSnapshots.length}商品` : "テンプレ"}
               </Badge>
+              {featuredBigShockSignal !== "none" ? <Badge tone="warning">特記事項あり</Badge> : null}
             </div>
             <h3 className="mt-3 font-display text-[1.35rem] font-semibold tracking-[-0.05em] text-slate-950">
               {featuredBigOfficialSnapshot
@@ -627,6 +637,7 @@ export default function DashboardPage() {
                   ? `要確認 ${bigOfficialAttentionCount}商品`
                   : `例: ${featuredBigPreset.eventLabel}`}
               </span>
+              {bigOfficialShockCount > 0 ? <span>特記事項 {bigOfficialShockCount}商品</span> : null}
               <span>
                 概算倍率{" "}
                 {formatPercent(

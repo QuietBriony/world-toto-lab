@@ -512,6 +512,7 @@ export function buildBigCarryoverQueryFromOfficialSnapshot(
     carryover: snapshot.carryoverYen || undefined,
     eventType: watch.eventType,
     label: watch.label,
+    note: snapshot.sourceText || undefined,
     returnRate: Math.round(snapshot.returnRate * 100),
     sales: snapshot.totalSalesYen ?? undefined,
     snapshotDate: (snapshot.snapshotAt ?? snapshot.salesStartAt ?? undefined)?.slice(0, 10),
