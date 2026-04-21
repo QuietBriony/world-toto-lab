@@ -68,7 +68,9 @@ describe("official schedule parser", () => {
     });
 
     expect(result.fixtures).toHaveLength(4);
-    expect(result.warnings).toEqual([]);
+    expect(result.warnings).toEqual([
+      "このソースには kickoff time が含まれていないため、時刻は未入力のままです。",
+    ]);
     expect(result.fixtures[2]?.homeTeam).toBe("Canada");
     expect(result.fixtures[3]?.awayTeam).toBe("Paraguay");
   });
@@ -152,10 +154,28 @@ describe("official schedule parser", () => {
 
     expect(extractOfficialScheduleSourceTextFromFifaRichText(richtext)).toBe(
       [
-        "FIFA World Cup 2026 Group Stage fixtures",
         "Thursday, 11 June 2026",
-        "Mexico v South Africa - Group A – Mexico City Stadium\nKorea Republic v Czechia - Group A – Estadio Guadalajara",
+        "Mexico v South Africa - Group A – Mexico City Stadium",
+        "Korea Republic v Czechia - Group A – Estadio Guadalajara",
       ].join("\n"),
     );
+  });
+
+  it("splits compound FIFA paragraphs into one fixture per line", () => {
+    const result = parseOfficialScheduleText({
+      sourceText: [
+        "Sunday, 28 June 2026",
+        "Match 73 – Group A runners-up v Group B runners-up - Los Angeles Stadium Match 74 – Group E winners v Group A/B/C/D/F third place - Boston Stadium Match 75 – Group F winners v Group C runners-up - Estadio Monterrey",
+      ].join("\n"),
+    });
+
+    expect(result.fixtures).toHaveLength(3);
+    expect(result.fixtures[0]?.homeTeam).toBe("Group A runners-up");
+    expect(result.fixtures[0]?.awayTeam).toBe("Group B runners-up");
+    expect(result.fixtures[1]?.venue).toBe("Boston Stadium");
+    expect(result.fixtures[2]?.venue).toBe("Estadio Monterrey");
+    expect(result.warnings).toEqual([
+      "このソースには kickoff time が含まれていないため、時刻は未入力のままです。",
+    ]);
   });
 });

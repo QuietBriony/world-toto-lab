@@ -38,9 +38,10 @@ export const officialScheduleTransferPayloadKind = "world_toto_lab_official_sche
 export const officialScheduleTransferPayloadVersion = 1;
 export const fifaOfficialApiBaseUrl = "https://cxm-api.fifa.com/fifaplusweb/api";
 
-const dashPattern = /\s*[‐‑‒–—―-]\s*/;
+const dashPattern = /\s+[‐‑‒–—―-]\s+/;
 const dashTokenPattern = /[‐‑‒–—―-]/;
 const teamSeparatorPattern = /\s+(?:v|vs|対)\s+/i;
+const matchPrefixPattern = /Match\s+\d+\s*[‐‑‒–—―-]\s*/giu;
 
 export const officialScheduleImportSample = [
   "Thursday, 11 June 2026",
@@ -116,31 +117,114 @@ function flattenFifaRichTextInline(node: FifaOfficialRichTextNode | undefined): 
   return (node.content ?? []).map(flattenFifaRichTextInline).join("");
 }
 
-function collectFifaRichTextBlocks(
+function splitMatchPrefixedScheduleLine(line: string) {
+  const normalized = normalizeSourceLine(line);
+  if (!normalized) {
+    return [];
+  }
+
+  const prefixedChunks = normalized.match(
+    /Match\s+\d+\s*[‐‑‒–—―-]\s*.*?(?=(?:\s+Match\s+\d+\s*[‐‑‒–—―-]\s*)|$)/giu,
+  );
+  if (!prefixedChunks || prefixedChunks.length <= 1) {
+    return [normalized.replace(matchPrefixPattern, "").trim()];
+  }
+
+  return prefixedChunks
+    .map((chunk) => normalizeSourceLine(chunk.replace(matchPrefixPattern, "")))
+    .filter(Boolean);
+}
+
+function extractScheduleLinesFromFifaBlock(node: FifaOfficialRichTextNode | undefined): string[] {
+  if (!node || !isBlockNode(node.nodeType)) {
+    return [];
+  }
+
+  const text = normalizeSourceLine(flattenFifaRichTextInline(node));
+  if (!text) {
+    return [];
+  }
+
+  if (parseDateHeader(text)) {
+    return [text];
+  }
+
+  if (node.nodeType !== "paragraph" && node.nodeType !== "list-item" && node.nodeType !== "blockquote") {
+    return [];
+  }
+
+  const children = node.content ?? [];
+  const hyperlinkChildren = children.filter(
+    (child) =>
+      child.nodeType === "hyperlink" &&
+      teamSeparatorPattern.test(normalizeSourceLine(flattenFifaRichTextInline(child))),
+  );
+
+  if (hyperlinkChildren.length > 1) {
+    const lines: string[] = [];
+    let current = "";
+
+    for (const child of children) {
+      const childText = normalizeSourceLine(flattenFifaRichTextInline(child));
+      if (!childText) {
+        continue;
+      }
+
+      const startsFixture =
+        child.nodeType === "hyperlink" && teamSeparatorPattern.test(childText);
+
+      if (startsFixture) {
+        if (current) {
+          lines.push(current);
+        }
+        current = childText;
+        continue;
+      }
+
+      current = current ? `${current} ${childText}` : childText;
+    }
+
+    if (current) {
+      lines.push(current);
+    }
+
+    return lines.map((line) => normalizeSourceLine(line));
+  }
+
+  if (teamSeparatorPattern.test(text) && matchPrefixPattern.test(text)) {
+    matchPrefixPattern.lastIndex = 0;
+    return splitMatchPrefixedScheduleLine(text);
+  }
+
+  if (isLikelyMatchLine(text)) {
+    return [text.replace(matchPrefixPattern, "").trim()];
+  }
+
+  return [];
+}
+
+function collectFifaScheduleLines(
   node: FifaOfficialRichTextNode | undefined,
-  blocks: string[],
+  lines: string[],
 ) {
   if (!node) {
     return;
   }
 
   if (isBlockNode(node.nodeType)) {
-    const text = flattenFifaRichTextInline(node).trim();
-    if (text) {
-      blocks.push(text);
-    }
+    lines.push(...extractScheduleLinesFromFifaBlock(node));
     return;
   }
 
-  (node.content ?? []).forEach((child) => collectFifaRichTextBlocks(child, blocks));
+  (node.content ?? []).forEach((child) => collectFifaScheduleLines(child, lines));
 }
 
 export function extractOfficialScheduleSourceTextFromFifaRichText(
   richText: FifaOfficialRichTextNode | null | undefined,
 ) {
-  const blocks: string[] = [];
-  collectFifaRichTextBlocks(richText ?? undefined, blocks);
-  return blocks.join("\n");
+  const lines: string[] = [];
+  collectFifaScheduleLines(richText ?? undefined, lines);
+  return normalizeOfficialScheduleSourceText(lines.join("\n"));
 }
 
 export function buildFifaOfficialPageApiUrl(sourceUrl: string) {
@@ -200,6 +284,31 @@ export async function fetchOfficialScheduleFromFifaArticle(sourceUrl: string) {
 
 function isLikelyMatchLine(line: string) {
   return teamSeparatorPattern.test(line) && dashTokenPattern.test(line);
+}
+
+function normalizeFixtureChunk(chunk: string) {
+  return chunk
+    .replace(/^Match\s+\d+\s*[‐‑‒–—―-]\s*/iu, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function expandCompoundScheduleLine(line: string) {
+  const normalized = normalizeSourceLine(line);
+  if (!normalized) {
+    return [];
+  }
+
+  if (matchPrefixPattern.test(normalized)) {
+    matchPrefixPattern.lastIndex = 0;
+    return splitMatchPrefixedScheduleLine(normalized);
+  }
+
+  if (isLikelyMatchLine(normalized)) {
+    return [normalizeFixtureChunk(normalized)];
+  }
+
+  return [];
 }
 
 function fixtureKey(entry: Pick<OfficialScheduleDraft, "awayTeam" | "homeTeam" | "matchDate" | "venue">) {
@@ -308,9 +417,13 @@ export function normalizeOfficialScheduleSourceText(sourceText: string) {
     .map(normalizeSourceLine)
     .filter(Boolean);
 
-  const scheduleLines = lines.filter(
-    (line) => Boolean(parseDateHeader(line)) || isLikelyMatchLine(line),
-  );
+  const scheduleLines = lines.flatMap((line) => {
+    if (parseDateHeader(line)) {
+      return [line];
+    }
+
+    return expandCompoundScheduleLine(line);
+  });
 
   return (scheduleLines.length > 0 ? scheduleLines : lines).join("\n");
 }
@@ -436,6 +549,10 @@ export function parseOfficialScheduleText(input: {
 
   if (fixtures.length === 0 && warnings.length === 0) {
     warnings.push("貼り付け内容から試合を抽出できませんでした。");
+  }
+
+  if (fixtures.length > 0 && fixtures.every((fixture) => fixture.kickoffTime === null)) {
+    warnings.push("このソースには kickoff time が含まれていないため、時刻は未入力のままです。");
   }
 
   return {

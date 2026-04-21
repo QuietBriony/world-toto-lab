@@ -61,7 +61,11 @@ export function RoundContextCard({
     return (
       <SectionCard
         title={title}
-        description="Round ID が見つかりません。Round詳細から開き直してください。"
+        description={
+          backHref
+            ? "Round ID が見つかりません。Round詳細から開き直してください。"
+            : "まだ特定の Round には紐づいていません。新規作成の導線としてこのまま進めて大丈夫です。"
+        }
         actions={
           backHref ? (
             <Link href={backHref} className={secondaryButtonClassName}>
@@ -71,7 +75,9 @@ export function RoundContextCard({
         }
       >
         <div className="flex flex-wrap gap-2">
-          <Badge tone="warning">Round ID なし</Badge>
+          <Badge tone={backHref ? "warning" : "slate"}>
+            {backHref ? "Round ID なし" : "新規Round向け"}
+          </Badge>
         </div>
       </SectionCard>
     );
