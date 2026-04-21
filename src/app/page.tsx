@@ -1699,7 +1699,8 @@ export default function DashboardPage() {
                     key={round.id}
                     title={round.title}
                     description={round.notes ?? "ラウンドメモはまだありません。"}
-                    actions={
+                  >
+                    <div className="rounded-[24px] border border-slate-200 bg-slate-50/90 px-4 py-4 shadow-[0_18px_44px_-34px_rgba(15,23,42,0.16)]">
                       <div className="flex flex-wrap items-center gap-2">
                         <Badge tone="slate">{roundUsers.length}人</Badge>
                         <Badge tone="teal">{productTypeLabel[round.productType as ProductType]}</Badge>
@@ -1708,6 +1709,8 @@ export default function DashboardPage() {
                           要件 {round.requiredMatchCount ?? round.matchCount}試合
                         </Badge>
                         <Badge tone="sky">{roundStatusLabel[round.status]}</Badge>
+                      </div>
+                      <div className="mt-4 flex flex-wrap gap-2">
                         <Link
                           href={buildRoundHref(appRoute.pickRoom, round.id, {
                             user: roundUsers[0]?.id,
@@ -1734,8 +1737,8 @@ export default function DashboardPage() {
                           {removingRoundId === round.id ? "削除中..." : "削除"}
                         </button>
                       </div>
-                    }
-                  >
+                    </div>
+
                     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
                       <StatCard
                         label="試合設定"
