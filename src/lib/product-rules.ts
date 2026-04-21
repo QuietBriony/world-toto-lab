@@ -3,10 +3,10 @@ import type { ProductRule, ProductType, VoidHandling } from "@/lib/types";
 const DEFAULT_OUTCOME_SET = ["1", "0", "2"] as const;
 
 export const productTypeLabel: Record<ProductType, string> = {
-  toto13: "toto13",
-  mini_toto: "mini toto風",
-  winner: "WINNER風",
-  custom: "custom",
+  toto13: "toto",
+  mini_toto: "mini toto",
+  winner: "WINNER",
+  custom: "カスタム",
 };
 
 export const productTypeOptions: ProductType[] = [
@@ -15,6 +15,8 @@ export const productTypeOptions: ProductType[] = [
   "winner",
   "custom",
 ];
+
+export const primaryProductTypeOptions: ProductType[] = ["toto13", "mini_toto"];
 
 export const voidHandlingLabel: Record<VoidHandling, string> = {
   manual: "要公式確認",

@@ -26,7 +26,9 @@
 
 - `公式日程を取り込む` -> `/official-schedule-import?round=<roundId>`
 - `Fixture Selector` -> `/fixture-selector?round=<roundId>`
-- `公式対象回を同期して選ぶ` -> `/toto-official-round-import?round=<roundId>&autoSync=1&sourcePreset=yahoo_toto_schedule`
+- `toto で作る` -> `/toto-official-round-import?round=<roundId>&autoSync=1&sourcePreset=yahoo_toto_schedule&productType=toto13`
+- `mini toto で作る` -> `/toto-official-round-import?round=<roundId>&autoSync=1&sourcePreset=yahoo_toto_schedule&productType=mini_toto`
+- `現在の product で公式回を見る` -> `/toto-official-round-import?round=<roundId>&autoSync=1&sourcePreset=yahoo_toto_schedule&productType=<currentProductType>`
 - `Simple View` -> `/simple-view?round=<roundId>&user=<userId>`
 - `Friend Pick Room` -> `/pick-room?round=<roundId>&user=<userId>`
 

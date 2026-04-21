@@ -35,19 +35,22 @@ npm run check:pages
 - `/world-toto-lab/` を開く
 - `公式日程を取り込む`
 - `Fixture Selector`
-- `公式対象回を同期して選ぶ`
-- 3 ボタンがそれぞれ画面遷移する
+- `toto を同期して選ぶ`
+- `mini toto を同期して選ぶ`
+- 4 ボタンがそれぞれ画面遷移する
 
 ### 2. Round Detail
 
 - `/world-toto-lab/workspace/?round=<roundId>` を開く
 - `Round Builder` が見える
+- `toto で作る`
+- `mini toto で作る`
 - `公式日程を取り込む`
 - `Fixture Selector`
-- `公式対象回を同期して選ぶ`
+- `現在の product で公式回を見る`
 - `Simple View`
 - `Friend Pick Room`
-- 5 ボタンすべてが反応し、URL に `round=<roundId>` が残る
+- 上記導線が反応し、URL に `round=<roundId>` が残る
 
 ### 3. Official Schedule Import
 

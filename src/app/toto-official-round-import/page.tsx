@@ -68,6 +68,26 @@ const officialSourcePresets = [
   },
 ] as const;
 
+const officialProductFocusCards: Array<{
+  badgeTone: "sky" | "teal";
+  body: string;
+  productType: ProductType;
+  title: string;
+}> = [
+  {
+    badgeTone: "teal",
+    body: "13試合の本命導線です。公式回を選んで、そのまま Candidate Cards と Friend Pick Room まで進めます。",
+    productType: "toto13",
+    title: "toto を選ぶ",
+  },
+  {
+    badgeTone: "sky",
+    body: "5試合で軽く回せるので、友人会の試運転や短時間の投票会に向いています。",
+    productType: "mini_toto",
+    title: "mini toto を選ぶ",
+  },
+];
+
 function resolveOfficialSourcePreset(id: string | null) {
   return officialSourcePresets.find((preset) => preset.id === id) ?? null;
 }
@@ -133,9 +153,15 @@ function TotoOfficialRoundImportPageContent() {
   const roundId = getSingleSearchParam(searchParams.get("round"));
   const sourcePresetId = getSingleSearchParam(searchParams.get("sourcePreset"));
   const autoSyncRequested = getSingleSearchParam(searchParams.get("autoSync")) === "1";
+  const requestedProductType = (() => {
+    const raw = getSingleSearchParam(searchParams.get("productType"));
+    return productTypeOptions.includes((raw ?? "") as ProductType)
+      ? ((raw ?? "toto13") as ProductType)
+      : "toto13";
+  })();
   const initialSourcePreset = resolveOfficialSourcePreset(sourcePresetId);
   const [title, setTitle] = useState("toto公式対象回");
-  const [productType, setProductType] = useState<ProductType>("toto13");
+  const [productType, setProductType] = useState<ProductType>(requestedProductType);
   const [officialRoundName, setOfficialRoundName] = useState("");
   const [officialRoundNumber, setOfficialRoundNumber] = useState("");
   const [sourceUrl, setSourceUrl] = useState("");
@@ -162,7 +188,9 @@ function TotoOfficialRoundImportPageContent() {
   const [saving, setSaving] = useState(false);
   const [editingLibraryEntryId, setEditingLibraryEntryId] = useState<string | null>(null);
   const [librarySearchQuery, setLibrarySearchQuery] = useState("");
-  const [libraryProductType, setLibraryProductType] = useState<"all" | ProductType>("all");
+  const [libraryProductType, setLibraryProductType] = useState<"all" | ProductType>(
+    requestedProductType,
+  );
   const [libraryBusyId, setLibraryBusyId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
@@ -177,6 +205,8 @@ function TotoOfficialRoundImportPageContent() {
   const roundDetailHref = roundContextId
     ? buildRoundHref(appRoute.workspace, roundContextId)
     : null;
+  const filterLabel =
+    libraryProductType === "all" ? "すべて" : productTypeLabel[libraryProductType];
 
   const parsedPreview = useMemo(
     () =>
@@ -442,6 +472,47 @@ function TotoOfficialRoundImportPageContent() {
         description="この取り込みが、どの Round の公式対象回データとして使われるかを先に確認できます。"
       />
 
+      <SectionCard
+        title="おすすめ導線"
+        description="まずは toto か mini toto のどちらで回すか決めて、その商品だけ一覧を見にいくのが最短です。"
+      >
+        <div className="grid gap-4 md:grid-cols-2">
+          {officialProductFocusCards.map((card) => {
+            const isActive = libraryProductType === card.productType && productType === card.productType;
+
+            return (
+              <div
+                key={card.productType}
+                className={`rounded-[24px] border px-5 py-5 ${
+                  isActive ? "border-teal-300 bg-teal-50/80" : "border-slate-200 bg-slate-50/90"
+                }`}
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge tone={card.badgeTone}>{productTypeLabel[card.productType]}</Badge>
+                  {isActive ? <Badge tone="slate">現在の表示</Badge> : null}
+                </div>
+                <h3 className="mt-3 font-semibold text-slate-950">{card.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-600">{card.body}</p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProductType(card.productType);
+                      setLibraryProductType(card.productType);
+                      setEditingLibraryEntryId(null);
+                      setActionMessage(`${productTypeLabel[card.productType]} の一覧に切り替えました。`);
+                    }}
+                    className={buttonClassName}
+                  >
+                    この商品で一覧を見る
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </SectionCard>
+
       {actionMessage ? (
         <div className="rounded-[22px] border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm text-emerald-800">
           {actionMessage}
@@ -585,8 +656,8 @@ function TotoOfficialRoundImportPageContent() {
         title="公式回ライブラリ"
         description={
           roundId
-            ? "同期済みの公式回から、この Round にそのまま反映して Pick Room まで進めます。"
-            : "同期済みの公式回から、新しい Round を作ってそのまま Pick Room へ進めます。"
+            ? `同期済みの ${filterLabel} から、この Round にそのまま反映して Pick Room まで進めます。`
+            : `同期済みの ${filterLabel} から、新しい Round を作ってそのまま Pick Room へ進めます。`
         }
       >
         <div className="grid gap-4 lg:grid-cols-[0.8fr_0.35fr]">
@@ -626,7 +697,7 @@ function TotoOfficialRoundImportPageContent() {
           <LoadingNotice title="公式回ライブラリを読み込み中" />
         ) : (library.data?.length ?? 0) === 0 ? (
           <div className="rounded-[24px] border border-dashed border-slate-300 bg-slate-50/90 px-5 py-5 text-sm leading-7 text-slate-600">
-            まだ保存済みの公式回がありません。まず上の `公式一覧を同期` でソースサイトから取り込むのがおすすめです。未取得の回だけ、下の CSV / TSV で補完できます。
+            {filterLabel} の保存済み公式回がまだありません。まず上の `公式一覧を同期` でソースサイトから取り込むのがおすすめです。未取得の回だけ、下の CSV / TSV で補完できます。
           </div>
         ) : (
           <div className="grid gap-4 xl:grid-cols-2">

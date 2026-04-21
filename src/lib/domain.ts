@@ -150,10 +150,10 @@ export const productTypeBadgeTone: Record<ProductType, BadgeTone> = {
 };
 
 export const productTypeLabel: Record<ProductType, string> = {
-  toto13: "toto13",
-  mini_toto: "mini toto風",
-  winner: "WINNER風",
-  custom: "custom",
+  toto13: "toto",
+  mini_toto: "mini toto",
+  winner: "WINNER",
+  custom: "カスタム",
 };
 
 export const roundSourceLabel: Record<RoundSource, string> = {

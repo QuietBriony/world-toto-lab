@@ -1,0 +1,25 @@
+import { describe, expect, it } from "vitest";
+
+import { buildOfficialRoundImportHref, buildRoundHref } from "@/lib/round-links";
+
+describe("round links", () => {
+  it("builds a round-aware href with query params", () => {
+    expect(
+      buildRoundHref("/pick-room", "round-123", {
+        user: "user-456",
+      }),
+    ).toBe("/pick-room?round=round-123&user=user-456");
+  });
+
+  it("builds an official import href with product and auto-sync options", () => {
+    expect(
+      buildOfficialRoundImportHref("round-123", {
+        autoSync: true,
+        productType: "mini_toto",
+        sourcePreset: "yahoo_toto_schedule",
+      }),
+    ).toBe(
+      "/toto-official-round-import?round=round-123&autoSync=1&productType=mini_toto&sourcePreset=yahoo_toto_schedule",
+    );
+  });
+});

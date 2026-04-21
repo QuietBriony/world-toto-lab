@@ -50,7 +50,7 @@ import {
 import { defaultRequiredMatchCount, productTypeOptions } from "@/lib/product-rules";
 import { resolveRoundParticipantUsers } from "@/lib/round-participants";
 import { deriveRoundProgressSummary, matchHasSetupInput } from "@/lib/round-progress";
-import { appRoute, buildRoundHref } from "@/lib/round-links";
+import { appRoute, buildOfficialRoundImportHref, buildRoundHref } from "@/lib/round-links";
 import {
   createDemoRound,
   createInitialUsers,
@@ -1401,8 +1401,25 @@ export default function DashboardPage() {
                 <Link href={appRoute.fixtureSelector} className={secondaryButtonClassName}>
                   Fixture Selector
                 </Link>
-                <Link href={appRoute.totoOfficialRoundImport} className={secondaryButtonClassName}>
-                  公式対象回を同期して選ぶ
+                <Link
+                  href={buildOfficialRoundImportHref(undefined, {
+                    autoSync: true,
+                    productType: "toto13",
+                    sourcePreset: "yahoo_toto_schedule",
+                  })}
+                  className={secondaryButtonClassName}
+                >
+                  toto を同期して選ぶ
+                </Link>
+                <Link
+                  href={buildOfficialRoundImportHref(undefined, {
+                    autoSync: true,
+                    productType: "mini_toto",
+                    sourcePreset: "yahoo_toto_schedule",
+                  })}
+                  className={secondaryButtonClassName}
+                >
+                  mini toto を同期して選ぶ
                 </Link>
               </div>
             }
@@ -1486,7 +1503,7 @@ export default function DashboardPage() {
               </label>
 
               <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-950/5 p-4 text-sm text-slate-600">
-                `toto13 = 13試合 / mini toto風 = 5試合 / WINNER風 = 1試合 / custom = 任意` を目安にしてください。
+                `toto = 13試合 / mini toto = 5試合 / WINNER = 1試合 / カスタム = 任意` を目安にしてください。
                 現在の requiredMatchCount は {requiredMatchCountHint} 試合として扱います。
                 金銭、配当、代理購入、精算は扱いません。ここでの上位候補数は、候補配分画面で何案まで並べるかの目安です。
               </div>

@@ -29,7 +29,7 @@
 3. `公式日程を取り込む` -> `official-schedule-import`
 4. `Fixture Selector` -> `fixture-selector`
 5. `Round Detailへ戻る` -> `workspace`
-6. `公式対象回を同期して選ぶ` -> `toto-official-round-import`
+6. `toto で作る` -> `toto-official-round-import`
 7. `Round Detailへ戻る` -> `workspace`
 8. `Simple View` -> `simple-view`
 9. `Friend Pick Room` -> `pick-room`

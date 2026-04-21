@@ -74,7 +74,12 @@ import {
 } from "@/lib/forms";
 import { productTypeOptions, voidHandlingLabel, voidHandlingOptions } from "@/lib/product-rules";
 import { fixtureImportTemplate, parseFixtureImportText } from "@/lib/fixture-import";
-import { appRoute, buildRoundHref, getSingleSearchParam } from "@/lib/round-links";
+import {
+  appRoute,
+  buildOfficialRoundImportHref,
+  buildRoundHref,
+  getSingleSearchParam,
+} from "@/lib/round-links";
 import { bulkUpdateRoundMatches, estimateRoundAiModel, updateRound } from "@/lib/repository";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { budgetFromCandidateLimit, candidateLimitFromBudget } from "@/lib/tickets";
@@ -274,11 +279,20 @@ function WorkspacePageContent() {
           label: "fixture-selector",
         },
         {
-          href: buildRoundHref(appRoute.totoOfficialRoundImport, data.round.id, {
-            autoSync: 1,
+          href: buildOfficialRoundImportHref(data.round.id, {
+            autoSync: true,
+            productType: "toto13",
             sourcePreset: "yahoo_toto_schedule",
           }),
-          label: "toto-official-round-import",
+          label: "toto13-official-import",
+        },
+        {
+          href: buildOfficialRoundImportHref(data.round.id, {
+            autoSync: true,
+            productType: "mini_toto",
+            sourcePreset: "yahoo_toto_schedule",
+          }),
+          label: "mini-toto-official-import",
         },
         {
           href: buildRoundHref(appRoute.simpleView, data.round.id, {
@@ -291,6 +305,32 @@ function WorkspacePageContent() {
             user: data.users[0]?.id,
           }),
           label: "pick-room",
+        },
+      ]
+    : [];
+  const primaryOfficialImportLinks = data
+    ? [
+        {
+          badgeTone: "teal" as const,
+          body: "13試合の本命導線です。公式回を同期して、この Round に反映してから Friend Pick Room まで進みます。",
+          href: buildOfficialRoundImportHref(data.round.id, {
+            autoSync: true,
+            productType: "toto13",
+            sourcePreset: "yahoo_toto_schedule",
+          }),
+          label: "toto で作る",
+          productLabel: "toto",
+        },
+        {
+          badgeTone: "sky" as const,
+          body: "5試合で軽く回したいときの導線です。mini toto を一覧から選んで、そのまま投票会を始められます。",
+          href: buildOfficialRoundImportHref(data.round.id, {
+            autoSync: true,
+            productType: "mini_toto",
+            sourcePreset: "yahoo_toto_schedule",
+          }),
+          label: "mini toto で作る",
+          productLabel: "mini toto",
         },
       ]
     : [];
@@ -470,10 +510,31 @@ function WorkspacePageContent() {
 
           <CollapsibleSectionCard
             title="Round Builder"
-            description="公式日程取り込み、Fixture 選択、公式対象回の同期と選択、Friend Pick Room への導線です。"
+            description="まずは toto か mini toto を選んで公式回を反映し、必要なら日程取り込みや Fixture Selector で補完します。"
             defaultOpen={data.round.matches.length === 0}
             badge={<Badge tone="sky">導線</Badge>}
           >
+            <div className="grid gap-4 lg:grid-cols-2">
+              {primaryOfficialImportLinks.map((entry) => (
+                <div
+                  key={entry.label}
+                  className="rounded-[24px] border border-slate-200 bg-slate-50/90 p-5"
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge tone={entry.badgeTone}>{entry.productLabel}</Badge>
+                    <Badge tone="slate">おすすめ</Badge>
+                  </div>
+                  <h3 className="mt-3 font-semibold text-slate-950">{entry.label}</h3>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">{entry.body}</p>
+                  <div className="mt-4">
+                    <Link href={entry.href} className={buttonClassName}>
+                      公式回を同期して選ぶ
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+
             <div className="flex flex-wrap gap-3">
               <Link
                 href={buildRoundHref(appRoute.officialScheduleImport, data.round.id)}
@@ -488,13 +549,14 @@ function WorkspacePageContent() {
                 Fixture Selector
               </Link>
               <Link
-                href={buildRoundHref(appRoute.totoOfficialRoundImport, data.round.id, {
-                  autoSync: 1,
+                href={buildOfficialRoundImportHref(data.round.id, {
+                  autoSync: true,
+                  productType: data.round.productType,
                   sourcePreset: "yahoo_toto_schedule",
                 })}
                 className={secondaryButtonClassName}
               >
-                公式対象回を同期して選ぶ
+                現在の product で公式回を見る
               </Link>
               <Link
                 href={buildRoundHref(appRoute.simpleView, data.round.id, {

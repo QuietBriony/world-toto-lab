@@ -344,8 +344,8 @@ NEXT_PUBLIC_TOTO_OFFICIAL_ROUND_SYNC_FUNCTION_NAME=sync-toto-official-round-list
 
 ### 公式一覧の一発同期（推奨導線）
 
-`Round Builder` の `公式対象回を同期して選ぶ` から入ると、  
-`Toto Official Round Import` でおすすめソースをそのまま同期できます。
+`Round Builder` の `toto で作る` / `mini toto で作る` から入ると、
+`Toto Official Round Import` で対象 product に絞った状態からおすすめソースをそのまま同期できます。
 
 現状のおすすめ同期元は次です。
 

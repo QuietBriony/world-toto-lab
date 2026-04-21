@@ -1,3 +1,5 @@
+import type { ProductType } from "@/lib/types";
+
 type QueryValue = number | null | string | undefined;
 
 function appendQuery(params: URLSearchParams, key: string, value: QueryValue) {
@@ -31,6 +33,21 @@ export function buildRoundHref(
 export function getSingleSearchParam(value: string | null) {
   const trimmed = value?.trim();
   return trimmed ? trimmed : null;
+}
+
+export function buildOfficialRoundImportHref(
+  roundId?: string | null,
+  options: {
+    autoSync?: boolean;
+    productType?: ProductType;
+    sourcePreset?: string;
+  } = {},
+) {
+  return buildRoundHref(appRoute.totoOfficialRoundImport, roundId, {
+    autoSync: options.autoSync ? 1 : undefined,
+    productType: options.productType,
+    sourcePreset: options.sourcePreset,
+  });
 }
 
 export const appRoute = {
