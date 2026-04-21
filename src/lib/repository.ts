@@ -1604,7 +1604,8 @@ export async function listDashboardData(): Promise<DashboardData> {
   throwIfError("Failed to load matches", matchesResult);
   throwIfError("Failed to load picks", picksResult);
   throwIfError("Failed to load scout reports", reportsResult);
-  throwIfError("Failed to load review notes", notesResult);
+  const safeNotesResult = ignoreMissingRelation(notesResult, "review_notes", []);
+  throwIfError("Failed to load review notes", safeNotesResult);
   const safeCandidateTicketsResult = ignoreMissingRelation(
     candidateTicketsResult,
     "candidate_tickets",
@@ -1618,7 +1619,7 @@ export async function listDashboardData(): Promise<DashboardData> {
   const rawMatches = matchesResult.data as MatchRow[];
   const rawPicks = picksResult.data as PickRow[];
   const rawScoutReports = reportsResult.data as HumanScoutReportRow[];
-  const rawReviewNotes = notesResult.data as ReviewNoteRow[];
+  const rawReviewNotes = safeNotesResult.data as ReviewNoteRow[];
   const candidateTicketRows =
     (safeCandidateTicketsResult.data as Array<{ round_id: string }>) ?? [];
   const matches = rawMatches.map(mapMatch);
@@ -1747,8 +1748,21 @@ export async function getRoundWorkspace(roundId: string): Promise<RoundWorkspace
   throwIfError("Failed to load matches", matchesResult);
   throwIfError("Failed to load picks", picksResult);
   throwIfError("Failed to load scout reports", reportsResult);
-  throwIfError("Failed to load generated tickets", ticketsResult);
-  throwIfError("Failed to load EV assumptions", evAssumptionResult);
+  const safeTicketsResult = ignoreMissingRelation(ticketsResult, "generated_tickets", []);
+  const safeEvAssumptionResult = ignoreMissingRelation(evAssumptionResult, "round_ev_assumptions", null);
+  const safeTotoOfficialRoundResult = ignoreMissingRelation(
+    totoOfficialRoundResult,
+    "toto_official_rounds",
+    null,
+  );
+  const safeTotoOfficialMatchesResult = ignoreMissingRelation(
+    totoOfficialMatchesResult,
+    "toto_official_matches",
+    [],
+  );
+  const safeNotesResult = ignoreMissingRelation(notesResult, "review_notes", []);
+  throwIfError("Failed to load generated tickets", safeTicketsResult);
+  throwIfError("Failed to load EV assumptions", safeEvAssumptionResult);
   const safeCandidateTicketsResult = ignoreMissingRelation(
     candidateTicketsResult,
     "candidate_tickets",
@@ -1761,9 +1775,9 @@ export async function getRoundWorkspace(roundId: string): Promise<RoundWorkspace
   );
   throwIfError("Failed to load candidate votes", safeCandidateVotesResult);
   throwIfError("Failed to load candidate tickets", safeCandidateTicketsResult);
-  throwIfError("Failed to load toto official round", totoOfficialRoundResult);
-  throwIfError("Failed to load toto official matches", totoOfficialMatchesResult);
-  throwIfError("Failed to load review notes", notesResult);
+  throwIfError("Failed to load toto official round", safeTotoOfficialRoundResult);
+  throwIfError("Failed to load toto official matches", safeTotoOfficialMatchesResult);
+  throwIfError("Failed to load review notes", safeNotesResult);
 
   if (!roundResult.data) {
     return null;
@@ -1774,7 +1788,7 @@ export async function getRoundWorkspace(roundId: string): Promise<RoundWorkspace
   const { demoUsers, liveUsers } = partitionUsers(allUsers);
   const rawPicks = picksResult.data as PickRow[];
   const rawScoutReports = reportsResult.data as HumanScoutReportRow[];
-  const rawReviewNotes = notesResult.data as ReviewNoteRow[];
+  const rawReviewNotes = safeNotesResult.data as ReviewNoteRow[];
   const users = resolveUsersForRoundRows({
     allUsers,
     demoUsers,
@@ -1798,11 +1812,11 @@ export async function getRoundWorkspace(roundId: string): Promise<RoundWorkspace
   );
   const scopedMatches = applyScopedConsensus(matches, scoutReports);
   const scopedMatchById = new Map(scopedMatches.map((match) => [match.id, match]));
-  const generatedTickets = (ticketsResult.data as GeneratedTicketRow[]).map(
+  const generatedTickets = (safeTicketsResult.data as GeneratedTicketRow[]).map(
     mapGeneratedTicket,
   );
-  const evAssumption = evAssumptionResult.data
-    ? mapRoundEvAssumption(evAssumptionResult.data as RoundEvAssumptionRow)
+  const evAssumption = safeEvAssumptionResult.data
+    ? mapRoundEvAssumption(safeEvAssumptionResult.data as RoundEvAssumptionRow)
     : null;
   const candidateTickets = (safeCandidateTicketsResult.data as CandidateTicketRow[]).map(
     mapCandidateTicket,
@@ -1811,10 +1825,10 @@ export async function getRoundWorkspace(roundId: string): Promise<RoundWorkspace
     safeCandidateVotesResult.data as CandidateVoteRow[],
     users,
   ).map((row) => mapCandidateVote(row, userById.get(row.user_id)));
-  const totoOfficialRound = totoOfficialRoundResult.data
-    ? mapTotoOfficialRound(totoOfficialRoundResult.data as TotoOfficialRoundRow)
+  const totoOfficialRound = safeTotoOfficialRoundResult.data
+    ? mapTotoOfficialRound(safeTotoOfficialRoundResult.data as TotoOfficialRoundRow)
     : null;
-  const totoOfficialMatches = (totoOfficialMatchesResult.data as TotoOfficialMatchRow[]).map(
+  const totoOfficialMatches = (safeTotoOfficialMatchesResult.data as TotoOfficialMatchRow[]).map(
     mapTotoOfficialMatch,
   );
   const reviewNotes = filterReviewNotesForScopedUsers(rawReviewNotes, users).map((row) =>
