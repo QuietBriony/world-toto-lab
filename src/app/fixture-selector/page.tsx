@@ -21,7 +21,12 @@ import {
 } from "@/components/ui";
 import { productTypeLabel } from "@/lib/domain";
 import { productTypeOptions } from "@/lib/product-rules";
-import { appRoute, buildRoundHref, getSingleSearchParam } from "@/lib/round-links";
+import {
+  appRoute,
+  buildOfficialRoundImportHref,
+  buildRoundHref,
+  getSingleSearchParam,
+} from "@/lib/round-links";
 import { createRoundFromFixtures } from "@/lib/repository";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import type { ProductType } from "@/lib/types";
@@ -51,6 +56,12 @@ function FixtureSelectorPageContent() {
     teamQuery,
   });
   const officialScheduleHref = buildRoundHref(appRoute.officialScheduleImport, existingRoundId);
+  const officialRoundImportHref = buildOfficialRoundImportHref(existingRoundId, {
+    autoApply: true,
+    autoSync: true,
+    productType: "toto13",
+    sourcePreset: "yahoo_toto_schedule",
+  });
   const roundDetailHref = existingRoundId
     ? buildRoundHref(appRoute.workspace, existingRoundId)
     : createdRoundId
@@ -143,11 +154,14 @@ function FixtureSelectorPageContent() {
       <PageHeader
         eyebrow="Admin"
         title="Fixture Selector"
-        description="Fixture Master から確定済みの試合を選び、売り出し前の予想会Roundや本番準備Roundを作ります。"
+        description="Fixture Master に入った大会全体の試合から、今回遊ぶ13試合を手で選んで Round 化します。公式対象13試合が出たあとは Toto Official Round Import の方が本番向きです。"
         actions={
           <div className="flex flex-wrap gap-3">
             <Link href={officialScheduleHref} className={secondaryButtonClassName}>
               公式日程を取り込む
+            </Link>
+            <Link href={officialRoundImportHref} className={secondaryButtonClassName}>
+              公式対象13試合へ
             </Link>
             {roundDetailHref ? (
               <Link href={roundDetailHref} className={secondaryButtonClassName}>
@@ -168,6 +182,33 @@ function FixtureSelectorPageContent() {
         backHref={roundDetailHref}
         description="既存 Round の置換か、新規 Round 作成かをこのカードで見分けられるようにしています。"
       />
+
+      <SectionCard
+        title="この画面の役割"
+        description="発売前と発売後で、13試合の決め方を分けています。"
+      >
+        <div className="grid gap-3 lg:grid-cols-3">
+          <div className="rounded-[22px] border border-slate-200 bg-slate-50/90 px-4 py-4">
+            <Badge tone="slate">1. 全試合は保存済み</Badge>
+            <p className="mt-3 text-sm leading-6 text-slate-700">
+              `Official Schedule Import Wizard` では大会全体の fixture master を作ります。
+            </p>
+          </div>
+          <div className="rounded-[22px] border border-teal-200 bg-teal-50/80 px-4 py-4">
+            <Badge tone="teal">2. ここで13試合を選ぶ</Badge>
+            <p className="mt-3 text-sm leading-6 text-slate-700">
+              発売前の段階では、この画面で今回遊ぶ13試合を手で選んで Round にします。
+            </p>
+          </div>
+          <div className="rounded-[22px] border border-sky-200 bg-sky-50/80 px-4 py-4">
+            <Badge tone="info">3. 本番は公式対象回 import</Badge>
+            <p className="mt-3 text-sm leading-6 text-slate-700">
+              公式対象13試合が出たあとは、自動で取り込みやすい `Toto Official Round Import`
+              を使う方が自然です。
+            </p>
+          </div>
+        </div>
+      </SectionCard>
 
       <SectionCard title="Filter" description="competition / team / group / stage で絞り込みます。">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -200,7 +241,7 @@ function FixtureSelectorPageContent() {
 
       <SectionCard
         title="Round Builder"
-        description={`保存対象 ${selectedIds.length} 件。おすすめ productType は ${productTypeLabel[recommendedProductType]}`}
+        description={`保存対象 ${selectedIds.length} 件。13件で toto、5件で mini toto、1件で WINNER の目安です。公式未発表の段階では自動13試合化はしません。`}
       >
         <form className="space-y-4" onSubmit={handleSubmit}>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">

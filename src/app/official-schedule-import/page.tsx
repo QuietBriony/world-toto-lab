@@ -476,19 +476,20 @@ function OfficialScheduleImportPageContent() {
 
       <CollapsibleSectionCard
         title="手順"
-        description="1. 公式ソースを貼る  2. Parse Preview で整える  3. Fixture Master に保存、の順で進めます。"
+        description="1. 全試合を取得  2. Parse Preview で全試合を確認  3. Fixture Master に保存、の順で進めます。"
         defaultOpen={false}
         badge={<Badge tone="sky">はじめに</Badge>}
       >
         <p className="text-sm leading-6 text-slate-600">
-          主導線は `この画面で取得 → Parse Preview → Save to Fixture Master` です。
-          URL を手で貼りたいときや fallback が必要なときだけ、この下の Paste と Fallback を使います。
+          主導線は `この画面で取得 → Parse Preview → Save to Fixture Master` です。ここで扱うのは
+          W杯全体の fixture master なので、13試合はまだ決めません。13試合の Round 化は次の
+          `Fixture Selector` か、公式対象回が出たあとの `Toto Official Round Import` で行います。
         </p>
       </CollapsibleSectionCard>
 
       <SectionCard
         title="Parse Preview"
-        description="抽出された試合を保存前に編集できます。source と confidence もここで確認できます。"
+        description="抽出された全試合を保存前に確認・微修正する場所です。source と confidence もここで確認できます。"
         actions={
           <div className="flex flex-wrap gap-3">
             <button
@@ -500,11 +501,32 @@ function OfficialScheduleImportPageContent() {
               {saving ? "保存中..." : "Save to Fixture Master"}
             </button>
             <Link href={fixtureSelectorHref} className={secondaryButtonClassName}>
-              次は Fixture Selector
+              次: 13試合を選ぶ
             </Link>
           </div>
         }
       >
+        <div className="grid gap-3 lg:grid-cols-3">
+          <div className="rounded-[22px] border border-teal-200 bg-teal-50/80 px-4 py-4">
+            <Badge tone="teal">Parse Preview = 全試合の確認</Badge>
+            <p className="mt-3 text-sm leading-6 text-slate-700">
+              ここでは 72試合や104試合の大会全体を見直して、Fixture Master に保存します。
+            </p>
+          </div>
+          <div className="rounded-[22px] border border-sky-200 bg-sky-50/80 px-4 py-4">
+            <Badge tone="info">13試合はまだ未選択</Badge>
+            <p className="mt-3 text-sm leading-6 text-slate-700">
+              この段階では Round はまだ作りません。保存後に `Fixture Selector` で今回遊ぶ13試合を選びます。
+            </p>
+          </div>
+          <div className="rounded-[22px] border border-amber-200 bg-amber-50/80 px-4 py-4">
+            <Badge tone="warning">本番の13試合は別導線</Badge>
+            <p className="mt-3 text-sm leading-6 text-slate-700">
+              公式対象回が出たあとは、自動で寄せやすい `Toto Official Round Import` の方が本番向きです。
+            </p>
+          </div>
+        </div>
+
         <div className="flex flex-wrap gap-2">
           <Badge tone="slate">抽出 {draftRows.length} 件</Badge>
           <Badge tone="info">プレビュー {parsedPreview.fixtures.length} 件</Badge>
@@ -533,7 +555,7 @@ function OfficialScheduleImportPageContent() {
         {draftRows.length === 0 ? (
           <p className="text-sm leading-6 text-slate-600">
             まだ保存対象の行がありません。上の `この画面で取得` か、下の `手貼り・URL調整`
-            から Parse Preview を押すとここに一覧が出ます。
+            から Parse Preview を押すとここに全試合一覧が出ます。
           </p>
         ) : (
           <>
