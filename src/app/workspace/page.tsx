@@ -341,6 +341,24 @@ function WorkspacePageContent() {
           : []),
       ]
     : [];
+  const fixturePreparationLinks = data
+    ? [
+        {
+          badgeTone: "teal" as const,
+          body: "toto発売前でも、FIFA公式由来の確定日程を貼って Fixture Master を作れます。2026本番の下準備はこちらが主導線です。",
+          href: buildRoundHref(appRoute.officialScheduleImport, data.round.id),
+          label: "公式日程を取り込む",
+          productLabel: "販売前",
+        },
+        {
+          badgeTone: "sky" as const,
+          body: "取り込んだ試合から 13試合 / 5試合 / 1試合 を選んで Round を作ります。売り出し前の予想会はここから始められます。",
+          href: buildRoundHref(appRoute.fixtureSelector, data.round.id),
+          label: "Fixture Selector で Round を作る",
+          productLabel: "確定日程",
+        },
+      ]
+    : [];
   const primaryOfficialImportLinks = data
     ? [
         {
@@ -560,10 +578,47 @@ function WorkspacePageContent() {
 
           <CollapsibleSectionCard
             title="Round Builder"
-            description="まずは toto か mini toto を選んで公式回を反映し、必要なら日程取り込みや Fixture Selector で補完します。"
+            description="販売前は公式日程ベース、販売開始後は toto公式回ベースで進めます。`2026 6 World Toto 本番` のような先行Roundは、まず確定日程から組めるようにしています。"
             defaultOpen={data.round.matches.length === 0}
             badge={<Badge tone="sky">導線</Badge>}
           >
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Badge tone="teal">販売前でも使える</Badge>
+                <p className="text-sm text-slate-600">
+                  toto がまだ売り出していない期間は、公式日程の確定情報を main で使います。
+                </p>
+              </div>
+
+              <div className="grid gap-4 lg:grid-cols-2">
+                {fixturePreparationLinks.map((entry) => (
+                  <div
+                    key={entry.label}
+                    className="rounded-[24px] border border-slate-200 bg-slate-50/90 p-5"
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge tone={entry.badgeTone}>{entry.productLabel}</Badge>
+                      <Badge tone="slate">main</Badge>
+                    </div>
+                    <h3 className="mt-3 font-semibold text-slate-950">{entry.label}</h3>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">{entry.body}</p>
+                    <div className="mt-4">
+                      <Link href={entry.href} className={buttonClassName}>
+                        この導線で進める
+                      </Link>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Badge tone="warning">販売後に使う</Badge>
+                <p className="text-sm text-slate-600">
+                  toto の発売が始まったら、公式対象回の同期で売上や対象試合を取り込みます。
+                </p>
+              </div>
+            </div>
+
             <div className="grid gap-4 lg:grid-cols-2">
               {primaryOfficialImportLinks.map((entry) => (
                 <div

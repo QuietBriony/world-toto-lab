@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   getRoundWorkspace,
@@ -23,6 +23,10 @@ type ResourceState<T> = {
   refresh: () => Promise<void>;
 };
 
+type UseAsyncResourceOptions = {
+  pollMs?: number | null;
+};
+
 function messageFromError(error: unknown) {
   if (error instanceof Error) {
     return error.message;
@@ -35,10 +39,16 @@ function useAsyncResource<T>(
   loader: () => Promise<T>,
   enabled: boolean,
   deps: unknown[],
+  options: UseAsyncResourceOptions = {},
 ): ResourceState<T> {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(enabled);
+  const dataRef = useRef<T | null>(null);
+
+  useEffect(() => {
+    dataRef.current = data;
+  }, [data]);
 
   const refresh = useCallback(async () => {
     if (!enabled) {
@@ -48,13 +58,21 @@ function useAsyncResource<T>(
       return;
     }
 
-    setLoading(true);
+    const hasData = dataRef.current !== null;
+    if (!hasData) {
+      setLoading(true);
+    }
+
     try {
       const nextData = await loader();
       setData(nextData);
       setError(null);
     } catch (nextError) {
-      setError(messageFromError(nextError));
+      if (dataRef.current === null) {
+        setError(messageFromError(nextError));
+      } else {
+        console.warn("Background refresh failed", nextError);
+      }
     } finally {
       setLoading(false);
     }
@@ -69,16 +87,17 @@ function useAsyncResource<T>(
   }, [dependencyKey, refresh]);
 
   useEffect(() => {
-    if (!enabled) {
+    const pollMs = options.pollMs ?? null;
+    if (!enabled || !pollMs || pollMs <= 0) {
       return;
     }
 
     const timer = window.setInterval(() => {
       void refresh();
-    }, 20000);
+    }, pollMs);
 
     return () => window.clearInterval(timer);
-  }, [enabled, refresh]);
+  }, [enabled, options.pollMs, refresh]);
 
   return { data, error, loading, refresh };
 }

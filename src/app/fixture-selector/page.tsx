@@ -120,7 +120,7 @@ function FixtureSelectorPageContent() {
       <PageHeader
         eyebrow="Admin"
         title="Fixture Selector"
-        description="Fixture Master から試合を選び、遊び用 Round や実運用 Round を作ります。"
+        description="Fixture Master から確定済みの試合を選び、売り出し前の予想会Roundや本番準備Roundを作ります。"
         actions={
           <div className="flex flex-wrap gap-3">
             <Link href={officialScheduleHref} className={secondaryButtonClassName}>

@@ -151,7 +151,7 @@ function OfficialScheduleImportPageContent() {
       <PageHeader
         eyebrow="Admin"
         title="Official Schedule Import Wizard"
-        description="FIFA公式由来のテキストを貼り付けて、Fixture Master に取り込みます。自動取得ではなく、貼り付けとプレビュー確認を前提にした安全寄りの導線です。"
+        description="FIFA公式由来の確定日程を貼り付けて、Fixture Master に取り込みます。toto発売前の本番準備は、この導線を main にしています。"
         actions={
           <div className="flex flex-wrap gap-3">
             <Link href={fixtureSelectorHref} className={secondaryButtonClassName}>

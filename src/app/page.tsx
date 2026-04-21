@@ -1393,7 +1393,7 @@ export default function DashboardPage() {
           <SectionCard
             id="create-round"
             title="ラウンドを作成"
-            description="本番用のラウンドを作ります。指定した試合数ぶんのプレースホルダーを作り、初回なら本番メンバー初期化も一緒に進められます。"
+            description="販売前は公式日程ベース、販売後は toto公式回ベースで本番用ラウンドを作れます。"
             actions={
               <div className="flex flex-wrap gap-2">
                 <Link href={appRoute.officialScheduleImport} className={secondaryButtonClassName}>
@@ -1428,13 +1428,36 @@ export default function DashboardPage() {
               </div>
             }
           >
+            <div className="mb-5 grid gap-3 md:grid-cols-2">
+              <div className="rounded-[22px] border border-teal-200 bg-teal-50 px-4 py-4">
+                <p className="text-sm font-semibold text-teal-950">販売前の main 導線</p>
+                <p className="mt-2 text-sm leading-6 text-teal-900">
+                  2026本番のように、まだ toto が売り出していない回は{" "}
+                  <span className="font-medium">
+                    公式日程を取り込む {"->"} Fixture Selector
+                  </span>{" "}
+                  で先に Round を作れます。
+                </p>
+              </div>
+              <div className="rounded-[22px] border border-amber-200 bg-amber-50 px-4 py-4">
+                <p className="text-sm font-semibold text-amber-950">販売後の導線</p>
+                <p className="mt-2 text-sm leading-6 text-amber-900">
+                  toto の販売が始まったら{" "}
+                  <span className="font-medium">
+                    toto を同期して選ぶ / mini toto を同期して選ぶ
+                  </span>{" "}
+                  で公式対象回を取り込みます。
+                </p>
+              </div>
+            </div>
+
             <form onSubmit={handleCreateRound} className="grid gap-5 md:grid-cols-2">
               <label className="grid gap-2 text-sm font-medium text-slate-700">
                 ラウンド名
                 <input
                   name="title"
                   className={fieldClassName}
-                  placeholder="World Toto 本番回"
+                  placeholder="2026 6 World Toto 本番"
                 />
               </label>
 
