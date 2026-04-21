@@ -653,7 +653,7 @@ export function parseOfficialTotoLotInfoHtml(
 
     if (!product) {
       current = null;
-      warnings.push(`${titleLine} は現在の Round Builder では未対応のため同期対象から外しました。`);
+      warnings.push(`${titleLine} は現在の主導線に載せていない商品なので、今回は一覧同期だけを見送りました。`);
       return true;
     }
 

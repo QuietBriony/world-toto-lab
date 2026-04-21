@@ -30,7 +30,7 @@ import {
   type SyncedTotoOfficialRoundEntry,
 } from "@/lib/repository";
 import { isSupabaseConfigured } from "@/lib/supabase";
-import { useTotoOfficialRoundLibrary } from "@/lib/use-app-data";
+import { useBigOfficialWatch, useTotoOfficialRoundLibrary } from "@/lib/use-app-data";
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "不明なエラーです。";
@@ -42,6 +42,7 @@ function proxyOutcomeLabel(outcome: Goal3OutcomeValue | null) {
 
 export default function Goal3ValuePage() {
   const library = useTotoOfficialRoundLibrary({ productType: "custom" });
+  const bigOfficialWatch = useBigOfficialWatch();
   const [syncing, setSyncing] = useState(false);
   const [loadingSnapshot, setLoadingSnapshot] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -59,6 +60,10 @@ export default function Goal3ValuePage() {
     [library.data],
   );
   const featuredEntry = useMemo(() => pickFeaturedGoal3Entry(goal3Entries), [goal3Entries]);
+  const bigOfficialSnapshots = useMemo(
+    () => bigOfficialWatch.data?.snapshots ?? [],
+    [bigOfficialWatch.data],
+  );
 
   const effectiveSelectedEntryId =
     selectedEntryId && goal3Entries.some((entry) => entry.id === selectedEntryId)
@@ -253,7 +258,7 @@ export default function Goal3ValuePage() {
             <p className="mt-3 text-sm leading-6 text-slate-600">
               {featuredEntry
                 ? buildGoal3EventWatch(featuredEntry).snapshot.headline
-                : "Yahoo! toto 販売スケジュールから同期すると、GOAL3 回もここに並びます。"}
+                : "Yahoo! toto 販売スケジュールに GOAL3 回が載っている時期だけ、ここへ同期して並べます。"}
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
               <Link href={appRoute.goal3Value} className={buttonClassName}>
@@ -268,13 +273,15 @@ export default function Goal3ValuePage() {
           <div className="rounded-[24px] border border-slate-200 bg-slate-50/90 p-5">
             <div className="flex flex-wrap items-center gap-2">
               <Badge tone="amber">BIG ウォッチ</Badge>
-              <Badge tone="slate">公式同期 / テンプレ</Badge>
+              <Badge tone="slate">
+                {bigOfficialWatch.data ? `公式同期 ${bigOfficialSnapshots.length}商品` : "テンプレ比較"}
+              </Badge>
             </div>
             <h3 className="mt-3 font-display text-[1.35rem] font-semibold tracking-[-0.05em] text-slate-950">
               BIG の激アツ回は別 monitor
             </h3>
             <p className="mt-3 text-sm leading-6 text-slate-600">
-              BIG は公式同期 watch に対応済みで、live 側が未反映のときはテンプレ条件へ fallback します。
+              BIG は公式同期 watch に対応済みで、同期エラーや取得失敗のときだけテンプレ条件へ切り替えて比較します。
               売上・キャリーが取れれば、高還元ウォッチとしてプラス圏かどうかをすぐ見られます。
             </p>
             <div className="mt-4 flex flex-wrap gap-2">

@@ -47,7 +47,7 @@ export function RoundContextCard({
   backLabel = "Round Detailへ戻る",
   description = "いま開いている導線が、どの Round に紐づいているかを最初に確認します。",
   roundId,
-  title = "Round Context",
+  title = "対象Round",
 }: {
   backHref?: string | null;
   backLabel?: string;

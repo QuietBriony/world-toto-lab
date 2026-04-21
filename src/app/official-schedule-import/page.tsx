@@ -335,7 +335,7 @@ function OfficialScheduleImportPageContent() {
       <RoundContextCard
         roundId={roundId}
         backHref={roundDetailHref}
-        description="販売前の手動準備として使う画面です。いまどの Round の素材づくりかをここで確認します。"
+        description="発売前の手動準備として使う画面です。いまどの Round の素材づくりかをここで確認します。"
       />
 
       <CollapsibleSectionCard
@@ -405,9 +405,9 @@ function OfficialScheduleImportPageContent() {
 
       <CollapsibleSectionCard
         title="困ったときだけ: FIFA URL から抜き出す"
-        description="もしブラウザからの直接取得が通らないときだけ、FIFAページ上で本文を抜き出してこの画面へ戻す fallback を使います。"
+        description="もしブラウザからの直接取得が通らないときだけ、FIFAページ上で本文を抜き出してこの画面へ戻す予備導線を使います。"
         defaultOpen={false}
-        badge={<Badge tone="sky">fallback</Badge>}
+        badge={<Badge tone="sky">予備導線</Badge>}
       >
         <div className="grid gap-3 md:grid-cols-3">
           {[

@@ -449,10 +449,10 @@ export default function DashboardPage() {
     {
       body: "FIFA全試合の取り込みは、公式対象回がまだ出ていない時だけ使う補助導線です。発売前に遊び用Roundを先に作りたいときだけ開けば十分です。",
       ctaHref: appRoute.officialScheduleImport,
-      ctaLabel: "販売前の手動準備へ",
+      ctaLabel: "発売前の手動準備へ",
       secondaryHref: appRoute.fixtureSelector,
       secondaryLabel: "13試合を手で選ぶ",
-      title: "販売前に先に遊ぶ",
+      title: "発売前に先に遊ぶ",
       tone: "teal" as const,
     },
   ];
@@ -574,7 +574,7 @@ export default function DashboardPage() {
             <p className="mt-3 text-sm leading-6 text-slate-600">
               {featuredGoal3Entry
                 ? featuredGoal3Watch?.snapshot.headline
-                : "Yahoo! toto 販売スケジュールを同期すると、GOAL3 回も専用ボードへ集約されます。"}
+                : "Yahoo! toto 販売スケジュールに GOAL3 回が載っている時期だけ、専用ボードへ集約して表示します。"}
             </p>
             <div className="mt-4 flex flex-wrap gap-3 text-xs text-slate-500">
               <span>要確認 {goal3AttentionCount}</span>
@@ -1688,7 +1688,7 @@ export default function DashboardPage() {
                 </div>
                 <p className="mt-3">
                   ふだんは「販売後」か「1試合 / 別商品」から入れば十分です。
-                  まだ公式対象回が出ていない時だけ「販売前に先に遊ぶ」を使い、URLや同期を使わずに細かく作りたいときだけ、下の `手入力で細かく作る`
+                  まだ公式対象回が出ていない時だけ「発売前に先に遊ぶ」を使い、URLや同期を使わずに細かく作りたいときだけ、下の `手入力で細かく作る`
                   を開けば大丈夫です。
                 </p>
               </div>
@@ -1717,7 +1717,7 @@ export default function DashboardPage() {
 
               <div className="rounded-[24px] border border-slate-200 bg-slate-50/90 px-4 py-4 text-sm leading-6 text-slate-600">
                 上の 3 枚で入口は足ります。ふだんは `toto / mini toto を選ぶ`、1試合商品は
-                `WINNER`、まだ公式対象回が出ていない時だけ `販売前に先に遊ぶ` を開けば十分です。
+                `WINNER`、まだ公式対象回が出ていない時だけ `発売前に先に遊ぶ` を開けば十分です。
               </div>
             </div>
 

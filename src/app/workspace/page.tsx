@@ -381,7 +381,7 @@ function WorkspacePageContent() {
               : buildRoundHref(appRoute.officialScheduleImport, data.round.id),
           secondaryLabel:
             data.round.matches.length === 0
-              ? "販売前の手動準備へ"
+              ? "発売前の手動準備へ"
               : "確定日程ベースで見直す",
           title: data.round.matches.length === 0 ? "試合素材を入れる" : "Round の素材を整える",
           tone: "teal" as const,
@@ -655,7 +655,7 @@ function WorkspacePageContent() {
 
       <CollapsibleSectionCard
         title="Round Builder"
-        description="主導線は toto公式の対象回取り込みです。FIFA全試合から組む流れは、販売前に先に遊ぶ時だけ使う補助導線に寄せています。"
+        description="主導線は toto公式の対象回取り込みです。FIFA全試合から組む流れは、発売前に先に遊ぶ時だけ使う補助導線に寄せています。"
         defaultOpen={data.round.matches.length === 0}
         badge={<Badge tone="sky">導線</Badge>}
       >
@@ -704,7 +704,7 @@ function WorkspacePageContent() {
                 <div className="mt-4 space-y-4">
                   <div className="grid gap-4 lg:grid-cols-2">
                     <div className="rounded-[22px] border border-teal-200 bg-teal-50 px-4 py-4">
-                      <p className="text-sm font-semibold text-teal-950">販売前の補助導線</p>
+                      <p className="text-sm font-semibold text-teal-950">発売前の補助導線</p>
                       <p className="mt-2 text-sm leading-6 text-teal-900">
                         公式対象回がまだ出ていない時だけ{" "}
                         <span className="font-medium">公式日程を取り込む → Fixture Selector</span>{" "}
@@ -722,7 +722,7 @@ function WorkspacePageContent() {
                   </div>
 
                   <div className="rounded-[22px] border border-slate-200 bg-white/85 px-4 py-4 text-sm leading-6 text-slate-600">
-                    上の 3 枚から入れば十分です。販売前は `試合素材を入れる`、販売後は
+                    上の 3 枚から入れば十分です。発売前は `試合素材を入れる`、販売後は
                     `いまの productType で進める`、素材がそろったら `みんなで見る・投票する`
                     を開く、の順でほとんどの作業が済みます。
                   </div>
