@@ -102,7 +102,7 @@ export default function RootLayout({
                       進行メモ
                     </div>
                     <div className="font-display text-xl font-semibold tracking-[-0.05em] text-white">
-                      world toto
+                      World Toto
                     </div>
                     <div className="mt-1 font-mono text-xs uppercase tracking-[0.22em] text-amber-300/88">
                       AI基準線 / 人力上書き

@@ -47,6 +47,7 @@ import {
   type TotoOfficialImportRow,
 } from "@/lib/toto-official-import";
 import { useFixtureMaster, useTotoOfficialRoundLibrary } from "@/lib/use-app-data";
+import { isLikelyWorldTotoLibraryEntry, looksLikeWorldTotoText } from "@/lib/world-toto";
 import type { ProductType, TotoOfficialRoundLibraryEntry } from "@/lib/types";
 
 function errorMessage(error: unknown) {
@@ -164,13 +165,12 @@ function hostLabel(url: string | null) {
 }
 
 function isWorldTotoEntry(
-  entry: Pick<TotoOfficialRoundLibraryEntry, "officialRoundName" | "title" | "sourceNote">,
+  entry: Pick<
+    TotoOfficialRoundLibraryEntry,
+    "matchCount" | "matches" | "officialRoundName" | "productType" | "sourceNote" | "sourceText" | "title"
+  >,
 ) {
-  const text = [entry.title, entry.officialRoundName, entry.sourceNote]
-    .map((value) => value?.toLowerCase() ?? "")
-    .join(" ");
-
-  return text.includes("world toto") || text.includes("worldtoto") || text.includes("ワールドtoto");
+  return isLikelyWorldTotoLibraryEntry(entry as TotoOfficialRoundLibraryEntry);
 }
 
 function libraryEntryProductDisplay(entry: TotoOfficialRoundLibraryEntry) {
@@ -799,6 +799,13 @@ function TotoOfficialRoundImportPageContent() {
               <p key={warning}>{warning}</p>
             ))}
           </div>
+        ) : null}
+        {productType === "toto13" && !looksLikeWorldTotoText(title, officialRoundName, sourceUrl) ? (
+          <p className="mt-4 rounded-[20px] border border-teal-200 bg-teal-50 px-4 py-3 text-xs leading-6 text-teal-950">
+            公式側が generic な `toto` 表記のままでも、そのまま 13試合商品として読み込めます。あとで
+            `title` か `official round name` に `World Toto` / `ワールドtoto` を含めると、一覧で
+            `World Toto` badge が付きます。
+          </p>
         ) : null}
       </SectionCard>
 

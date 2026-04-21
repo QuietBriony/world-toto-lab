@@ -92,6 +92,7 @@ import {
 } from "@/lib/member-usage";
 import { useBigOfficialWatch, useDashboardData, useTotoOfficialRoundLibrary } from "@/lib/use-app-data";
 import { isWinnerLikeRound } from "@/lib/winner-value";
+import { resolveWorldTotoProductLabel } from "@/lib/world-toto";
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "不明なエラーです。";
@@ -1739,7 +1740,7 @@ export default function DashboardPage() {
                   <input
                     name="title"
                     className={fieldClassName}
-                    placeholder="2026 6 World Toto 本番"
+                    placeholder="2026 6 ワールドtoto本番"
                   />
                 </label>
 
@@ -1948,6 +1949,14 @@ export default function DashboardPage() {
                   productType: round.productType,
                   requiredMatchCount: round.requiredMatchCount,
                 });
+                const roundProductLabel = resolveWorldTotoProductLabel({
+                  matchCount: round.matchCount,
+                  matches: round.matches,
+                  notes: round.notes,
+                  productType: round.productType,
+                  sourceNote: round.sourceNote,
+                  title: round.title,
+                }, productTypeLabel[round.productType as ProductType]);
 
                 return (
                   <SectionCard
@@ -1958,7 +1967,7 @@ export default function DashboardPage() {
                     <div className="rounded-[24px] border border-slate-200 bg-slate-50/90 px-4 py-4 shadow-[0_18px_44px_-34px_rgba(15,23,42,0.16)]">
                       <div className="flex flex-wrap items-center gap-2">
                         <Badge tone="slate">{roundUsers.length}人</Badge>
-                        <Badge tone="teal">{productTypeLabel[round.productType as ProductType]}</Badge>
+                        <Badge tone="teal">{roundProductLabel}</Badge>
                         <Badge tone="slate">{roundSourceLabel[round.roundSource]}</Badge>
                         <Badge tone="slate">
                           要件 {round.requiredMatchCount ?? round.matchCount}試合

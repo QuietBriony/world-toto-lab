@@ -38,6 +38,7 @@ import { replacePicks } from "@/lib/repository";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { useRoundWorkspace } from "@/lib/use-app-data";
 import { isWinnerLikeRound } from "@/lib/winner-value";
+import { resolveWorldTotoProductLabel } from "@/lib/world-toto";
 import type { OutcomeValue } from "@/lib/domain";
 import type { RoundSource } from "@/lib/types";
 
@@ -120,6 +121,19 @@ function SimpleViewPageContent() {
     data?.users.find((user) => user.id === requestedUserId) ??
     data?.users[0] ??
     null;
+  const roundProductLabel = data
+    ? resolveWorldTotoProductLabel(
+        {
+          matchCount: data.round.matches.length,
+          matches: data.round.matches,
+          notes: data.round.notes,
+          productType: data.round.productType,
+          sourceNote: data.round.sourceNote,
+          title: data.round.title,
+        },
+        productTypeLabel[data.round.productType],
+      )
+    : null;
 
   const baseIdentity =
     data && activeUser
@@ -551,7 +565,7 @@ function SimpleViewPageContent() {
             出どころ {roundSourceLabel[data.round.roundSource]}
           </Badge>
           <Badge tone={productTypeBadgeTone[data.round.productType]}>
-            {productTypeLabel[data.round.productType]}
+            {roundProductLabel ?? productTypeLabel[data.round.productType]}
           </Badge>
           <Badge tone={activeUser.role === "admin" ? "teal" : "info"}>
             入力中 {activeUser.name}

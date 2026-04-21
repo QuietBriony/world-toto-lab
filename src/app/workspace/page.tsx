@@ -86,6 +86,7 @@ import { budgetFromCandidateLimit, candidateLimitFromBudget } from "@/lib/ticket
 import { useRoundWorkspace } from "@/lib/use-app-data";
 import { filterPredictors } from "@/lib/users";
 import { isWinnerLikeRound } from "@/lib/winner-value";
+import { resolveWorldTotoProductLabel } from "@/lib/world-toto";
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "不明なエラーです。";
@@ -272,6 +273,19 @@ function WorkspacePageContent() {
         requiredMatchCount: data.round.requiredMatchCount,
       })
     : false;
+  const roundProductLabel = data
+    ? resolveWorldTotoProductLabel(
+        {
+          matchCount: data.round.matches.length,
+          matches: data.round.matches,
+          notes: data.round.notes,
+          productType: data.round.productType,
+          sourceNote: data.round.sourceNote,
+          title: data.round.title,
+        },
+        productTypeLabel[data.round.productType],
+      )
+    : null;
   const hasVisibleUnsavedChanges = dirtyScope === currentRoundScope;
   const visibleSubmitError =
     submitError?.scope === currentRoundScope ? submitError.message : null;
@@ -387,11 +401,11 @@ function WorkspacePageContent() {
           tone: "teal" as const,
         };
         const productCard = {
-          badge: productTypeLabel[data.round.productType],
+          badge: roundProductLabel ?? productTypeLabel[data.round.productType],
           body:
             data.round.productType === "winner"
               ? "WINNER は公式くじ情報URLを直接読む導線がいちばん安定です。"
-              : "今の productType に合った公式回の一覧を開き、そのままこの Round に反映できます。",
+              : "今の商品に合った公式回の一覧を開き、そのままこの Round に反映できます。",
           ctaHref: buildOfficialRoundImportHref(data.round.id, {
             autoSync: data.round.productType === "winner" ? false : true,
             productType: data.round.productType,
@@ -403,7 +417,7 @@ function WorkspacePageContent() {
           ctaLabel:
             data.round.productType === "winner"
               ? "WINNER 公式URLを開く"
-              : "この product で公式回を見る",
+              : "この商品で公式回を見る",
           secondaryHref:
             data.round.productType === "winner"
               ? buildRoundHref(appRoute.pickRoom, data.round.id, {
@@ -627,7 +641,7 @@ function WorkspacePageContent() {
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 {isDemoRound ? <Badge tone="amber">デモ</Badge> : null}
-                <Badge tone="teal">{productTypeLabel[data.round.productType]}</Badge>
+                <Badge tone="teal">{roundProductLabel ?? productTypeLabel[data.round.productType]}</Badge>
                 <Badge tone="slate">{roundSourceLabel[data.round.roundSource]}</Badge>
                 <Badge tone="sky">{roundStatusLabel[data.round.status]}</Badge>
               </div>
@@ -665,7 +679,7 @@ function WorkspacePageContent() {
                   <Badge tone={data.round.matches.length === 0 ? "amber" : "teal"}>
                     {data.round.matches.length === 0 ? "素材待ち" : "共有に進める状態"}
                   </Badge>
-                  <Badge tone="slate">{productTypeLabel[data.round.productType]}</Badge>
+                  <Badge tone="slate">{roundProductLabel ?? productTypeLabel[data.round.productType]}</Badge>
                 </div>
                 <p className="mt-3">
                   {data.round.matches.length === 0

@@ -58,6 +58,7 @@ import {
 } from "@/lib/tickets";
 import type { RoundWorkspace, TicketMode } from "@/lib/types";
 import { useRoundWorkspace } from "@/lib/use-app-data";
+import { resolveWorldTotoProductLabel } from "@/lib/world-toto";
 
 type StoredTicket = TicketPayload & {
   settings?: GeneratorSettings;
@@ -228,6 +229,19 @@ function TicketGeneratorPageContent() {
 
   const lastSettings = parsedTickets[0]?.parsed.settings;
   const roundMatchCount = resolveRoundMatchCount(data?.round);
+  const roundProductLabel = data
+    ? resolveWorldTotoProductLabel(
+        {
+          matchCount: data.round.matches.length,
+          matches: data.round.matches,
+          notes: data.round.notes,
+          productType: data.round.productType,
+          sourceNote: data.round.sourceNote,
+          title: data.round.title,
+        },
+        productTypeLabel[data.round.productType],
+      )
+    : null;
   const candidateLimitCap = candidateLimitCapForMatchCount(roundMatchCount);
   const fallbackCandidateLimit = defaultCandidateLimit(roundMatchCount);
   const fallbackBudgetYen = budgetFromCandidateLimit(
@@ -565,11 +579,11 @@ function TicketGeneratorPageContent() {
 
           <SectionCard
             title="生成設定"
-            description={`${productTypeLabel[data.round.productType]} / ${roundMatchCount ?? data.round.matches.length} 試合に合わせて、上位何案まで並べるかと、どこまで穴候補を混ぜるかを調整します。`}
+            description={`${roundProductLabel ?? productTypeLabel[data.round.productType]} / ${roundMatchCount ?? data.round.matches.length} 試合に合わせて、上位何案まで並べるかと、どこまで穴候補を混ぜるかを調整します。`}
           >
             <div className="rounded-[24px] border border-slate-200 bg-slate-50/90 p-4">
               <div className="flex flex-wrap items-center gap-2">
-                <Badge tone="slate">{productTypeLabel[data.round.productType]}</Badge>
+                <Badge tone="slate">{roundProductLabel ?? productTypeLabel[data.round.productType]}</Badge>
                 <Badge tone="sky">{roundMatchCount ?? data.round.matches.length} 試合</Badge>
                 <Badge tone="teal">候補上限 {candidateLimitCap} 案</Badge>
               </div>
