@@ -372,6 +372,24 @@ npm run audit:schema
 
 CI でも `npm run audit:schema` を通し、`main` への push 時点でスキーマ参照不整合を検知できるようにしています。
 
+### 3.2 本番 Supabase の疎通チェック
+
+GitHub Pages 上で読み込み失敗が出た場合、まず接続先 DB の実体を確認すると速いです。
+
+```bash
+npm run check:supabase
+```
+
+`.env.local`（または実行環境）に以下を設定して実行してください。
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+```
+
+`critical` が全て `OK` の場合は接続レベルの整合は取れています。  
+`candidate_tickets` / `candidate_votes` は現状 UI 側でフェイルセーフを入れていますが、`missing` が出るなら SQL 再実行が推奨です。
+
 ### 3.1. まだ候補系テーブルがない場合（`candidate_tickets` / `candidate_votes`）
 
 次のエラーが出る場合は、実運用DBへ候補系テーブルが未反映です。
