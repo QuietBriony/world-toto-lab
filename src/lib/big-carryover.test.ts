@@ -2,11 +2,14 @@ import { describe, expect, it } from "vitest";
 
 import {
   bigCarryoverPresets,
+  buildBigShockAlert,
   buildBigCarryoverEventSnapshot,
   buildBigCarryoverScenarioRows,
   calculateBigCarryoverSummary,
   classifyBigHeatBand,
+  detectBigShockSignal,
   normalizeBigEventType,
+  normalizeBigShockSignal,
 } from "@/lib/big-carryover";
 
 describe("big carryover monitor", () => {
@@ -79,6 +82,13 @@ describe("big carryover monitor", () => {
     expect(normalizeBigEventType("other")).toBe("carryover_event");
   });
 
+  it("detects and normalizes special-event shock signals", () => {
+    expect(detectBigShockSignal("台風で中止が多く出そう")).toBe("strong");
+    expect(detectBigShockSignal("荒天で要確認")).toBe("possible");
+    expect(normalizeBigShockSignal("strong")).toBe("strong");
+    expect(normalizeBigShockSignal("other")).toBe("none");
+  });
+
   it("classifies heat bands from the summary", () => {
     const plusBand = classifyBigHeatBand(
       calculateBigCarryoverSummary({
@@ -115,5 +125,19 @@ describe("big carryover monitor", () => {
     expect(bigCarryoverPresets[0]?.eventLabel).toBe("BIG 分岐ライン確認");
     expect(bigCarryoverPresets[1]?.eventType).toBe("carryover_event");
     expect(bigCarryoverPresets[2]?.eventType).toBe("high_return_watch");
+  });
+
+  it("builds a separate shock alert from notes and summary", () => {
+    const alert = buildBigShockAlert({
+      signal: "strong",
+      summary: calculateBigCarryoverSummary({
+        carryoverYen: 6_000_000_000,
+        returnRate: 0.5,
+        salesYen: 8_000_000_000,
+        spendYen: 10_000,
+      }),
+    });
+
+    expect(alert.label).toBe("成立条件ショック候補");
   });
 });

@@ -240,7 +240,7 @@ export default function Goal3ValuePage() {
 
       <SectionCard
         title="期待値ウォッチ"
-        description="キャリーが大きい回だけを先に拾い、GOAL3 専用ページへ送ります。BIG は別 monitor、WINNER は既存 Value Board へ切っています。"
+        description="キャリーが大きい回を先に拾い、GOAL3 専用ページで見ます。BIG は別 monitor、WINNER は既存 Value Board に分けています。"
       >
         <div className="grid gap-4 xl:grid-cols-3">
           <div className="rounded-[24px] border border-slate-200 bg-slate-50/90 p-5">
@@ -370,7 +370,7 @@ export default function Goal3ValuePage() {
                     </h3>
                     <p className="mt-3 text-sm leading-6 text-slate-600">{watch.snapshot.headline}</p>
                     <div className="mt-4 flex flex-wrap gap-3 text-xs text-slate-500">
-                      <span>概算 {formatPercent(watch.summary.approxEvMultiple)}</span>
+                      <span>概算倍率 {formatPercent(watch.summary.approxEvMultiple)}</span>
                       <span>売上 {formatCurrency(entry.totalSalesYen)}</span>
                       <span>キャリー {formatCurrency(entry.carryoverYen)}</span>
                     </div>

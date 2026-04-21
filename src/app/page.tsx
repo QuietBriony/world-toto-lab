@@ -559,7 +559,7 @@ export default function DashboardPage() {
 
       <SectionCard
         title="期待値ウォッチ"
-        description="立ち上げ時に『いま見る価値が大きい別商品』を先に出します。GOAL3 は自動同期寄り、BIG は公式同期の半自動 watch、WINNER は 1試合 board に分けています。"
+        description="立ち上げ時に『いま見る価値が大きい別商品』を先に出します。GOAL3 は一覧同期寄り、BIG は公式同期ベースの高還元監視、WINNER は1試合ボードに分けています。"
       >
         <div className="grid gap-4 xl:grid-cols-3">
           <div className="rounded-[24px] border border-slate-200 bg-slate-50/90 p-5">
@@ -579,7 +579,7 @@ export default function DashboardPage() {
             </p>
             <div className="mt-4 flex flex-wrap gap-3 text-xs text-slate-500">
               <span>要確認 {goal3AttentionCount}</span>
-              <span>概算 {formatPercent(featuredGoal3Watch?.summary.approxEvMultiple)}</span>
+              <span>概算倍率 {formatPercent(featuredGoal3Watch?.summary.approxEvMultiple)}</span>
               <span>売上 {formatCurrency(featuredGoal3Entry?.totalSalesYen ?? null)}</span>
             </div>
             {goal3Library.error ? (
@@ -608,18 +608,18 @@ export default function DashboardPage() {
                 {featuredBigOfficial?.heatBand.label ?? featuredBigHeat.label}
               </Badge>
               <Badge tone="slate">
-                {bigOfficialWatch.data ? `公式同期 ${bigOfficialSnapshots.length}商品` : "テンプレ"}
+                {bigOfficialWatch.data ? `同期 ${bigOfficialSnapshots.length}商品` : "テンプレ"}
               </Badge>
             </div>
             <h3 className="mt-3 font-display text-[1.35rem] font-semibold tracking-[-0.05em] text-slate-950">
               {featuredBigOfficialSnapshot
                 ? `${featuredBigOfficialSnapshot.officialRoundName ?? featuredBigOfficialSnapshot.productLabel}`
-                : "激アツ判定は BIG Carryover Monitor"}
+                : "BIG Carryover Monitor"}
             </h3>
             <p className="mt-3 text-sm leading-6 text-slate-600">
               {featuredBigOfficial
                 ? featuredBigOfficial.eventSnapshot.headline
-                : "BIG は売上とキャリーから `分岐付近 / 期待値大 / 監視中` をすぐ見られます。公式同期が取れないときはテンプレ条件で比較できます。"}
+                : "BIG は売上とキャリーから `特大上振れ候補 / 期待値大 / 分岐付近 / キャリーなし` を見ます。公式同期が取れないときはテンプレ条件で比較できます。"}
             </p>
             <div className="mt-4 flex flex-wrap gap-3 text-xs text-slate-500">
               <span>
@@ -628,7 +628,7 @@ export default function DashboardPage() {
                   : `例: ${featuredBigPreset.eventLabel}`}
               </span>
               <span>
-                概算{" "}
+                概算倍率{" "}
                 {formatPercent(
                   featuredBigOfficial?.summary.approxEvMultiple ?? featuredBigSummary.approxEvMultiple,
                 )}

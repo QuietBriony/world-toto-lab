@@ -13,6 +13,7 @@ import {
   SectionCard,
   secondaryButtonClassName,
   StatCard,
+  textAreaClassName,
 } from "@/components/ui";
 import {
   formatCurrency,
@@ -31,10 +32,13 @@ import {
   bigEventTypeLabel,
   bigCarryoverPresets,
   buildBigCarryoverEventSnapshot,
+  buildBigShockAlert,
   buildBigCarryoverScenarioRows,
   calculateBigCarryoverSummary,
   classifyBigHeatBand,
+  detectBigShockSignal,
   normalizeBigEventType,
+  normalizeBigShockSignal,
 } from "@/lib/big-carryover";
 import { appRoute, buildHref } from "@/lib/round-links";
 import { useBigOfficialWatch } from "@/lib/use-app-data";
@@ -51,6 +55,7 @@ function parseNumberInput(value: string | null, fallback: number) {
 
 function BigCarryoverPageContent() {
   const searchParams = useSearchParams();
+  const shockSearchParam = searchParams.get("shock");
   const [eventType, setEventType] = useState(
     normalizeBigEventType(searchParams.get("eventType")),
   );
@@ -73,6 +78,14 @@ function BigCarryoverPageContent() {
     String(parseNumberInput(searchParams.get("spend"), 10_000)),
   );
   const [sourceUrl, setSourceUrl] = useState(searchParams.get("sourceUrl")?.trim() || "");
+  const [shockMode, setShockMode] = useState<"auto" | "none" | "possible" | "strong">(
+    shockSearchParam === "possible" || shockSearchParam === "strong"
+      ? shockSearchParam
+      : shockSearchParam === "none"
+        ? "none"
+        : "auto",
+  );
+  const [eventNote, setEventNote] = useState(searchParams.get("note")?.trim() || "");
   const officialWatch = useBigOfficialWatch();
 
   const numericSalesYen = Number(salesYen.replaceAll(",", "")) || 0;
@@ -108,15 +121,27 @@ function BigCarryoverPageContent() {
       }),
     [eventLabel, eventType, summary],
   );
+  const detectedShockSignal = useMemo(() => detectBigShockSignal(eventNote), [eventNote]);
+  const effectiveShockSignal = shockMode === "auto" ? detectedShockSignal : normalizeBigShockSignal(shockMode);
+  const shockAlert = useMemo(
+    () =>
+      buildBigShockAlert({
+        signal: effectiveShockSignal,
+        summary,
+      }),
+    [effectiveShockSignal, summary],
+  );
 
   const shareHref = buildHref(appRoute.bigCarryover, {
     carryover: numericCarryoverYen || undefined,
     eventType,
     label: eventLabel || undefined,
+    note: eventNote || undefined,
     returnRate: Number.isFinite(Number(returnRatePercent))
       ? Number(returnRatePercent)
       : undefined,
     sales: numericSalesYen || undefined,
+    shock: shockMode !== "auto" ? shockMode : undefined,
     snapshotDate: snapshotDate || undefined,
     sourceUrl: sourceUrl || undefined,
     spend: numericSpendYen || undefined,
@@ -171,13 +196,13 @@ function BigCarryoverPageContent() {
       <RouteGlossaryCard currentPath={appRoute.bigCarryover} defaultOpen />
 
       <SectionCard
-        title="公式同期 snapshot"
+        title="公式同期一覧"
         description="スポーツくじオフィシャルの BIG 情報ページから、現在の BIG / MEGA BIG / 100円BIG / BIG1000 / mini BIG を半自動で読みます。"
       >
         <div className="flex flex-wrap items-center gap-2">
           <Badge tone="amber">BIG系5商品</Badge>
           <Badge tone="slate">
-            {officialWatch.data ? `${officialSnapshots.length}商品を同期` : "同期待ち"}
+            {officialWatch.data ? `同期 ${officialSnapshots.length}商品` : "同期待ち"}
           </Badge>
           {featuredOfficialSnapshot ? (
             <Badge tone={buildBigOfficialWatch(featuredOfficialSnapshot).heatBand.badgeTone}>
@@ -217,6 +242,9 @@ function BigCarryoverPageContent() {
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge tone={watch.heatBand.badgeTone}>{watch.heatBand.label}</Badge>
                   <Badge tone="slate">{snapshot.productLabel}</Badge>
+                  {detectBigShockSignal(snapshot.sourceText) !== "none" ? (
+                    <Badge tone="warning">成立条件メモあり</Badge>
+                  ) : null}
                 </div>
                 <h3 className="mt-3 font-display text-[1.15rem] font-semibold tracking-[-0.04em] text-slate-950">
                   {snapshot.officialRoundName ?? snapshot.productLabel}
@@ -254,6 +282,8 @@ function BigCarryoverPageContent() {
                       setReturnRatePercent(String(Math.round(snapshot.returnRate * 100)));
                       setSpendYen("10000");
                       setSourceUrl(snapshot.sourceUrl);
+                      setEventNote(snapshot.sourceText);
+                      setShockMode("auto");
                     }}
                     className={buttonClassName}
                   >
@@ -487,15 +517,50 @@ function BigCarryoverPageContent() {
               placeholder="https://..."
             />
           </label>
+          <label className="space-y-2 text-sm">
+            <span className="font-medium text-slate-700">成立条件ショック</span>
+            <select
+              value={shockMode}
+              onChange={(event) =>
+                setShockMode(event.currentTarget.value as "auto" | "none" | "possible" | "strong")
+              }
+              className={fieldClassName}
+            >
+              <option value="auto">自動判定</option>
+              <option value="none">平時ロジック</option>
+              <option value="possible">特記事項あり</option>
+              <option value="strong">強いショック候補</option>
+            </select>
+          </label>
+          <label className="space-y-2 text-sm md:col-span-2 xl:col-span-2">
+            <span className="font-medium text-slate-700">特記事項メモ</span>
+            <textarea
+              value={eventNote}
+              onChange={(event) => setEventNote(event.currentTarget.value)}
+              className={textAreaClassName}
+              rows={4}
+              placeholder="例: 台風接近で中止試合が増えそう / 成立条件や返還の公式告知を確認中"
+            />
+          </label>
         </div>
       </SectionCard>
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         <StatCard
           label="熱量判定"
           value={heatBand.label}
           hint={heatBand.hint}
           tone={heatBand.badgeTone === "positive" ? "positive" : heatBand.badgeTone === "warning" ? "warning" : "default"}
+        />
+        <StatCard
+          label="ショック判定"
+          value={shockAlert.label}
+          hint={
+            shockMode === "auto"
+              ? `${shockAlert.hint} 自動判定: ${detectedShockSignal === "none" ? "平時" : detectedShockSignal === "possible" ? "特記事項あり" : "強いショック候補"}`
+              : shockAlert.hint
+          }
+          tone={shockAlert.badgeTone === "positive" ? "positive" : shockAlert.badgeTone === "warning" ? "warning" : "default"}
         />
         <StatCard
           label="概算EV"

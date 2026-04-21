@@ -52,6 +52,14 @@ export type BigHeatBand = {
   label: string;
 };
 
+export type BigShockSignal = "none" | "possible" | "strong";
+
+export type BigShockAlert = {
+  badgeTone: "info" | "positive" | "warning";
+  hint: string;
+  label: string;
+};
+
 export const bigCarryoverPresets: BigCarryoverPreset[] = [
   {
     carryoverYen: 4_000_000_000,
@@ -91,6 +99,34 @@ function isKnownPositiveNumber(value: number | null | undefined): value is numbe
 
 function isKnownNumber(value: number | null | undefined): value is number {
   return typeof value === "number" && Number.isFinite(value);
+}
+
+const bigShockStrongPattern = /台風|中止|試合中止|大量中止|返還|不成立|成立条件|特例|災害/u;
+const bigShockPossiblePattern = /延期|荒天|警報|要確認|日程変更|例外/u;
+
+export function normalizeBigShockSignal(value: string | null | undefined): BigShockSignal {
+  if (value === "possible" || value === "strong") {
+    return value;
+  }
+
+  return "none";
+}
+
+export function detectBigShockSignal(text: string | null | undefined): BigShockSignal {
+  const normalized = text?.trim() ?? "";
+  if (!normalized) {
+    return "none";
+  }
+
+  if (bigShockStrongPattern.test(normalized)) {
+    return "strong";
+  }
+
+  if (bigShockPossiblePattern.test(normalized)) {
+    return "possible";
+  }
+
+  return "none";
 }
 
 export function calculateBigCarryoverSummary(
@@ -262,5 +298,40 @@ export function classifyBigHeatBand(summary: BigCarryoverSummary): BigHeatBand {
     badgeTone: "info",
     hint: "まだ監視段階ですが、比較材料として残す価値があります。",
     label: "監視中",
+  };
+}
+
+export function buildBigShockAlert(input: {
+  signal: BigShockSignal;
+  summary: BigCarryoverSummary;
+}): BigShockAlert {
+  if (input.signal === "strong") {
+    if (input.summary.approxEvMultiple !== null && input.summary.approxEvMultiple >= 1) {
+      return {
+        badgeTone: "positive",
+        hint: "平時EVに加えて、中止・返還・成立条件の変化を疑うメモがあります。公式告知の確認を前提に、かなり強い回として扱います。",
+        label: "成立条件ショック候補",
+      };
+    }
+
+    return {
+      badgeTone: "warning",
+      hint: "中止や返還などの特記事項メモがあります。数値だけではなく、公式告知と約款の確認を優先したい状態です。",
+      label: "要公式確認",
+    };
+  }
+
+  if (input.signal === "possible") {
+    return {
+      badgeTone: "warning",
+      hint: "荒天・延期・例外運用の気配があります。強い上振れと断定せず、関連情報を確認しながら見ます。",
+      label: "特記事項あり",
+    };
+  }
+
+  return {
+    badgeTone: "info",
+    hint: "今は売上とキャリーの平時ロジックだけで見ています。成立条件のショックは入っていません。",
+    label: "平時ロジック",
   };
 }
