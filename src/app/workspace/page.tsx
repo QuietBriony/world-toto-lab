@@ -733,43 +733,50 @@ function WorkspacePageContent() {
                 ))}
               </div>
 
-              <div className="grid gap-4 lg:grid-cols-2">
-                <div className="rounded-[22px] border border-teal-200 bg-teal-50 px-4 py-4">
-                  <p className="text-sm font-semibold text-teal-950">販売前の基本形</p>
-                  <p className="mt-2 text-sm leading-6 text-teal-900">
-                    確定日程が先にある回は{" "}
-                    <span className="font-medium">公式日程を取り込む → Fixture Selector</span>{" "}
-                    の順で Round を組みます。
-                  </p>
-                </div>
-                <div className="rounded-[22px] border border-amber-200 bg-amber-50 px-4 py-4">
-                  <p className="text-sm font-semibold text-amber-950">販売後の基本形</p>
-                  <p className="mt-2 text-sm leading-6 text-amber-900">
-                    売り出し後は{" "}
-                    <span className="font-medium">公式回を同期して選ぶ</span>{" "}
-                    で対象試合と売上前提を取り込みます。
-                  </p>
-                </div>
-              </div>
+              <details className="rounded-[24px] border border-slate-200 bg-slate-50/90 px-4 py-4">
+                <summary className="cursor-pointer list-none font-semibold text-slate-900">
+                  補助リンクと進め方メモ
+                </summary>
+                <div className="mt-4 space-y-4">
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    <div className="rounded-[22px] border border-teal-200 bg-teal-50 px-4 py-4">
+                      <p className="text-sm font-semibold text-teal-950">販売前の基本形</p>
+                      <p className="mt-2 text-sm leading-6 text-teal-900">
+                        確定日程が先にある回は{" "}
+                        <span className="font-medium">公式日程を取り込む → Fixture Selector</span>{" "}
+                        の順で Round を組みます。
+                      </p>
+                    </div>
+                    <div className="rounded-[22px] border border-amber-200 bg-amber-50 px-4 py-4">
+                      <p className="text-sm font-semibold text-amber-950">販売後の基本形</p>
+                      <p className="mt-2 text-sm leading-6 text-amber-900">
+                        売り出し後は{" "}
+                        <span className="font-medium">公式回を同期して選ぶ</span>{" "}
+                        で対象試合と売上前提を取り込みます。
+                      </p>
+                    </div>
+                  </div>
 
-              <div className="flex flex-wrap gap-2">
-                <Badge tone="slate">その他の入口</Badge>
-                {fixturePreparationLinks.map((entry) => (
-                  <Link key={entry.label} href={entry.href} className={secondaryButtonClassName}>
-                    {entry.label}
-                  </Link>
-                ))}
-                {primaryOfficialImportLinks.map((entry) => (
-                  <Link key={entry.label} href={entry.href} className={secondaryButtonClassName}>
-                    {entry.label}
-                  </Link>
-                ))}
-                {roundViewerLinks.map((entry) => (
-                  <Link key={entry.label} href={entry.href} className={secondaryButtonClassName}>
-                    {entry.label}
-                  </Link>
-                ))}
-              </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge tone="slate">その他の入口</Badge>
+                    {fixturePreparationLinks.map((entry) => (
+                      <Link key={entry.label} href={entry.href} className={secondaryButtonClassName}>
+                        {entry.label}
+                      </Link>
+                    ))}
+                    {primaryOfficialImportLinks.map((entry) => (
+                      <Link key={entry.label} href={entry.href} className={secondaryButtonClassName}>
+                        {entry.label}
+                      </Link>
+                    ))}
+                    {roundViewerLinks.map((entry) => (
+                      <Link key={entry.label} href={entry.href} className={secondaryButtonClassName}>
+                        {entry.label}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              </details>
             </div>
 
             {debugMode ? (
@@ -807,7 +814,7 @@ function WorkspacePageContent() {
 
           <RouteGlossaryCard
             currentPath={appRoute.workspace}
-            defaultOpen={!isDemoRound && (progress?.setupCompletion ?? 0) < 1}
+            defaultOpen={false}
           />
 
           {visibleSubmitError ? (

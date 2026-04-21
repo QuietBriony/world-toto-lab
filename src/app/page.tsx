@@ -449,7 +449,7 @@ export default function DashboardPage() {
 
       <RouteGlossaryCard
         currentPath={appRoute.dashboard}
-        defaultOpen={!data || (data.users.length === 0 && data.rounds.length === 0)}
+        defaultOpen={false}
       />
 
       {!isSupabaseConfigured() ? (
@@ -1443,7 +1443,8 @@ export default function DashboardPage() {
                 </div>
                 <p className="mt-3">
                   まずは「販売前」「販売後」「1試合 / 別商品」のどれかを選べば十分です。
-                  そのあとで、必要なら下の手入力フォームに戻れば大丈夫です。
+                  URLや同期を使わずに細かく作りたいときだけ、下の `手入力で細かく作る`
+                  を開けば大丈夫です。
                 </p>
               </div>
 
@@ -1469,191 +1470,202 @@ export default function DashboardPage() {
                 ))}
               </div>
 
-              <div className="flex flex-wrap gap-2">
-                <Badge tone="slate">その他の入口</Badge>
-                <Link href={appRoute.fixtureSelector} className={secondaryButtonClassName}>
-                  Fixture Selector
-                </Link>
-                <Link href={appRoute.officialScheduleImport} className={secondaryButtonClassName}>
-                  公式日程を取り込む
-                </Link>
-                <Link
-                  href={buildOfficialRoundImportHref(undefined, {
-                    autoSync: true,
-                    productType: "mini_toto",
-                    sourcePreset: "yahoo_toto_schedule",
-                  })}
-                  className={secondaryButtonClassName}
-                >
-                  mini toto を同期して選ぶ
-                </Link>
-              </div>
+              <details className="rounded-[24px] border border-slate-200 bg-slate-50/90 px-4 py-4">
+                <summary className="cursor-pointer list-none font-semibold text-slate-900">
+                  補助リンク
+                </summary>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Link href={appRoute.fixtureSelector} className={secondaryButtonClassName}>
+                    Fixture Selector
+                  </Link>
+                  <Link href={appRoute.officialScheduleImport} className={secondaryButtonClassName}>
+                    公式日程を取り込む
+                  </Link>
+                  <Link
+                    href={buildOfficialRoundImportHref(undefined, {
+                      autoSync: true,
+                      productType: "mini_toto",
+                      sourcePreset: "yahoo_toto_schedule",
+                    })}
+                    className={secondaryButtonClassName}
+                  >
+                    mini toto を同期して選ぶ
+                  </Link>
+                </div>
+              </details>
             </div>
 
-            <form onSubmit={handleCreateRound} className="grid gap-5 md:grid-cols-2">
-              <label className="grid gap-2 text-sm font-medium text-slate-700">
-                ラウンド名
-                <input
-                  name="title"
-                  className={fieldClassName}
-                  placeholder="2026 6 World Toto 本番"
-                />
-              </label>
+            <CollapsibleSectionCard
+              title="手入力で細かく作る"
+              description="同期やURL取り込みを使わず、Round名・試合数・参加メンバーを手で決めたいときだけ開きます。"
+              defaultOpen={false}
+              badge={<Badge tone="slate">詳細設定</Badge>}
+            >
+              <form onSubmit={handleCreateRound} className="grid gap-5 md:grid-cols-2">
+                <label className="grid gap-2 text-sm font-medium text-slate-700">
+                  ラウンド名
+                  <input
+                    name="title"
+                    className={fieldClassName}
+                    placeholder="2026 6 World Toto 本番"
+                  />
+                </label>
 
-              <label className="grid gap-2 text-sm font-medium text-slate-700">
-                ステータス
-                <select name="status" className={fieldClassName} defaultValue="draft">
-                  {roundStatusOptions.map((status) => (
-                    <option key={status} value={status}>
-                      {roundStatusLabel[status]}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                <label className="grid gap-2 text-sm font-medium text-slate-700">
+                  ステータス
+                  <select name="status" className={fieldClassName} defaultValue="draft">
+                    {roundStatusOptions.map((status) => (
+                      <option key={status} value={status}>
+                        {roundStatusLabel[status]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
 
-              <label className="grid gap-2 text-sm font-medium text-slate-700">
-                productType
-                <select
-                  name="productType"
-                  className={fieldClassName}
-                  value={createProductType}
-                  onChange={(event) => {
-                    const nextProductType = event.currentTarget.value as ProductType;
-                    setCreateProductType(nextProductType);
-                    const fixedCount = defaultRequiredMatchCount(nextProductType);
-                    if (fixedCount !== null) {
-                      setCreateMatchCount(fixedCount);
+                <label className="grid gap-2 text-sm font-medium text-slate-700">
+                  productType
+                  <select
+                    name="productType"
+                    className={fieldClassName}
+                    value={createProductType}
+                    onChange={(event) => {
+                      const nextProductType = event.currentTarget.value as ProductType;
+                      setCreateProductType(nextProductType);
+                      const fixedCount = defaultRequiredMatchCount(nextProductType);
+                      if (fixedCount !== null) {
+                        setCreateMatchCount(fixedCount);
+                      }
+                    }}
+                  >
+                    {productTypeOptions.map((productType) => (
+                      <option key={productType} value={productType}>
+                        {productTypeLabel[productType]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="grid gap-2 text-sm font-medium text-slate-700">
+                  試合数
+                  <input
+                    name="matchCount"
+                    type="number"
+                    min={1}
+                    max={20}
+                    step={1}
+                    value={createMatchCount}
+                    onChange={(event) =>
+                      setCreateMatchCount(
+                        Math.min(
+                          Math.max(Number(event.currentTarget.value || 1), 1),
+                          20,
+                        ),
+                      )
                     }
-                  }}
-                >
-                  {productTypeOptions.map((productType) => (
-                    <option key={productType} value={productType}>
-                      {productTypeLabel[productType]}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                    className={fieldClassName}
+                  />
+                </label>
 
-              <label className="grid gap-2 text-sm font-medium text-slate-700">
-                試合数
-                <input
-                  name="matchCount"
-                  type="number"
-                  min={1}
-                  max={20}
-                  step={1}
-                  value={createMatchCount}
-                  onChange={(event) =>
-                    setCreateMatchCount(
-                      Math.min(
-                        Math.max(Number(event.currentTarget.value || 1), 1),
-                        20,
-                      ),
-                    )
-                  }
-                  className={fieldClassName}
-                />
-              </label>
+                <label className="grid gap-2 text-sm font-medium text-slate-700">
+                  上位候補数
+                  <input
+                    name="candidateLimit"
+                    type="number"
+                    min={1}
+                    max={8}
+                    step={1}
+                    className={fieldClassName}
+                    placeholder="5"
+                  />
+                </label>
 
-              <label className="grid gap-2 text-sm font-medium text-slate-700">
-                上位候補数
-                <input
-                  name="candidateLimit"
-                  type="number"
-                  min={1}
-                  max={8}
-                  step={1}
-                  className={fieldClassName}
-                  placeholder="5"
-                />
-              </label>
+                <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-950/5 p-4 text-sm text-slate-600">
+                  `toto = 13試合 / mini toto = 5試合 / WINNER = 1試合 / カスタム = 任意` を目安にしてください。
+                  現在の requiredMatchCount は {requiredMatchCountHint} 試合として扱います。
+                  金銭、配当、代理購入、精算は扱いません。ここでの上位候補数は、候補配分画面で何案まで並べるかの目安です。
+                </div>
 
-              <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-950/5 p-4 text-sm text-slate-600">
-                `toto = 13試合 / mini toto = 5試合 / WINNER = 1試合 / カスタム = 任意` を目安にしてください。
-                現在の requiredMatchCount は {requiredMatchCountHint} 試合として扱います。
-                金銭、配当、代理購入、精算は扱いません。ここでの上位候補数は、候補配分画面で何案まで並べるかの目安です。
-              </div>
+                <label className="grid gap-2 text-sm font-medium text-slate-700 md:col-span-2">
+                  sourceNote
+                  <input
+                    name="sourceNote"
+                    className={fieldClassName}
+                    placeholder="手入力で作る仮想Round / 友人会テスト用 など"
+                  />
+                </label>
 
-              <label className="grid gap-2 text-sm font-medium text-slate-700 md:col-span-2">
-                sourceNote
-                <input
-                  name="sourceNote"
-                  className={fieldClassName}
-                  placeholder="手入力で作る仮想Round / 友人会テスト用 など"
-                />
-              </label>
-
-              {data.users.length > 0 ? (
-                <div className="grid gap-3 rounded-3xl border border-slate-200 bg-slate-50/88 p-4 text-sm text-slate-700 md:col-span-2">
-                  <div>
-                    <div className="font-medium text-slate-900">この回で使うメンバー</div>
-                    <div className="mt-1 text-xs leading-5 text-slate-500">
-                      参加者だけを選ぶと、その回の支持 / 予想 / 予想者カードの必要件数もこの人数で計算します。
+                {data.users.length > 0 ? (
+                  <div className="grid gap-3 rounded-3xl border border-slate-200 bg-slate-50/88 p-4 text-sm text-slate-700 md:col-span-2">
+                    <div>
+                      <div className="font-medium text-slate-900">この回で使うメンバー</div>
+                      <div className="mt-1 text-xs leading-5 text-slate-500">
+                        参加者だけを選ぶと、その回の支持 / 予想 / 予想者カードの必要件数もこの人数で計算します。
+                      </div>
+                    </div>
+                    <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                      {data.users.map((user) => (
+                        <label
+                          key={`create-round-participant-${user.id}`}
+                          className="flex items-center gap-3 rounded-2xl border border-white/80 bg-white/82 px-4 py-3"
+                        >
+                          <input
+                            type="checkbox"
+                            name="participantUserId"
+                            value={user.id}
+                            defaultChecked
+                            className="h-4 w-4 rounded border-slate-300 text-emerald-700 focus:ring-emerald-300"
+                          />
+                          <span className="text-sm font-medium text-slate-800">
+                            {user.name}
+                          </span>
+                          <Badge tone={user.role === "admin" ? "teal" : "slate"}>
+                            {userRoleLabel[user.role]}
+                          </Badge>
+                        </label>
+                      ))}
                     </div>
                   </div>
-                  <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-                    {data.users.map((user) => (
-                      <label
-                        key={`create-round-participant-${user.id}`}
-                        className="flex items-center gap-3 rounded-2xl border border-white/80 bg-white/82 px-4 py-3"
-                      >
-                        <input
-                          type="checkbox"
-                          name="participantUserId"
-                          value={user.id}
-                          defaultChecked
-                          className="h-4 w-4 rounded border-slate-300 text-emerald-700 focus:ring-emerald-300"
-                        />
-                        <span className="text-sm font-medium text-slate-800">
-                          {user.name}
-                        </span>
-                        <Badge tone={user.role === "admin" ? "teal" : "slate"}>
-                          {userRoleLabel[user.role]}
-                        </Badge>
-                      </label>
-                    ))}
+                ) : null}
+
+                {data.users.length === 0 ? (
+                  <label className="md:col-span-2 flex items-start gap-3 rounded-3xl border border-emerald-200 bg-emerald-50/80 p-4 text-sm text-slate-700">
+                    <input
+                      type="checkbox"
+                      name="bootstrapMembers"
+                      defaultChecked
+                      className="mt-1 h-4 w-4 rounded border-slate-300 text-emerald-700 focus:ring-emerald-300"
+                    />
+                    <span className="leading-6">
+                      このラウンド作成時に、初回メンバーとして `hazi` を予想者、ほか 9 枠を `空き`
+                      として一緒に準備する
+                    </span>
+                  </label>
+                ) : (
+                  <div className="md:col-span-2 rounded-3xl border border-dashed border-slate-300 bg-slate-950/5 p-4 text-sm text-slate-600">
+                    メンバーはあとでラウンド詳細から入れ替えられます。まず全員で作って、不要な人だけ外す流れでも大丈夫です。
                   </div>
-                </div>
-              ) : null}
+                )}
 
-              {data.users.length === 0 ? (
-                <label className="md:col-span-2 flex items-start gap-3 rounded-3xl border border-emerald-200 bg-emerald-50/80 p-4 text-sm text-slate-700">
-                  <input
-                    type="checkbox"
-                    name="bootstrapMembers"
-                    defaultChecked
-                    className="mt-1 h-4 w-4 rounded border-slate-300 text-emerald-700 focus:ring-emerald-300"
+                <label className="grid gap-2 text-sm font-medium text-slate-700 md:col-span-2">
+                  メモ
+                  <textarea
+                    name="notes"
+                    className={textAreaClassName}
+                    placeholder="このラウンドで気にしたいテーマ、友人会の着眼点など"
                   />
-                  <span className="leading-6">
-                    このラウンド作成時に、初回メンバーとして `hazi` を予想者、ほか 9 枠を `空き`
-                    として一緒に準備する
-                  </span>
                 </label>
-              ) : (
-                <div className="md:col-span-2 rounded-3xl border border-dashed border-slate-300 bg-slate-950/5 p-4 text-sm text-slate-600">
-                  メンバーはあとでラウンド詳細から入れ替えられます。まず全員で作って、不要な人だけ外す流れでも大丈夫です。
+
+                <div className="md:col-span-2 flex justify-end">
+                  <button
+                    type="submit"
+                    className={buttonClassName}
+                    disabled={busy === "round"}
+                  >
+                    {busy === "round" ? "作成中..." : "ラウンドを作成"}
+                  </button>
                 </div>
-              )}
-
-              <label className="grid gap-2 text-sm font-medium text-slate-700 md:col-span-2">
-                メモ
-                <textarea
-                  name="notes"
-                  className={textAreaClassName}
-                  placeholder="このラウンドで気にしたいテーマ、友人会の着眼点など"
-                />
-              </label>
-
-              <div className="md:col-span-2 flex justify-end">
-                <button
-                  type="submit"
-                  className={buttonClassName}
-                  disabled={busy === "round"}
-                >
-                  {busy === "round" ? "作成中..." : "ラウンドを作成"}
-                </button>
-              </div>
-            </form>
+              </form>
+            </CollapsibleSectionCard>
             {actionError ? <p className="text-sm text-rose-700">{actionError}</p> : null}
           </SectionCard>
 
@@ -1710,7 +1722,7 @@ export default function DashboardPage() {
                           href={buildRoundHref(appRoute.pickRoom, round.id, {
                             user: roundUsers[0]?.id,
                           })}
-                          className={secondaryButtonClassName}
+                          className={buttonClassName}
                         >
                           Pick Room
                         </Link>

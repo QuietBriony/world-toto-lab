@@ -253,6 +253,7 @@ function TotoOfficialRoundImportPageContent() {
     : null;
   const filterLabel =
     libraryProductType === "all" ? "すべて" : productTypeLabel[libraryProductType];
+  const manualEntryOpen = Boolean(editingLibraryEntryId || sourceText.trim() || rows.length > 0);
 
   const parsedPreview = useMemo(
     () =>
@@ -506,27 +507,6 @@ function TotoOfficialRoundImportPageContent() {
         description="公式ソースから開催回を同期して一覧から選ぶか、CSV / TSV で足りない回だけ追加して Round に反映します。"
         actions={
           <div className="flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={() => {
-                setEditingLibraryEntryId(null);
-                setActionMessage(null);
-                setSourceText(csvSample);
-              }}
-              className={secondaryButtonClassName}
-            >
-              サンプルCSV
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setEditingLibraryEntryId(null);
-                setActionMessage("次の保存は新規ライブラリとして扱います。");
-              }}
-              className={secondaryButtonClassName}
-            >
-              新規ライブラリとして入力
-            </button>
             {roundDetailHref ? (
               <Link href={roundDetailHref} className={secondaryButtonClassName}>
                 Round Detailへ戻る
@@ -877,7 +857,7 @@ function TotoOfficialRoundImportPageContent() {
       <CollapsibleSectionCard
         title="実データ1回分ならこの順です"
         description="1. ライブラリ一覧から 1クリック反映  2. まだない回だけ CSV / TSV で追加、の順で使うのがいちばん速いです。"
-        defaultOpen={!sourceText.trim() && rows.length === 0}
+        defaultOpen={false}
         badge={<Badge tone="sky">はじめに</Badge>}
       >
         <div className="grid gap-3 md:grid-cols-3">
@@ -910,253 +890,284 @@ function TotoOfficialRoundImportPageContent() {
         </div>
       </CollapsibleSectionCard>
 
-      <SectionCard title="Round Meta" description="round-level の公式情報を先に入れます。">
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <input
-            value={title}
-            onChange={(event) => setTitle(event.currentTarget.value)}
-            className={fieldClassName}
-            placeholder="title"
-          />
-          <select
-            value={productType}
-            onChange={(event) => setProductType(event.currentTarget.value as ProductType)}
-            className={fieldClassName}
-          >
-            {productTypeOptions.map((option) => (
-              <option key={option} value={option}>
-                {productTypeLabel[option]}
-              </option>
-            ))}
-          </select>
-          <input
-            value={officialRoundName}
-            onChange={(event) => setOfficialRoundName(event.currentTarget.value)}
-            className={fieldClassName}
-            placeholder="official round name"
-          />
-          <input
-            value={officialRoundNumber}
-            onChange={(event) => setOfficialRoundNumber(event.currentTarget.value)}
-            className={fieldClassName}
-            placeholder="official round no"
-          />
-          <input
-            value={stakeYen}
-            onChange={(event) => setStakeYen(event.currentTarget.value)}
-            className={fieldClassName}
-            placeholder="stakeYen"
-          />
-          <input
-            value={totalSalesYen}
-            onChange={(event) => setTotalSalesYen(event.currentTarget.value)}
-            className={fieldClassName}
-            placeholder="totalSalesYen"
-          />
-          <input
-            value={carryoverYen}
-            onChange={(event) => setCarryoverYen(event.currentTarget.value)}
-            className={fieldClassName}
-            placeholder="carryoverYen"
-          />
-          <input
-            value={sourceUrl}
-            onChange={(event) => setSourceUrl(event.currentTarget.value)}
-            className={fieldClassName}
-            placeholder="sourceUrl"
-          />
-        </div>
-      </SectionCard>
-
-      <SectionCard
-        title="CSV / TSV"
-        description="official_match_no, home_team, away_team, kickoff_time, venue, stage, official_vote_1, official_vote_0, official_vote_2 の順を基本にします。"
-        actions={
-          <button type="button" onClick={handleParse} className={buttonClassName}>
-            Parse Preview
-          </button>
-        }
-      >
-        <textarea
-          value={sourceText}
-          onChange={(event) => setSourceText(event.currentTarget.value)}
-          className={textAreaClassName}
-          placeholder="official_match_no,home_team,away_team..."
-        />
-      </SectionCard>
-
-      <SectionCard
-        title="Preview"
-        description={`抽出 ${rows.length} 件。fixture master 候補も併記します。`}
-        actions={
-          <div className="flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={() => {
-                const matchedRows = rematchRows(rows);
-                setActionError(null);
-                setActionMessage(
-                  matchedRows.length > 0
-                    ? "現在の入力内容で Fixture 候補を再照合しました。"
-                    : "再照合する行がまだありません。",
-                );
-              }}
-              className={secondaryButtonClassName}
-              disabled={rows.length === 0}
-            >
-              Fixture候補を再照合
-            </button>
-            <button
-              type="button"
-              onClick={() => void handleSave()}
-              className={buttonClassName}
-              disabled={saving || rows.length === 0}
-            >
-              {saving
-                ? "保存中..."
-                : editingLibraryEntryId
-                  ? "一覧を更新してRound反映"
-                  : "一覧に保存してRound反映"}
-            </button>
-          </div>
-        }
+      <CollapsibleSectionCard
+        title="まだない回だけ CSV / 手入力で追加"
+        description="ライブラリに無い回だけ、ここで手入力します。ふだんは上の一覧から 1 クリック反映で十分です。"
+        defaultOpen={manualEntryOpen}
+        badge={<Badge tone="slate">補完入力</Badge>}
       >
         <div className="flex flex-wrap gap-2">
-          <Badge tone="slate">rows {rows.length}</Badge>
-          {roundId ? <Badge tone="warning">既存Roundを上書き</Badge> : <Badge tone="teal">新規Round作成</Badge>}
-          {editingLibraryEntryId ? <Badge tone="info">既存ライブラリを更新</Badge> : <Badge tone="sky">新規ライブラリ追加</Badge>}
+          <button
+            type="button"
+            onClick={() => {
+              setEditingLibraryEntryId(null);
+              setActionMessage(null);
+              setSourceText(csvSample);
+            }}
+            className={secondaryButtonClassName}
+          >
+            サンプルCSV
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setEditingLibraryEntryId(null);
+              setActionMessage("次の保存は新規ライブラリとして扱います。");
+            }}
+            className={secondaryButtonClassName}
+          >
+            新規ライブラリとして入力
+          </button>
         </div>
 
-        <p className="mt-3 text-xs leading-6 text-slate-500">
-          vote 1/0/2 は `0.52` / `52%` / `52` のどれでも扱えます。Preview 上で `52`
-          と入れた値も、保存時には `0.52` としてそろえます。
-        </p>
-
-        {previewWarnings.length > 0 ? (
-          <div className="mt-4 rounded-[22px] border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-950">
-            {previewWarnings.map((warning) => (
-              <p key={warning}>{warning}</p>
-            ))}
-          </div>
-        ) : null}
-        {actionError ? (
-          <div className="mt-4 rounded-[22px] border border-rose-200 bg-rose-50 px-4 py-4 text-sm text-rose-700">
-            {actionError}
-          </div>
-        ) : null}
-
-        <HorizontalScrollTable className="mt-4">
-          <table className="min-w-[1380px] text-left text-sm">
-            <thead>
-              <tr className="border-b border-slate-200 text-slate-500">
-                <th className="px-3 py-3">no</th>
-                <th className="px-3 py-3">fixture</th>
-                <th className="px-3 py-3">kickoff</th>
-                <th className="px-3 py-3">stage</th>
-                <th className="px-3 py-3">vote1/0/2</th>
-                <th className="px-3 py-3">fixture match</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row, index) => (
-                <tr key={`${row.officialMatchNo}-${index}`} className="border-b border-slate-100">
-                  <td className="px-3 py-3">{row.officialMatchNo}</td>
-                  <td className="px-3 py-3">
-                    <div className="space-y-2">
-                      <input
-                        value={row.homeTeam}
-                        onChange={(event) =>
-                          updateRow(index, { homeTeam: event.currentTarget.value }, { rematch: true })
-                        }
-                        className={fieldClassName}
-                      />
-                      <input
-                        value={row.awayTeam}
-                        onChange={(event) =>
-                          updateRow(index, { awayTeam: event.currentTarget.value }, { rematch: true })
-                        }
-                        className={fieldClassName}
-                      />
-                    </div>
-                  </td>
-                  <td className="px-3 py-3">
-                    <input
-                      value={row.kickoffTime ?? ""}
-                      onChange={(event) =>
-                        updateRow(
-                          index,
-                          { kickoffTime: event.currentTarget.value || null },
-                          { rematch: true },
-                        )
-                      }
-                      className={fieldClassName}
-                    />
-                  </td>
-                  <td className="px-3 py-3">
-                    <input
-                      value={row.stage ?? ""}
-                      onChange={(event) =>
-                        updateRow(index, { stage: event.currentTarget.value || null })
-                      }
-                      className={fieldClassName}
-                    />
-                  </td>
-                  <td className="px-3 py-3">
-                    <div className="space-y-2">
-                      <input
-                        value={row.officialVote1 ?? ""}
-                        onChange={(event) =>
-                          updateRow(index, {
-                            officialVote1: normalizeVote(event.currentTarget.value).normalized,
-                          })
-                        }
-                        className={fieldClassName}
-                        inputMode="decimal"
-                      />
-                      <input
-                        value={row.officialVote0 ?? ""}
-                        onChange={(event) =>
-                          updateRow(index, {
-                            officialVote0: normalizeVote(event.currentTarget.value).normalized,
-                          })
-                        }
-                        className={fieldClassName}
-                        inputMode="decimal"
-                      />
-                      <input
-                        value={row.officialVote2 ?? ""}
-                        onChange={(event) =>
-                          updateRow(index, {
-                            officialVote2: normalizeVote(event.currentTarget.value).normalized,
-                          })
-                        }
-                        className={fieldClassName}
-                        inputMode="decimal"
-                      />
-                    </div>
-                  </td>
-                  <td className="px-3 py-3">
-                    <select
-                      value={row.fixtureMasterId ?? ""}
-                      onChange={(event) =>
-                        updateRow(index, { fixtureMasterId: event.currentTarget.value || null })
-                      }
-                      className={fieldClassName}
-                    >
-                      <option value="">未選択</option>
-                      {row.fixtureCandidates.map((fixture) => (
-                        <option key={fixture.id} value={fixture.id}>
-                          {fixture.matchDate ?? "—"} {fixture.homeTeam} vs {fixture.awayTeam}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                </tr>
+        <SectionCard title="Round Meta" description="round-level の公式情報を先に入れます。">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <input
+              value={title}
+              onChange={(event) => setTitle(event.currentTarget.value)}
+              className={fieldClassName}
+              placeholder="title"
+            />
+            <select
+              value={productType}
+              onChange={(event) => setProductType(event.currentTarget.value as ProductType)}
+              className={fieldClassName}
+            >
+              {productTypeOptions.map((option) => (
+                <option key={option} value={option}>
+                  {productTypeLabel[option]}
+                </option>
               ))}
-            </tbody>
-          </table>
-        </HorizontalScrollTable>
-      </SectionCard>
+            </select>
+            <input
+              value={officialRoundName}
+              onChange={(event) => setOfficialRoundName(event.currentTarget.value)}
+              className={fieldClassName}
+              placeholder="official round name"
+            />
+            <input
+              value={officialRoundNumber}
+              onChange={(event) => setOfficialRoundNumber(event.currentTarget.value)}
+              className={fieldClassName}
+              placeholder="official round no"
+            />
+            <input
+              value={stakeYen}
+              onChange={(event) => setStakeYen(event.currentTarget.value)}
+              className={fieldClassName}
+              placeholder="stakeYen"
+            />
+            <input
+              value={totalSalesYen}
+              onChange={(event) => setTotalSalesYen(event.currentTarget.value)}
+              className={fieldClassName}
+              placeholder="totalSalesYen"
+            />
+            <input
+              value={carryoverYen}
+              onChange={(event) => setCarryoverYen(event.currentTarget.value)}
+              className={fieldClassName}
+              placeholder="carryoverYen"
+            />
+            <input
+              value={sourceUrl}
+              onChange={(event) => setSourceUrl(event.currentTarget.value)}
+              className={fieldClassName}
+              placeholder="sourceUrl"
+            />
+          </div>
+        </SectionCard>
+
+        <SectionCard
+          title="CSV / TSV"
+          description="official_match_no, home_team, away_team, kickoff_time, venue, stage, official_vote_1, official_vote_0, official_vote_2 の順を基本にします。"
+          actions={
+            <button type="button" onClick={handleParse} className={buttonClassName}>
+              Parse Preview
+            </button>
+          }
+        >
+          <textarea
+            value={sourceText}
+            onChange={(event) => setSourceText(event.currentTarget.value)}
+            className={textAreaClassName}
+            placeholder="official_match_no,home_team,away_team..."
+          />
+        </SectionCard>
+
+        <SectionCard
+          title="Preview"
+          description={`抽出 ${rows.length} 件。fixture master 候補も併記します。`}
+          actions={
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  const matchedRows = rematchRows(rows);
+                  setActionError(null);
+                  setActionMessage(
+                    matchedRows.length > 0
+                      ? "現在の入力内容で Fixture 候補を再照合しました。"
+                      : "再照合する行がまだありません。",
+                  );
+                }}
+                className={secondaryButtonClassName}
+                disabled={rows.length === 0}
+              >
+                Fixture候補を再照合
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleSave()}
+                className={buttonClassName}
+                disabled={saving || rows.length === 0}
+              >
+                {saving
+                  ? "保存中..."
+                  : editingLibraryEntryId
+                    ? "一覧を更新してRound反映"
+                    : "一覧に保存してRound反映"}
+              </button>
+            </div>
+          }
+        >
+          <div className="flex flex-wrap gap-2">
+            <Badge tone="slate">rows {rows.length}</Badge>
+            {roundId ? <Badge tone="warning">既存Roundを上書き</Badge> : <Badge tone="teal">新規Round作成</Badge>}
+            {editingLibraryEntryId ? <Badge tone="info">既存ライブラリを更新</Badge> : <Badge tone="sky">新規ライブラリ追加</Badge>}
+          </div>
+
+          <p className="mt-3 text-xs leading-6 text-slate-500">
+            vote 1/0/2 は `0.52` / `52%` / `52` のどれでも扱えます。Preview 上で `52`
+            と入れた値も、保存時には `0.52` としてそろえます。
+          </p>
+
+          {previewWarnings.length > 0 ? (
+            <div className="mt-4 rounded-[22px] border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-950">
+              {previewWarnings.map((warning) => (
+                <p key={warning}>{warning}</p>
+              ))}
+            </div>
+          ) : null}
+          {actionError ? (
+            <div className="mt-4 rounded-[22px] border border-rose-200 bg-rose-50 px-4 py-4 text-sm text-rose-700">
+              {actionError}
+            </div>
+          ) : null}
+
+          <HorizontalScrollTable className="mt-4">
+            <table className="min-w-[1380px] text-left text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 text-slate-500">
+                  <th className="px-3 py-3">no</th>
+                  <th className="px-3 py-3">fixture</th>
+                  <th className="px-3 py-3">kickoff</th>
+                  <th className="px-3 py-3">stage</th>
+                  <th className="px-3 py-3">vote1/0/2</th>
+                  <th className="px-3 py-3">fixture match</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row, index) => (
+                  <tr key={`${row.officialMatchNo}-${index}`} className="border-b border-slate-100">
+                    <td className="px-3 py-3">{row.officialMatchNo}</td>
+                    <td className="px-3 py-3">
+                      <div className="space-y-2">
+                        <input
+                          value={row.homeTeam}
+                          onChange={(event) =>
+                            updateRow(index, { homeTeam: event.currentTarget.value }, { rematch: true })
+                          }
+                          className={fieldClassName}
+                        />
+                        <input
+                          value={row.awayTeam}
+                          onChange={(event) =>
+                            updateRow(index, { awayTeam: event.currentTarget.value }, { rematch: true })
+                          }
+                          className={fieldClassName}
+                        />
+                      </div>
+                    </td>
+                    <td className="px-3 py-3">
+                      <input
+                        value={row.kickoffTime ?? ""}
+                        onChange={(event) =>
+                          updateRow(
+                            index,
+                            { kickoffTime: event.currentTarget.value || null },
+                            { rematch: true },
+                          )
+                        }
+                        className={fieldClassName}
+                      />
+                    </td>
+                    <td className="px-3 py-3">
+                      <input
+                        value={row.stage ?? ""}
+                        onChange={(event) =>
+                          updateRow(index, { stage: event.currentTarget.value || null })
+                        }
+                        className={fieldClassName}
+                      />
+                    </td>
+                    <td className="px-3 py-3">
+                      <div className="space-y-2">
+                        <input
+                          value={row.officialVote1 ?? ""}
+                          onChange={(event) =>
+                            updateRow(index, {
+                              officialVote1: normalizeVote(event.currentTarget.value).normalized,
+                            })
+                          }
+                          className={fieldClassName}
+                          inputMode="decimal"
+                        />
+                        <input
+                          value={row.officialVote0 ?? ""}
+                          onChange={(event) =>
+                            updateRow(index, {
+                              officialVote0: normalizeVote(event.currentTarget.value).normalized,
+                            })
+                          }
+                          className={fieldClassName}
+                          inputMode="decimal"
+                        />
+                        <input
+                          value={row.officialVote2 ?? ""}
+                          onChange={(event) =>
+                            updateRow(index, {
+                              officialVote2: normalizeVote(event.currentTarget.value).normalized,
+                            })
+                          }
+                          className={fieldClassName}
+                          inputMode="decimal"
+                        />
+                      </div>
+                    </td>
+                    <td className="px-3 py-3">
+                      <select
+                        value={row.fixtureMasterId ?? ""}
+                        onChange={(event) =>
+                          updateRow(index, { fixtureMasterId: event.currentTarget.value || null })
+                        }
+                        className={fieldClassName}
+                      >
+                        <option value="">未選択</option>
+                        {row.fixtureCandidates.map((fixture) => (
+                          <option key={fixture.id} value={fixture.id}>
+                            {fixture.matchDate ?? "—"} {fixture.homeTeam} vs {fixture.awayTeam}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </HorizontalScrollTable>
+        </SectionCard>
+      </CollapsibleSectionCard>
     </div>
   );
 }

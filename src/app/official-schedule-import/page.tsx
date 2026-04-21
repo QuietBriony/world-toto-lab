@@ -303,14 +303,6 @@ function OfficialScheduleImportPageContent() {
             ) : null}
             <button
               type="button"
-              onClick={() => void handleFetchFromFifa()}
-              className={buttonClassName}
-              disabled={fetchingFromFifa}
-            >
-              {fetchingFromFifa ? "FIFA公式から取得中..." : "FIFA公式から取得"}
-            </button>
-            <button
-              type="button"
               onClick={() => {
                 setSourceUrl(officialScheduleImportSourceUrl);
                 setSourceText(officialScheduleImportSample);
@@ -322,14 +314,6 @@ function OfficialScheduleImportPageContent() {
             >
               サンプル貼り付け
             </button>
-            <a
-              href={officialScheduleImportSourceUrl}
-              target="_blank"
-              rel="noreferrer"
-              className={secondaryButtonClassName}
-            >
-              FIFA公式日程を開く
-            </a>
           </div>
         }
       />
@@ -479,25 +463,13 @@ function OfficialScheduleImportPageContent() {
       <CollapsibleSectionCard
         title="手順"
         description="1. 公式ソースを貼る  2. Parse Preview で整える  3. Fixture Master に保存、の順で進めます。"
-        defaultOpen={!sourceText.trim() && draftRows.length === 0}
+        defaultOpen={false}
         badge={<Badge tone="sky">はじめに</Badge>}
       >
-        <div className="grid gap-3 md:grid-cols-3">
-          {[
-            ["1", "公式由来テキストを貼る", "URL も残しておくと、あとで出どころを追いやすくなります。"],
-            ["2", "抽出結果を確認する", "group / stage / venue / kickoff を必要な範囲だけ直します。"],
-            ["3", "Fixture Master に保存", "次の Fixture Selector で Round の材料として使えるようになります。"],
-          ].map(([step, title, body]) => (
-            <div
-              key={step}
-              className="rounded-[22px] border border-slate-200 bg-slate-50/90 px-4 py-4"
-            >
-              <Badge tone="slate">Step {step}</Badge>
-              <p className="mt-3 font-semibold text-slate-950">{title}</p>
-              <p className="mt-2 text-sm leading-6 text-slate-600">{body}</p>
-            </div>
-          ))}
-        </div>
+        <p className="text-sm leading-6 text-slate-600">
+          主導線は `この画面で取得 → Parse Preview → Save to Fixture Master` です。
+          URL を手で貼りたいときや fallback が必要なときだけ、この下の Paste と Fallback を使います。
+        </p>
       </CollapsibleSectionCard>
 
       <SectionCard

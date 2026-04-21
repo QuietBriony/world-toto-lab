@@ -269,26 +269,6 @@ function FixtureSelectorPageContent() {
       <SectionCard
         title="Fixtures"
         description={`表示 ${fixtures.data?.length ?? 0} 件 / 選択 ${selectedFixtures.length} 件`}
-        actions={
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={addVisibleFixtures}
-              className={secondaryButtonClassName}
-              disabled={visibleFixtureIds.length === 0}
-            >
-              表示中を全部選択
-            </button>
-            <button
-              type="button"
-              onClick={removeVisibleFixtures}
-              className={secondaryButtonClassName}
-              disabled={visibleSelectedCount === 0}
-            >
-              表示中を解除
-            </button>
-          </div>
-        }
       >
         <HorizontalScrollTable>
           <table className="min-w-[1100px] text-left text-sm">
