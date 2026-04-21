@@ -45,7 +45,7 @@ npm run check:pages
 - `/world-toto-lab/big-carryover/` を開く
 - 概算EV、還元率からの上振れ、損益分岐との差が見える
 - 入力欄を変えると概算値が更新される
-- `この条件を共有` で開いた URL でも、イベント名 / 売上 / キャリー / 還元率 / 投下額 / 元ソース が復元される
+- `この条件を共有` で開いた URL でも、イベント種別 / snapshot 日付 / イベント名 / 売上 / キャリー / 還元率 / 投下額 / 元ソース が復元される
 
 ### 2. Round Detail
 
@@ -103,6 +103,7 @@ npm run check:pages
 
 - `/winner-value?round=<roundId>` を開く
 - `WINNER` / 1試合回なら outcome 比較表が出る
+- 公式人気本命、注目 outcome、売上 snapshot、配当原資参考が見える
 - 複数試合回なら `優位ボードへ` の補助導線が見える
 
 ### 9. 詳細候補配分

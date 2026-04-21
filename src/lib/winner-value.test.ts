@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildWinnerOfficialSnapshot,
   isWinnerLikeRound,
   sortWinnerOutcomeEdges,
   summarizeWinnerOutcomeEdges,
@@ -98,5 +99,76 @@ describe("winner value helpers", () => {
     expect(summary.popularOverweightCount).toBe(1);
     expect(summary.bestValueRatio).toBe(1.41);
     expect(summary.topEdge?.outcome).toBe("2");
+  });
+
+  it("builds a winner snapshot from official round data", () => {
+    const snapshot = buildWinnerOfficialSnapshot({
+      activeEdges: [
+        buildEdge({
+          outcome: "1",
+          officialVote: 0.54,
+          reasons: ["popular_overweight"],
+          valueRatio: 1.02,
+        }),
+        buildEdge({
+          outcome: "2",
+          edge: 0.09,
+          officialVote: 0.19,
+          reasons: ["edge>=0.08", "valueRatio>=1.35"],
+          valueRatio: 1.44,
+        }),
+      ],
+      evAssumption: null,
+      officialRound: {
+        carryoverYen: 300_000_000,
+        createdAt: "2026-04-21T00:00:00Z",
+        firstPrizeShare: 0.7,
+        id: "official-1",
+        officialRoundName: "第1628回 WINNER",
+        officialRoundNumber: 1628,
+        payoutCapYen: null,
+        productType: "winner",
+        resultStatus: "selling",
+        returnRate: 0.5,
+        roundId: "round-1",
+        salesEndAt: "2026-04-22T03:00:00Z",
+        salesStartAt: null,
+        sourceText: null,
+        sourceUrl: null,
+        stakeYen: 100,
+        totalSalesYen: 2_000_000_000,
+        updatedAt: "2026-04-21T00:00:00Z",
+      },
+    });
+
+    expect(snapshot.sourceKind).toBe("official");
+    expect(snapshot.officialFavorite?.outcome).toBe("1");
+    expect(snapshot.topValueEdge?.outcome).toBe("2");
+    expect(snapshot.estimatedPoolYen).toBe(1_000_000_000);
+  });
+
+  it("prefers a meaningful EV assumption over the official snapshot", () => {
+    const snapshot = buildWinnerOfficialSnapshot({
+      activeEdges: [buildEdge({ outcome: "0", officialVote: 0.26, reasons: ["draw_alert"] })],
+      evAssumption: {
+        carryoverYen: 500_000_000,
+        createdAt: "2026-04-21T00:00:00Z",
+        firstPrizeShare: 0.7,
+        id: "ev-1",
+        note: "manual override",
+        payoutCapYen: null,
+        returnRate: 0.5,
+        roundId: "round-1",
+        stakeYen: 100,
+        totalSalesYen: 1_500_000_000,
+        updatedAt: "2026-04-21T00:00:00Z",
+      },
+      officialRound: null,
+    });
+
+    expect(snapshot.sourceKind).toBe("analysis");
+    expect(snapshot.hasAnalysisOverride).toBe(true);
+    expect(snapshot.totalSalesYen).toBe(1_500_000_000);
+    expect(snapshot.estimatedPoolYen).toBe(1_025_000_000);
   });
 });

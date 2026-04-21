@@ -25,6 +25,8 @@ import {
   StatCard,
 } from "@/components/ui";
 import {
+  formatCurrency,
+  formatDateTime,
   formatNumber,
   formatPercent,
   formatSignedPercent,
@@ -38,6 +40,7 @@ import { appRoute, buildRoundHref, getSingleSearchParam } from "@/lib/round-link
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { useRoundWorkspace } from "@/lib/use-app-data";
 import {
+  buildWinnerOfficialSnapshot,
   isWinnerLikeRound,
   sortWinnerOutcomeEdges,
   summarizeWinnerOutcomeEdges,
@@ -111,6 +114,11 @@ function WinnerValuePageContent() {
     ? sortWinnerOutcomeEdges(edgesByMatchId.get(activeMatch.id) ?? [])
     : [];
   const summary = summarizeWinnerOutcomeEdges(activeEdges);
+  const officialSnapshot = buildWinnerOfficialSnapshot({
+    activeEdges,
+    evAssumption: data.round.evAssumption,
+    officialRound: data.round.totoOfficialRound,
+  });
   const sourceHref = data.round.totoOfficialRound?.sourceUrl ?? null;
   const activeUser = data.users.find((user) => user.id === requestedUserId) ?? data.users[0] ?? null;
   const topValueRows = activeEdges
@@ -230,6 +238,124 @@ function WinnerValuePageContent() {
             </div>
           </div>
         ) : null}
+      </SectionCard>
+
+      <SectionCard
+        title="公式人気 / 配当前提 snapshot"
+        description="この試合で見ている公式人気と、売上・キャリー・配当原資の参考 snapshot を同じ場所で確認します。"
+      >
+        <div className="grid gap-4 xl:grid-cols-[1fr_1.05fr]">
+          <div className="rounded-[24px] border border-slate-200 bg-slate-50/90 p-5">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge
+                tone={
+                  officialSnapshot.sourceKind === "analysis"
+                    ? "teal"
+                    : officialSnapshot.sourceKind === "official"
+                      ? "sky"
+                      : "slate"
+                }
+              >
+                {officialSnapshot.sourceKind === "analysis"
+                  ? "分析前提 snapshot"
+                  : officialSnapshot.sourceKind === "official"
+                    ? "公式 snapshot"
+                    : "snapshot 未設定"}
+              </Badge>
+              {officialSnapshot.officialRoundNumber !== null ? (
+                <Badge tone="slate">第{officialSnapshot.officialRoundNumber}回</Badge>
+              ) : null}
+              {officialSnapshot.salesEndAt ? (
+                <Badge tone="slate">締切 {formatDateTime(officialSnapshot.salesEndAt)}</Badge>
+              ) : null}
+            </div>
+            <div className="mt-4 space-y-3 text-sm leading-6 text-slate-700">
+              <p className="font-semibold text-slate-950">
+                {officialSnapshot.officialRoundName ?? "この Round の公式スナップショット"}
+              </p>
+              <p>
+                {officialSnapshot.hasAnalysisOverride
+                  ? "売上やキャリーは、保存済みの EV 前提が優先されています。公式値ではなく分析用の snapshot として扱います。"
+                  : "公式取り込み済みの売上・キャリー・締切をそのまま表示しています。"}
+              </p>
+              <p>
+                WINNER の exact payout を再現するものではなく、今ある round 情報から見える
+                `公式人気` と `配当原資の参考値` を並べた比較用カードです。
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Badge tone="info">
+                  公式人気本命{" "}
+                  {officialSnapshot.officialFavorite && activeMatch
+                    ? winnerOutcomeLabel(officialSnapshot.officialFavorite.outcome, activeMatch)
+                    : "—"}
+                </Badge>
+                {officialSnapshot.officialFavorite?.officialVote !== null ? (
+                  <Badge tone="slate">
+                    {formatPercent(officialSnapshot.officialFavorite?.officialVote)}
+                  </Badge>
+                ) : null}
+                {officialSnapshot.topValueEdge && activeMatch ? (
+                  <Badge tone="teal">
+                    注目 {winnerOutcomeLabel(officialSnapshot.topValueEdge.outcome, activeMatch)}
+                  </Badge>
+                ) : null}
+              </div>
+            </div>
+          </div>
+
+          <section className="grid gap-4 sm:grid-cols-2">
+            <StatCard
+              label="公式人気本命"
+              value={
+                officialSnapshot.officialFavorite && activeMatch
+                  ? winnerOutcomeLabel(officialSnapshot.officialFavorite.outcome, activeMatch)
+                  : "—"
+              }
+              hint={
+                officialSnapshot.officialFavorite &&
+                officialSnapshot.officialFavorite.officialVote !== null
+                  ? `公式人気 ${formatPercent(officialSnapshot.officialFavorite.officialVote)}`
+                  : "公式人気の入力待ち"
+              }
+              tone="draw"
+            />
+            <StatCard
+              label="注目 outcome"
+              value={
+                officialSnapshot.topValueEdge && activeMatch
+                  ? winnerOutcomeLabel(officialSnapshot.topValueEdge.outcome, activeMatch)
+                  : "—"
+              }
+              hint={
+                officialSnapshot.topValueEdge
+                  ? `edge ${formatSignedPercent(officialSnapshot.topValueEdge.edge)} / valueRatio ${formatNumber(officialSnapshot.topValueEdge.valueRatio, 2)}`
+                  : "まだ明確な差が見えていません"
+              }
+              tone="positive"
+            />
+            <StatCard
+              label="売上 snapshot"
+              value={formatCurrency(officialSnapshot.totalSalesYen)}
+              hint={
+                officialSnapshot.stakeYen !== null
+                  ? `stake ${formatCurrency(officialSnapshot.stakeYen)} / carryover ${formatCurrency(officialSnapshot.carryoverYen)}`
+                  : `carryover ${formatCurrency(officialSnapshot.carryoverYen)}`
+              }
+            />
+            <StatCard
+              label="配当原資参考"
+              value={formatCurrency(officialSnapshot.estimatedPoolYen)}
+              hint={
+                officialSnapshot.firstPrizeShare !== null
+                  ? `firstPrizeShare ${formatPercent(officialSnapshot.firstPrizeShare)}`
+                  : "share 未設定のため参考値なし"
+              }
+              tone={
+                officialSnapshot.estimatedPoolYen !== null ? "positive" : "warning"
+              }
+            />
+          </section>
+        </div>
       </SectionCard>
 
       {data.round.matches.length > 1 ? (

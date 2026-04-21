@@ -1,4 +1,10 @@
-import type { Match, OutcomeEdge, ProductType } from "@/lib/types";
+import type {
+  Match,
+  OutcomeEdge,
+  ProductType,
+  RoundEvAssumption,
+  TotoOfficialRound,
+} from "@/lib/types";
 
 type WinnerLikeRoundInput = {
   activeMatchCount?: number | null;
@@ -103,5 +109,107 @@ export function summarizeWinnerOutcomeEdges(edges: OutcomeEdge[]) {
     edgeCandidateCount,
     popularOverweightCount,
     topEdge: sortWinnerOutcomeEdges(edges)[0] ?? null,
+  };
+}
+
+type WinnerSnapshotSourceKind = "analysis" | "official" | "none";
+
+export type WinnerOfficialSnapshot = {
+  carryoverYen: number | null;
+  estimatedPoolYen: number | null;
+  firstPrizeShare: number | null;
+  hasAnalysisOverride: boolean;
+  officialFavorite: OutcomeEdge | null;
+  officialRoundName: string | null;
+  officialRoundNumber: number | null;
+  salesEndAt: string | null;
+  sourceKind: WinnerSnapshotSourceKind;
+  stakeYen: number | null;
+  topValueEdge: OutcomeEdge | null;
+  totalSalesYen: number | null;
+};
+
+function isKnownNumber(value: number | null | undefined): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function hasMeaningfulEvAssumption(assumption: RoundEvAssumption | null) {
+  if (!assumption) {
+    return false;
+  }
+
+  return (
+    assumption.totalSalesYen !== null ||
+    Boolean(assumption.note?.trim()) ||
+    assumption.carryoverYen !== 0 ||
+    assumption.returnRate !== 0.5 ||
+    assumption.firstPrizeShare !== 0.7 ||
+    assumption.stakeYen !== 100 ||
+    assumption.payoutCapYen !== null
+  );
+}
+
+export function buildWinnerOfficialSnapshot(input: {
+  activeEdges: OutcomeEdge[];
+  evAssumption: RoundEvAssumption | null;
+  officialRound: TotoOfficialRound | null;
+}): WinnerOfficialSnapshot {
+  const sortedEdges = sortWinnerOutcomeEdges(input.activeEdges);
+  const officialFavorite = input.activeEdges.reduce<OutcomeEdge | null>((best, edge) => {
+    if (!isKnownNumber(edge.officialVote)) {
+      return best;
+    }
+
+    if (!best || !isKnownNumber(best.officialVote) || edge.officialVote > best.officialVote) {
+      return edge;
+    }
+
+    return best;
+  }, null);
+  const topValueEdge =
+    sortedEdges.find((edge) => edge.reasons.some((reason) => reason !== "popular_overweight")) ??
+    sortedEdges[0] ??
+    null;
+  const hasAnalysisOverride = hasMeaningfulEvAssumption(input.evAssumption);
+  const sourceKind: WinnerSnapshotSourceKind = hasAnalysisOverride
+    ? "analysis"
+    : input.officialRound
+      ? "official"
+      : "none";
+  const totalSalesYen = hasAnalysisOverride
+    ? input.evAssumption?.totalSalesYen ?? null
+    : input.officialRound?.totalSalesYen ?? null;
+  const carryoverYen = hasAnalysisOverride
+    ? input.evAssumption?.carryoverYen ?? null
+    : input.officialRound?.carryoverYen ?? null;
+  const firstPrizeShare = hasAnalysisOverride
+    ? input.evAssumption?.firstPrizeShare ?? null
+    : input.officialRound?.firstPrizeShare ?? null;
+  const returnRate = hasAnalysisOverride
+    ? input.evAssumption?.returnRate ?? null
+    : input.officialRound?.returnRate ?? null;
+  const estimatedPoolYen =
+    isKnownNumber(totalSalesYen) &&
+    isKnownNumber(carryoverYen) &&
+    isKnownNumber(firstPrizeShare) &&
+    isKnownNumber(returnRate)
+      ? totalSalesYen * returnRate * firstPrizeShare + carryoverYen
+      : null;
+
+  return {
+    carryoverYen,
+    estimatedPoolYen,
+    firstPrizeShare,
+    hasAnalysisOverride,
+    officialFavorite,
+    officialRoundName: input.officialRound?.officialRoundName ?? null,
+    officialRoundNumber: input.officialRound?.officialRoundNumber ?? null,
+    salesEndAt: input.officialRound?.salesEndAt ?? null,
+    sourceKind,
+    stakeYen: hasAnalysisOverride
+      ? input.evAssumption?.stakeYen ?? null
+      : input.officialRound?.stakeYen ?? null,
+    topValueEdge,
+    totalSalesYen,
   };
 }

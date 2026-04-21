@@ -43,10 +43,12 @@ async function main() {
     buildUrl(baseUrl, "/workspace/", { round: roundId }),
     buildUrl(baseUrl, "/big-carryover/", {}),
     buildUrl(baseUrl, "/big-carryover/", {
+      eventType: "carryover_event",
       label: "BIG 高還元イベント",
       sales: "8000000000",
       carryover: "3000000000",
       returnRate: "50",
+      snapshotDate: "2026-04-21",
       spend: "10000",
       sourceUrl: "https://www.toto-dream.com/big/",
     }),

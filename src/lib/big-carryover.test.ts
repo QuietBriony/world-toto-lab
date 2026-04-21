@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildBigCarryoverEventSnapshot,
   buildBigCarryoverScenarioRows,
   calculateBigCarryoverSummary,
+  normalizeBigEventType,
 } from "@/lib/big-carryover";
 
 describe("big carryover monitor", () => {
@@ -42,5 +44,36 @@ describe("big carryover monitor", () => {
       { expectedProfitYen: 120, spendYen: 1_000 },
       { expectedProfitYen: 600, spendYen: 5_000 },
     ]);
+  });
+
+  it("supports a smaller default scenario ladder for high-return watch mode", () => {
+    const rows = buildBigCarryoverScenarioRows({
+      approxEvMultiple: 1.05,
+      eventType: "high_return_watch",
+    });
+
+    expect(rows.map((row) => row.spendYen)).toEqual([1_000, 5_000, 10_000, 30_000]);
+  });
+
+  it("builds an event snapshot headline from the current EV state", () => {
+    const summary = calculateBigCarryoverSummary({
+      carryoverYen: 6_000_000_000,
+      returnRate: 0.5,
+      salesYen: 8_000_000_000,
+      spendYen: 10_000,
+    });
+    const snapshot = buildBigCarryoverEventSnapshot({
+      eventLabel: "BIG 話題回",
+      eventType: "carryover_event",
+      summary,
+    });
+
+    expect(snapshot.status).toBe("plus_ev");
+    expect(snapshot.headline).toContain("プラス期待値圏");
+  });
+
+  it("normalizes unknown event types to carryover_event", () => {
+    expect(normalizeBigEventType("high_return_watch")).toBe("high_return_watch");
+    expect(normalizeBigEventType("other")).toBe("carryover_event");
   });
 });

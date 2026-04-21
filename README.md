@@ -200,6 +200,20 @@ GitHub Pages は静的配信なので、build 後に増える Round を動的ル
 - 公式人気、AI候補、人力コンセンサス、引き分け警報を補助表示
 - 入力後は AI一致率、人力一致率、公式人気一致率、逆張り数、引き分け数を見られます
 
+### 14. WINNER Value Board
+
+- `WINNER Value Board` は 1試合の `1 / 0 / 2` を outcome 単位で見比べる画面です
+- `official vote` の本命と、AI が注目している outcome を同じ場所で確認できます
+- `売上 / キャリー / 配当原資参考` は `toto公式取り込み` または `EV計算前提` の snapshot を表示します
+- `EV計算前提` がある場合は、公式値ではなく分析 snapshot を優先します
+
+### 15. BIG Carryover Monitor
+
+- `BIG Carryover Monitor` は Round とは別の運用ページです
+- `BIG event / carryover event` を shareable な snapshot として管理し、話題回の熱さをざっくり比較します
+- `イベント種別` と `snapshot 日付` を持てるので、キャリー監視と高還元ウォッチを分けて残せます
+- `この条件を共有` で、イベント種別 / snapshot 日付 / 売上 / キャリー / 還元率 / 投下額 / 元ソース をまとめて復元できます
+
 ## EV と Proxy
 
 ### 推定EVの計算式

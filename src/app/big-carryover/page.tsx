@@ -20,8 +20,12 @@ import {
   formatSignedPercent,
 } from "@/lib/domain";
 import {
+  bigEventTypeDescription,
+  bigEventTypeLabel,
+  buildBigCarryoverEventSnapshot,
   buildBigCarryoverScenarioRows,
   calculateBigCarryoverSummary,
+  normalizeBigEventType,
 } from "@/lib/big-carryover";
 import { appRoute, buildHref } from "@/lib/round-links";
 
@@ -37,8 +41,14 @@ function parseNumberInput(value: string | null, fallback: number) {
 
 function BigCarryoverPageContent() {
   const searchParams = useSearchParams();
+  const [eventType, setEventType] = useState(
+    normalizeBigEventType(searchParams.get("eventType")),
+  );
   const [eventLabel, setEventLabel] = useState(
     searchParams.get("label")?.trim() || "BIG 高還元イベント",
+  );
+  const [snapshotDate, setSnapshotDate] = useState(
+    searchParams.get("snapshotDate")?.trim() || "",
   );
   const [salesYen, setSalesYen] = useState(
     String(parseNumberInput(searchParams.get("sales"), 8_000_000_000)),
@@ -74,17 +84,29 @@ function BigCarryoverPageContent() {
     () =>
       buildBigCarryoverScenarioRows({
         approxEvMultiple: summary.approxEvMultiple,
+        eventType,
       }),
-    [summary.approxEvMultiple],
+    [eventType, summary.approxEvMultiple],
+  );
+  const eventSnapshot = useMemo(
+    () =>
+      buildBigCarryoverEventSnapshot({
+        eventLabel,
+        eventType,
+        summary,
+      }),
+    [eventLabel, eventType, summary],
   );
 
   const shareHref = buildHref(appRoute.bigCarryover, {
     carryover: numericCarryoverYen || undefined,
+    eventType,
     label: eventLabel || undefined,
     returnRate: Number.isFinite(Number(returnRatePercent))
       ? Number(returnRatePercent)
       : undefined,
     sales: numericSalesYen || undefined,
+    snapshotDate: snapshotDate || undefined,
     sourceUrl: sourceUrl || undefined,
     spend: numericSpendYen || undefined,
   });
@@ -134,6 +156,7 @@ function BigCarryoverPageContent() {
       >
         <div className="flex flex-wrap gap-2">
           <Badge tone="slate">運用ページ</Badge>
+          <Badge tone="sky">{bigEventTypeLabel[eventType]}</Badge>
           <Badge tone={statusBadge.tone}>{statusBadge.label}</Badge>
           <Badge tone="info">分析・記録用</Badge>
           <Badge tone="warning">購入代行や精算はしません</Badge>
@@ -156,6 +179,76 @@ function BigCarryoverPageContent() {
               `造船太郎イベント` のような「高還元かもしれない回」が話題になったとき、
               売上とキャリーを入れて、平時の 50% 還元からどれだけ上に乗っているかをすぐ確認できます。
             </p>
+          </div>
+        </div>
+      </SectionCard>
+
+      <SectionCard
+        title="イベント管理"
+        description="BIG を Round import に混ぜず、話題回やキャリー回を独立した event snapshot として管理します。"
+      >
+        <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="space-y-2 text-sm">
+              <span className="font-medium text-slate-700">イベント種別</span>
+              <select
+                value={eventType}
+                onChange={(event) =>
+                  setEventType(normalizeBigEventType(event.currentTarget.value))
+                }
+                className={fieldClassName}
+              >
+                {Object.entries(bigEventTypeLabel).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="space-y-2 text-sm">
+              <span className="font-medium text-slate-700">snapshot 日付</span>
+              <input
+                type="date"
+                value={snapshotDate}
+                onChange={(event) => setSnapshotDate(event.currentTarget.value)}
+                className={fieldClassName}
+              />
+            </label>
+            <div className="md:col-span-2 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setEventType("carryover_event");
+                  setEventLabel("BIG キャリーイベント");
+                }}
+                className={secondaryButtonClassName}
+              >
+                キャリー監視
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEventType("high_return_watch");
+                  setEventLabel("BIG 高還元ウォッチ");
+                }}
+                className={secondaryButtonClassName}
+              >
+                高還元ウォッチ
+              </button>
+            </div>
+          </div>
+
+          <div className="rounded-[24px] border border-slate-200 bg-slate-50/90 p-5">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge tone="sky">{bigEventTypeLabel[eventType]}</Badge>
+              <Badge tone={eventSnapshot.tone}>{eventSnapshot.statusLabel}</Badge>
+              {snapshotDate ? <Badge tone="slate">{snapshotDate}</Badge> : null}
+            </div>
+            <div className="mt-4 space-y-3 text-sm leading-6 text-slate-700">
+              <p>{bigEventTypeDescription[eventType]}</p>
+              <p className="font-semibold text-slate-950">{eventSnapshot.headline}</p>
+              <p>{eventSnapshot.nextAction}</p>
+            </div>
           </div>
         </div>
       </SectionCard>
