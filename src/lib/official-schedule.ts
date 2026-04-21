@@ -22,12 +22,23 @@ export type OfficialScheduleParseResult = {
   warnings: string[];
 };
 
+export type OfficialScheduleTransferPayload = {
+  importedAt: string | null;
+  kind: string;
+  sourceText: string;
+  sourceUrl: string | null;
+  version: number;
+};
+
 export const officialScheduleImportSourceUrl =
   "https://www.fifa.com/en/tournaments/mens/worldcup/canadamexicousa2026/articles/match-schedule-fixtures-results-teams-stadiums";
 
 export const officialScheduleImportSourceLabel = "FIFA World Cup 2026 match schedule";
+export const officialScheduleTransferPayloadKind = "world_toto_lab_official_schedule_import";
+export const officialScheduleTransferPayloadVersion = 1;
 
 const dashPattern = /\s*[‐‑‒–—―-]\s*/;
+const dashTokenPattern = /[‐‑‒–—―-]/;
 const teamSeparatorPattern = /\s+(?:v|vs|対)\s+/i;
 
 export const officialScheduleImportSample = [
@@ -45,6 +56,17 @@ function normalizeKeyPart(value: string | null | undefined) {
     .toLowerCase()
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function normalizeSourceLine(value: string) {
+  return value
+    .replace(/\u00a0/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isLikelyMatchLine(line: string) {
+  return teamSeparatorPattern.test(line) && dashTokenPattern.test(line);
 }
 
 function fixtureKey(entry: Pick<OfficialScheduleDraft, "awayTeam" | "homeTeam" | "matchDate" | "venue">) {
@@ -147,6 +169,79 @@ function parseMetaTokens(tokens: string[], matchDate: string | null) {
   };
 }
 
+export function normalizeOfficialScheduleSourceText(sourceText: string) {
+  const lines = sourceText
+    .split(/\r?\n/)
+    .map(normalizeSourceLine)
+    .filter(Boolean);
+
+  const scheduleLines = lines.filter(
+    (line) => Boolean(parseDateHeader(line)) || isLikelyMatchLine(line),
+  );
+
+  return (scheduleLines.length > 0 ? scheduleLines : lines).join("\n");
+}
+
+export function parseOfficialScheduleTransferPayload(rawValue: string | null | undefined) {
+  if (!rawValue?.trim()) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(rawValue) as Partial<OfficialScheduleTransferPayload>;
+    if (
+      parsed.kind !== officialScheduleTransferPayloadKind ||
+      parsed.version !== officialScheduleTransferPayloadVersion ||
+      typeof parsed.sourceText !== "string" ||
+      !parsed.sourceText.trim()
+    ) {
+      return null;
+    }
+
+    return {
+      importedAt: typeof parsed.importedAt === "string" ? parsed.importedAt : null,
+      kind: parsed.kind,
+      sourceText: parsed.sourceText,
+      sourceUrl: typeof parsed.sourceUrl === "string" ? parsed.sourceUrl : null,
+      version: parsed.version,
+    } satisfies OfficialScheduleTransferPayload;
+  } catch {
+    return null;
+  }
+}
+
+export function buildOfficialScheduleExtractorScript(importPageUrl: string) {
+  const basePayload = JSON.stringify({
+    kind: officialScheduleTransferPayloadKind,
+    version: officialScheduleTransferPayloadVersion,
+  });
+  const destination = JSON.stringify(importPageUrl);
+
+  return [
+    "(() => {",
+    "  try {",
+    "    const sourceText = document.body?.innerText ?? '';",
+    "    if (!sourceText.trim()) {",
+    "      alert('FIFAページ本文を取得できませんでした。ページが開き切ってからもう一度試してください。');",
+    "      return;",
+    "    }",
+    `    const payload = ${basePayload};`,
+    "    payload.importedAt = new Date().toISOString();",
+    "    payload.sourceText = sourceText;",
+    "    payload.sourceUrl = window.location.href;",
+    "    window.name = JSON.stringify(payload);",
+    `    window.location.href = ${destination};`,
+    "  } catch (error) {",
+    "    alert('抽出に失敗しました: ' + (error && typeof error === 'object' && 'message' in error ? String(error.message) : String(error)));",
+    "  }",
+    "})();",
+  ].join("");
+}
+
+export function buildOfficialScheduleBookmarklet(importPageUrl: string) {
+  return `javascript:${buildOfficialScheduleExtractorScript(importPageUrl)}`;
+}
+
 export function parseOfficialScheduleText(input: {
   competition?: string;
   dataConfidence?: FixtureDataConfidence;
@@ -160,11 +255,10 @@ export function parseOfficialScheduleText(input: {
   const fixtures: OfficialScheduleDraft[] = [];
   const seenKeys = new Set<string>();
   let currentDate: string | null = null;
+  const normalizedSourceText = normalizeOfficialScheduleSourceText(input.sourceText);
 
-  input.sourceText
+  normalizedSourceText
     .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean)
     .forEach((line, index) => {
       const dateHeader = parseDateHeader(line);
       if (dateHeader) {

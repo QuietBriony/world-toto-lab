@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 
 import { RoundContextCard } from "@/components/app/round-context-card";
 import {
@@ -22,10 +22,13 @@ import {
   textAreaClassName,
 } from "@/components/ui";
 import {
+  buildOfficialScheduleBookmarklet,
+  buildOfficialScheduleExtractorScript,
   officialScheduleImportSample,
   officialScheduleImportSourceLabel,
   officialScheduleImportSourceUrl,
   parseOfficialScheduleText,
+  parseOfficialScheduleTransferPayload,
   type OfficialScheduleDraft,
 } from "@/lib/official-schedule";
 import { appRoute, buildRoundHref, getSingleSearchParam } from "@/lib/round-links";
@@ -63,14 +66,54 @@ function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "不明なエラーです。";
 }
 
+function buildPreviewWarnings(preview: ReturnType<typeof parseOfficialScheduleText>) {
+  return [
+    ...preview.warnings,
+    ...preview.duplicates.map((item) => `${item} は貼り付け内で重複しています。`),
+  ];
+}
+
 function OfficialScheduleImportPageContent() {
   const searchParams = useSearchParams();
   const roundId = getSingleSearchParam(searchParams.get("round"));
-  const [sourceText, setSourceText] = useState("");
-  const [competition, setCompetition] = useState("fifa_world_cup_2026");
-  const [sourceUrl, setSourceUrl] = useState(officialScheduleImportSourceUrl);
-  const [draftRows, setDraftRows] = useState<OfficialScheduleDraft[]>([]);
-  const [parseWarnings, setParseWarnings] = useState<string[]>([]);
+  const defaultCompetition = "fifa_world_cup_2026";
+  const transferredSchedule = useMemo(() => {
+    if (typeof window === "undefined") {
+      return null;
+    }
+
+    return parseOfficialScheduleTransferPayload(window.name);
+  }, []);
+  const initialTransferPreview = useMemo(
+    () =>
+      transferredSchedule
+        ? parseOfficialScheduleText({
+            competition: defaultCompetition,
+            sourceText: transferredSchedule.sourceText,
+            sourceUrl: transferredSchedule.sourceUrl ?? officialScheduleImportSourceUrl,
+          })
+        : null,
+    [defaultCompetition, transferredSchedule],
+  );
+  const [sourceText, setSourceText] = useState(
+    () => transferredSchedule?.sourceText ?? "",
+  );
+  const [competition, setCompetition] = useState(defaultCompetition);
+  const [sourceUrl, setSourceUrl] = useState(
+    () => transferredSchedule?.sourceUrl ?? officialScheduleImportSourceUrl,
+  );
+  const [draftRows, setDraftRows] = useState<OfficialScheduleDraft[]>(
+    () => initialTransferPreview?.fixtures ?? [],
+  );
+  const [parseWarnings, setParseWarnings] = useState<string[]>(
+    () => (initialTransferPreview ? buildPreviewWarnings(initialTransferPreview) : []),
+  );
+  const [importMessage, setImportMessage] = useState<string | null>(() =>
+    initialTransferPreview
+      ? `FIFA公式ページから ${initialTransferPreview.fixtures.length} 件の候補行を取り込みました。必要な行だけ整えて Fixture Master に保存できます。`
+      : null,
+  );
+  const [bookmarkletCopied, setBookmarkletCopied] = useState<string | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -85,6 +128,32 @@ function OfficialScheduleImportPageContent() {
       }),
     [competition, sourceText, sourceUrl],
   );
+  const absoluteImportPageHref = useMemo(() => {
+    if (typeof window === "undefined") {
+      return null;
+    }
+
+    const importUrl = new URL(window.location.href);
+    if (roundId) {
+      importUrl.searchParams.set("round", roundId);
+    } else {
+      importUrl.searchParams.delete("round");
+    }
+    return importUrl.toString();
+  }, [roundId]);
+  const fifaBookmarkletHref = useMemo(
+    () =>
+      absoluteImportPageHref
+        ? buildOfficialScheduleBookmarklet(absoluteImportPageHref)
+        : null,
+    [absoluteImportPageHref],
+  );
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && transferredSchedule) {
+      window.name = "";
+    }
+  }, [transferredSchedule]);
 
   if (!isSupabaseConfigured()) {
     return <ConfigurationNotice />;
@@ -100,12 +169,34 @@ function OfficialScheduleImportPageContent() {
 
   const handleParse = () => {
     setDraftRows(parsedPreview.fixtures);
-    setParseWarnings([
-      ...parsedPreview.warnings,
-      ...parsedPreview.duplicates.map((item) => `${item} は貼り付け内で重複しています。`),
-    ]);
+    setParseWarnings(buildPreviewWarnings(parsedPreview));
     setSaveMessage(null);
     setActionError(null);
+    setBookmarkletCopied(null);
+    setImportMessage(
+      parsedPreview.fixtures.length > 0
+        ? `抽出プレビューを ${parsedPreview.fixtures.length} 件に更新しました。`
+        : "貼り付け内容を見直して、もう一度 Parse Preview を押してください。",
+    );
+  };
+
+  const handleCopyExtractorScript = async () => {
+    if (!absoluteImportPageHref || typeof navigator === "undefined" || !navigator.clipboard) {
+      setActionError(
+        "抽出スクリプトのコピーに失敗しました。ブックマークレットを保存するか、対応ブラウザで開き直してください。",
+      );
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(
+        buildOfficialScheduleExtractorScript(absoluteImportPageHref),
+      );
+      setBookmarkletCopied("抽出スクリプトをクリップボードへコピーしました。");
+      setActionError(null);
+    } catch (nextError) {
+      setActionError(errorMessage(nextError));
+    }
   };
 
   const handleSave = async () => {
@@ -169,6 +260,7 @@ function OfficialScheduleImportPageContent() {
               onClick={() => {
                 setSourceUrl(officialScheduleImportSourceUrl);
                 setSourceText(officialScheduleImportSample);
+                setImportMessage("サンプル日程をセットしました。Parse Preview を押すとプレビューできます。");
               }}
               className={buttonClassName}
             >
@@ -191,6 +283,85 @@ function OfficialScheduleImportPageContent() {
         backHref={roundDetailHref}
         description="公式日程の貼り付けはできますが、いまどの Round の準備として開いているかを先にそろえます。"
       />
+
+      <CollapsibleSectionCard
+        title="FIFA URL から抜き出す"
+        description="FIFA公式ページは JavaScript で本文を描画するため、このアプリから直接 fetch するより、FIFAページ上で本文を抜き出して戻す方が安定します。"
+        defaultOpen={!sourceText.trim()}
+        badge={<Badge tone="sky">URL抽出</Badge>}
+      >
+        <div className="grid gap-3 md:grid-cols-3">
+          {[
+            [
+              "1",
+              "ブックマークを保存",
+              "下の FIFA抽出ブックマーク をブックマークバーへ置くか、抽出スクリプトをコピーします。",
+            ],
+            [
+              "2",
+              "FIFA公式ページで実行",
+              "公式日程ページが開き切ってからブックマークを押すと、本文を window.name 経由で持ち帰ります。",
+            ],
+            [
+              "3",
+              "この画面へ戻って確認",
+              "戻ってきたら自動で Parse Preview まで進むので、そのまま Fixture Master に保存できます。",
+            ],
+          ].map(([step, title, body]) => (
+            <div
+              key={step}
+              className="rounded-[22px] border border-slate-200 bg-slate-50/90 px-4 py-4"
+            >
+              <Badge tone="slate">Step {step}</Badge>
+              <p className="mt-3 font-semibold text-slate-950">{title}</p>
+              <p className="mt-2 text-sm leading-6 text-slate-600">{body}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex flex-wrap gap-3">
+          {fifaBookmarkletHref ? (
+            <a href={fifaBookmarkletHref} className={buttonClassName}>
+              FIFA抽出ブックマーク
+            </a>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => void handleCopyExtractorScript()}
+            className={secondaryButtonClassName}
+          >
+            抽出スクリプトをコピー
+          </button>
+          <a
+            href={officialScheduleImportSourceUrl}
+            target="_blank"
+            rel="noreferrer"
+            className={secondaryButtonClassName}
+          >
+            FIFA公式ページを開く
+          </a>
+        </div>
+
+        <div className="rounded-[22px] border border-slate-200 bg-slate-50 px-4 py-4 text-sm leading-6 text-slate-700">
+          <p className="font-medium text-slate-950">運用メモ</p>
+          <p className="mt-2">
+            ブックマークレットが使いづらい端末では、コピーしたスクリプトをブラウザの DevTools Console
+            で実行しても同じ動きになります。FIFA側の本文構造が変わっても、まずは body
+            text を持ち帰るので、抽出処理をこちらで調整しやすいです。
+          </p>
+        </div>
+
+        {bookmarkletCopied ? (
+          <div className="rounded-[22px] border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm text-emerald-700">
+            {bookmarkletCopied}
+          </div>
+        ) : null}
+        {importMessage ? (
+          <div className="rounded-[22px] border border-sky-200 bg-sky-50 px-4 py-4 text-sm text-sky-900">
+            {importMessage}
+          </div>
+        ) : null}
+      </CollapsibleSectionCard>
 
       <CollapsibleSectionCard
         title="手順"
