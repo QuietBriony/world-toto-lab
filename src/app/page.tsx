@@ -471,6 +471,8 @@ export default function DashboardPage() {
     data && winnerWatchRound
       ? resolveRoundParticipantUsers(data.users, winnerWatchRound.participantIds)
       : [];
+  const createRoundAnchor = "#create-round";
+  const roundListAnchor = "#round-list";
 
   return (
     <div className="space-y-8">
@@ -480,19 +482,19 @@ export default function DashboardPage() {
         description="AI基準線と少数の予想者を見比べながら、他メンバーは支持先を選べる共有 MVP です。"
         actions={
           <div className="flex flex-wrap gap-3">
-            {!data || data.users.length === 0 ? (
-              <a href="#create-round" className={buttonClassName}>
-                本番セットを始める
+            <a href={createRoundAnchor} className={buttonClassName}>
+              新規ラウンドを作成
+            </a>
+            {liveRoundCount > 0 ? (
+              <a href={roundListAnchor} className={secondaryButtonClassName}>
+                既存ラウンドから選ぶ
               </a>
-            ) : latestRoundProgress ? (
+            ) : null}
+            {data && data.users.length > 0 && latestRoundProgress ? (
               <Link href={latestRoundProgress.nextStep.href} className={buttonClassName}>
-                {latestRoundProgress.nextStep.label}
+                続き: {latestRoundProgress.nextStep.label}
               </Link>
-            ) : (
-              <a href="#create-round" className={buttonClassName}>
-                ラウンドを作成
-              </a>
-            )}
+            ) : null}
           </div>
         }
       />
@@ -705,22 +707,18 @@ export default function DashboardPage() {
                     初回は `hazi` と空き枠も一緒に準備できます。
                   </p>
                   <div className="mt-4 flex flex-wrap gap-2">
-                    {liveRoundCount === 0 ? (
-                      <a href="#create-round" className={buttonClassName}>
-                        本番セットを始める
+                    <a href={createRoundAnchor} className={buttonClassName}>
+                      {liveRoundCount === 0 ? "本番セットを始める" : "新規ラウンドを作る"}
+                    </a>
+                    {liveRoundCount > 0 ? (
+                      <a href={roundListAnchor} className={secondaryButtonClassName}>
+                        既存ラウンドから選ぶ
                       </a>
-                    ) : latestRoundProgress ? (
-                      <Link href={latestRoundProgress.nextStep.href} className={buttonClassName}>
-                        {latestRoundProgress.nextStep.label}
-                      </Link>
                     ) : (
-                      <a href="#create-round" className={buttonClassName}>
-                        ラウンドを作成
+                      <a href="#shared-members" className={secondaryButtonClassName}>
+                        メンバーの意味を見る
                       </a>
                     )}
-                    <a href="#shared-members" className={secondaryButtonClassName}>
-                      メンバーの意味を見る
-                    </a>
                   </div>
                 </div>
               </div>
@@ -745,18 +743,26 @@ export default function DashboardPage() {
                   初回はここから始めれば十分です。必要なら `hazi` と空き枠も同時に作って、そのまま試合設定へ進めます。
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
-                  {liveRoundCount === 0 ? (
-                    <a href="#create-round" className={buttonClassName}>
-                      本番セットを始める
-                    </a>
-                  ) : (
-                    <Link href={buildRoundHref(appRoute.workspace, latestRound?.id ?? data.rounds[0].id)} className={buttonClassName}>
-                      直近ラウンドを開く
-                    </Link>
-                  )}
-                  <a href="#shared-members" className={secondaryButtonClassName}>
-                    メンバーを確認
+                  <a href={createRoundAnchor} className={buttonClassName}>
+                    {liveRoundCount === 0 ? "本番セットを始める" : "新規ラウンドを作る"}
                   </a>
+                  {liveRoundCount > 0 ? (
+                    <>
+                      <a href={roundListAnchor} className={secondaryButtonClassName}>
+                        既存ラウンド一覧
+                      </a>
+                      <Link
+                        href={buildRoundHref(appRoute.workspace, latestRound?.id ?? data.rounds[0].id)}
+                        className={secondaryButtonClassName}
+                      >
+                        直近ラウンドを開く
+                      </Link>
+                    </>
+                  ) : (
+                    <a href="#shared-members" className={secondaryButtonClassName}>
+                      メンバーを確認
+                    </a>
+                  )}
                 </div>
               </div>
 
@@ -1805,7 +1811,28 @@ export default function DashboardPage() {
                   まずは `ラウンドを作成` から本番セットを始めてください。
                 </p>
               </SectionCard>
-            ) : inventoryRounds.map((round) => (
+            ) : (
+              <>
+                <SectionCard
+                  title="本番ラウンド一覧"
+                  description="新規作成はいつでも上の `新規ラウンドを作成` から進められます。ここでは既に作った本番ラウンドを選びます。"
+                >
+                  <div className="flex flex-wrap gap-2">
+                    <a href={createRoundAnchor} className={buttonClassName}>
+                      新規ラウンドを作成
+                    </a>
+                    {inventoryRounds.map((round) => (
+                      <Link
+                        key={`round-shortcut-${round.id}`}
+                        href={buildRoundHref(appRoute.workspace, round.id)}
+                        className={secondaryButtonClassName}
+                      >
+                        {round.title}
+                      </Link>
+                    ))}
+                  </div>
+                </SectionCard>
+                {inventoryRounds.map((round) => (
               (() => {
                 const roundUsers = resolveRoundParticipantUsers(data.users, round.participantIds);
                 const progress = deriveRoundProgressSummary({
@@ -1991,7 +2018,9 @@ export default function DashboardPage() {
                   </SectionCard>
                 );
               })()
-            ))}
+                ))}
+              </>
+            )}
           </section>
         </>
       ) : null}
