@@ -32,6 +32,7 @@ import {
 } from "@/lib/supabase";
 import { generateAllModeTickets } from "@/lib/tickets";
 import { filterPredictors, isPredictorRole } from "@/lib/users";
+import type { BigOfficialSyncPayload } from "@/lib/big-official";
 import {
   buildProductRule,
   normalizeOutcomeSet,
@@ -907,6 +908,10 @@ type TotoOfficialRoundImportInput = {
 
 type SyncTotoOfficialRoundApiInput = {
   includeMatches?: boolean;
+  sourceUrl?: string;
+};
+
+type SyncBigOfficialWatchApiInput = {
   sourceUrl?: string;
 };
 
@@ -3197,6 +3202,47 @@ export async function syncTotoOfficialRoundListFromOfficial(input: SyncTotoOffic
 
   const payload = await response.json();
   return parseSyncApiResponse(payload, sourceUrl);
+}
+
+export async function syncBigOfficialWatchFromOfficial(
+  input: SyncBigOfficialWatchApiInput = {},
+) {
+  const sourceUrl =
+    normalizeSyncRoundValue(input.sourceUrl) ||
+    "https://store.toto-dream.com/dcs/subos/screen/pi02/spin005/PGSPIN00501InitBIGLotInfo.form";
+  const functionName =
+    normalizeSyncRoundValue(process.env.NEXT_PUBLIC_BIG_OFFICIAL_WATCH_FUNCTION_NAME) ||
+    "sync-big-official-watch";
+  const supabaseUrl = normalizeSyncRoundValue(process.env.NEXT_PUBLIC_SUPABASE_URL);
+  const supabaseAnonKey = normalizeSyncRoundValue(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+
+  if (!supabaseUrl) {
+    throw new Error("NEXT_PUBLIC_SUPABASE_URL が未設定です。");
+  }
+
+  if (!supabaseAnonKey) {
+    throw new Error("NEXT_PUBLIC_SUPABASE_ANON_KEY が未設定です。");
+  }
+
+  const response = await fetch(`${supabaseUrl}/functions/v1/${functionName}`, {
+    method: "POST",
+    headers: buildSupabaseFunctionHeaders(supabaseAnonKey, {
+      "content-type": "application/json",
+      "x-client-info": "world-toto-lab",
+    }),
+    body: JSON.stringify({ sourceUrl }),
+  });
+
+  if (!response.ok) {
+    const rawText = await response.text();
+    throw new Error(
+      `BIG公式同期 API 呼び出しに失敗しました: ${response.status} ${response.statusText}${
+        rawText ? ` / ${rawText}` : ""
+      }`,
+    );
+  }
+
+  return (await response.json()) as BigOfficialSyncPayload;
 }
 
 function normalizeLibraryRoundMatchJson(rows: SyncedTotoOfficialRoundMatchInput[] | null) {

@@ -55,6 +55,11 @@ import {
   pickFeaturedGoal3Entry,
 } from "@/lib/goal3";
 import {
+  buildBigCarryoverQueryFromOfficialSnapshot,
+  buildBigOfficialWatch,
+  pickFeaturedBigOfficialSnapshot,
+} from "@/lib/big-official";
+import {
   bigCarryoverPresets,
   calculateBigCarryoverSummary,
   classifyBigHeatBand,
@@ -85,7 +90,7 @@ import {
   buildMemberUsageMap,
   describeMemberInventoryStatus,
 } from "@/lib/member-usage";
-import { useDashboardData, useTotoOfficialRoundLibrary } from "@/lib/use-app-data";
+import { useBigOfficialWatch, useDashboardData, useTotoOfficialRoundLibrary } from "@/lib/use-app-data";
 import { isWinnerLikeRound } from "@/lib/winner-value";
 
 function errorMessage(error: unknown) {
@@ -113,6 +118,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const { data, error, loading, refresh } = useDashboardData();
   const goal3Library = useTotoOfficialRoundLibrary({ productType: "custom" });
+  const bigOfficialWatch = useBigOfficialWatch();
   const [busy, setBusy] = useState<"demo" | "members" | "round" | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [addingMember, setAddingMember] = useState(false);
@@ -492,6 +498,31 @@ export default function DashboardPage() {
     sales: featuredBigPreset.salesYen,
     spend: featuredBigPreset.spendYen,
   });
+  const bigOfficialSnapshots = useMemo(
+    () => bigOfficialWatch.data?.snapshots ?? [],
+    [bigOfficialWatch.data],
+  );
+  const featuredBigOfficialSnapshot = useMemo(
+    () => pickFeaturedBigOfficialSnapshot(bigOfficialSnapshots),
+    [bigOfficialSnapshots],
+  );
+  const featuredBigOfficial = featuredBigOfficialSnapshot
+    ? buildBigOfficialWatch(featuredBigOfficialSnapshot)
+    : null;
+  const featuredBigOfficialHref = featuredBigOfficialSnapshot
+    ? buildHref(
+        appRoute.bigCarryover,
+        buildBigCarryoverQueryFromOfficialSnapshot(featuredBigOfficialSnapshot),
+      )
+    : null;
+  const bigOfficialAttentionCount = useMemo(
+    () =>
+      bigOfficialSnapshots.filter((snapshot) => {
+        const watch = buildBigOfficialWatch(snapshot);
+        return watch.summary.approxEvMultiple !== null && (watch.summary.approxEvMultiple ?? 0) >= 1;
+      }).length,
+    [bigOfficialSnapshots],
+  );
   const createRoundAnchor = "#create-round";
   const roundListAnchor = "#round-list";
 
@@ -527,7 +558,7 @@ export default function DashboardPage() {
 
       <SectionCard
         title="期待値ウォッチ"
-        description="立ち上げ時に『いま見る価値が大きい別商品』を先に出します。GOAL3 は自動同期寄り、BIG は monitor、WINNER は 1試合 board に分けています。"
+        description="立ち上げ時に『いま見る価値が大きい別商品』を先に出します。GOAL3 は自動同期寄り、BIG は公式同期の半自動 watch、WINNER は 1試合 board に分けています。"
       >
         <div className="grid gap-4 xl:grid-cols-3">
           <div className="rounded-[24px] border border-slate-200 bg-slate-50/90 p-5">
@@ -566,26 +597,59 @@ export default function DashboardPage() {
           <div className="rounded-[24px] border border-slate-200 bg-slate-50/90 p-5">
             <div className="flex flex-wrap items-center gap-2">
               <Badge tone="amber">BIG ウォッチ</Badge>
-              <Badge tone={featuredBigHeat.badgeTone}>{featuredBigHeat.label}</Badge>
+              <Badge tone={featuredBigOfficial?.heatBand.badgeTone ?? featuredBigHeat.badgeTone}>
+                {featuredBigOfficial?.heatBand.label ?? featuredBigHeat.label}
+              </Badge>
+              <Badge tone="slate">
+                {bigOfficialWatch.data ? `公式同期 ${bigOfficialSnapshots.length}商品` : "テンプレ"}
+              </Badge>
             </div>
             <h3 className="mt-3 font-display text-[1.35rem] font-semibold tracking-[-0.05em] text-slate-950">
-              激アツ判定は BIG Carryover Monitor
+              {featuredBigOfficialSnapshot
+                ? `${featuredBigOfficialSnapshot.officialRoundName ?? featuredBigOfficialSnapshot.productLabel}`
+                : "激アツ判定は BIG Carryover Monitor"}
             </h3>
             <p className="mt-3 text-sm leading-6 text-slate-600">
-              BIG はいまのところ公式同期までは繋げていませんが、売上とキャリーから `分岐付近 / 期待値大 / 監視中` をすぐ見られます。
+              {featuredBigOfficial
+                ? featuredBigOfficial.eventSnapshot.headline
+                : "BIG は売上とキャリーから `分岐付近 / 期待値大 / 監視中` をすぐ見られます。公式同期が取れないときはテンプレ条件で比較できます。"}
             </p>
             <div className="mt-4 flex flex-wrap gap-3 text-xs text-slate-500">
-              <span>例: {featuredBigPreset.eventLabel}</span>
-              <span>概算 {formatPercent(featuredBigSummary.approxEvMultiple)}</span>
-              <span>売上 {formatCurrency(featuredBigPreset.salesYen)}</span>
+              <span>
+                {featuredBigOfficialSnapshot
+                  ? `要確認 ${bigOfficialAttentionCount}商品`
+                  : `例: ${featuredBigPreset.eventLabel}`}
+              </span>
+              <span>
+                概算{" "}
+                {formatPercent(
+                  featuredBigOfficial?.summary.approxEvMultiple ?? featuredBigSummary.approxEvMultiple,
+                )}
+              </span>
+              <span>
+                売上{" "}
+                {formatCurrency(
+                  featuredBigOfficialSnapshot?.totalSalesYen ?? featuredBigPreset.salesYen,
+                )}
+              </span>
             </div>
-            <p className="mt-3 text-xs leading-5 text-slate-500">{featuredBigHeat.hint}</p>
+            <p className="mt-3 text-xs leading-5 text-slate-500">
+              {featuredBigOfficial?.heatBand.hint ?? featuredBigHeat.hint}
+            </p>
+            {bigOfficialWatch.error ? (
+              <p className="mt-3 text-xs text-rose-700">BIG公式同期: {bigOfficialWatch.error}</p>
+            ) : bigOfficialWatch.loading && !bigOfficialWatch.data ? (
+              <p className="mt-3 text-xs text-slate-500">BIG公式同期を確認中です...</p>
+            ) : null}
             <div className="mt-4 flex flex-wrap gap-2">
               <Link href={appRoute.bigCarryover} className={buttonClassName}>
                 BIG Carryover Monitor
               </Link>
-              <Link href={featuredBigHref} className={secondaryButtonClassName}>
-                テンプレで開く
+              <Link
+                href={featuredBigOfficialHref ?? featuredBigHref}
+                className={secondaryButtonClassName}
+              >
+                {featuredBigOfficialHref ? "公式同期で開く" : "テンプレで開く"}
               </Link>
             </div>
           </div>

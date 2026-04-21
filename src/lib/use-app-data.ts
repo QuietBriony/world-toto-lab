@@ -7,8 +7,10 @@ import {
   listDashboardData,
   listFixtureMaster,
   listTotoOfficialRoundLibrary,
+  syncBigOfficialWatchFromOfficial,
 } from "@/lib/repository";
 import { isSupabaseConfigured } from "@/lib/supabase";
+import type { BigOfficialSyncPayload } from "@/lib/big-official";
 import type {
   DashboardData,
   FixtureMaster,
@@ -151,5 +153,18 @@ export function useTotoOfficialRoundLibrary(
     loader,
     isSupabaseConfigured(),
     [filters],
+  );
+}
+
+export function useBigOfficialWatch(sourceUrl?: string | null) {
+  const loader = useCallback(
+    async () => syncBigOfficialWatchFromOfficial({ sourceUrl: sourceUrl ?? undefined }),
+    [sourceUrl],
+  );
+
+  return useAsyncResource<BigOfficialSyncPayload>(
+    loader,
+    isSupabaseConfigured(),
+    [sourceUrl],
   );
 }

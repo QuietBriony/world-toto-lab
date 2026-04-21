@@ -2,3 +2,6 @@ project_id = "world-toto-lab"
 
 [functions.sync-toto-official-round-list]
 verify_jwt = false
+
+[functions.sync-big-official-watch]
+verify_jwt = false

@@ -16,9 +16,15 @@ import {
 } from "@/components/ui";
 import {
   formatCurrency,
+  formatDateTime,
   formatPercent,
   formatSignedPercent,
 } from "@/lib/domain";
+import {
+  buildBigCarryoverQueryFromOfficialSnapshot,
+  buildBigOfficialWatch,
+  pickFeaturedBigOfficialSnapshot,
+} from "@/lib/big-official";
 import {
   bigEventTypeDescription,
   bigEventTypeLabel,
@@ -30,6 +36,7 @@ import {
   normalizeBigEventType,
 } from "@/lib/big-carryover";
 import { appRoute, buildHref } from "@/lib/round-links";
+import { useBigOfficialWatch } from "@/lib/use-app-data";
 
 function parseNumberInput(value: string | null, fallback: number) {
   if (!value) {
@@ -65,6 +72,7 @@ function BigCarryoverPageContent() {
     String(parseNumberInput(searchParams.get("spend"), 10_000)),
   );
   const [sourceUrl, setSourceUrl] = useState(searchParams.get("sourceUrl")?.trim() || "");
+  const officialWatch = useBigOfficialWatch();
 
   const numericSalesYen = Number(salesYen.replaceAll(",", "")) || 0;
   const numericCarryoverYen = Number(carryoverYen.replaceAll(",", "")) || 0;
@@ -122,6 +130,14 @@ function BigCarryoverPageContent() {
           ? { label: "ほぼ拮抗", tone: "info" as const }
           : { label: "還元不足", tone: "warning" as const };
   const heatBand = classifyBigHeatBand(summary);
+  const officialSnapshots = useMemo(
+    () => officialWatch.data?.snapshots ?? [],
+    [officialWatch.data],
+  );
+  const featuredOfficialSnapshot = useMemo(
+    () => pickFeaturedBigOfficialSnapshot(officialSnapshots),
+    [officialSnapshots],
+  );
 
   return (
     <div className="space-y-8">
@@ -152,6 +168,102 @@ function BigCarryoverPageContent() {
       />
 
       <RouteGlossaryCard currentPath={appRoute.bigCarryover} defaultOpen />
+
+      <SectionCard
+        title="公式同期 snapshot"
+        description="スポーツくじオフィシャルの BIG 情報ページから、現在の BIG / MEGA BIG / 100円BIG / BIG1000 / mini BIG を半自動で読みます。"
+      >
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge tone="amber">BIG系5商品</Badge>
+          <Badge tone="slate">
+            {officialWatch.data ? `${officialSnapshots.length}商品を同期` : "同期待ち"}
+          </Badge>
+          {featuredOfficialSnapshot ? (
+            <Badge tone={buildBigOfficialWatch(featuredOfficialSnapshot).heatBand.badgeTone}>
+              {buildBigOfficialWatch(featuredOfficialSnapshot).heatBand.label}
+            </Badge>
+          ) : null}
+        </div>
+        <p className="mt-4 text-sm leading-6 text-slate-600">
+          現在は固定テンプレでも見られますが、公式同期が通ると売上とキャリーをそのまま monitor に流し込めます。
+        </p>
+        {officialWatch.error ? (
+          <p className="mt-3 text-sm text-rose-700">BIG公式同期: {officialWatch.error}</p>
+        ) : null}
+        {!officialWatch.error && officialWatch.loading && officialSnapshots.length === 0 ? (
+          <p className="mt-3 text-sm text-slate-500">BIG公式ページから現在の5商品を同期しています...</p>
+        ) : null}
+        {!officialWatch.error && !officialWatch.loading && officialSnapshots.length === 0 ? (
+          <p className="mt-3 text-sm text-slate-500">
+            現在の BIG 商品 snapshot をまだ取得できていません。少し待って再読み込みするか、下のテンプレ条件で先に比較できます。
+          </p>
+        ) : null}
+        <div className="mt-5 grid gap-4 xl:grid-cols-2">
+          {officialSnapshots.map((snapshot) => {
+            const watch = buildBigOfficialWatch(snapshot);
+            const prefilledHref = buildHref(
+              appRoute.bigCarryover,
+              buildBigCarryoverQueryFromOfficialSnapshot(snapshot),
+            );
+            return (
+              <div
+                key={`${snapshot.productKey}-${snapshot.officialRoundNumber ?? "na"}`}
+                className="rounded-[24px] border border-slate-200 bg-slate-50/90 p-5"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge tone={watch.heatBand.badgeTone}>{watch.heatBand.label}</Badge>
+                  <Badge tone="slate">{snapshot.productLabel}</Badge>
+                </div>
+                <h3 className="mt-3 font-display text-[1.15rem] font-semibold tracking-[-0.04em] text-slate-950">
+                  {snapshot.officialRoundName ?? snapshot.productLabel}
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  {watch.eventSnapshot.headline}
+                </p>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-[18px] border border-slate-200 bg-white/80 px-4 py-3 text-sm">
+                    <p className="text-slate-500">売上</p>
+                    <p className="mt-1 font-semibold text-slate-950">
+                      {formatCurrency(snapshot.totalSalesYen)}
+                    </p>
+                  </div>
+                  <div className="rounded-[18px] border border-slate-200 bg-white/80 px-4 py-3 text-sm">
+                    <p className="text-slate-500">キャリー</p>
+                    <p className="mt-1 font-semibold text-slate-950">
+                      {formatCurrency(snapshot.carryoverYen)}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-3 text-xs text-slate-500">
+                  <span>概算 {formatPercent(watch.summary.approxEvMultiple)}</span>
+                  <span>取得 {formatDateTime(snapshot.snapshotAt)}</span>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEventType(watch.eventType);
+                      setEventLabel(snapshot.officialRoundName ?? `${snapshot.productLabel} 高還元イベント`);
+                      setSnapshotDate((snapshot.snapshotAt ?? snapshot.salesStartAt ?? "").slice(0, 10));
+                      setSalesYen(String(snapshot.totalSalesYen ?? 0));
+                      setCarryoverYen(String(snapshot.carryoverYen));
+                      setReturnRatePercent(String(Math.round(snapshot.returnRate * 100)));
+                      setSpendYen("10000");
+                      setSourceUrl(snapshot.sourceUrl);
+                    }}
+                    className={buttonClassName}
+                  >
+                    この条件を反映
+                  </button>
+                  <Link href={prefilledHref} className={secondaryButtonClassName}>
+                    別URLで開く
+                  </Link>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </SectionCard>
 
       <SectionCard
         title="このページの前提"
