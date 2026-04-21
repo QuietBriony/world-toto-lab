@@ -265,7 +265,7 @@ export default function Goal3ValuePage() {
                 GOAL3 を開く
               </Link>
               <button type="button" onClick={() => void handleSync()} className={secondaryButtonClassName} disabled={syncing}>
-                同期する
+                公式一覧を同期して GOAL3 を探す
               </button>
             </div>
           </div>
@@ -331,10 +331,10 @@ export default function Goal3ValuePage() {
       {goal3Entries.length === 0 ? (
         <SectionCard
           title="まだ GOAL3 回がありません"
-          description="公式一覧を同期すると、GOAL3 回だけをここで分けて見られます。"
+          description="公式一覧を同期して、その中に GOAL3 回が載っている時だけここへ分けて表示します。"
         >
           <button type="button" onClick={() => void handleSync()} className={buttonClassName} disabled={syncing}>
-            {syncing ? "同期中..." : "GOAL3 を含めて同期"}
+            {syncing ? "同期中..." : "公式一覧を同期して GOAL3 を探す"}
           </button>
         </SectionCard>
       ) : (

@@ -21,7 +21,13 @@ import {
   secondaryButtonClassName,
   textAreaClassName,
 } from "@/components/ui";
-import { formatCurrency, formatDateTime, formatPercent, productTypeLabel } from "@/lib/domain";
+import {
+  formatCurrency,
+  formatDateTime,
+  formatPercent,
+  productTypeBadgeTone,
+  productTypeLabel,
+} from "@/lib/domain";
 import { productTypeOptions } from "@/lib/product-rules";
 import { appRoute, buildRoundHref, getSingleSearchParam } from "@/lib/round-links";
 import {
@@ -106,6 +112,7 @@ const defaultOfficialDetailSourceUrl =
   officialSourcePresets.find((preset) => preset.id === "toto_official_detail")?.sourceUrl ?? "";
 
 const officialProductFocusCards: Array<{
+  badgeLabel?: string;
   badgeTone: "amber" | "sky" | "teal";
   body: string;
   productType: ProductType;
@@ -131,6 +138,13 @@ const officialProductFocusCards: Array<{
     recommendedSourcePresetId: "toto_official_detail",
     title: "WINNER を選ぶ",
   },
+  {
+    badgeLabel: "GOAL3",
+    badgeTone: "amber",
+    body: "Round Builder 本体には混ぜず、公式一覧から拾えた GOAL3 回だけを別ボードと専用ライブラリで見ます。",
+    productType: "custom",
+    title: "GOAL3 を見る",
+  },
 ];
 
 function resolveOfficialSourcePreset(id: string | null) {
@@ -147,6 +161,31 @@ function hostLabel(url: string | null) {
   } catch {
     return url;
   }
+}
+
+function isWorldTotoEntry(
+  entry: Pick<TotoOfficialRoundLibraryEntry, "officialRoundName" | "title" | "sourceNote">,
+) {
+  const text = [entry.title, entry.officialRoundName, entry.sourceNote]
+    .map((value) => value?.toLowerCase() ?? "")
+    .join(" ");
+
+  return text.includes("world toto") || text.includes("worldtoto") || text.includes("ワールドtoto");
+}
+
+function libraryEntryProductDisplay(entry: TotoOfficialRoundLibraryEntry) {
+  if (entry.outcomeSetJson?.includes("3+")) {
+    return { label: "GOAL3", tone: "amber" as const };
+  }
+
+  if (isWorldTotoEntry(entry)) {
+    return { label: "World Toto", tone: "teal" as const };
+  }
+
+  return {
+    label: productTypeLabel[entry.productType],
+    tone: productTypeBadgeTone[entry.productType],
+  };
 }
 
 function buildSourceText(rows: Array<{
@@ -252,7 +291,11 @@ function TotoOfficialRoundImportPageContent() {
     ? buildRoundHref(appRoute.workspace, roundContextId)
     : null;
   const filterLabel =
-    libraryProductType === "all" ? "すべて" : productTypeLabel[libraryProductType];
+    libraryProductType === "all"
+      ? "すべて"
+      : libraryProductType === "custom"
+        ? "GOAL3 / カスタム"
+        : productTypeLabel[libraryProductType];
   const manualEntryOpen = Boolean(editingLibraryEntryId || sourceText.trim() || rows.length > 0);
   const activeSyncPreset =
     officialSourcePresets.find((preset) => preset.sourceUrl === syncSourceUrl) ?? null;
@@ -544,7 +587,7 @@ function TotoOfficialRoundImportPageContent() {
 
       <CollapsibleSectionCard
         title="商品別の進め方"
-        description="まずは toto / mini toto / WINNER のどれで回すかだけ決めます。同期済み一覧があるときは、次のライブラリから選ぶだけで十分です。"
+        description="まずは toto / mini toto / WINNER / GOAL3 のどれを見るかだけ決めます。同期済み一覧があるときは、次のライブラリから選ぶだけで十分です。"
         defaultOpen={(library.data?.length ?? 0) === 0}
         badge={<Badge tone="sky">はじめに</Badge>}
       >
@@ -560,7 +603,7 @@ function TotoOfficialRoundImportPageContent() {
                 }`}
               >
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge tone={card.badgeTone}>{productTypeLabel[card.productType]}</Badge>
+                  <Badge tone={card.badgeTone}>{card.badgeLabel ?? productTypeLabel[card.productType]}</Badge>
                   {isActive ? <Badge tone="slate">現在の表示</Badge> : null}
                 </div>
                 <h3 className="mt-3 font-semibold text-slate-950">{card.title}</h3>
@@ -582,8 +625,8 @@ function TotoOfficialRoundImportPageContent() {
                         card.productType === "winner" && preset
                           ? `WINNER 向けに切り替えました。同期元は「${preset.label}」の入力欄を開いています。サンプルURLは置き換えて、実際の公式くじ情報URLを貼ってください。`
                           : preset
-                          ? `${productTypeLabel[card.productType]} 向けに切り替えました。同期元も「${preset.label}」へ合わせています。`
-                          : `${productTypeLabel[card.productType]} の一覧に切り替えました。`,
+                          ? `${card.badgeLabel ?? productTypeLabel[card.productType]} 向けに切り替えました。同期元も「${preset.label}」へ合わせています。`
+                          : `${card.badgeLabel ?? productTypeLabel[card.productType]} の一覧に切り替えました。`,
                       );
                     }}
                     className={buttonClassName}
@@ -789,7 +832,7 @@ function TotoOfficialRoundImportPageContent() {
               <option value="all">すべて</option>
               {productTypeOptions.map((option) => (
                 <option key={option} value={option}>
-                  {productTypeLabel[option]}
+                  {option === "custom" ? "GOAL3 / カスタム" : productTypeLabel[option]}
                 </option>
               ))}
             </select>
@@ -811,6 +854,7 @@ function TotoOfficialRoundImportPageContent() {
             {library.data?.map((entry) => {
               const isBusy = libraryBusyId === entry.id;
               const kickoff = entry.matches.find((match) => match.kickoffTime)?.kickoffTime ?? null;
+              const productDisplay = libraryEntryProductDisplay(entry);
 
               return (
                 <div
@@ -820,7 +864,7 @@ function TotoOfficialRoundImportPageContent() {
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <div className="flex flex-wrap gap-2">
-                        <Badge tone="teal">{productTypeLabel[entry.productType]}</Badge>
+                        <Badge tone={productDisplay.tone}>{productDisplay.label}</Badge>
                         <Badge tone="slate">{entry.matchCount}試合</Badge>
                         {entry.officialRoundNumber !== null ? (
                           <Badge tone="sky">第{entry.officialRoundNumber}回</Badge>

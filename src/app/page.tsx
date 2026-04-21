@@ -588,8 +588,14 @@ export default function DashboardPage() {
               <Link href={appRoute.goal3Value} className={buttonClassName}>
                 GOAL3 Value Board
               </Link>
-              <Link href={appRoute.totoOfficialRoundImport} className={secondaryButtonClassName}>
-                公式回ライブラリ
+              <Link
+                href={buildOfficialRoundImportHref(undefined, {
+                  productType: "custom",
+                  sourcePreset: "yahoo_toto_schedule",
+                })}
+                className={secondaryButtonClassName}
+              >
+                GOAL3 を一覧で探す
               </Link>
             </div>
           </div>
