@@ -390,6 +390,13 @@ Edge Function は次を行います。
 GitHub Pages 側はこのFunction名を `NEXT_PUBLIC_TOTO_OFFICIAL_ROUND_SYNC_FUNCTION_NAME` から参照します。  
 未設定でも既定名 `sync-toto-official-round-list` を使います。
 
+運用メモ:
+
+- この Function は `sb_publishable_...` 形式の公開キーでも叩けるよう、`supabase/config.toml` で `verify_jwt = false` にしています
+- 代わりに取得先URLは Yahoo! toto / スポーツくじオフィシャルのホストに制限しています
+- Supabase の新しい publishable key を使う場合は、Function 側にも `SB_PUBLISHABLE_KEY` secret を入れてください
+- 手動 deploy するときも `supabase/functions/sync-toto-official-round-list` は `--no-verify-jwt` 相当の設定を維持してください
+
 ### 3. Supabase にテーブルを作る
 
 Supabase SQL Editor で [supabase/schema.sql](/C:/workspace/world-toto-lab/supabase/schema.sql) を実行してください。

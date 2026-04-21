@@ -79,6 +79,8 @@ npm run check:pages
 - `Round Context` が出る
 - `Round Detailへ戻る` が押せる
 - `公式一覧を同期`
+- `同期結果:` が出る、または意味のある警告が出る
+- `UNAUTHORIZED_INVALID_JWT_FORMAT` / `Invalid JWT` / 無反応にならない
 - `公式一覧を同期してPick Roomへ`
 - `Friend Pick Room`
 - 上記ボタン群が無反応でない

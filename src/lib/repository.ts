@@ -26,7 +26,10 @@ import {
   resolveRoundParticipantUsers,
 } from "@/lib/round-participants";
 import { defaultDemoUsers, defaultInitialUsers, isDemoAccountName } from "@/lib/sample-data";
-import { requireSupabaseClient } from "@/lib/supabase";
+import {
+  buildSupabaseFunctionHeaders,
+  requireSupabaseClient,
+} from "@/lib/supabase";
 import { generateAllModeTickets } from "@/lib/tickets";
 import { filterPredictors, isPredictorRole } from "@/lib/users";
 import {
@@ -3159,12 +3162,10 @@ export async function syncTotoOfficialRoundListFromOfficial(input: SyncTotoOffic
 
   const response = await fetch(functionEndpoint, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${supabaseAnonKey}`,
-      apikey: supabaseAnonKey,
+    headers: buildSupabaseFunctionHeaders(supabaseAnonKey, {
       "content-type": "application/json",
       "x-client-info": "world-toto-lab",
-    },
+    }),
     body: JSON.stringify(requestBody),
   });
 

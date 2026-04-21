@@ -62,9 +62,57 @@ type SyncRequestBody = {
 };
 
 const defaultSourceUrl = "https://toto.yahoo.co.jp/schedule/toto";
+const allowedOfficialHosts = new Set([
+  "store.toto-dream.com",
+  "toto.yahoo.co.jp",
+  "www.toto-dream.com",
+]);
 
 function trimText(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function extractClientApiKey(req: Request) {
+  const apikey = trimText(req.headers.get("apikey"));
+  if (apikey) {
+    return apikey;
+  }
+
+  const authorization = trimText(req.headers.get("authorization"));
+  const bearerMatch = authorization.match(/^Bearer\s+(.+)$/i);
+  return trimText(bearerMatch?.[1]);
+}
+
+function isAuthorizedClientKey(req: Request) {
+  const configuredKeys = [
+    Deno.env.get("SB_PUBLISHABLE_KEY"),
+    Deno.env.get("SUPABASE_PUBLISHABLE_KEY"),
+    Deno.env.get("SUPABASE_ANON_KEY"),
+  ]
+    .map((value) => trimText(value))
+    .filter(Boolean);
+
+  if (configuredKeys.length === 0) {
+    return true;
+  }
+
+  const provided = extractClientApiKey(req);
+  return Boolean(provided) && configuredKeys.includes(provided);
+}
+
+function assertAllowedSourceUrl(value: string) {
+  const url = new URL(value);
+  if (url.protocol !== "https:") {
+    throw new Error("sourceUrl は https の公式URLだけ利用できます。");
+  }
+
+  if (!allowedOfficialHosts.has(url.hostname)) {
+    throw new Error(
+      `sourceUrl のホスト ${url.hostname} は未対応です。Yahoo! toto またはスポーツくじオフィシャルURLを指定してください。`,
+    );
+  }
+
+  return url.toString();
 }
 
 function parseRate(raw: unknown, fieldName: string, warnings: string[]) {
@@ -455,6 +503,16 @@ serve(async (req: Request) => {
     );
   }
 
+  if (!isAuthorizedClientKey(req)) {
+    return new Response(
+      JSON.stringify({
+        error: "Unauthorized client",
+        message: "許可されていないクライアントキーです。",
+      }),
+      { headers: { ...corsHeaders, "content-type": "application/json" }, status: 401 },
+    );
+  }
+
   let body: SyncRequestBody = {};
   try {
     body = (await req.json()) as SyncRequestBody;
@@ -462,7 +520,7 @@ serve(async (req: Request) => {
     body = {};
   }
 
-  const sourceUrl = normalizeSourceUrl(body.sourceUrl || defaultSourceUrl);
+  const requestedSourceUrl = trimText(body.sourceUrl) || defaultSourceUrl;
   const includeMatches = body.includeMatches !== false;
   const headers = {
     ...corsHeaders,
@@ -470,6 +528,7 @@ serve(async (req: Request) => {
   };
 
   try {
+    const sourceUrl = normalizeSourceUrl(requestedSourceUrl);
     const fetchResponse = await fetch(sourceUrl, {
       headers: {
         "user-agent": "world-toto-lab-sync-bot",
@@ -555,7 +614,7 @@ serve(async (req: Request) => {
         fetchedAt: new Date().toISOString(),
         rounds: [],
         sourceText: null,
-        sourceUrl,
+        sourceUrl: requestedSourceUrl,
         warnings: [`同期処理で例外が発生しました: ${(error as Error).message}`],
       } satisfies SyncPayload),
       { headers, status: 200 },
@@ -565,9 +624,9 @@ serve(async (req: Request) => {
 
 function normalizeSourceUrl(value: string) {
   if (!value) {
-    return defaultSourceUrl;
+    return assertAllowedSourceUrl(defaultSourceUrl);
   }
 
   const normalized = value.trim();
-  return normalized || defaultSourceUrl;
+  return assertAllowedSourceUrl(normalized || defaultSourceUrl);
 }

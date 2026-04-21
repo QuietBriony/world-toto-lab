@@ -2,6 +2,27 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 let supabaseClient: SupabaseClient | null | undefined;
 
+export function looksLikeSupabaseJwt(value: string) {
+  const trimmed = value.trim();
+  return trimmed.split(".").length === 3;
+}
+
+export function buildSupabaseFunctionHeaders(
+  publishableKey: string,
+  extraHeaders: Record<string, string> = {},
+) {
+  const headers: Record<string, string> = {
+    apikey: publishableKey,
+    ...extraHeaders,
+  };
+
+  if (looksLikeSupabaseJwt(publishableKey)) {
+    headers.Authorization = `Bearer ${publishableKey}`;
+  }
+
+  return headers;
+}
+
 export function isSupabaseConfigured() {
   return Boolean(
     process.env.NEXT_PUBLIC_SUPABASE_URL &&
