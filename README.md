@@ -359,6 +359,60 @@ GitHub Pages 側はこのFunction名を `NEXT_PUBLIC_TOTO_OFFICIAL_ROUND_SYNC_FU
 
 Supabase SQL Editor で [supabase/schema.sql](/C:/workspace/world-toto-lab/supabase/schema.sql) を実行してください。
 
+### 3.1. まだ候補系テーブルがない場合（`candidate_tickets` / `candidate_votes`）
+
+次のエラーが出る場合は、実運用DBへ候補系テーブルが未反映です。
+
+- `Failed to load candidate tickets: Could not find the table 'public.candidate_tickets' in the schema cache`
+
+下記をSupabase SQL Editorで実行してください。
+
+```sql
+create table if not exists public.candidate_tickets (
+  id uuid primary key default gen_random_uuid(),
+  round_id uuid not null references public.rounds(id) on delete cascade,
+  label text not null,
+  strategy_type text not null check (
+    strategy_type in ('orthodox_model', 'public_favorite', 'human_consensus', 'ev_hunter', 'sleeping_value', 'draw_alert', 'upset')
+  ),
+  picks_json jsonb not null,
+  p_model_combo double precision,
+  p_public_combo double precision,
+  estimated_payout_yen double precision,
+  gross_ev_yen double precision,
+  ev_multiple double precision,
+  ev_percent double precision,
+  proxy_score double precision,
+  hit_probability double precision,
+  public_overlap_score double precision,
+  contrarian_count integer not null default 0,
+  draw_count integer not null default 0,
+  human_alignment_score double precision,
+  data_quality text not null check (
+    data_quality in ('complete', 'missing_official_vote', 'missing_model_prob', 'proxy_only', 'demo_data')
+  ),
+  rationale text,
+  warning text,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now())
+);
+
+create table if not exists public.candidate_votes (
+  id uuid primary key default gen_random_uuid(),
+  round_id uuid not null references public.rounds(id) on delete cascade,
+  candidate_ticket_id uuid not null references public.candidate_tickets(id) on delete cascade,
+  user_id uuid not null references public.users(id) on delete cascade,
+  vote text not null check (vote in ('like', 'maybe', 'pass', 'bought_myself')),
+  comment text,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now())
+);
+```
+
+必要なら、`public.candidate_tickets` / `public.candidate_votes` の `RLS` ポリシーが有効か、`anon` 向けの `select / insert / update / delete` が開放されているかも確認してください。
+
+作成後、`Settings > API` の `Project URL` / `anon key` が `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` と一致していることを確認し、再デプロイして再読込してください。
+
 ### 4. 開発サーバーを起動する
 
 ```bash

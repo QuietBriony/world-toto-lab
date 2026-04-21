@@ -762,11 +762,50 @@ function groupByRoundId<T extends { roundId: string }>(records: T[]) {
 
 function throwIfError(
   label: string,
-  result: { data: unknown; error: Error | null },
+  result: { data: unknown; error: { message: string } | Error | null },
 ) {
   if (result.error) {
     throw new Error(`${label}: ${result.error.message}`);
   }
+}
+
+type RelationMissingResult = {
+  data: unknown;
+  error: { message: string } | null;
+};
+
+function isMissingRelationError(error: RelationMissingResult["error"], table: string) {
+  if (!error) {
+    return false;
+  }
+
+  const normalizedMessage = error.message.toLowerCase();
+  const publicTablePattern = `public.${table}`;
+  const quotedPattern = `"${publicTablePattern}"`;
+  const candidatePattern = table;
+
+  return (
+    normalizedMessage.includes(`could not find the table '${publicTablePattern}' in the schema cache`) ||
+    normalizedMessage.includes(`relation ${quotedPattern} does not exist`) ||
+    normalizedMessage.includes(`relation \"${candidatePattern}\" does not exist`) ||
+    normalizedMessage.includes(`relation ${quotedPattern}`) ||
+    normalizedMessage.includes(`relation ${publicTablePattern} does not exist`)
+  );
+}
+
+function ignoreMissingRelation<T>(
+  result: { data: T | null; error: { message: string } | null },
+  table: string,
+  fallback: T,
+): { data: T; error: { message: string } | null } {
+  if (!isMissingRelationError(result.error, table)) {
+    return result as { data: T; error: { message: string } | null };
+  }
+
+  console.warn(
+    `[World Toto Lab] Missing table "${table}" in schema cache. Returning fallback for compatibility.`,
+  );
+  return { data: fallback, error: null };
 }
 
 type TotoOfficialRoundImportMatchInput = TotoOfficialRoundLibraryMatch;
@@ -1534,7 +1573,12 @@ export async function listDashboardData(): Promise<DashboardData> {
   throwIfError("Failed to load picks", picksResult);
   throwIfError("Failed to load scout reports", reportsResult);
   throwIfError("Failed to load review notes", notesResult);
-  throwIfError("Failed to load candidate tickets", candidateTicketsResult);
+  const safeCandidateTicketsResult = ignoreMissingRelation(
+    candidateTicketsResult,
+    "candidate_tickets",
+    [],
+  );
+  throwIfError("Failed to load candidate tickets", safeCandidateTicketsResult);
 
   const allUsers = sortUsers((usersResult.data as UserRow[]).map(mapUser));
   const { demoUsers, liveUsers } = partitionUsers(allUsers);
@@ -1544,7 +1588,7 @@ export async function listDashboardData(): Promise<DashboardData> {
   const rawScoutReports = reportsResult.data as HumanScoutReportRow[];
   const rawReviewNotes = notesResult.data as ReviewNoteRow[];
   const candidateTicketRows =
-    (candidateTicketsResult.data as Array<{ round_id: string }>) ?? [];
+    (safeCandidateTicketsResult.data as Array<{ round_id: string }>) ?? [];
   const matches = rawMatches.map(mapMatch);
   const matchesByRound = groupByRoundId(matches);
   const rawPicksByRound = new Map<string, PickRow[]>();
@@ -1673,8 +1717,18 @@ export async function getRoundWorkspace(roundId: string): Promise<RoundWorkspace
   throwIfError("Failed to load scout reports", reportsResult);
   throwIfError("Failed to load generated tickets", ticketsResult);
   throwIfError("Failed to load EV assumptions", evAssumptionResult);
-  throwIfError("Failed to load candidate tickets", candidateTicketsResult);
-  throwIfError("Failed to load candidate votes", candidateVotesResult);
+  const safeCandidateTicketsResult = ignoreMissingRelation(
+    candidateTicketsResult,
+    "candidate_tickets",
+    [],
+  );
+  const safeCandidateVotesResult = isMissingRelationError(candidateVotesResult.error, "candidate_votes")
+    ? { data: [], error: null }
+    : (candidateVotesResult as { data: CandidateVoteRow[]; error: { message: string } | null });
+  if (safeCandidateVotesResult.error) {
+    throwIfError("Failed to load candidate votes", safeCandidateVotesResult);
+  }
+  throwIfError("Failed to load candidate tickets", safeCandidateTicketsResult);
   throwIfError("Failed to load toto official round", totoOfficialRoundResult);
   throwIfError("Failed to load toto official matches", totoOfficialMatchesResult);
   throwIfError("Failed to load review notes", notesResult);
@@ -1718,11 +1772,11 @@ export async function getRoundWorkspace(roundId: string): Promise<RoundWorkspace
   const evAssumption = evAssumptionResult.data
     ? mapRoundEvAssumption(evAssumptionResult.data as RoundEvAssumptionRow)
     : null;
-  const candidateTickets = (candidateTicketsResult.data as CandidateTicketRow[]).map(
+  const candidateTickets = (safeCandidateTicketsResult.data as CandidateTicketRow[]).map(
     mapCandidateTicket,
   );
   const candidateVotes = filterRowsForScopedUsers(
-    candidateVotesResult.data as CandidateVoteRow[],
+    safeCandidateVotesResult.data as CandidateVoteRow[],
     users,
   ).map((row) => mapCandidateVote(row, userById.get(row.user_id)));
   const totoOfficialRound = totoOfficialRoundResult.data
