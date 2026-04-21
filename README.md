@@ -384,13 +384,13 @@ Edge Function は次を行います。
 
 - 公開URLからHTML/JSON/CSVを取得
 - Yahoo! toto 販売スケジュールなら、開催回一覧を抽出し、必要な回だけ公式 `くじ情報` ページも追って詳細を埋める
-- `store.toto-dream.com` の `くじ情報` ページなら、`toto / mini toto-A / mini toto-B` の対象試合・販売終了・売上速報を抽出する
+- `store.toto-dream.com` の `くじ情報` ページなら、`toto / mini toto-A / mini toto-B / totoGOAL3` の対象情報・販売終了・売上速報を抽出する
 - 取り得る形式を順に試行して回情報を正規化
 - 取り込めない場合は警告を返して、手入力フローへフォールバック
 
 注意:
 
-- `totoGOAL3` は現在の Round Builder の 1/0/2 モデルでは未対応なので、自動同期対象から外します
+- `totoGOAL3` は公式同期対象に含めますが、Round Builder 本体ではなく `GOAL3 Value Board` へ分けて表示します
 - 公式人気 (`official_vote_1 / 0 / 2`) は一覧ページや `くじ情報` ページだけでは揃わない場合があるため、必要なら CSV / TSV で補完します
 
 GitHub Pages 側はこのFunction名を `NEXT_PUBLIC_TOTO_OFFICIAL_ROUND_SYNC_FUNCTION_NAME` から参照します。  

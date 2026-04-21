@@ -40,6 +40,7 @@ import {
 import {
   advantageBucketLabel,
   formatDateTime,
+  formatCurrency,
   formatPercent,
   formatSignedPercent,
   productTypeLabel,
@@ -48,6 +49,11 @@ import {
   roundStatusOptions,
 } from "@/lib/domain";
 import { defaultRequiredMatchCount, productTypeOptions } from "@/lib/product-rules";
+import {
+  buildGoal3EventWatch,
+  isGoal3LibraryEntry,
+  pickFeaturedGoal3Entry,
+} from "@/lib/goal3";
 import { resolveRoundParticipantUsers } from "@/lib/round-participants";
 import { deriveRoundProgressSummary, matchHasSetupInput } from "@/lib/round-progress";
 import { appRoute, buildOfficialRoundImportHref, buildRoundHref } from "@/lib/round-links";
@@ -74,7 +80,7 @@ import {
   buildMemberUsageMap,
   describeMemberInventoryStatus,
 } from "@/lib/member-usage";
-import { useDashboardData } from "@/lib/use-app-data";
+import { useDashboardData, useTotoOfficialRoundLibrary } from "@/lib/use-app-data";
 import { isWinnerLikeRound } from "@/lib/winner-value";
 
 function errorMessage(error: unknown) {
@@ -101,6 +107,7 @@ type MemberRoundActivity = {
 export default function DashboardPage() {
   const router = useRouter();
   const { data, error, loading, refresh } = useDashboardData();
+  const goal3Library = useTotoOfficialRoundLibrary({ productType: "custom" });
   const [busy, setBusy] = useState<"demo" | "members" | "round" | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [addingMember, setAddingMember] = useState(false);
@@ -438,6 +445,32 @@ export default function DashboardPage() {
       tone: "amber" as const,
     },
   ];
+  const goal3Entries = useMemo(
+    () => (goal3Library.data ?? []).filter(isGoal3LibraryEntry),
+    [goal3Library.data],
+  );
+  const featuredGoal3Entry = useMemo(
+    () => pickFeaturedGoal3Entry(goal3Entries),
+    [goal3Entries],
+  );
+  const featuredGoal3Watch = featuredGoal3Entry
+    ? buildGoal3EventWatch(featuredGoal3Entry)
+    : null;
+  const goal3AttentionCount = goal3Entries.filter((entry) =>
+    buildGoal3EventWatch(entry).requiresAttention,
+  ).length;
+  const winnerWatchRound =
+    inventoryRounds.find((round) =>
+      isWinnerLikeRound({
+        matchCount: round.matchCount,
+        productType: round.productType,
+        requiredMatchCount: round.requiredMatchCount,
+      }),
+    ) ?? null;
+  const winnerWatchUsers =
+    data && winnerWatchRound
+      ? resolveRoundParticipantUsers(data.users, winnerWatchRound.participantIds)
+      : [];
 
   return (
     <div className="space-y-8">
@@ -468,6 +501,101 @@ export default function DashboardPage() {
         currentPath={appRoute.dashboard}
         defaultOpen={false}
       />
+
+      <SectionCard
+        title="期待値ウォッチ"
+        description="立ち上げ時に『いま見る価値が大きい別商品』を先に出します。GOAL3 は自動同期寄り、BIG は monitor、WINNER は 1試合 board に分けています。"
+      >
+        <div className="grid gap-4 xl:grid-cols-3">
+          <div className="rounded-[24px] border border-slate-200 bg-slate-50/90 p-5">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge tone={featuredGoal3Watch?.requiresAttention ? "teal" : "sky"}>
+                {featuredGoal3Watch?.requiresAttention ? "期待値大" : "GOAL3 ウォッチ"}
+              </Badge>
+              <Badge tone="slate">{goal3Entries.length}回</Badge>
+            </div>
+            <h3 className="mt-3 font-display text-[1.35rem] font-semibold tracking-[-0.05em] text-slate-950">
+              {featuredGoal3Entry?.title ?? "totoGOAL3 を別枠で監視"}
+            </h3>
+            <p className="mt-3 text-sm leading-6 text-slate-600">
+              {featuredGoal3Entry
+                ? featuredGoal3Watch?.snapshot.headline
+                : "Yahoo! toto 販売スケジュールを同期すると、GOAL3 回も専用ボードへ集約されます。"}
+            </p>
+            <div className="mt-4 flex flex-wrap gap-3 text-xs text-slate-500">
+              <span>要確認 {goal3AttentionCount}</span>
+              <span>概算 {formatPercent(featuredGoal3Watch?.summary.approxEvMultiple)}</span>
+              <span>売上 {formatCurrency(featuredGoal3Entry?.totalSalesYen ?? null)}</span>
+            </div>
+            {goal3Library.error ? (
+              <p className="mt-3 text-xs text-rose-700">GOAL3一覧取得: {goal3Library.error}</p>
+            ) : null}
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Link href={appRoute.goal3Value} className={buttonClassName}>
+                GOAL3 Value Board
+              </Link>
+              <Link href={appRoute.totoOfficialRoundImport} className={secondaryButtonClassName}>
+                公式回ライブラリ
+              </Link>
+            </div>
+          </div>
+
+          <div className="rounded-[24px] border border-slate-200 bg-slate-50/90 p-5">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge tone="amber">BIG ウォッチ</Badge>
+              <Badge tone="slate">monitor</Badge>
+            </div>
+            <h3 className="mt-3 font-display text-[1.35rem] font-semibold tracking-[-0.05em] text-slate-950">
+              激アツ判定は BIG Carryover Monitor
+            </h3>
+            <p className="mt-3 text-sm leading-6 text-slate-600">
+              BIG はいまのところ公式同期までは繋げていないので、売上とキャリーを入れて高還元ウォッチとして見ます。
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Link href={appRoute.bigCarryover} className={buttonClassName}>
+                BIG Carryover Monitor
+              </Link>
+            </div>
+          </div>
+
+          <div className="rounded-[24px] border border-slate-200 bg-slate-50/90 p-5">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge tone="sky">WINNER</Badge>
+              <Badge tone="slate">1試合</Badge>
+            </div>
+            <h3 className="mt-3 font-display text-[1.35rem] font-semibold tracking-[-0.05em] text-slate-950">
+              1試合の妙味は WINNER Value Board
+            </h3>
+            <p className="mt-3 text-sm leading-6 text-slate-600">
+              {winnerWatchRound
+                ? `直近は「${winnerWatchRound.title}」をそのまま見に行けます。`
+                : "WINNER round がまだ無いときは、公式くじ情報URLから 1試合回を作るのが速いです。"}
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {winnerWatchRound ? (
+                <Link
+                  href={buildRoundHref(appRoute.winnerValue, winnerWatchRound.id, {
+                    user: winnerWatchUsers[0]?.id,
+                  })}
+                  className={buttonClassName}
+                >
+                  WINNER Value Board
+                </Link>
+              ) : (
+                <Link
+                  href={buildOfficialRoundImportHref(undefined, {
+                    productType: "winner",
+                    sourcePreset: "toto_official_detail",
+                  })}
+                  className={buttonClassName}
+                >
+                  WINNER を作る
+                </Link>
+              )}
+            </div>
+          </div>
+        </div>
+      </SectionCard>
 
       {!isSupabaseConfigured() ? (
         <ConfigurationNotice />

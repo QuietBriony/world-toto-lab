@@ -56,6 +56,7 @@ export const appRoute = {
   dashboard: "/",
   workspace: "/workspace",
   bigCarryover: "/big-carryover",
+  goal3Value: "/goal3-value",
   simpleView: "/simple-view",
   pickRoom: "/pick-room",
   winnerValue: "/winner-value",

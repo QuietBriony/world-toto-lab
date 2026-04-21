@@ -914,6 +914,8 @@ type SyncedTotoOfficialRoundMatchInput = {
   actualResult: "ONE" | "DRAW" | "TWO" | null;
   awayTeam: string;
   fixtureMasterId: string | null;
+  goal3FixtureNo?: number | null;
+  goal3TeamRole?: "home" | "away" | null;
   homeTeam: string;
   kickoffTime: string | null;
   matchStatus: TotoOfficialMatchStatus;
@@ -921,6 +923,7 @@ type SyncedTotoOfficialRoundMatchInput = {
   officialVote0: number | null;
   officialVote1: number | null;
   officialVote2: number | null;
+  officialVote3?: number | null;
   sourceText: string | null;
   stage: string | null;
   venue: string | null;
@@ -1103,6 +1106,11 @@ function parseSyncApiResponse(
         actualResult: null,
         awayTeam: normalizeSyncRoundValue(record.awayTeam) || "未設定",
         fixtureMasterId: null,
+        goal3FixtureNo: normalizeSyncRoundNumber(record.goal3FixtureNo),
+        goal3TeamRole:
+          record.goal3TeamRole === "home" || record.goal3TeamRole === "away"
+            ? record.goal3TeamRole
+            : null,
         homeTeam: normalizeSyncRoundValue(record.homeTeam) || "未設定",
         kickoffTime: normalizeSyncRoundValue(record.kickoffTime) || null,
         matchStatus: normalizeSyncMatchStatus(record.matchStatus),
@@ -1120,6 +1128,11 @@ function parseSyncApiResponse(
         officialVote2: parseSyncPercentInput(
           record.officialVote2,
           `公式回 ${normalizeSyncRoundValue(record.officialMatchNo)} 試合 vote2`,
+          warnings,
+        ),
+        officialVote3: parseSyncPercentInput(
+          record.officialVote3,
+          `公式回 ${normalizeSyncRoundValue(record.officialMatchNo)} 試合 vote3`,
           warnings,
         ),
         stage: normalizeSyncRoundValue(record.stage) || null,

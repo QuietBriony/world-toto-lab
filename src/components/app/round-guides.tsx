@@ -43,6 +43,12 @@ const pageGuideMeta: Partial<
     description: "BIG は outcome を選ぶ画面ではないので、売上・キャリー・還元率だけに絞って短くまとめています。",
     summary: "高還元イベントかどうかを、ざっくり判定する段階です。",
   },
+  [appRoute.goal3Value]: {
+    badge: "別商品",
+    title: "GOAL3 Value Board で見る言葉",
+    description: "totoGOAL3 は 1/0/2 ではなく 6チームの得点帯を見るので、専用ボードで用語を分けています。",
+    summary: "GOAL3 のイベント熱と、6チーム x 0/1/2/3+ の人気分布を見る段階です。",
+  },
   [appRoute.workspace]: {
     badge: "全体像",
     title: "ラウンド詳細で見る言葉",
@@ -162,6 +168,28 @@ const pageGlossaryEntries: Partial<Record<GuideRoute, GlossaryEntry[]>> = {
       term: "期待損益",
       body: "投下額に対して、簡易式で見た期待値ベースの損益です。ブレは大きい前提で見ます。",
       tone: "lime",
+    },
+  ],
+  [appRoute.goal3Value]: [
+    {
+      term: "イベント期待値",
+      body: "売上とキャリーから見た、その回全体のざっくり上振れです。選択肢ごとの厳密EVではありません。",
+      tone: "teal",
+    },
+    {
+      term: "6チーム x 0/1/2/3+",
+      body: "3試合のホーム/アウェイ合計 6 チームについて、90分得点数の人気分布を見ます。",
+      tone: "sky",
+    },
+    {
+      term: "配当 proxy",
+      body: "イベント期待値を公式投票率で割った参考値です。人気薄ほど大きく出ますが、的中確率モデルは別です。",
+      tone: "amber",
+    },
+    {
+      term: "要確認イベント",
+      body: "キャリーや売上条件が分岐に近く、まず監視しておきたい回です。",
+      tone: "rose",
     },
   ],
   [appRoute.workspace]: [
@@ -377,6 +405,7 @@ const pageGlossaryEntries: Partial<Record<GuideRoute, GlossaryEntry[]>> = {
 const routeLabel: Partial<Record<GuideRoute, string>> = {
   [appRoute.workspace]: "ラウンド詳細",
   [appRoute.bigCarryover]: "BIG Carryover Monitor",
+  [appRoute.goal3Value]: "GOAL3 Value Board",
   [appRoute.matchEditor]: "試合設定",
   [appRoute.picks]: "支持 / 予想",
   [appRoute.scoutCards]: "予想者カード",

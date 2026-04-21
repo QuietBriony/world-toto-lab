@@ -514,6 +514,9 @@ function TotoOfficialRoundImportPageContent() {
         description="公式ソースから開催回を同期して一覧から選ぶか、CSV / TSV で足りない回だけ追加して Round に反映します。"
         actions={
           <div className="flex flex-wrap gap-3">
+            <Link href={appRoute.goal3Value} className={secondaryButtonClassName}>
+              GOAL3 Value Board
+            </Link>
             {roundDetailHref ? (
               <Link href={roundDetailHref} className={secondaryButtonClassName}>
                 Round Detailへ戻る
@@ -591,6 +594,13 @@ function TotoOfficialRoundImportPageContent() {
               </div>
             );
           })}
+        </div>
+        <div className="mt-4 rounded-[22px] border border-amber-200 bg-amber-50/80 px-4 py-4 text-sm leading-6 text-amber-950">
+          `totoGOAL3` も公式同期には含めますが、Round Builder 本体へは流さず
+          <Link href={appRoute.goal3Value} className="ml-2 font-semibold underline underline-offset-2">
+            GOAL3 Value Board
+          </Link>
+          で別枠表示します。
         </div>
       </CollapsibleSectionCard>
 

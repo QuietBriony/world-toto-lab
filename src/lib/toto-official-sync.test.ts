@@ -47,7 +47,21 @@ const lotInfoHtml = `
     <tr><td>売上金額 1,557,600円 1,137,700円 419,900円</td></tr>
     <tr><td>第1624回 totoGOAL3 くじ情報</td></tr>
     <tr><td>販売開始日 2026年04月18日（土）08：00</td></tr>
+    <tr><td><a href="./PGSPIN00301InitVoteRate.form?holdCntId=1624&commodityId=02">投票状況</a></td></tr>
   </table>
+`;
+
+const goal3VoteRateHtml = `
+  <div>第1624回 totoGOAL3 投票状況</div>
+  <div>(2026年04月21日（火）20時40分時点)</div>
+  <div>04/25 14:00 1 清水 ホーム 6,737（19.10%） 12,550（35.58%） 9,983（28.30%） 6,005（17.02%）</div>
+  <div>2 名古屋 アウェイ 6,640（18.83%） 12,276（34.80%） 10,735（30.43%） 5,624（15.94%）</div>
+  <div>04/25 14:00 3 岡山 ホーム 8,486（24.06%） 14,150（40.11%） 8,399（23.81%） 4,240（12.02%）</div>
+  <div>4 福岡 アウェイ 7,971（22.60%） 13,839（39.23%） 9,087（25.76%） 4,378（12.41%）</div>
+  <div>04/25 15:00 5 川崎Ｆ ホーム 4,206（11.92%） 8,175（23.18%） 12,497（35.43%） 10,397（29.47%）</div>
+  <div>6 千葉 アウェイ 11,375（32.25%） 13,398（37.98%） 6,924（19.63%） 3,578（10.14%）</div>
+  <div>売上金額 3,527,500円 2,318,000円 1,209,500円</div>
+  <div>販売期間 2026年04月18日(土) ～ 2026年04月25日(土)まで</div>
 `;
 
 describe("toto official sync parser", () => {
@@ -61,10 +75,10 @@ describe("toto official sync parser", () => {
     expect(result[1]?.resultStatus).toBe("draft");
   });
 
-  it("parses official lot info html and keeps toto / mini toto A / B while skipping unsupported sections", () => {
+  it("parses official lot info html and keeps toto / mini toto / GOAL3 sections", () => {
     const result = parseOfficialTotoLotInfoHtml(
       lotInfoHtml,
-      "https://store.toto-dream.com/detail/1624",
+      "https://store.toto-dream.com/dcs/subos/screen/pi01/spin000/PGSPIN00001DisptotoLotInfo.form?holdCntId=1624",
       "selling",
     );
 
@@ -72,18 +86,26 @@ describe("toto official sync parser", () => {
       "第1624回 toto",
       "第1624回 mini toto-A組",
       "第1624回 mini toto-B組",
+      "第1624回 totoGOAL3",
     ]);
     expect(result.rounds[0]?.matches).toHaveLength(2);
     expect(result.rounds[0]?.totalSalesYen).toBe(12033400);
     expect(result.rounds[1]?.productType).toBe("mini_toto");
     expect(result.rounds[2]?.matches[0]?.venue).toBe("ピースタ");
-    expect(result.warnings.join(" ")).toContain("未対応");
+    expect(result.rounds[3]?.productType).toBe("custom");
+    expect(result.rounds[3]?.requiredMatchCount).toBe(6);
+    expect(result.rounds[3]?.outcomeSetJson).toEqual(["0", "1", "2", "3+"]);
+    expect(result.warnings).toHaveLength(0);
   });
 
   it("hydrates schedule entries with detail pages when includeMatches is enabled", async () => {
     const result = await parseTotoOfficialHtmlSource({
       fetchText: async (url) => {
-        if (url.endsWith("/1624")) {
+        if (url.includes("holdCntId=1624&commodityId=02")) {
+          return goal3VoteRateHtml;
+        }
+
+        if (url.includes("holdCntId=1624") || url.endsWith("/1624")) {
           return lotInfoHtml;
         }
 
@@ -96,7 +118,11 @@ describe("toto official sync parser", () => {
 
     expect(result.rounds.map((entry) => entry.title)).toContain("第1624回 toto");
     expect(result.rounds.map((entry) => entry.title)).toContain("第1624回 mini toto-A組");
+    expect(result.rounds.map((entry) => entry.title)).toContain("第1624回 totoGOAL3");
     expect(result.rounds.map((entry) => entry.title)).toContain("第1625回 toto");
+    const goal3Round = result.rounds.find((entry) => entry.title === "第1624回 totoGOAL3");
+    expect(goal3Round?.matches).toHaveLength(6);
+    expect(goal3Round?.matches[0]?.officialVote3).toBeCloseTo(0.1702, 4);
   });
 
   it("detects official html-like payloads", () => {

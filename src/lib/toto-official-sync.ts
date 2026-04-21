@@ -1,5 +1,7 @@
 export type ParsedTotoOfficialMatch = {
   awayTeam: string;
+  goal3FixtureNo?: number | null;
+  goal3TeamRole?: "home" | "away" | null;
   homeTeam: string;
   kickoffTime: string | null;
   matchStatus: "scheduled" | "played" | "cancelled" | "postponed" | "void" | "unknown";
@@ -7,6 +9,7 @@ export type ParsedTotoOfficialMatch = {
   officialVote0: number | null;
   officialVote1: number | null;
   officialVote2: number | null;
+  officialVote3?: number | null;
   sourceText: string | null;
   stage: string | null;
   venue: string | null;
@@ -174,6 +177,80 @@ function htmlToTableRows(rawHtml: string) {
     .filter((cells) => cells.length > 0);
 }
 
+function extractHoldCountId(value: string | null | undefined) {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    const url = new URL(value);
+    return normalizeText(url.searchParams.get("holdCntId") ?? "") || null;
+  } catch {
+    const match = value.match(/holdCntId=(\d+)/i);
+    return match?.[1] ?? null;
+  }
+}
+
+function buildGoal3VoteRateUrl(rawHtml: string, sourceUrl: string) {
+  const explicitMatch = rawHtml.match(
+    /(?:https:\/\/store\.toto-dream\.com)?(?:\.\/)?PGSPIN00301InitVoteRate\.form\?holdCntId=\d+&commodityId=02/i,
+  );
+
+  if (explicitMatch?.[0]) {
+    const rawPath = explicitMatch[0];
+    if (rawPath.startsWith("http")) {
+      return rawPath;
+    }
+
+    return new URL(rawPath.replace(/^\.\//, ""), sourceUrl).toString();
+  }
+
+  const holdCntId = extractHoldCountId(sourceUrl);
+  if (!holdCntId) {
+    return null;
+  }
+
+  return `https://store.toto-dream.com/dcs/subos/screen/pi09/spin003/PGSPIN00301InitVoteRate.form?holdCntId=${holdCntId}&commodityId=02`;
+}
+
+function isGoal3Label(normalizedLabel: string) {
+  return normalizedLabel.startsWith("totogoal3") || normalizedLabel.startsWith("toto goal3");
+}
+
+function isGoal3VoteRateHtml(rawHtml: string) {
+  return /totoGOAL3[\s\S]*投票状況|0点[\s\S]*1点[\s\S]*2点[\s\S]*3点以上/.test(rawHtml);
+}
+
+function parseGoal3SalesPeriod(value: string) {
+  const match = value.match(
+    /(\d{4})年\s*(\d{1,2})月\s*(\d{1,2})日.*?[～~]\s*(\d{4})年\s*(\d{1,2})月\s*(\d{1,2})日/,
+  );
+
+  if (!match) {
+    return {
+      salesEndAt: null,
+      salesStartAt: null,
+    };
+  }
+
+  return {
+    salesStartAt: toIsoTimestamp(
+      Number.parseInt(match[1] ?? "0", 10),
+      Number.parseInt(match[2] ?? "0", 10),
+      Number.parseInt(match[3] ?? "0", 10),
+      null,
+      "00:00",
+    ),
+    salesEndAt: toIsoTimestamp(
+      Number.parseInt(match[4] ?? "0", 10),
+      Number.parseInt(match[5] ?? "0", 10),
+      Number.parseInt(match[6] ?? "0", 10),
+      null,
+      "23:59",
+    ),
+  };
+}
+
 function mapScheduleStatus(value: string): ParsedTotoOfficialRoundEntry["resultStatus"] {
   if (value.includes("販売中")) {
     return "selling";
@@ -287,7 +364,193 @@ function mapLotInfoProduct(
     };
   }
 
+  if (isGoal3Label(normalized)) {
+    return {
+      officialRoundName: `第${roundNumber}回 totoGOAL3`,
+      officialRoundNumber: roundNumber,
+      outcomeSetJson: ["0", "1", "2", "3+"],
+      productType: "custom",
+      requiredMatchCount: 6,
+      title: `第${roundNumber}回 totoGOAL3`,
+      voidHandling: "manual",
+    };
+  }
+
   return null;
+}
+
+function parseGoal3VoteRateHtml(rawHtml: string, sourceUrl: string) {
+  if (!isGoal3VoteRateHtml(rawHtml)) {
+    return null;
+  }
+
+  const lines = htmlToLines(rawHtml);
+  const titleLine =
+    lines.find((line) => /^第\s*\d+\s*回\s*totoGOAL3\s+投票状況$/.test(line)) ?? null;
+
+  if (!titleLine) {
+    return null;
+  }
+
+  const roundNumber = Number.parseInt(
+    titleLine.match(/^第\s*(\d+)\s*回/)?.[1] ?? "0",
+    10,
+  );
+
+  if (!Number.isFinite(roundNumber)) {
+    return null;
+  }
+
+  const salesPeriodLine =
+    lines.find((line) => line.startsWith("販売期間") && line.includes("～")) ?? null;
+  const salesPeriod = salesPeriodLine ? parseGoal3SalesPeriod(salesPeriodLine) : {
+    salesEndAt: null,
+    salesStartAt: null,
+  };
+  const kickoffYear =
+    inferKickoffYear({
+      salesEndAt: salesPeriod.salesEndAt,
+      salesStartAt: salesPeriod.salesStartAt,
+    }) ?? new Date().getFullYear();
+
+  const teamRows: ParsedTotoOfficialMatch[] = [];
+  let currentKickoff: string | null = null;
+
+  for (const line of lines) {
+    const withDate =
+      line.match(
+        /^(\d{2}\/\d{2})\s+([0-2]?\d[:：][0-5]\d)\s+(\d+)\s+(.+?)\s+(ホーム|アウェイ)\s+[\d,]+[（(]([\d.]+)%[）)]\s+[\d,]+[（(]([\d.]+)%[）)]\s+[\d,]+[（(]([\d.]+)%[）)]\s+[\d,]+[（(]([\d.]+)%[）)]/,
+      ) ??
+      line.match(
+        /^(\d{2}\/\d{2})\s+([0-2]?\d[:：][0-5]\d)\s+(\d+)\s+(.+?)\s+(ホーム|アウェイ)\s+([\d.]+)%\s+([\d.]+)%\s+([\d.]+)%\s+([\d.]+)%/,
+      );
+
+    const withoutDate =
+      line.match(
+        /^(\d+)\s+(.+?)\s+(ホーム|アウェイ)\s+[\d,]+[（(]([\d.]+)%[）)]\s+[\d,]+[（(]([\d.]+)%[）)]\s+[\d,]+[（(]([\d.]+)%[）)]\s+[\d,]+[（(]([\d.]+)%[）)]/,
+      ) ??
+      line.match(
+        /^(\d+)\s+(.+?)\s+(ホーム|アウェイ)\s+([\d.]+)%\s+([\d.]+)%\s+([\d.]+)%\s+([\d.]+)%/,
+      );
+
+    if (withDate) {
+      currentKickoff = parseMatchKickoff(kickoffYear, withDate[1] ?? "", withDate[2] ?? "");
+      const officialMatchNo = Number.parseInt(withDate[3] ?? "0", 10);
+      teamRows.push({
+        awayTeam: "",
+        goal3FixtureNo: Math.ceil(officialMatchNo / 2),
+        goal3TeamRole: withDate[5] === "ホーム" ? "home" : "away",
+        homeTeam: withDate[4] ?? "未設定",
+        kickoffTime: currentKickoff,
+        matchStatus: "scheduled",
+        officialMatchNo,
+        officialVote0: Number.parseFloat(withDate[6] ?? "0") / 100,
+        officialVote1: Number.parseFloat(withDate[7] ?? "0") / 100,
+        officialVote2: Number.parseFloat(withDate[8] ?? "0") / 100,
+        officialVote3: Number.parseFloat(withDate[9] ?? "0") / 100,
+        sourceText: line,
+        stage: withDate[5] ?? null,
+        venue: null,
+      });
+      continue;
+    }
+
+    if (withoutDate) {
+      const officialMatchNo = Number.parseInt(withoutDate[1] ?? "0", 10);
+      teamRows.push({
+        awayTeam: "",
+        goal3FixtureNo: Math.ceil(officialMatchNo / 2),
+        goal3TeamRole: withoutDate[3] === "ホーム" ? "home" : "away",
+        homeTeam: withoutDate[2] ?? "未設定",
+        kickoffTime: currentKickoff,
+        matchStatus: "scheduled",
+        officialMatchNo,
+        officialVote0: Number.parseFloat(withoutDate[4] ?? "0") / 100,
+        officialVote1: Number.parseFloat(withoutDate[5] ?? "0") / 100,
+        officialVote2: Number.parseFloat(withoutDate[6] ?? "0") / 100,
+        officialVote3: Number.parseFloat(withoutDate[7] ?? "0") / 100,
+        sourceText: line,
+        stage: withoutDate[3] ?? null,
+        venue: null,
+      });
+    }
+  }
+
+  for (const row of teamRows) {
+    const counterpart = teamRows.find(
+      (candidate) =>
+        candidate.goal3FixtureNo === row.goal3FixtureNo &&
+        candidate.officialMatchNo !== row.officialMatchNo,
+    );
+    row.awayTeam = counterpart?.homeTeam ?? "";
+  }
+
+  const salesLine = lines.find((line) => line.startsWith("売上金額"));
+  const totalSalesYen = salesLine
+    ? Number.parseInt((salesLine.match(/売上金額\s+([\d,]+)円/)?.[1] ?? "0").replaceAll(",", ""), 10)
+    : null;
+  const round: ParsedTotoOfficialRoundEntry = {
+    title: `第${roundNumber}回 totoGOAL3`,
+    notes: null,
+    officialRoundName: `第${roundNumber}回 totoGOAL3`,
+    officialRoundNumber: roundNumber,
+    productType: "custom",
+    requiredMatchCount: 6,
+    outcomeSetJson: ["0", "1", "2", "3+"],
+    sourceNote: "スポーツくじオフィシャルサイト 投票状況 / totoGOAL3 Value Board",
+    voidHandling: "manual",
+    resultStatus: "selling",
+    salesStartAt: salesPeriod.salesStartAt,
+    salesEndAt: salesPeriod.salesEndAt,
+    stakeYen: 100,
+    totalSalesYen: Number.isFinite(totalSalesYen) ? totalSalesYen : null,
+    returnRate: 0.5,
+    firstPrizeShare: 0.6,
+    carryoverYen: 0,
+    payoutCapYen: null,
+    sourceUrl,
+    sourceText: lines.join("\n").slice(0, 4000) || null,
+    matches: teamRows,
+  };
+
+  return {
+    rounds: [round],
+    warnings: [] as string[],
+  };
+}
+
+function mergeGoal3FixtureContext(
+  baseRound: ParsedTotoOfficialRoundEntry,
+  voteRound: ParsedTotoOfficialRoundEntry,
+) {
+  const enrichedMatches = voteRound.matches.map((row) => {
+    const fixture = baseRound.matches[(row.goal3FixtureNo ?? Math.ceil(row.officialMatchNo / 2)) - 1];
+    const role = row.goal3TeamRole ?? (row.stage === "ホーム" ? "home" : row.stage === "アウェイ" ? "away" : null);
+
+    return {
+      ...row,
+      awayTeam:
+        row.awayTeam ||
+        (fixture
+          ? role === "home"
+            ? fixture.awayTeam
+            : role === "away"
+              ? fixture.homeTeam
+              : row.awayTeam
+          : row.awayTeam),
+      kickoffTime: row.kickoffTime ?? fixture?.kickoffTime ?? null,
+      venue: row.venue ?? fixture?.venue ?? null,
+    };
+  });
+
+  return {
+    ...baseRound,
+    firstPrizeShare: voteRound.firstPrizeShare,
+    matches: enrichedMatches,
+    sourceNote: "スポーツくじオフィシャルサイト くじ情報 / totoGOAL3 Value Board",
+    sourceText: voteRound.sourceText ?? baseRound.sourceText,
+    totalSalesYen: voteRound.totalSalesYen ?? baseRound.totalSalesYen,
+  } satisfies ParsedTotoOfficialRoundEntry;
 }
 
 export function parseYahooTotoScheduleHtml(rawHtml: string) {
@@ -346,9 +609,9 @@ export function parseOfficialTotoLotInfoHtml(
     }
 
     current.sourceText = sectionLines.join("\n").slice(0, 4000) || null;
-    current.requiredMatchCount = current.matches.length > 0
-      ? current.matches.length
-      : current.requiredMatchCount;
+    if (current.matches.length > 0 && !current.outcomeSetJson?.includes("3+")) {
+      current.requiredMatchCount = current.matches.length;
+    }
     rounds.push(current);
   };
 
@@ -385,7 +648,10 @@ export function parseOfficialTotoLotInfoHtml(
       payoutCapYen: null,
       sourceUrl,
       sourceText: null,
-      sourceNote: "スポーツくじオフィシャルサイト くじ情報",
+      sourceNote:
+        product.outcomeSetJson?.includes("3+")
+          ? "スポーツくじオフィシャルサイト くじ情報 / totoGOAL3 Value Board"
+          : "スポーツくじオフィシャルサイト くじ情報",
       matches: [],
     };
     return true;
@@ -537,6 +803,11 @@ export function parseOfficialTotoLotInfoHtml(
 }
 
 export async function parseTotoOfficialHtmlSource(input: ParseHtmlInput) {
+  const goal3VoteRate = parseGoal3VoteRateHtml(input.rawText, input.sourceUrl);
+  if (goal3VoteRate) {
+    return goal3VoteRate;
+  }
+
   const scheduleSummaries = parseYahooTotoScheduleHtml(input.rawText);
   if (scheduleSummaries.length > 0) {
     const warnings: string[] = [];
@@ -560,8 +831,38 @@ export async function parseTotoOfficialHtmlSource(input: ParseHtmlInput) {
             summary.resultStatus,
           );
 
-          if (detailed.rounds.length > 0) {
-            rounds.push(...detailed.rounds);
+          const goal3HydratedRounds = await Promise.all(
+            detailed.rounds.map(async (round) => {
+              if (!round.outcomeSetJson?.includes("3+")) {
+                return round;
+              }
+
+              const voteRateUrl = buildGoal3VoteRateUrl(detailHtml, summary.detailUrl ?? input.sourceUrl);
+              if (!voteRateUrl) {
+                warnings.push(`${round.title} の投票状況URLを見つけられませんでした。`);
+                return round;
+              }
+
+              try {
+                const voteHtml = await fetchText(voteRateUrl);
+                const voteRate = parseGoal3VoteRateHtml(voteHtml, voteRateUrl);
+                if (!voteRate?.rounds[0]) {
+                  warnings.push(`${round.title} の投票状況を解釈できませんでした。`);
+                  return round;
+                }
+
+                return mergeGoal3FixtureContext(round, voteRate.rounds[0]);
+              } catch (error) {
+                warnings.push(
+                  `${round.title} の投票状況取得に失敗しました: ${(error as Error).message}`,
+                );
+                return round;
+              }
+            }),
+          );
+
+          if (goal3HydratedRounds.length > 0) {
+            rounds.push(...goal3HydratedRounds);
             warnings.push(...detailed.warnings);
             continue;
           }
@@ -584,5 +885,5 @@ export async function parseTotoOfficialHtmlSource(input: ParseHtmlInput) {
 }
 
 export function looksLikeTotoOfficialHtml(rawText: string) {
-  return /scheduleResultList|scheduleResultItem|指定試合（ホームvsアウェイ）|くじ情報/.test(rawText);
+  return /scheduleResultList|scheduleResultItem|指定試合（ホームvsアウェイ）|くじ情報|投票状況|0点[\s\S]*3点以上/.test(rawText);
 }

@@ -44,6 +44,9 @@ type SyncMatchResult = {
   officialVote0: number | null;
   officialVote1: number | null;
   officialVote2: number | null;
+  officialVote3?: number | null;
+  goal3TeamRole?: "home" | "away" | null;
+  goal3FixtureNo?: number | null;
   sourceText: string | null;
   matchStatus: "scheduled" | "played" | "cancelled" | "postponed" | "void" | "unknown";
 };

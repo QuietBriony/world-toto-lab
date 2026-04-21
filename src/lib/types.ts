@@ -52,6 +52,7 @@ export type TotoOfficialMatchStatus =
   | "postponed"
   | "void"
   | "unknown";
+export type Goal3TeamRole = "home" | "away";
 
 export type User = {
   id: string;

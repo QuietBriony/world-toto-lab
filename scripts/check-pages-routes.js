@@ -42,6 +42,7 @@ async function main() {
     buildUrl(baseUrl, "/", {}),
     buildUrl(baseUrl, "/workspace/", { round: roundId }),
     buildUrl(baseUrl, "/big-carryover/", {}),
+    buildUrl(baseUrl, "/goal3-value/", {}),
     buildUrl(baseUrl, "/big-carryover/", {
       eventType: "carryover_event",
       label: "BIG 高還元イベント",
