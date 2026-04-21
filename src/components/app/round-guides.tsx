@@ -37,6 +37,12 @@ const pageGuideMeta: Partial<
     description: "最初だけ開けば十分です。ダッシュボードで出てくる言葉を短く揃えています。",
     summary: "本番とデモ、共有メンバーの状態を見分ける入口です。",
   },
+  [appRoute.bigCarryover]: {
+    badge: "運用向け",
+    title: "BIG Carryover Monitor で見る言葉",
+    description: "BIG は outcome を選ぶ画面ではないので、売上・キャリー・還元率だけに絞って短くまとめています。",
+    summary: "高還元イベントかどうかを、ざっくり判定する段階です。",
+  },
   [appRoute.workspace]: {
     badge: "全体像",
     title: "ラウンド詳細で見る言葉",
@@ -134,6 +140,28 @@ const pageGlossaryEntries: Partial<Record<GuideRoute, GlossaryEntry[]>> = {
       term: "入力あり",
       body: "この本番回で支持・予想・予想者カード・振り返りのどれかが入っています。",
       tone: "rose",
+    },
+  ],
+  [appRoute.bigCarryover]: [
+    {
+      term: "概算EV",
+      body: "還元率とキャリーから見た簡易期待値です。等級別配分まで再現する厳密値ではありません。",
+      tone: "teal",
+    },
+    {
+      term: "還元率からの上振れ",
+      body: "平時の還元率から、キャリーがどれだけ上に押し上げているかです。",
+      tone: "sky",
+    },
+    {
+      term: "損益分岐",
+      body: "概算EVが 100% に届く境目です。ここを超えると理論上はプラス圏です。",
+      tone: "amber",
+    },
+    {
+      term: "期待損益",
+      body: "投下額に対して、簡易式で見た期待値ベースの損益です。ブレは大きい前提で見ます。",
+      tone: "lime",
     },
   ],
   [appRoute.workspace]: [

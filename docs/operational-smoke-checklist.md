@@ -33,11 +33,18 @@ npm run check:pages
 ### 1. Dashboard
 
 - `/world-toto-lab/` を開く
+- `BIG Carryover Monitor`
 - `公式日程を取り込む`
 - `Fixture Selector`
 - `toto を同期して選ぶ`
 - `mini toto を同期して選ぶ`
-- 4 ボタンがそれぞれ画面遷移する
+- 5 ボタンがそれぞれ画面遷移する
+
+### 1.5. BIG Carryover Monitor
+
+- `/world-toto-lab/big-carryover/` を開く
+- 概算EV、還元率からの上振れ、損益分岐との差が見える
+- 入力欄を変えると概算値が更新される
 
 ### 2. Round Detail
 

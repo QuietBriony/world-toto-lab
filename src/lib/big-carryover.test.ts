@@ -1,0 +1,46 @@
+import { describe, expect, it } from "vitest";
+
+import {
+  buildBigCarryoverScenarioRows,
+  calculateBigCarryoverSummary,
+} from "@/lib/big-carryover";
+
+describe("big carryover monitor", () => {
+  it("calculates approximate EV from carryover and sales", () => {
+    const summary = calculateBigCarryoverSummary({
+      carryoverYen: 6_000_000_000,
+      returnRate: 0.5,
+      salesYen: 8_000_000_000,
+      spendYen: 10_000,
+    });
+
+    expect(summary.carryoverUplift).toBe(0.75);
+    expect(summary.approxEvMultiple).toBe(1.25);
+    expect(summary.overBreakEven).toBe(0.25);
+    expect(summary.expectedProfitYen).toBe(2_500);
+  });
+
+  it("calculates break-even carryover gap", () => {
+    const summary = calculateBigCarryoverSummary({
+      carryoverYen: 3_200_000_000,
+      returnRate: 0.5,
+      salesYen: 7_000_000_000,
+      spendYen: 50_000,
+    });
+
+    expect(summary.breakEvenCarryoverYen).toBe(3_500_000_000);
+    expect(summary.breakEvenGapYen).toBe(-300_000_000);
+  });
+
+  it("builds scenario rows from the approximate EV multiple", () => {
+    const rows = buildBigCarryoverScenarioRows({
+      approxEvMultiple: 1.12,
+      spendOptionsYen: [1_000, 5_000],
+    });
+
+    expect(rows).toEqual([
+      { expectedProfitYen: 120, spendYen: 1_000 },
+      { expectedProfitYen: 600, spendYen: 5_000 },
+    ]);
+  });
+});

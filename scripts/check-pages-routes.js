@@ -41,6 +41,7 @@ async function main() {
   const routes = [
     buildUrl(baseUrl, "/", {}),
     buildUrl(baseUrl, "/workspace/", { round: roundId }),
+    buildUrl(baseUrl, "/big-carryover/", {}),
     buildUrl(baseUrl, "/workspace/", { debug: "1", round: roundId }),
     buildUrl(baseUrl, "/official-schedule-import/", { round: roundId }),
     buildUrl(baseUrl, "/fixture-selector/", { round: roundId }),

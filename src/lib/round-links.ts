@@ -53,6 +53,7 @@ export function buildOfficialRoundImportHref(
 export const appRoute = {
   dashboard: "/",
   workspace: "/workspace",
+  bigCarryover: "/big-carryover",
   simpleView: "/simple-view",
   pickRoom: "/pick-room",
   winnerValue: "/winner-value",

@@ -1422,6 +1422,9 @@ export default function DashboardPage() {
                 >
                   mini toto を同期して選ぶ
                 </Link>
+                <Link href={appRoute.bigCarryover} className={secondaryButtonClassName}>
+                  BIG Carryover Monitor
+                </Link>
               </div>
             }
           >
