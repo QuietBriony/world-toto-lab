@@ -63,7 +63,7 @@ export function RoundNav({
           { href: buildRoundHref(appRoute.edgeBoard, roundId), label: "優位ボード" },
           {
             href: buildRoundHref(appRoute.ticketGenerator, roundId),
-            label: "候補配分",
+            label: "詳細候補配分",
           },
           { href: buildRoundHref(appRoute.review, roundId), label: "振り返り" },
         ]

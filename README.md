@@ -49,14 +49,14 @@ GitHub Pages は静的配信なので、build 後に増える Round を動的ル
   - `/scout-cards`
   - `/consensus`
   - `/edge-board`
-- `/ticket-generator`
-- `/review`
-- `/match-editor`
-- `/official-schedule-import`
-- `/fixture-selector`
-- `/toto-official-round-import`
-- `/simple-view`
-- `/pick-room`
+  - `/ticket-generator`
+  - `/review`
+  - `/match-editor`
+  - `/official-schedule-import`
+  - `/fixture-selector`
+  - `/toto-official-round-import`
+  - `/simple-view`
+  - `/pick-room`
 - 対象 Round は `?round=<id>` で切り替え
 - 対象 User は `?user=<id>` で切り替え
 - Match Editor は `?round=<id>&match=<id>` で開く
@@ -138,7 +138,7 @@ GitHub Pages は静的配信なので、build 後に増える Round を動的ル
 - 一般人気 / AI / 予想者 / ウォッチ支持 / 合成優位の一覧
 - コア候補 / ダークホース / 監視候補の判定
 
-### 8. 候補配分
+### 8. 詳細候補配分
 
 - 上位候補数
 - mode 選択
@@ -146,6 +146,7 @@ GitHub Pages は静的配信なので、build 後に増える Round を動的ル
 - maxContrarianMatches
 - includeDrawPolicy
 - 本線 / バランス / 荒れ狙いの配分案比較
+- `Friend Pick Room` より細かく理由タグや内部スコアを見たいときの管理寄り画面
 
 ### 9. Results & Review
 
@@ -391,7 +392,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 `MISSING_COLUMN` や `MISSING_RELATION` が出た場合は、本番 Supabase に `supabase/schema.sql` を再適用してください。  
 `candidate_tickets` / `candidate_votes` は現状 UI 側でフェイルセーフを入れていますが、`missing` が出るなら SQL 再実行が推奨です。
 
-### 3.1. まだ候補系テーブルがない場合（`candidate_tickets` / `candidate_votes`）
+### 3.3 まだ候補系テーブルがない場合（`candidate_tickets` / `candidate_votes`）
 
 次のエラーが出る場合は、実運用DBへ候補系テーブルが未反映です。
 
@@ -545,8 +546,7 @@ F = ① + ② + ③ + ④ + M
 - 認証
 - 権限制御つきの共有
 - 外部モデルとの連携による AI 確率の自動投入
-- 外部 API からの試合予定自動取得
-- CSV Import
+- 外部 API からの試合予定全面自動取得
 - リアルタイム同期
   - 現状は保存後の再取得と定期再取得で追従します
 - 高度な候補配分最適化

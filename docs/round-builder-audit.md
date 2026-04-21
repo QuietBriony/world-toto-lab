@@ -36,7 +36,7 @@ GitHub Pages 配信時は Next.js の `basePath` により、実 URL は `/world
 
 - 実装は top-level route を維持し、`next.config.ts` の `basePath` / `assetPrefix` に任せる方式を継続しました。
 - `Link href="/pick-room?round=..."` のような書き方でも、GitHub Pages 配信では `/world-toto-lab/pick-room/?round=...` として解決されます。
-- Round Builder 下に Debug Panel を追加し、現在 path と生成 href を確認できるようにしました。
+- Round Builder 下に Debug Panel を追加し、`?debug=1` のときだけ現在 path と生成 href を確認できるようにしました。
 
 ## round id 引き継ぎの内容
 
@@ -53,7 +53,7 @@ GitHub Pages 配信時は Next.js の `basePath` により、実 URL は `/world
 ## iPhone 幅での確認結果
 
 - Round Builder ボタン列は `flex-wrap` のままで、44px 以上のタップ高を保っています。
-- Debug Panel は折りたたみ式なので、狭い幅でも主導線を塞ぎません。
+- Debug Panel は `?debug=1` でのみ出る折りたたみ式なので、通常利用時の主導線を塞ぎません。
 - `simple-view` / `pick-room` 側は既存の横スクロールや sticky 保存バーを維持しました。
 
 補足:
@@ -70,4 +70,4 @@ GitHub Pages 配信時は Next.js の `basePath` により、実 URL は `/world
 1. GitHub Pages 反映後に live URL で Round Builder 5 ボタンを実クリック確認する
 2. `official-schedule-import` から `fixture-selector`、`fixture-selector` から `Round Detail` の往復を確認する
 3. `toto-official-round-import` で `Round Detailへ戻る` と `Pick Room` の遷移を確認する
-4. 必要なら Debug Panel は `debug=1` 条件表示に縮める
+4. 実クリックで追加の導線不具合が見つかった場合は `debug=1` 付き URL で生成 href を確認する

@@ -274,8 +274,8 @@ const pageGlossaryEntries: Partial<Record<GuideRoute, GlossaryEntry[]>> = {
   ],
   [appRoute.ticketGenerator]: [
     {
-      term: "候補配分",
-      body: "お金の配分ではなく、先に確認したい候補の並び順です。",
+      term: "詳細候補配分",
+      body: "Friend Pick Room より細かく、先に確認したい候補の並び順と理由を見る管理寄り画面です。",
       tone: "amber",
     },
     {
@@ -302,7 +302,7 @@ const pageGlossaryEntries: Partial<Record<GuideRoute, GlossaryEntry[]>> = {
     },
     {
       term: "的中",
-      body: "AI、人力、人気、候補配分などが実結果を拾えたかの確認です。",
+      body: "AI、人力、人気、詳細候補配分などが実結果を拾えたかの確認です。",
       tone: "sky",
     },
     {
@@ -325,7 +325,7 @@ const routeLabel: Partial<Record<GuideRoute, string>> = {
   [appRoute.scoutCards]: "予想者カード",
   [appRoute.consensus]: "コンセンサス",
   [appRoute.edgeBoard]: "優位ボード",
-  [appRoute.ticketGenerator]: "候補配分",
+  [appRoute.ticketGenerator]: "詳細候補配分",
   [appRoute.review]: "振り返り",
 };
 

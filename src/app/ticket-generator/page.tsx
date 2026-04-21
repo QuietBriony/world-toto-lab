@@ -380,9 +380,27 @@ function TicketGeneratorPageContent() {
   return (
     <div className="space-y-8">
       <PageHeader
-        eyebrow="候補配分"
+        eyebrow="詳細候補配分"
         title="注目配分ジェネレーター"
-        description="金額や配当ではなく、AI・予想者・ウォッチ支持の合成優位差から、どの候補から見るかを整理します。"
+        description="Friend Pick Room より細かく、AI・予想者・ウォッチ支持の合成優位差から候補の並び順と理由を確認する管理寄り画面です。"
+        actions={
+          data ? (
+            <div className="flex flex-wrap gap-3">
+              <Link
+                href={buildRoundHref(appRoute.pickRoom, data.round.id, { user: data.users[0]?.id })}
+                className={secondaryButtonClassName}
+              >
+                Friend Pick Room
+              </Link>
+              <Link
+                href={buildRoundHref(appRoute.workspace, data.round.id)}
+                className={secondaryButtonClassName}
+              >
+                ラウンド詳細
+              </Link>
+            </div>
+          ) : undefined
+        }
       />
 
       {!isSupabaseConfigured() ? (

@@ -1103,13 +1103,13 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-2">
                   <Badge tone="amber">まだない</Badge>
                   <h3 className="font-display text-lg font-semibold tracking-[-0.04em] text-slate-950">
-                    自動取得と自動分析は未実装
+                    外部API直取得と本格モデル自動分析は未実装
                   </h3>
                 </div>
                 <ul className="mt-4 space-y-2 text-sm leading-7 text-slate-700">
-                  <li>実試合の日程や対戦カードを外部 API から自動で取る処理はまだありません。</li>
-                  <li>AI確率をこのサイト内で自動計算するモデル連携もまだありません。</li>
-                  <li>なので現状は、デモを見るか、試合編集で実データを入れて使う MVP です。</li>
+                  <li>公式一覧の半自動同期や CSV / 貼り付け取り込みはありますが、外部 API から全面自動で埋まる構成ではありません。</li>
+                  <li>AI確率は補助的な試算までで、本格モデルをこのサイト内で自動運用する段階ではありません。</li>
+                  <li>なので現状は、公式取り込みを使うか、試合編集で実データを入れて使う MVP です。</li>
                 </ul>
               </div>
             </div>

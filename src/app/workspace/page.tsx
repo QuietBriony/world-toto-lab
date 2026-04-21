@@ -136,6 +136,7 @@ function WorkspacePageContent() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const roundId = getSingleSearchParam(searchParams.get("round"));
+  const debugMode = getSingleSearchParam(searchParams.get("debug")) === "1";
   const { data, error, loading, refresh } = useRoundWorkspace(roundId);
   const [saving, setSaving] = useState(false);
   const [submitError, setSubmitError] = useState<ScopedMessage | null>(null);
@@ -507,26 +508,28 @@ function WorkspacePageContent() {
               </Link>
             </div>
 
-            <details className="rounded-[24px] border border-slate-200 bg-slate-50/90 px-4 py-4">
-              <summary className="cursor-pointer list-none font-semibold text-slate-900">
-                Debug Panel
-              </summary>
-              <div className="mt-4 space-y-3 text-sm text-slate-600">
-                <div className="flex flex-wrap gap-2">
-                  <Badge tone="slate">current path {pathname}</Badge>
-                  <Badge tone="slate">detected base path {detectedBasePath || "(root)"}</Badge>
-                  <Badge tone="info">round {data.round.id}</Badge>
+            {debugMode ? (
+              <details className="rounded-[24px] border border-slate-200 bg-slate-50/90 px-4 py-4">
+                <summary className="cursor-pointer list-none font-semibold text-slate-900">
+                  Debug Panel
+                </summary>
+                <div className="mt-4 space-y-3 text-sm text-slate-600">
+                  <div className="flex flex-wrap gap-2">
+                    <Badge tone="slate">current path {pathname}</Badge>
+                    <Badge tone="slate">detected base path {detectedBasePath || "(root)"}</Badge>
+                    <Badge tone="info">round {data.round.id}</Badge>
+                  </div>
+                  <div className="space-y-2 rounded-[20px] border border-slate-200 bg-white/85 p-4">
+                    {roundBuilderLinks.map((entry) => (
+                      <p key={entry.label} className="break-all">
+                        <span className="font-semibold text-slate-900">{entry.label}</span>:{" "}
+                        {resolveDebugHref(entry.href, detectedBasePath)}
+                      </p>
+                    ))}
+                  </div>
                 </div>
-                <div className="space-y-2 rounded-[20px] border border-slate-200 bg-white/85 p-4">
-                  {roundBuilderLinks.map((entry) => (
-                    <p key={entry.label} className="break-all">
-                      <span className="font-semibold text-slate-900">{entry.label}</span>:{" "}
-                      {resolveDebugHref(entry.href, detectedBasePath)}
-                    </p>
-                  ))}
-                </div>
-              </div>
-            </details>
+              </details>
+            ) : null}
           </CollapsibleSectionCard>
 
           <RoundProgressCallout
