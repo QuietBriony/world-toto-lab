@@ -1592,6 +1592,10 @@ async function deleteRoundCascade(roundId: string) {
   await supabase.from("rounds").delete().eq("id", roundId);
 }
 
+export async function deleteRound(roundId: string) {
+  await deleteRoundCascade(roundId);
+}
+
 async function replaceDemoUsers() {
   const supabase = requireSupabaseClient();
   const usersResult = await supabase.from("users").select("*").order("role").order("name");

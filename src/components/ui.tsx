@@ -164,8 +164,8 @@ export function SectionCard({
       {...props}
     >
       {(title || description || resolvedAction) && (
-        <div className="relative z-10 mb-5 flex flex-col gap-3 border-b border-slate-200 pb-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="space-y-1.5">
+        <div className="relative z-10 mb-5 flex flex-col gap-3 border-b border-slate-200 pb-4 xl:flex-row xl:items-start xl:justify-between">
+          <div className="min-w-0 flex-1 space-y-1.5">
             {typeof title === "string" ? (
               <h2 className="font-display text-lg font-semibold tracking-[-0.04em] text-slate-950 sm:text-[1.2rem]">
                 {title}
@@ -181,7 +181,7 @@ export function SectionCard({
               description
             )}
           </div>
-          {resolvedAction ? <div className="shrink-0">{resolvedAction}</div> : null}
+          {resolvedAction ? <div className="w-full max-w-full xl:w-auto xl:shrink-0">{resolvedAction}</div> : null}
         </div>
       )}
 
@@ -351,12 +351,12 @@ export function PageHeader({
   return (
     <header
       className={cx(
-        "relative overflow-hidden flex flex-col gap-4 rounded-[32px] border border-white/14 bg-[linear-gradient(125deg,rgba(9,34,22,0.92),rgba(13,70,37,0.88)_42%,rgba(10,22,16,0.94))] p-5 shadow-[0_30px_90px_-50px_rgba(0,0,0,0.62)] backdrop-blur-xl before:pointer-events-none before:absolute before:right-[-4rem] before:top-[-5rem] before:h-40 before:w-40 before:rounded-full before:bg-[radial-gradient(circle,rgba(250,204,21,0.16),transparent_62%)] before:blur-xl after:pointer-events-none after:absolute after:inset-x-8 after:bottom-[-5rem] after:h-28 after:rounded-full after:border after:border-white/12 after:content-[''] sm:p-6 lg:flex-row lg:items-end lg:justify-between",
+        "relative overflow-hidden flex flex-col gap-4 rounded-[32px] border border-white/14 bg-[linear-gradient(125deg,rgba(9,34,22,0.92),rgba(13,70,37,0.88)_42%,rgba(10,22,16,0.94))] p-5 shadow-[0_30px_90px_-50px_rgba(0,0,0,0.62)] backdrop-blur-xl before:pointer-events-none before:absolute before:right-[-4rem] before:top-[-5rem] before:h-40 before:w-40 before:rounded-full before:bg-[radial-gradient(circle,rgba(250,204,21,0.16),transparent_62%)] before:blur-xl after:pointer-events-none after:absolute after:inset-x-8 after:bottom-[-5rem] after:h-28 after:rounded-full after:border after:border-white/12 after:content-[''] sm:p-6 xl:flex-row xl:items-end xl:justify-between",
         className,
       )}
       {...props}
     >
-      <div className="relative z-10 space-y-3">
+      <div className="relative z-10 min-w-0 flex-1 space-y-3">
         {eyebrow ? (
           <div className="font-display text-[11px] font-medium uppercase tracking-[0.38em] text-emerald-100/68">
             {eyebrow}
@@ -377,7 +377,7 @@ export function PageHeader({
           description
         )}
       </div>
-      {actions ? <div className="relative z-10 shrink-0">{actions}</div> : null}
+      {actions ? <div className="relative z-10 w-full max-w-full xl:w-auto xl:shrink-0">{actions}</div> : null}
     </header>
   );
 }

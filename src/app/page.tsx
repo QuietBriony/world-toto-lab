@@ -55,6 +55,7 @@ import {
   createDemoRound,
   createInitialUsers,
   createRound,
+  deleteRound,
   createUser,
   deleteUserIfInactive,
   updateUserProfile,
@@ -105,6 +106,7 @@ export default function DashboardPage() {
   const [addingMember, setAddingMember] = useState(false);
   const [savingMemberId, setSavingMemberId] = useState<string | null>(null);
   const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
+  const [removingRoundId, setRemovingRoundId] = useState<string | null>(null);
   const [duplicatingPredictorId, setDuplicatingPredictorId] = useState<string | null>(null);
   const [memberActionError, setMemberActionError] = useState<string | null>(null);
   const [createProductType, setCreateProductType] = useState<ProductType>("toto13");
@@ -270,6 +272,24 @@ export default function DashboardPage() {
       setActionError(errorMessage(nextError));
     } finally {
       setBusy(null);
+    }
+  };
+
+  const handleDeleteRound = async (roundId: string, title: string) => {
+    if (!window.confirm(`「${title}」を削除します。関連する試合・支持・予想・候補カードも一緒に消えます。続けますか？`)) {
+      return;
+    }
+
+    setRemovingRoundId(roundId);
+    setActionError(null);
+
+    try {
+      await deleteRound(roundId);
+      await refresh();
+    } catch (nextError) {
+      setActionError(errorMessage(nextError));
+    } finally {
+      setRemovingRoundId(null);
     }
   };
 
@@ -1702,6 +1722,17 @@ export default function DashboardPage() {
                         >
                           ラウンド詳細
                         </Link>
+                        <button
+                          type="button"
+                          className={cx(
+                            secondaryButtonClassName,
+                            "border-rose-200 text-rose-700 hover:border-rose-300 hover:bg-rose-50",
+                          )}
+                          disabled={removingRoundId !== null}
+                          onClick={() => void handleDeleteRound(round.id, round.title)}
+                        >
+                          {removingRoundId === round.id ? "削除中..." : "削除"}
+                        </button>
                       </div>
                     }
                   >
