@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Suspense, useMemo, useState } from "react";
 
+import { RoundContextCard } from "@/components/app/round-context-card";
 import {
   ConfigurationNotice,
   ErrorNotice,
@@ -24,7 +26,7 @@ import {
   parseOfficialScheduleText,
   type OfficialScheduleDraft,
 } from "@/lib/official-schedule";
-import { appRoute } from "@/lib/round-links";
+import { appRoute, buildRoundHref, getSingleSearchParam } from "@/lib/round-links";
 import { saveFixtureMasterEntries } from "@/lib/repository";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { useFixtureMaster } from "@/lib/use-app-data";
@@ -60,6 +62,8 @@ function errorMessage(error: unknown) {
 }
 
 function OfficialScheduleImportPageContent() {
+  const searchParams = useSearchParams();
+  const roundId = getSingleSearchParam(searchParams.get("round"));
   const [sourceText, setSourceText] = useState("");
   const [competition, setCompetition] = useState("fifa_world_cup_2026");
   const [sourceUrl, setSourceUrl] = useState("");
@@ -139,6 +143,8 @@ function OfficialScheduleImportPageContent() {
       setSaving(false);
     }
   };
+  const fixtureSelectorHref = buildRoundHref(appRoute.fixtureSelector, roundId);
+  const roundDetailHref = roundId ? buildRoundHref(appRoute.workspace, roundId) : null;
 
   return (
     <div className="space-y-8">
@@ -148,9 +154,14 @@ function OfficialScheduleImportPageContent() {
         description="FIFA公式由来のテキストを貼り付けて、Fixture Master に取り込みます。自動取得ではなく、貼り付けとプレビュー確認を前提にした安全寄りの導線です。"
         actions={
           <div className="flex flex-wrap gap-3">
-            <Link href={appRoute.fixtureSelector} className={secondaryButtonClassName}>
+            <Link href={fixtureSelectorHref} className={secondaryButtonClassName}>
               Fixture Selector
             </Link>
+            {roundDetailHref ? (
+              <Link href={roundDetailHref} className={secondaryButtonClassName}>
+                Round Detailへ戻る
+              </Link>
+            ) : null}
             <button
               type="button"
               onClick={() => setSourceText(officialScheduleImportSample)}
@@ -160,6 +171,12 @@ function OfficialScheduleImportPageContent() {
             </button>
           </div>
         }
+      />
+
+      <RoundContextCard
+        roundId={roundId}
+        backHref={roundDetailHref}
+        description="公式日程の貼り付けはできますが、いまどの Round の準備として開いているかを先にそろえます。"
       />
 
       <CollapsibleSectionCard
@@ -252,7 +269,7 @@ function OfficialScheduleImportPageContent() {
             >
               {saving ? "保存中..." : "Save to Fixture Master"}
             </button>
-            <Link href={appRoute.fixtureSelector} className={secondaryButtonClassName}>
+            <Link href={fixtureSelectorHref} className={secondaryButtonClassName}>
               次は Fixture Selector
             </Link>
           </div>

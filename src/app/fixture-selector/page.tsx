@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useMemo, useState, type FormEvent } from "react";
 
+import { RoundContextCard } from "@/components/app/round-context-card";
 import {
   ConfigurationNotice,
   ErrorNotice,
@@ -49,6 +50,12 @@ function FixtureSelectorPageContent() {
     stage,
     teamQuery,
   });
+  const officialScheduleHref = buildRoundHref(appRoute.officialScheduleImport, existingRoundId);
+  const roundDetailHref = existingRoundId
+    ? buildRoundHref(appRoute.workspace, existingRoundId)
+    : createdRoundId
+      ? buildRoundHref(appRoute.workspace, createdRoundId)
+      : null;
 
   const selectedFixtures = useMemo(
     () => fixtures.data?.filter((fixture) => selectedIds.includes(fixture.id)) ?? [],
@@ -115,9 +122,14 @@ function FixtureSelectorPageContent() {
         description="Fixture Master から試合を選び、遊び用 Round や実運用 Round を作ります。"
         actions={
           <div className="flex flex-wrap gap-3">
-            <Link href={appRoute.officialScheduleImport} className={secondaryButtonClassName}>
+            <Link href={officialScheduleHref} className={secondaryButtonClassName}>
               公式日程を取り込む
             </Link>
+            {roundDetailHref ? (
+              <Link href={roundDetailHref} className={secondaryButtonClassName}>
+                Round Detailへ戻る
+              </Link>
+            ) : null}
             {createdRoundId ? (
               <Link href={buildRoundHref(appRoute.workspace, createdRoundId)} className={buttonClassName}>
                 Round を開く
@@ -125,6 +137,12 @@ function FixtureSelectorPageContent() {
             ) : null}
           </div>
         }
+      />
+
+      <RoundContextCard
+        roundId={existingRoundId}
+        backHref={roundDetailHref}
+        description="既存 Round の置換か、新規 Round 作成かをこのカードで見分けられるようにしています。"
       />
 
       <SectionCard title="Filter" description="competition / team / group / stage で絞り込みます。">

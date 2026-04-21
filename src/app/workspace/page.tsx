@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState, type FormEvent } from "react";
 
 import {
@@ -103,12 +103,37 @@ function previewNotes(value: string | null | undefined, maxSentences = 2) {
   return sentences.length > 0 ? `${sentences.join("。")}。` : null;
 }
 
+function trimTrailingSlash(pathname: string) {
+  if (pathname.length > 1 && pathname.endsWith("/")) {
+    return pathname.slice(0, -1);
+  }
+
+  return pathname;
+}
+
+function detectWorkspaceBasePath(pathname: string) {
+  const normalizedPathname = trimTrailingSlash(pathname);
+  const normalizedWorkspacePath = trimTrailingSlash(appRoute.workspace);
+  const workspaceIndex = normalizedPathname.lastIndexOf(normalizedWorkspacePath);
+
+  if (workspaceIndex <= 0) {
+    return "";
+  }
+
+  return normalizedPathname.slice(0, workspaceIndex);
+}
+
+function resolveDebugHref(href: string, basePath: string) {
+  return basePath ? `${basePath}${href}` : href;
+}
+
 type ScopedMessage = {
   message: string;
   scope: string;
 };
 
 function WorkspacePageContent() {
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const roundId = getSingleSearchParam(searchParams.get("round"));
   const { data, error, loading, refresh } = useRoundWorkspace(roundId);
@@ -230,12 +255,41 @@ function WorkspacePageContent() {
           user: predictorUsers[0].id,
         })
       : sharedMembersHref;
+  const detectedBasePath = detectWorkspaceBasePath(pathname);
   const currentRoundScope = data?.round.id ?? "none";
   const hasVisibleUnsavedChanges = dirtyScope === currentRoundScope;
   const visibleSubmitError =
     submitError?.scope === currentRoundScope ? submitError.message : null;
   const visibleSaveMessage =
     saveMessage?.scope === currentRoundScope ? saveMessage.message : null;
+  const roundBuilderLinks = data
+    ? [
+        {
+          href: buildRoundHref(appRoute.officialScheduleImport, data.round.id),
+          label: "official-schedule-import",
+        },
+        {
+          href: buildRoundHref(appRoute.fixtureSelector, data.round.id),
+          label: "fixture-selector",
+        },
+        {
+          href: buildRoundHref(appRoute.totoOfficialRoundImport, data.round.id),
+          label: "toto-official-round-import",
+        },
+        {
+          href: buildRoundHref(appRoute.simpleView, data.round.id, {
+            user: data.users[0]?.id,
+          }),
+          label: "simple-view",
+        },
+        {
+          href: buildRoundHref(appRoute.pickRoom, data.round.id, {
+            user: data.users[0]?.id,
+          }),
+          label: "pick-room",
+        },
+      ]
+    : [];
 
   useEffect(() => {
     if (!hasVisibleUnsavedChanges) {
@@ -417,7 +471,10 @@ function WorkspacePageContent() {
             badge={<Badge tone="sky">導線</Badge>}
           >
             <div className="flex flex-wrap gap-3">
-              <Link href={appRoute.officialScheduleImport} className={secondaryButtonClassName}>
+              <Link
+                href={buildRoundHref(appRoute.officialScheduleImport, data.round.id)}
+                className={secondaryButtonClassName}
+              >
                 公式日程を取り込む
               </Link>
               <Link
@@ -449,6 +506,27 @@ function WorkspacePageContent() {
                 Friend Pick Room
               </Link>
             </div>
+
+            <details className="rounded-[24px] border border-slate-200 bg-slate-50/90 px-4 py-4">
+              <summary className="cursor-pointer list-none font-semibold text-slate-900">
+                Debug Panel
+              </summary>
+              <div className="mt-4 space-y-3 text-sm text-slate-600">
+                <div className="flex flex-wrap gap-2">
+                  <Badge tone="slate">current path {pathname}</Badge>
+                  <Badge tone="slate">detected base path {detectedBasePath || "(root)"}</Badge>
+                  <Badge tone="info">round {data.round.id}</Badge>
+                </div>
+                <div className="space-y-2 rounded-[20px] border border-slate-200 bg-white/85 p-4">
+                  {roundBuilderLinks.map((entry) => (
+                    <p key={entry.label} className="break-all">
+                      <span className="font-semibold text-slate-900">{entry.label}</span>:{" "}
+                      {resolveDebugHref(entry.href, detectedBasePath)}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            </details>
           </CollapsibleSectionCard>
 
           <RoundProgressCallout

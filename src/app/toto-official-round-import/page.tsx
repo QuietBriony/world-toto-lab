@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useMemo, useState } from "react";
 
+import { RoundContextCard } from "@/components/app/round-context-card";
 import {
   ConfigurationNotice,
   ErrorNotice,
@@ -134,6 +135,10 @@ function TotoOfficialRoundImportPageContent() {
     productType: libraryProductType === "all" ? null : libraryProductType,
     searchQuery: librarySearchQuery,
   });
+  const roundContextId = savedRoundId ?? roundId;
+  const roundDetailHref = roundContextId
+    ? buildRoundHref(appRoute.workspace, roundContextId)
+    : null;
 
   const parsedPreview = useMemo(
     () =>
@@ -360,6 +365,11 @@ function TotoOfficialRoundImportPageContent() {
             >
               新規ライブラリとして入力
             </button>
+            {roundDetailHref ? (
+              <Link href={roundDetailHref} className={secondaryButtonClassName}>
+                Round Detailへ戻る
+              </Link>
+            ) : null}
             {savedRoundId ? (
               <Link href={buildRoundHref(appRoute.workspace, savedRoundId)} className={secondaryButtonClassName}>
                 Round を開く
@@ -372,6 +382,12 @@ function TotoOfficialRoundImportPageContent() {
             ) : null}
           </div>
         }
+      />
+
+      <RoundContextCard
+        roundId={roundContextId}
+        backHref={roundDetailHref}
+        description="この取り込みが、どの Round の公式対象回データとして使われるかを先に確認できます。"
       />
 
       {actionMessage ? (
