@@ -831,6 +831,27 @@ function collectPrunableOfficialRoundLibraryRowIds(rows: TotoOfficialRoundLibrar
   return Array.from(idsToDelete);
 }
 
+function sortOfficialRoundLibraryEntriesNewestFirst(entries: TotoOfficialRoundLibraryEntry[]) {
+  return entries.slice().sort((left, right) => {
+    const roundDiff = compareNullableNumberDesc(left.officialRoundNumber, right.officialRoundNumber);
+    if (roundDiff !== 0) {
+      return roundDiff;
+    }
+
+    const salesEndDiff = compareIsoDateTimeDesc(left.salesEndAt, right.salesEndAt);
+    if (salesEndDiff !== 0) {
+      return salesEndDiff;
+    }
+
+    const updatedDiff = compareIsoDateTimeDesc(left.updatedAt, right.updatedAt);
+    if (updatedDiff !== 0) {
+      return updatedDiff;
+    }
+
+    return left.title.localeCompare(right.title, "ja");
+  });
+}
+
 function applyScopedConsensus(
   matches: Match[],
   scoutReports: HumanScoutReport[],
@@ -3746,8 +3767,10 @@ export async function listTotoOfficialRoundLibrary(input?: {
 
   const rawRows = ((result.data as TotoOfficialRoundLibraryRow[]) ?? []);
   const { uniqueRows } = dedupeTotoOfficialRoundLibraryRows(rawRows);
-  const entries = Array.from(uniqueRows.values()).map(
-    mapTotoOfficialRoundLibraryEntry,
+  const entries = sortOfficialRoundLibraryEntriesNewestFirst(
+    Array.from(uniqueRows.values()).map(
+      mapTotoOfficialRoundLibraryEntry,
+    ),
   );
   const searchNeedle = normalizeFixtureKeyPart(input?.searchQuery);
 
@@ -3755,16 +3778,18 @@ export async function listTotoOfficialRoundLibrary(input?: {
     return entries;
   }
 
-  return entries.filter((entry) =>
-    [
-      entry.title,
-      entry.officialRoundName,
-      entry.sourceNote,
-      entry.sourceText,
-      entry.sourceUrl,
-    ]
-      .map((value) => normalizeFixtureKeyPart(value))
-      .some((value) => value.includes(searchNeedle)),
+  return sortOfficialRoundLibraryEntriesNewestFirst(
+    entries.filter((entry) =>
+      [
+        entry.title,
+        entry.officialRoundName,
+        entry.sourceNote,
+        entry.sourceText,
+        entry.sourceUrl,
+      ]
+        .map((value) => normalizeFixtureKeyPart(value))
+        .some((value) => value.includes(searchNeedle)),
+    ),
   );
 }
 
