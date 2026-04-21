@@ -217,6 +217,28 @@ function isGoal3Label(normalizedLabel: string) {
   return normalizedLabel.startsWith("totogoal3") || normalizedLabel.startsWith("toto goal3");
 }
 
+function compactProductLabel(value: string) {
+  return value
+    .replace(/[‐‑‒–—―−-]/g, "")
+    .replace(/\s+/g, "")
+    .trim()
+    .toLowerCase();
+}
+
+function isToto13Label(label: string) {
+  const compact = compactProductLabel(label);
+  return compact === "toto" || compact === "worldtoto" || compact === "ワールドtoto";
+}
+
+function displayProductLabel(label: string, fallback: string) {
+  const normalized = label
+    .replace(/[‐‑‒–—―−-]/g, "-")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return normalized || fallback;
+}
+
 function isGoal3VoteRateHtml(rawHtml: string) {
   return /totoGOAL3[\s\S]*投票状況|0点[\s\S]*1点[\s\S]*2点[\s\S]*3点以上/.test(rawHtml);
 }
@@ -311,19 +333,20 @@ function mapLotInfoProduct(
   | "totalSalesYen"
 > | null {
   const normalized = label
-    .replace(/[‐‑‒–—―ー−]/g, "-")
+    .replace(/[‐‑‒–—―−-]/g, "-")
     .replace(/\s+/g, " ")
     .trim()
     .toLowerCase();
 
-  if (normalized === "toto") {
+  if (isToto13Label(label)) {
+    const displayLabel = displayProductLabel(label, "toto");
     return {
-      officialRoundName: `第${roundNumber}回 toto`,
+      officialRoundName: `第${roundNumber}回 ${displayLabel}`,
       officialRoundNumber: roundNumber,
       outcomeSetJson: ["1", "0", "2"],
       productType: "toto13",
       requiredMatchCount: 13,
-      title: `第${roundNumber}回 toto`,
+      title: `第${roundNumber}回 ${displayLabel}`,
       voidHandling: "manual",
     };
   }

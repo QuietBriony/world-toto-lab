@@ -64,6 +64,17 @@ const goal3VoteRateHtml = `
   <div>販売期間 2026年04月18日(土) ～ 2026年04月25日(土)まで</div>
 `;
 
+const worldTotoLotInfoHtml = `
+  <table>
+    <tr><td>第1700回 ワールドtoto くじ情報</td></tr>
+    <tr><td>販売開始日 2026年06月10日（水）08：00</td></tr>
+    <tr><td>販売終了日 2026年06月13日（土）（当サイト(ネット決済) 18:50／当サイト(コンビニ決済) 17:00）</td></tr>
+    <tr><td>1 06/14 10:00 メキシコ メキシコ VS 南アフリカ データ</td></tr>
+    <tr><td>2 06/14 13:00 グアダラハラ 韓国 VS チェコ データ</td></tr>
+    <tr><td>売上金額 18,500,000円 12,200,000円 6,300,000円</td></tr>
+  </table>
+`;
+
 describe("toto official sync parser", () => {
   it("parses yahoo schedule entries with detail links and status", () => {
     const result = parseYahooTotoScheduleHtml(yahooScheduleHtml);
@@ -95,6 +106,22 @@ describe("toto official sync parser", () => {
     expect(result.rounds[3]?.productType).toBe("custom");
     expect(result.rounds[3]?.requiredMatchCount).toBe(6);
     expect(result.rounds[3]?.outcomeSetJson).toEqual(["0", "1", "2", "3+"]);
+    expect(result.warnings).toHaveLength(0);
+  });
+
+  it("treats ワールドtoto as a toto13 round while preserving the official label", () => {
+    const result = parseOfficialTotoLotInfoHtml(
+      worldTotoLotInfoHtml,
+      "https://store.toto-dream.com/dcs/subos/screen/pi01/spin000/PGSPIN00001DisptotoLotInfo.form?holdCntId=1700",
+      "selling",
+    );
+
+    expect(result.rounds).toHaveLength(1);
+    expect(result.rounds[0]?.productType).toBe("toto13");
+    expect(result.rounds[0]?.requiredMatchCount).toBe(2);
+    expect(result.rounds[0]?.title).toBe("第1700回 ワールドtoto");
+    expect(result.rounds[0]?.officialRoundName).toBe("第1700回 ワールドtoto");
+    expect(result.rounds[0]?.matches).toHaveLength(2);
     expect(result.warnings).toHaveLength(0);
   });
 
