@@ -114,7 +114,7 @@ function ConsensusPageContent() {
       <PageHeader
         eyebrow="予想者コンセンサス"
         title="予想者コンセンサス集計"
-        description="AI基準線に対して、予想者ラインがどこをそのまま採用し、どこに別筋を重ねたかを一覧できます。"
+        description="モデル試算に対して、予想者ラインがどこをそのまま採用し、どこに別筋を重ねたかを一覧できます。"
       />
 
       {!isSupabaseConfigured() ? (
@@ -152,7 +152,7 @@ function ConsensusPageContent() {
             <StatCard
               label="AIをそのまま採用"
               value={`${alignedCount}`}
-              hint="AI基準線と人力上書きが同じ試合数"
+              hint="試算ラインと人力ラインが同じ試合数"
             />
             <StatCard
               label="AIと別筋"
@@ -312,8 +312,8 @@ function ConsensusPageContent() {
                 <thead>
                   <tr className="border-b border-slate-200 text-slate-500">
                     <th className="px-3 py-3">試合</th>
-                    <th className="px-3 py-3">AI基準線</th>
-                    <th className="px-3 py-3">人力上書き</th>
+                    <th className="px-3 py-3">試算ライン</th>
+                    <th className="px-3 py-3">人力ライン</th>
                     <th className="px-3 py-3">重なり方</th>
                     <th className="px-3 py-3">平均F</th>
                     <th className="px-3 py-3">中央値F</th>
@@ -336,7 +336,7 @@ function ConsensusPageContent() {
                         <td className="px-3 py-4">
                           <div className="flex flex-wrap gap-2">
                             {aiBase.length === 0 ? (
-                              <Badge tone="slate">AI未設定</Badge>
+                              <Badge tone="slate">試算未設定</Badge>
                             ) : (
                               aiBase.map((outcome) => (
                                 <Badge key={`${match.id}-ai-${outcome}`} tone="amber">

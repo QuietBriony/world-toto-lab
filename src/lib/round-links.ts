@@ -54,12 +54,15 @@ export function buildOfficialRoundImportHref(
 
 export const appRoute = {
   dashboard: "/",
+  devPlaybook: "/dev-playbook",
   workspace: "/workspace",
   bigCarryover: "/big-carryover",
   goal3Value: "/goal3-value",
   simpleView: "/simple-view",
   pickRoom: "/pick-room",
   winnerValue: "/winner-value",
+  play: "/play",
+  practiceLab: "/practice-lab",
   picks: "/picks",
   scoutCards: "/scout-cards",
   consensus: "/consensus",

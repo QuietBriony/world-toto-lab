@@ -324,8 +324,9 @@ sum(log(modelProb_selected))
 3. `これ推し / 迷う / パス / 自分はこれで買った / コメント` を記録する
 4. 必要なら `Simple View` で自分の13予想を更新する
 
-## 将来拡張メモ
+## 将来メモ: Semantic Trading
 
+ここは将来構想メモです。MVP にはまだ入っていません。
 将来的には `Semantic Trading` 的な発想で、市場関係グラフを持てるようにします。
 
 - MarketNode 例
@@ -351,7 +352,7 @@ MVP では未実装で、README 上の将来設計メモとして残していま
 ### 1. 依存関係を入れる
 
 ```bash
-npm install
+npm ci
 ```
 
 ### 2. 環境変数を入れる
@@ -519,6 +520,50 @@ npm run dev
 
 ブラウザで `http://localhost:3000` を開きます。
 
+## Round Mode / Play
+
+Round は `W杯totoモード / 通常totoモード / WINNER / custom` を持ちます。  
+ただし、確率・Edge・EV・人力シグナルのロジックは共通です。
+
+- `W杯モード`
+  - FIFA公式日程、グループ状況、移動/気候、予測市場、代表ニュースを重視
+- `通常totoモード`
+  - Jリーグ日程、ホーム/アウェイ、順位、休養、怪我、Research Memo、人力Scout、公式人気を重視
+
+友人向けの最小導線:
+
+- `/play`
+  - 候補カードと自分の 1 / 0 / 2 入力だけを見るページ
+- `/pick-room`
+  - みんなで候補カードに投票するページ
+- `/practice-lab`
+  - 練習回や通常toto回の振り返りページ
+- `/dev-playbook`
+  - GitHub 招待後の開発ルールと Codex 並走ルール
+
+通常totoで情報が薄い場合は、無理にそれっぽい確率を出さず `低信頼 / fallback` と明示します。
+
+## Branch / Parallel Development Notes
+
+現状の workflow は次の通りです。
+
+- `.github/workflows/deploy-pages.yml`
+  - `main` push で GitHub Pages を再ビルド / 再配信
+- `.github/workflows/deploy-supabase-functions.yml`
+  - `main` push かつ対象 path 変更で Supabase Edge Functions を再配備
+
+つまり、`main` は today の deploy branch です。
+普段の作業は `main` へ直 push せず、`topic branch -> PR -> merge` を推奨します。
+
+並走メモ:
+
+- 1タスク = 1ブランチ
+- 1PR = 1目的
+- 同じファイルを複数人または複数 AI で同時編集しない
+- 特に `next.config.ts`, `src/lib/round-links.ts`, `src/lib/repository.ts`, `src/lib/types.ts`, `supabase/schema.sql`, `supabase/functions/**` は直列で触る
+- Pages / route / schema に触る変更では `npm run lint`, `npm run test`, `npm run build` を揃える
+- もし GitHub 設定上 direct push できてしまっても、通常運用では branch + PR を前提にします
+
 ## GitHub Pages 公開手順
 
 ### 1. GitHub リポジトリに公開用の値を入れる
@@ -532,12 +577,43 @@ Repository Secrets に以下を設定してください。
 
 Repository Settings の Pages で `Build and deployment` を `GitHub Actions` にしてください。
 
-### 3. `main` に push する
+### 3. `main` へ反映する
 
+日常作業は branch + PR 推奨です。現状は `main` に入った内容がそのまま deploy 対象になります。
 `.github/workflows/deploy-pages.yml` で `out/` を GitHub Pages へデプロイします。
 
 Next.js 側は `GITHUB_REPOSITORY` を見て `basePath` / `assetPrefix` を自動設定します。  
 `<user>.github.io/<repo>/` 形式の project pages を前提にしています。
+
+## GitHub Pages 404 FAQ
+
+### トップページ自体が 404 になる
+
+- Repository Settings の Pages が `GitHub Actions` になっているか確認してください
+- 最新の `Deploy GitHub Pages` workflow が `main` 上で成功しているか確認してください
+- project pages なので、公開 URL は `https://<user>.github.io/<repo>/` です
+- `https://<user>.github.io/` だけを開くと別サイトか 404 になります
+
+### route を開くと 404 になる
+
+- この repo は top-level の static route だけを export します
+- Round / User / Match は path ではなく query param で渡します
+  - 正: `/workspace/?round=<id>`
+  - 正: `/pick-room/?round=<id>&user=<id>`
+  - 誤: `/workspace/<roundId>`
+- `trailingSlash: true` なので、手打ち URL は `/route/` 形式に寄せると安全です
+
+### `_next` や asset だけ 404 になる
+
+- `basePath` と `assetPrefix` は build 時の `GITHUB_REPOSITORY` から決まります
+- repo 名を rename / transfer した後は、古い path が bundle に残るので再 build が必要です
+- workflow 側では `out/.nojekyll` を作成済みです
+- それでも asset 404 が出る場合は、最新 deploy と browser cache を確認してください
+
+### query param つき URL でも 404 になる
+
+- `?round=...` や `?user=...` 自体は 404 の原因ではありません
+- 404 になる場合は、元の static path が存在しないか、repo path が抜けていることが多いです
 
 ## Supabase 側の前提
 

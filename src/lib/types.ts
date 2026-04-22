@@ -11,6 +11,17 @@ export type ProvisionalCall = "axis_1" | "axis_2" | "draw_axis" | "double" | "tr
 export type TicketMode = "conservative" | "balanced" | "upset";
 export type ProductType = "toto13" | "mini_toto" | "winner" | "custom";
 export type RoundSource = "fixture_master" | "toto_official_manual" | "user_manual" | "demo_sample";
+export type CompetitionType = "world_cup" | "domestic_toto" | "winner" | "custom";
+export type SportContext = "national_team" | "j_league" | "club" | "other";
+export type PrimaryUse = "real_round_research" | "practice" | "demo" | "friend_game";
+export type DataProfile = "worldcup_rich" | "domestic_standard" | "manual_light" | "demo";
+export type ProbabilityReadiness = "ready" | "partial" | "low_confidence" | "not_ready";
+export type ProbabilityConfidence = "high" | "medium" | "low" | "fallback";
+export type ModelProfile =
+  | "market_plus_adjustments"
+  | "market_plus_scout"
+  | "scout_only"
+  | "fallback_prior";
 export type VoidHandling =
   | "manual"
   | "all_outcomes_valid"
@@ -53,6 +64,18 @@ export type TotoOfficialMatchStatus =
   | "void"
   | "unknown";
 export type Goal3TeamRole = "home" | "away";
+export type ResearchMemoType =
+  | "recent_form"
+  | "injury"
+  | "suspension"
+  | "motivation"
+  | "travel_rest"
+  | "tactical"
+  | "weather"
+  | "odds"
+  | "news"
+  | "other";
+export type ResearchMemoConfidence = "high" | "medium" | "low";
 
 export type User = {
   id: string;
@@ -73,9 +96,14 @@ export type Round = {
   status: RoundStatus;
   budgetYen: number | null;
   notes: string | null;
+  competitionType: CompetitionType;
   productType: ProductType;
+  sportContext: SportContext;
+  primaryUse: PrimaryUse;
   requiredMatchCount: number | null;
   activeMatchCount: number | null;
+  dataProfile: DataProfile;
+  probabilityReadiness: ProbabilityReadiness;
   roundSource: RoundSource;
   sourceNote: string | null;
   outcomeSetJson: string[] | null;
@@ -117,6 +145,29 @@ export type Match = {
   injuryNote: string | null;
   motivationNote: string | null;
   adminNote: string | null;
+  recentFormNote: string | null;
+  availabilityInfo: string | null;
+  conditionsInfo: string | null;
+  homeStrengthAdjust: number | null;
+  awayStrengthAdjust: number | null;
+  availabilityAdjust: number | null;
+  conditionsAdjust: number | null;
+  tacticalAdjust: number | null;
+  motivationAdjust: number | null;
+  adminAdjust1: number | null;
+  adminAdjust0: number | null;
+  adminAdjust2: number | null;
+  homeAdvantageAdjust: number | null;
+  restDaysAdjust: number | null;
+  travelAdjust: number | null;
+  leagueTableMotivationAdjust: number | null;
+  injurySuspensionAdjust: number | null;
+  rotationRiskAdjust: number | null;
+  groupStandingMotivationAdjust: number | null;
+  travelClimateAdjust: number | null;
+  altitudeHumidityAdjust: number | null;
+  squadDepthAdjust: number | null;
+  tournamentPressureAdjust: number | null;
   actualResult: Outcome | null;
   createdAt: string;
   updatedAt: string;
@@ -348,6 +399,25 @@ export type TotoOfficialRoundLibraryEntry = {
   updatedAt: string;
 };
 
+export type ResearchMemo = {
+  id: string;
+  roundId: string;
+  matchId: string | null;
+  team: string | null;
+  memoType: ResearchMemoType;
+  title: string;
+  summary: string;
+  sourceUrl: string | null;
+  sourceName: string | null;
+  sourceDate: string | null;
+  confidence: ResearchMemoConfidence;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  user?: User;
+  match?: Match;
+};
+
 export type ProductRule = {
   outcomeSetJson: string[];
   productType: ProductType;
@@ -375,6 +445,7 @@ export type RoundWorkspaceRound = Round & {
   matches: Match[];
   picks: Pick[];
   scoutReports: HumanScoutReport[];
+  researchMemos: ResearchMemo[];
   generatedTickets: GeneratedTicket[];
   evAssumption: RoundEvAssumption | null;
   candidateTickets: CandidateTicket[];

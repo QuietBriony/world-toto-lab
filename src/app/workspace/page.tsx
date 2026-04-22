@@ -37,6 +37,8 @@ import {
   buildMatchBadges,
   favoriteOutcomeForBucket,
   categoryLabel,
+  competitionTypeLabel,
+  dataProfileLabel,
   formatDateTime,
   formatNumber,
   formatOutcomeSet,
@@ -44,28 +46,31 @@ import {
   formatSignedPercent,
   humanConsensusOutcomes,
   humanOverlayBadge,
+  primaryUseLabel,
   productTypeLabel,
+  probabilityConfidenceLabel,
+  probabilityReadinessLabel,
   roundSourceLabel,
   roundStatusLabel,
   roundStatusOptions,
+  sportContextLabel,
 } from "@/lib/domain";
 import {
   demoFocusMatches,
   demoWalkthroughSteps,
   isDemoRoundTitle,
 } from "@/lib/demo-data";
-import {
-  AI_MODEL_LABEL,
-  AI_MODEL_VERSION,
-  canEstimateAiModel,
-  describeAiEstimator,
-  estimateAiModel,
-} from "@/lib/ai-estimator";
+import { calculateModelProbabilities } from "@/lib/probability/engine";
+import { evaluateMatchReadiness } from "@/lib/probability/readiness";
 import { deriveRoundProgressSummary, matchHasSetupInput } from "@/lib/round-progress";
 import {
   nullableString,
+  parseCompetitionType,
+  parseDataProfile,
   parseIntOrNull,
+  parsePrimaryUse,
   parseProductType,
+  parseSportContext,
   parseRoundSource,
   parseRoundStatus,
   parseVoidHandling,
@@ -83,6 +88,7 @@ import {
 import { bulkUpdateRoundMatches, estimateRoundAiModel, updateRound } from "@/lib/repository";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { budgetFromCandidateLimit, candidateLimitFromBudget } from "@/lib/tickets";
+import type { Match } from "@/lib/types";
 import { useRoundWorkspace } from "@/lib/use-app-data";
 import { filterPredictors } from "@/lib/users";
 import { isWinnerLikeRound } from "@/lib/winner-value";
@@ -108,6 +114,34 @@ function previewNotes(value: string | null | undefined, maxSentences = 2) {
     .slice(0, maxSentences);
 
   return sentences.length > 0 ? `${sentences.join("。")}。` : null;
+}
+
+function canCalculateModelPreview(match: Match) {
+  return (
+    match.marketProb1 !== null ||
+    match.marketProb0 !== null ||
+    match.marketProb2 !== null ||
+    match.consensusF !== null ||
+    match.consensusD !== null
+  );
+}
+
+function previewRecommendedOutcomes(input: {
+  modelProb0: number;
+  modelProb1: number;
+  modelProb2: number;
+}) {
+  const outcomes = [
+    { outcome: "1", value: input.modelProb1 },
+    { outcome: "0", value: input.modelProb0 },
+    { outcome: "2", value: input.modelProb2 },
+  ];
+
+  return [...outcomes]
+    .sort((left, right) => right.value - left.value)
+    .slice(0, 2)
+    .map((entry) => entry.outcome)
+    .join(",");
 }
 
 function trimTrailingSlash(pathname: string) {
@@ -176,7 +210,7 @@ function WorkspacePageContent() {
   );
   const predictorUsers = data ? filterPredictors(data.users) : [];
   const estimableMatchCount =
-    data?.round.matches.filter((match) => canEstimateAiModel(match)).length ?? 0;
+    data?.round.matches.filter((match) => canCalculateModelPreview(match)).length ?? 0;
   const missingAiCount =
     data?.round.matches.filter(
       (match) => match.modelProb1 === null && match.modelProb0 === null && match.modelProb2 === null,
@@ -215,20 +249,18 @@ function WorkspacePageContent() {
       .slice(0, 4) ?? [];
   const aiPreviewMatches =
     data?.round.matches
-      .filter((match) => canEstimateAiModel(match))
+      .filter((match) => canCalculateModelPreview(match))
       .slice(0, 4)
       .map((match) => ({
-        estimated: estimateAiModel(match),
+        estimated: calculateModelProbabilities({
+          ...match,
+          competitionType: data.round.competitionType,
+          dataProfile: data.round.dataProfile,
+        }),
+        readiness: evaluateMatchReadiness({ match }),
         match,
       }))
-      .filter(
-        (
-          entry,
-        ): entry is {
-          estimated: NonNullable<ReturnType<typeof estimateAiModel>>;
-          match: (typeof data.round.matches)[number];
-        } => entry.estimated !== null,
-      ) ?? [];
+      .filter((entry) => entry.estimated !== null) ?? [];
   const orderedOverviewMatches =
     data?.round.matches
       .slice()
@@ -493,12 +525,16 @@ function WorkspacePageContent() {
         status: parseRoundStatus(stringValue(formData, "status")),
         budgetYen:
           candidateLimit !== null ? budgetFromCandidateLimit(candidateLimit) : null,
+        competitionType: parseCompetitionType(stringValue(formData, "competitionType")),
+        dataProfile: parseDataProfile(stringValue(formData, "dataProfile")),
         notes: nullableString(formData, "notes"),
         participantIds,
+        primaryUse: parsePrimaryUse(stringValue(formData, "primaryUse")),
         productType,
         requiredMatchCount: parseIntOrNull(stringValue(formData, "requiredMatchCount")),
         roundSource: parseRoundSource(stringValue(formData, "roundSource")),
         sourceNote: nullableString(formData, "sourceNote"),
+        sportContext: parseSportContext(stringValue(formData, "sportContext")),
         voidHandling: parseVoidHandling(stringValue(formData, "voidHandling")),
       });
       setDirtyScope(null);
@@ -577,8 +613,8 @@ function WorkspacePageContent() {
       await refresh();
       setAiSuccess(
         result.updatedCount > 0
-          ? `${result.updatedCount} 試合の AI確率を${overwriteExisting ? "再" : ""}試算しました。`
-          : "試算できる試合がありませんでした。先に公式人気か市場確率を入れてください。",
+          ? `${result.updatedCount} 試合のモデル確率を${overwriteExisting ? "再" : ""}計算しました。`
+          : "試算できる試合がありませんでした。先に市場確率か Human Scout を入れてください。",
       );
     } catch (nextError) {
       setAiError(errorMessage(nextError));
@@ -595,7 +631,7 @@ function WorkspacePageContent() {
         description={
           isDemoRound
             ? "このデモは、確認カード → 支持 / 予想 → コンセンサス → 振り返り の順で触ると全体像をつかみやすいです。"
-            : `${data?.round.matches.length ?? 0}試合の分析入力状況を、AI基準線と予想者ラインを土台にして支持分布まで一気に俯瞰できます。`
+            : `${data?.round.matches.length ?? 0}試合の分析入力状況を、モデル試算と予想者ラインを土台にして支持分布まで一気に俯瞰できます。`
         }
         actions={
           data ? (
@@ -618,6 +654,14 @@ function WorkspacePageContent() {
                   </>
                 ) : (
                   <>
+                    <Link
+                      href={buildRoundHref(appRoute.play, data.round.id, {
+                        user: data.users[0]?.id,
+                      })}
+                      className={secondaryButtonClassName}
+                    >
+                      遊ぼうページ
+                    </Link>
                     <Link
                       href={buildRoundHref(appRoute.pickRoom, data.round.id, {
                         user: data.users[0]?.id,
@@ -642,6 +686,9 @@ function WorkspacePageContent() {
               <div className="flex flex-wrap items-center gap-2">
                 {isDemoRound ? <Badge tone="amber">デモ</Badge> : null}
                 <Badge tone="teal">{roundProductLabel ?? productTypeLabel[data.round.productType]}</Badge>
+                <Badge tone="info">{competitionTypeLabel[data.round.competitionType]}</Badge>
+                <Badge tone="slate">{dataProfileLabel[data.round.dataProfile]}</Badge>
+                <Badge tone="slate">{probabilityReadinessLabel[data.round.probabilityReadiness]}</Badge>
                 <Badge tone="slate">{roundSourceLabel[data.round.roundSource]}</Badge>
                 <Badge tone="sky">{roundStatusLabel[data.round.status]}</Badge>
               </div>
@@ -666,6 +713,50 @@ function WorkspacePageContent() {
             roundStatus={roundStatusLabel[data.round.status]}
             currentPath={appRoute.workspace}
           />
+
+          <SectionCard
+            title="Mode / Data Profile"
+            description="W杯と通常totoで材料の厚みを分けつつ、確率・Edge・EV のロジックは共通化しています。"
+          >
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <StatCard
+                label="Mode"
+                value={competitionTypeLabel[data.round.competitionType]}
+                compact
+                hint={sportContextLabel[data.round.sportContext]}
+                tone="positive"
+              />
+              <StatCard
+                label="Data Profile"
+                value={dataProfileLabel[data.round.dataProfile]}
+                compact
+                hint={primaryUseLabel[data.round.primaryUse]}
+              />
+              <StatCard
+                label="Probability"
+                value={probabilityReadinessLabel[data.round.probabilityReadiness]}
+                compact
+                hint="ready / partial / low_confidence / not_ready"
+                tone={
+                  data.round.probabilityReadiness === "ready"
+                    ? "positive"
+                    : data.round.probabilityReadiness === "partial"
+                      ? "draw"
+                      : "warning"
+                }
+              />
+              <StatCard
+                label="遊ぶ導線"
+                value={data.round.primaryUse === "practice" ? "Practice Lab" : "Friend Play"}
+                compact
+                hint={
+                  data.round.primaryUse === "practice"
+                    ? "通常totoの練習回として振り返りに寄せます。"
+                    : "友人向けは遊ぼうページと Pick Room を使います。"
+                }
+              />
+            </div>
+          </SectionCard>
 
       <CollapsibleSectionCard
         title="Round Builder"
@@ -817,7 +908,7 @@ function WorkspacePageContent() {
               title="このデモで最初に見る順番"
               description={
                 demoNotePreview ??
-                "AI基準線と人力上書きの流れを、実データ入りの 1 ラウンドでそのまま追えます。"
+                "モデル試算と人力判断の流れを、実データ入りの 1 ラウンドでそのまま追えます。"
               }
               defaultOpen
               badge={<Badge tone="amber">デモガイド</Badge>}
@@ -1104,7 +1195,7 @@ function WorkspacePageContent() {
                 <div className="mt-4 space-y-3">
                   {drawWatchMatches.length === 0 ? (
                     <p className="text-sm leading-6 text-slate-600">
-                      カテゴリや AI で引き分け寄りになる試合があると、ここに出ます。
+                      カテゴリやモデル試算で引き分け寄りになる試合があると、ここに出ます。
                     </p>
                   ) : (
                     drawWatchMatches.map((match) => (
@@ -1116,7 +1207,7 @@ function WorkspacePageContent() {
                           #{match.matchNo} {match.homeTeam} 対 {match.awayTeam}
                         </div>
                         <div className="mt-1 text-sm text-slate-700">
-                          AI {formatOutcomeSet(aiRecommendedOutcomes(match))} / 人力{" "}
+                          試算 {formatOutcomeSet(aiRecommendedOutcomes(match))} / 人力{" "}
                           {formatOutcomeSet(humanConsensusOutcomes(match))}
                         </div>
                         <div className="mt-2 flex flex-wrap gap-2">
@@ -1185,6 +1276,23 @@ function WorkspacePageContent() {
                     <option key={productType} value={productType}>
                       {productTypeLabel[productType]}
                     </option>
+                    ))}
+                </select>
+              </label>
+
+              <label className="grid gap-2 text-sm font-medium text-slate-700">
+                モード
+                <select
+                  name="competitionType"
+                  className={fieldClassName}
+                  defaultValue={data.round.competitionType}
+                >
+                  {(
+                    ["world_cup", "domestic_toto", "winner", "custom"] as const
+                  ).map((competitionType) => (
+                    <option key={competitionType} value={competitionType}>
+                      {competitionTypeLabel[competitionType]}
+                    </option>
                   ))}
                 </select>
               </label>
@@ -1203,6 +1311,23 @@ function WorkspacePageContent() {
               </label>
 
               <label className="grid gap-2 text-sm font-medium text-slate-700">
+                Data Profile
+                <select
+                  name="dataProfile"
+                  className={fieldClassName}
+                  defaultValue={data.round.dataProfile}
+                >
+                  {(
+                    ["worldcup_rich", "domestic_standard", "manual_light", "demo"] as const
+                  ).map((dataProfile) => (
+                    <option key={dataProfile} value={dataProfile}>
+                      {dataProfileLabel[dataProfile]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="grid gap-2 text-sm font-medium text-slate-700">
                 上位候補数
                 <input
                   name="candidateLimit"
@@ -1213,6 +1338,40 @@ function WorkspacePageContent() {
                   defaultValue={candidateLimitFromBudget(data.round.budgetYen ?? 500)}
                   className={fieldClassName}
                 />
+              </label>
+
+              <label className="grid gap-2 text-sm font-medium text-slate-700">
+                主な使い方
+                <select
+                  name="primaryUse"
+                  className={fieldClassName}
+                  defaultValue={data.round.primaryUse}
+                >
+                  {(
+                    ["real_round_research", "practice", "demo", "friend_game"] as const
+                  ).map((primaryUse) => (
+                    <option key={primaryUse} value={primaryUse}>
+                      {primaryUseLabel[primaryUse]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="grid gap-2 text-sm font-medium text-slate-700">
+                sportContext
+                <select
+                  name="sportContext"
+                  className={fieldClassName}
+                  defaultValue={data.round.sportContext}
+                >
+                  {(
+                    ["national_team", "j_league", "club", "other"] as const
+                  ).map((sportContext) => (
+                    <option key={sportContext} value={sportContext}>
+                      {sportContextLabel[sportContext]}
+                    </option>
+                  ))}
+                </select>
               </label>
 
               <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-950/5 p-4 text-sm text-slate-600">
@@ -1377,51 +1536,50 @@ function WorkspacePageContent() {
                 <ul className="space-y-2 text-sm leading-7 text-slate-700">
                   <li>日時は `2026-06-11 19:00` のように入れると読み取りやすいです。</li>
                   <li>会場やステージが空でも反映できます。後で試合編集で追記できます。</li>
-                  <li>AI確率までは自動で入りません。日程を入れた後に、必要な試合だけ AI 1/0/2 を足してください。</li>
+                  <li>モデル確率までは自動で入りません。日程を入れた後に、必要な試合だけ 1 / 0 / 2 試算を足してください。</li>
                 </ul>
               </div>
             </div>
           </CollapsibleSectionCard>
 
           <CollapsibleSectionCard
-            title="AI予想をまとめて試算する"
-            description="公式人気と市場確率が入っている試合を対象に、このアプリ内の暫定モデルで AI 1 / 0 / 2 を自動計算します。あとで試合編集で上書きできます。"
-            badge={<Badge tone="sky">AI試算</Badge>}
+            title="モデル確率をまとめて試算する"
+            description="市場確率、Human Scout、手入力補正を見て、このアプリ内の共通 probability engine で 1 / 0 / 2 を試算します。あとで試合編集で上書きできます。"
+            badge={<Badge tone="sky">モデル試算</Badge>}
           >
             <div className="grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
               <div className="space-y-4">
                 <div className="grid gap-3 sm:grid-cols-3">
                   <StatCard
-                    label="AI未設定"
+                    label="試算未設定"
                     value={`${missingAiCount}`}
-                    hint="まだ AI 1 / 0 / 2 が空の試合数"
+                    hint="まだ model 1 / 0 / 2 が空の試合数"
                     compact
                   />
                   <StatCard
                     label="試算できる試合"
                     value={`${estimableMatchCount}`}
-                    hint="公式人気か市場確率が入っている試合数"
+                    hint="市場確率または Human Scout が入っていて、先に試算できる試合数"
                     compact
                   />
                   <StatCard
-                    label="今のAI本命"
+                    label="今の本命候補"
                     value={`${data.round.matches.filter((match) => favoriteOutcomeForBucket(match, "model")).length}`}
-                    hint="AI本命が表示できる試合数"
+                    hint="モデル本命が表示できる試合数"
                     compact
                   />
                 </div>
 
                 <div className="rounded-[24px] border border-slate-200 bg-slate-50/85 p-5">
                   <p className="text-sm leading-7 text-slate-700">
-                    これは外部モデルではなく、`公式人気 + 市場確率 + カテゴリ補正` から作る暫定の AI基準線です。
-                    人力の前段でたたき台を作る用途として使う想定です。
+                    これは共通 probability engine で作る暫定のモデル試算です。
+                    市場確率があればそれを土台にし、足りない時は competition ごとの fallback prior、Human Scout、手入力補正で補います。
                   </p>
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
-                    <Badge tone="slate">{AI_MODEL_LABEL}</Badge>
-                    <Badge tone="slate">{AI_MODEL_VERSION}</Badge>
-                    <span className="text-xs text-slate-500">
-                      ロジック更新後に再試算して育てていけます
-                    </span>
+                  <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                    <Badge tone="slate">Common Probability Engine</Badge>
+                    <Badge tone="slate">{competitionTypeLabel[data.round.competitionType]}</Badge>
+                    <Badge tone="slate">{dataProfileLabel[data.round.dataProfile]}</Badge>
+                    <span>ロジック更新後に再計算して育てていけます。</span>
                   </div>
                   <div className="mt-4 flex flex-wrap gap-2">
                     <button
@@ -1430,7 +1588,7 @@ function WorkspacePageContent() {
                       onClick={() => void handleEstimateAi()}
                       disabled={estimatingAi}
                     >
-                      {estimatingAi ? "AI試算中..." : "AI未設定を試算する"}
+                      {estimatingAi ? "試算中..." : "未設定の試合を試算する"}
                     </button>
                     <button
                       type="button"
@@ -1438,7 +1596,7 @@ function WorkspacePageContent() {
                       onClick={() => void handleEstimateAi(true)}
                       disabled={estimatingAi}
                     >
-                      既存AIも再試算
+                      既存試算も再計算
                     </button>
                     <Link
                       href={buildRoundHref(appRoute.matchEditor, data.round.id, {
@@ -1459,10 +1617,10 @@ function WorkspacePageContent() {
                   試算ルール
                 </h3>
                 <ul className="space-y-2 text-sm leading-7 text-slate-700">
-                  <li>市場確率を強め、公式人気を補助的に混ぜています。</li>
-                  <li>ホーム / アウェイ差が小さい試合は、引き分けをやや持ち上げます。</li>
-                  <li>`固定寄り` や `引き分け候補` などのカテゴリも少しだけ反映します。</li>
-                  <li>本番用の予測モデルではないので、最後は試合編集で微調整してください。</li>
+                  <li>市場確率があれば、それを base にして 1 / 0 / 2 を正規化します。</li>
+                  <li>市場確率がなければ、W杯 / 通常toto で fallback prior を分けて使います。</li>
+                  <li>Human Scout の F / D と、手入力補正を上乗せします。</li>
+                  <li>公式人気は crowd 比較と EV 用で、デフォルトではモデルに混ぜません。</li>
                 </ul>
                 <div className="rounded-[20px] border border-slate-200 bg-white/80 p-4">
                   <div className="flex items-center gap-2">
@@ -1472,10 +1630,10 @@ function WorkspacePageContent() {
                   <div className="mt-3 space-y-3">
                     {aiPreviewMatches.length === 0 ? (
                       <p className="text-sm leading-6 text-slate-600">
-                        公式人気か市場確率を入れると、ここに試算プレビューが出ます。
+                        市場確率か Human Scout が入ると、ここに試算プレビューが出ます。
                       </p>
                     ) : (
-                      aiPreviewMatches.map(({ match, estimated }) => (
+                      aiPreviewMatches.map(({ match, estimated, readiness }) => (
                         <div
                           key={match.id}
                           className="rounded-[18px] border border-slate-200 bg-slate-50/85 p-3"
@@ -1484,14 +1642,18 @@ function WorkspacePageContent() {
                             #{match.matchNo} {match.homeTeam} 対 {match.awayTeam}
                           </div>
                           <div className="mt-2 text-sm text-slate-700">
-                            AI {formatPercent(estimated.modelProb1)} /{" "}
+                            モデル {formatPercent(estimated.modelProb1)} /{" "}
                             {formatPercent(estimated.modelProb0)} /{" "}
                             {formatPercent(estimated.modelProb2)} | 候補{" "}
-                            {estimated.recommendedOutcomes ?? "—"}
+                            {previewRecommendedOutcomes(estimated)}
                           </div>
                           <div className="mt-2 flex flex-wrap gap-2">
-                            {describeAiEstimator(match).map((note) => (
-                              <Badge key={`${match.id}-${note}`} tone="slate">
+                            <Badge tone="slate">
+                              信頼度 {probabilityConfidenceLabel[estimated.probabilityConfidence]}
+                            </Badge>
+                            <Badge tone="slate">{readiness.message}</Badge>
+                            {estimated.missingDataWarnings.slice(0, 2).map((note) => (
+                              <Badge key={`${match.id}-${note}`} tone="amber">
                                 {note}
                               </Badge>
                             ))}
@@ -1565,11 +1727,11 @@ function WorkspacePageContent() {
                     <div className="mt-4 grid gap-3 sm:grid-cols-2">
                       <div className="rounded-[20px] border border-slate-200 bg-slate-50/85 p-4">
                         <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                          AI基準線
+                          試算ライン
                         </div>
                         <div className="mt-2 flex flex-wrap gap-2">
                           {aiBase.length === 0 ? (
-                            <Badge tone="slate">AI未設定</Badge>
+                            <Badge tone="slate">試算未設定</Badge>
                           ) : (
                             aiBase.map((outcome) => (
                               <Badge key={`${match.id}-overview-ai-${outcome}`} tone="amber">
@@ -1579,7 +1741,7 @@ function WorkspacePageContent() {
                           )}
                         </div>
                         <div className="mt-2 text-sm text-slate-600">
-                          AI {formatPercent(match.modelProb1)} / {formatPercent(match.modelProb0)} /{" "}
+                          モデル {formatPercent(match.modelProb1)} / {formatPercent(match.modelProb0)} /{" "}
                           {formatPercent(match.modelProb2)}
                         </div>
                       </div>
@@ -1629,10 +1791,10 @@ function WorkspacePageContent() {
 
           <CollapsibleSectionCard
             title={`${data.round.matches.length}試合の詳細表`}
-            description="細かい数値を確認したいときだけ開いて使います。横スクロール対応で、優位差は AI - 公式人気 です。"
+            description="細かい数値を確認したいときだけ開いて使います。横スクロール対応で、優位差は モデル試算 - 公式人気 です。"
             badge={<Badge tone="slate">詳細</Badge>}
           >
-            <HorizontalScrollTable hint="スマホでは横にスワイプすると、AI基準線、人力上書き、優位差、結果まで続けて見られます。">
+            <HorizontalScrollTable hint="スマホでは横にスワイプすると、試算ライン、人力ライン、優位差、結果まで続けて見られます。">
               <table className="min-w-[1540px] text-left text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 text-slate-500">
@@ -1643,8 +1805,8 @@ function WorkspacePageContent() {
                     <th className="px-3 py-3">会場</th>
                     <th className="px-3 py-3">公式人気 1/0/2</th>
                     <th className="px-3 py-3">市場 1/0/2</th>
-                    <th className="px-3 py-3">AI 1/0/2</th>
-                    <th className="px-3 py-3">AI基準線</th>
+                    <th className="px-3 py-3">モデル 1/0/2</th>
+                    <th className="px-3 py-3">試算ライン</th>
                     <th className="px-3 py-3">人力F</th>
                     <th className="px-3 py-3">人力D</th>
                     <th className="px-3 py-3">人力上書き</th>
@@ -1695,7 +1857,7 @@ function WorkspacePageContent() {
                         <td className="px-3 py-4">
                           <div className="flex flex-wrap gap-2">
                             {aiBase.length === 0 ? (
-                              <Badge tone="slate">AI未設定</Badge>
+                              <Badge tone="slate">試算未設定</Badge>
                             ) : (
                               aiBase.map((outcome) => (
                                 <Badge key={`${match.id}-ai-${outcome}`} tone="amber">

@@ -11,6 +11,14 @@ describe("round links", () => {
     ).toBe("/pick-room?round=round-123&user=user-456");
   });
 
+  it("keeps round id when building the play page route", () => {
+    expect(
+      buildRoundHref("/play", "round-123", {
+        user: "user-456",
+      }),
+    ).toBe("/play?round=round-123&user=user-456");
+  });
+
   it("builds an official import href with product and auto-sync options", () => {
     expect(
       buildOfficialRoundImportHref("round-123", {

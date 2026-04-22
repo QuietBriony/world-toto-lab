@@ -31,22 +31,30 @@ import {
 } from "@/lib/demo-data";
 import {
   parseIntOrNull,
+  parseCompetitionType,
+  parseDataProfile,
   parseProductType,
+  parsePrimaryUse,
   parseRoundStatus,
+  parseSportContext,
   stringValue,
   stringValues,
   nullableString,
 } from "@/lib/forms";
 import {
   advantageBucketLabel,
+  competitionTypeLabel,
+  dataProfileLabel,
   formatDateTime,
   formatCurrency,
   formatPercent,
   formatSignedPercent,
+  primaryUseLabel,
   productTypeLabel,
   roundSourceLabel,
   roundStatusLabel,
   roundStatusOptions,
+  sportContextLabel,
 } from "@/lib/domain";
 import { defaultRequiredMatchCount, productTypeOptions } from "@/lib/product-rules";
 import {
@@ -175,13 +183,17 @@ export default function DashboardPage() {
         status: parseRoundStatus(stringValue(formData, "status")),
         budgetYen:
           candidateLimit !== null ? budgetFromCandidateLimit(candidateLimit) : null,
+        competitionType: parseCompetitionType(stringValue(formData, "competitionType")),
+        dataProfile: parseDataProfile(stringValue(formData, "dataProfile")),
         matchCount,
         notes: nullableString(formData, "notes"),
         participantIds,
+        primaryUse: parsePrimaryUse(stringValue(formData, "primaryUse")),
         productType,
         requiredMatchCount: productType === "custom" ? matchCount : null,
         roundSource: "user_manual",
         sourceNote: nullableString(formData, "sourceNote"),
+        sportContext: parseSportContext(stringValue(formData, "sportContext")),
       });
 
       await refresh();
@@ -543,7 +555,7 @@ export default function DashboardPage() {
       <PageHeader
         eyebrow="ワールドtotoラボ"
         title="W杯totoの予想・分析・記録ダッシュボード"
-        description="AI基準線と少数の予想者を見比べながら、他メンバーは支持先を選べる共有 MVP です。"
+        description="モデル試算と少数の予想者を見比べながら、他メンバーは支持先を選べる共有 MVP です。"
         actions={
           <div className="flex flex-wrap gap-3">
             <a href={createRoundAnchor} className={buttonClassName}>
@@ -567,6 +579,72 @@ export default function DashboardPage() {
         currentPath={appRoute.dashboard}
         defaultOpen={false}
       />
+
+      <SectionCard
+        title="初心者から GitHub で共同開発しよう"
+        description="友人を招待しても迷いにくいように、最初の一歩だけを短くまとめた入口です。実装は Codex 中心、作業は branch + PR ベース、同じファイルの AI 同時編集は禁止、という前提で進めます。"
+        action={
+          <Link href={appRoute.devPlaybook} className={buttonClassName}>
+            初心者向けガイドを見る
+          </Link>
+        }
+      >
+        <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+          <div className="grid gap-3">
+            <div className="flex items-start gap-3 rounded-[24px] border border-slate-200 bg-white/84 px-4 py-4">
+              <Badge tone="teal">1</Badge>
+              <div>
+                <div className="text-sm font-semibold text-slate-900">GitHub に参加してローカル起動</div>
+                <p className="mt-1 text-sm leading-6 text-slate-600">
+                  招待を受けたら clone して、`.env` を入れ、`npm ci` と `npm run dev` でまず動かします。
+                </p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 rounded-[24px] border border-slate-200 bg-white/84 px-4 py-4">
+              <Badge tone="sky">2</Badge>
+              <div>
+                <div className="text-sm font-semibold text-slate-900">1タスク 1ブランチで小さく進める</div>
+                <p className="mt-1 text-sm leading-6 text-slate-600">
+                  `main` へ直接 push はせず、目的を 1 つに絞った branch と PR で進めます。
+                </p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 rounded-[24px] border border-slate-200 bg-white/84 px-4 py-4">
+              <Badge tone="amber">3</Badge>
+              <div>
+                <div className="text-sm font-semibold text-slate-900">Codex に狭い範囲で依頼する</div>
+                <p className="mt-1 text-sm leading-6 text-slate-600">
+                  Codex を基本実装担当にし、同じファイルを複数 AI に同時編集させないようにします。
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-[28px] border border-emerald-200 bg-emerald-50/80 p-5 shadow-[0_18px_44px_-34px_rgba(15,23,42,0.16)]">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge tone="teal">Starter</Badge>
+              <Badge tone="slate">5分で読める</Badge>
+            </div>
+            <h3 className="mt-3 font-display text-[1.35rem] font-semibold tracking-[-0.05em] text-slate-950">
+              共同開発の最初の約束
+            </h3>
+            <div className="mt-4 space-y-2 text-sm leading-6 text-slate-700">
+              <p>main 直接 push 禁止</p>
+              <p>1PR 1目的</p>
+              <p>PR にテスト / スクショ / 影響範囲を書く</p>
+              <p>DB migration は最小差分、Supabase 本番データは消さない</p>
+            </div>
+            <div className="mt-5 flex flex-wrap gap-3">
+              <Link href={appRoute.devPlaybook} className={buttonClassName}>
+                共同開発スタートガイド
+              </Link>
+              <a href="#create-round" className={secondaryButtonClassName}>
+                アプリも触ってみる
+              </a>
+            </div>
+          </div>
+        </div>
+      </SectionCard>
 
       <SectionCard
         title="期待値ウォッチ"
@@ -770,8 +848,8 @@ export default function DashboardPage() {
                       tone: "slate" as const,
                     },
                     {
-                      title: "AI基準線",
-                      body: "AI が出した叩き台です。まずここから比較します。",
+                      title: "モデル試算",
+                      body: "共通 probability engine が出した叩き台です。まずここから比較します。",
                       tone: "sky" as const,
                     },
                     {
@@ -1047,7 +1125,7 @@ export default function DashboardPage() {
 
           <CollapsibleSectionCard
             title="このサイトは何をするもの？"
-            description="友人グループで W杯toto / WINNER の見立てを共有し、AI基準線と少数の予想者ラインを比べながら、他メンバーは支持先を選べる分析ラボです。"
+            description="友人グループで W杯toto / WINNER の見立てを共有し、モデル試算と少数の予想者ラインを比べながら、他メンバーは支持先を選べる分析ラボです。"
             defaultOpen={false}
             badge={<Badge tone="teal">全体像</Badge>}
           >
@@ -1055,13 +1133,13 @@ export default function DashboardPage() {
               {[
                 {
                   eyebrow: "入力",
-                  title: "AIと予想者を並べる",
-                  body: "まず AI基準線 と予想者ラインを見ます。予想者は 1/0/2 とカードを入れ、他メンバーは支持先を選びます。",
+                  title: "試算ラインと予想者を並べる",
+                  body: "まず モデル試算 と予想者ラインを見ます。予想者は 1/0/2 とカードを入れ、他メンバーは支持先を選びます。",
                 },
                 {
                   eyebrow: "比較",
                   title: "優位差を比べる",
-                  body: "一般人気 / AI / 予想者 / ウォッチ支持のズレを、ラウンド詳細・コンセンサス・優位ボードで並べて見ます。",
+                  body: "一般人気 / モデル / 予想者 / ウォッチ支持のズレを、ラウンド詳細・コンセンサス・優位ボードで並べて見ます。",
                 },
                 {
                   eyebrow: "振り返り",
@@ -1117,7 +1195,7 @@ export default function DashboardPage() {
                 {
                   step: "04",
                   title: "支持 / 予想と予想者カードを入力",
-                  body: "予想者は 1/0/2 とカードを入れ、ウォッチ担当は AI か予想者のどちらに乗るかを選びます。",
+                  body: "予想者は 1/0/2 とカードを入れ、ウォッチ担当は モデル か予想者のどちらに乗るかを選びます。",
                   tone: "sky",
                   status: "保存対応",
                 },
@@ -1256,7 +1334,7 @@ export default function DashboardPage() {
                   title: "この MVP でやらないこと",
                   summary:
                     "購入代行、賭け金管理、配当分配、精算は扱いません。分析と記録に限定しています。",
-                  body: "この UI は AI基準線と人力上書きを比べて、予想の根拠や振り返りを残すためのものです。金銭の受け渡しや代理購入のフローは入れていませんし、今後も別物として扱う想定です。",
+                  body: "この UI は モデル試算と人力判断を比べて、予想の根拠や振り返りを残すためのものです。金銭の受け渡しや代理購入のフローは入れていませんし、今後も別物として扱う想定です。",
                   note: "公式サービスの利用は各自の判断で行う前提です。",
                   tone: "sky" as const,
                 },
@@ -1370,7 +1448,7 @@ export default function DashboardPage() {
                         <Badge tone={aiReady ? "teal" : "amber"}>
                           {aiReady
                             ? `AI ${formatPercent(match.modelProb1)} / ${formatPercent(match.modelProb0)} / ${formatPercent(match.modelProb2)}`
-                            : "AI確率はまだ入っていません"}
+                            : "モデル確率はまだ入っていません"}
                         </Badge>
                         <Badge tone={matchHasSetupInput(match) ? "teal" : "amber"}>
                           {matchHasSetupInput(match) ? "試合情報あり" : "試合情報はまだ薄い"}
@@ -1400,7 +1478,7 @@ export default function DashboardPage() {
           </SectionCard>
 
           <CollapsibleSectionCard
-            title="試合データとAI分析の入り方"
+            title="試合データとモデル試算の入り方"
             description="今どこまで自動で出ていて、どこから先が手入力かを先に分かるようにしています。"
             defaultOpen={false}
             badge={<Badge tone="sky">データ状況</Badge>}
@@ -1414,9 +1492,9 @@ export default function DashboardPage() {
                   </h3>
                 </div>
                 <ul className="mt-4 space-y-2 text-sm leading-7 text-slate-700">
-                  <li>デモラウンドには試合情報、AI確率、予想者ライン、支持入力、予想者カード、レビューが最初から入っています。</li>
-                  <li>新規ラウンドでも、試合編集に入れた日時、会場、ステージ、公式人気、市場、AI確率は各画面に反映されます。</li>
-                  <li>AI分析として見えているのは、いまは `1 / 0 / 2` の確率と、そこから作る AI基準線・優位差計算です。</li>
+                  <li>デモラウンドには試合情報、モデル確率、予想者ライン、支持入力、予想者カード、レビューが最初から入っています。</li>
+                  <li>新規ラウンドでも、試合編集に入れた日時、会場、ステージ、公式人気、市場、モデル確率は各画面に反映されます。</li>
+                  <li>モデル試算として見えているのは、いまは `1 / 0 / 2` の確率と、そこから作る試算ライン・優位差計算です。</li>
                 </ul>
               </div>
 
@@ -1429,7 +1507,7 @@ export default function DashboardPage() {
                 </div>
                 <ul className="mt-4 space-y-2 text-sm leading-7 text-slate-700">
                   <li>FIFA日程取得、公式回一覧の半自動同期、BIG / GOAL3 の watch はありますが、全部が無人で埋まり続ける構成ではありません。</li>
-                  <li>AI確率は補助的な試算までで、本格モデルをこのサイト内で自動運用する段階ではありません。</li>
+                  <li>モデル確率は補助的な試算までで、本格モデルをこのサイト内で自動運用する段階ではありません。</li>
                   <li>なので現状は、公式取り込みを主導線にしつつ、必要なところだけ手入力や確認を差し込む MVP です。</li>
                 </ul>
               </div>
@@ -1807,6 +1885,19 @@ export default function DashboardPage() {
                 </label>
 
                 <label className="grid gap-2 text-sm font-medium text-slate-700">
+                  モード
+                  <select name="competitionType" className={fieldClassName} defaultValue="world_cup">
+                    {(
+                      ["world_cup", "domestic_toto", "winner", "custom"] as const
+                    ).map((competitionType) => (
+                      <option key={competitionType} value={competitionType}>
+                        {competitionTypeLabel[competitionType]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="grid gap-2 text-sm font-medium text-slate-700">
                   試合数
                   <input
                     name="matchCount"
@@ -1828,6 +1919,19 @@ export default function DashboardPage() {
                 </label>
 
                 <label className="grid gap-2 text-sm font-medium text-slate-700">
+                  Data Profile
+                  <select name="dataProfile" className={fieldClassName} defaultValue="worldcup_rich">
+                    {(
+                      ["worldcup_rich", "domestic_standard", "manual_light", "demo"] as const
+                    ).map((dataProfile) => (
+                      <option key={dataProfile} value={dataProfile}>
+                        {dataProfileLabel[dataProfile]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="grid gap-2 text-sm font-medium text-slate-700">
                   上位候補数
                   <input
                     name="candidateLimit"
@@ -1838,6 +1942,32 @@ export default function DashboardPage() {
                     className={fieldClassName}
                     placeholder="5"
                   />
+                </label>
+
+                <label className="grid gap-2 text-sm font-medium text-slate-700">
+                  主な使い方
+                  <select name="primaryUse" className={fieldClassName} defaultValue="friend_game">
+                    {(
+                      ["real_round_research", "practice", "demo", "friend_game"] as const
+                    ).map((primaryUse) => (
+                      <option key={primaryUse} value={primaryUse}>
+                        {primaryUseLabel[primaryUse]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="grid gap-2 text-sm font-medium text-slate-700">
+                  sportContext
+                  <select name="sportContext" className={fieldClassName} defaultValue="national_team">
+                    {(
+                      ["national_team", "j_league", "club", "other"] as const
+                    ).map((sportContext) => (
+                      <option key={sportContext} value={sportContext}>
+                        {sportContextLabel[sportContext]}
+                      </option>
+                    ))}
+                  </select>
                 </label>
 
                 <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-950/5 p-4 text-sm text-slate-600">
@@ -1996,6 +2126,8 @@ export default function DashboardPage() {
                       <div className="flex flex-wrap items-center gap-2">
                         <Badge tone="slate">{roundUsers.length}人</Badge>
                         <Badge tone="teal">{roundProductLabel}</Badge>
+                        <Badge tone="info">{competitionTypeLabel[round.competitionType]}</Badge>
+                        <Badge tone="slate">{dataProfileLabel[round.dataProfile]}</Badge>
                         <Badge tone="slate">{roundSourceLabel[round.roundSource]}</Badge>
                         <Badge tone="slate">
                           要件 {round.requiredMatchCount ?? round.matchCount}試合
@@ -2004,12 +2136,26 @@ export default function DashboardPage() {
                       </div>
                       <div className="mt-4 flex flex-wrap gap-2">
                         <Link
-                          href={buildRoundHref(appRoute.pickRoom, round.id, {
+                          href={buildRoundHref(appRoute.play, round.id, {
                             user: roundUsers[0]?.id,
                           })}
                           className={buttonClassName}
                         >
+                          遊ぼう
+                        </Link>
+                        <Link
+                          href={buildRoundHref(appRoute.pickRoom, round.id, {
+                            user: roundUsers[0]?.id,
+                          })}
+                          className={secondaryButtonClassName}
+                        >
                           Pick Room
+                        </Link>
+                        <Link
+                          href={buildRoundHref(appRoute.practiceLab, round.id)}
+                          className={secondaryButtonClassName}
+                        >
+                          Practice Lab
                         </Link>
                         <Link
                           href={buildRoundHref(appRoute.workspace, round.id)}

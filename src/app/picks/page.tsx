@@ -865,7 +865,7 @@ function PicksPageContent() {
                           className={secondaryButtonClassName}
                           onClick={applyAiPrimaryToPending}
                         >
-                          未入力にAI本命を入れる
+                          未入力にモデル本命を入れる
                         </button>
                       </div>
                     }
@@ -876,7 +876,7 @@ function PicksPageContent() {
                           1
                         </div>
                         <p className="mt-3 text-sm leading-6 text-slate-600">
-                          まず `未入力にAI本命を入れる` で叩き台を作ります。
+                          まず `未入力にモデル本命を入れる` で叩き台を作ります。
                         </p>
                       </div>
                       <div className="rounded-[22px] border border-white/80 bg-white/76 p-4 shadow-[0_16px_38px_-30px_rgba(15,23,42,0.4)]">
@@ -1034,7 +1034,7 @@ function PicksPageContent() {
                   }}
                   className="space-y-5"
                 >
-                  <HorizontalScrollTable hint="スマホでは横にスワイプすると、AI基準線・支持先・採用結果・メモまで続けて見られます。">
+                  <HorizontalScrollTable hint="スマホでは横にスワイプすると、試算ライン・支持先・採用結果・メモまで続けて見られます。">
                     <table
                       className={cx(
                         "text-left text-sm",
@@ -1045,7 +1045,7 @@ function PicksPageContent() {
                         <tr className="border-b border-slate-200 text-slate-500">
                           <th className="px-3 py-3">番号</th>
                           <th className="px-3 py-3">試合</th>
-                          <th className="px-3 py-3">AI基準線</th>
+                          <th className="px-3 py-3">試算ライン</th>
                           <th className="px-3 py-3">
                             {activeUserIsPredictor ? "自分の予想" : "予想者比較"}
                           </th>
@@ -1090,7 +1090,7 @@ function PicksPageContent() {
                               <td className="px-3 py-4">
                                 <div className="flex flex-wrap gap-2">
                                   {aiBase.length === 0 ? (
-                                    <Badge tone="slate">AI未設定</Badge>
+                                    <Badge tone="slate">試算未設定</Badge>
                                   ) : (
                                     aiBase.map((outcome) => (
                                       <Badge key={`${match.id}-ai-${outcome}`} tone="amber">
@@ -1160,8 +1160,8 @@ function PicksPageContent() {
                                     </div>
                                     <div className="mt-2 text-xs text-slate-500">
                                       {favoriteOutcomeForBucket(match, "model")
-                                        ? `AI本命 ${favoriteOutcomeForBucket(match, "model")}`
-                                        : "AI本命なし"}
+                                        ? `モデル本命 ${favoriteOutcomeForBucket(match, "model")}`
+                                        : "モデル本命なし"}
                                     </div>
                                   </>
                                 ) : (
@@ -1352,7 +1352,7 @@ function PicksPageContent() {
                         <tr className="border-b border-slate-200 text-slate-500">
                           <th className="px-3 py-3">番号</th>
                           <th className="px-3 py-3">試合</th>
-                          <th className="px-3 py-3">AI基準線</th>
+                          <th className="px-3 py-3">試算ライン</th>
                           {data.users.map((user) => (
                             <th key={user.id} className="px-3 py-3">
                               <div>{user.name}</div>
@@ -1384,7 +1384,7 @@ function PicksPageContent() {
                               <td className="px-3 py-4">
                                 <div className="flex flex-wrap gap-2">
                                   {aiBase.length === 0 ? (
-                                    <Badge tone="slate">AI未設定</Badge>
+                                    <Badge tone="slate">試算未設定</Badge>
                                   ) : (
                                     aiBase.map((outcome) => (
                                       <Badge key={`${match.id}-all-ai-${outcome}`} tone="amber">

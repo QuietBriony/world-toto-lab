@@ -60,7 +60,7 @@ const candidateOriginCue: Record<CandidateStrategyType, string> = {
   orthodox_model: "AIの本線寄り。モデル確率を主軸にした比較用の並びです。",
   public_favorite: "公式人気の並びを土台にした王道比較用です。",
   human_consensus: "管理者の手入力予想を寄せて固めた人力ベースです。",
-  ev_hunter: "AI確率と公式人気のズレから期待値を探す候補です。",
+  ev_hunter: "モデル確率と公式人気のズレから期待値を探す候補です。",
   sleeping_value: "人気薄でも拾う価値がありそうな目を厚めに入れています。",
   draw_alert: "引き分けシグナルが強い試合を優先した候補です。",
   upset: "人気サイドから外して遊び筋を混ぜた逆張り候補です。",

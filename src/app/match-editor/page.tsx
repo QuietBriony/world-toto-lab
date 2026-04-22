@@ -35,6 +35,9 @@ import {
   enumToOutcome,
   formatDateTime,
   formatPercent,
+  probabilityConfidenceLabel,
+  researchMemoConfidenceLabel,
+  researchMemoTypeLabel,
   parseOutcomeList,
   roundStatusLabel,
   serializeOutcomeList,
@@ -44,10 +47,15 @@ import {
   parseCategory,
   parseFloatOrNull,
   parseProbabilityPercent,
+  parseResearchMemoConfidence,
+  parseResearchMemoType,
   stringValue,
 } from "@/lib/forms";
+import { evaluateMatchReadiness } from "@/lib/probability/readiness";
 import { appRoute, buildRoundHref, getSingleSearchParam } from "@/lib/round-links";
-import { updateMatch } from "@/lib/repository";
+import { buildResearchMemoPayload, filterResearchMemosForMatch } from "@/lib/research-memos";
+import { competitionTypeModeLabel, probabilityReadinessStatusLabel } from "@/lib/round-mode";
+import { deleteResearchMemo, saveResearchMemo, updateMatch } from "@/lib/repository";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { useRoundWorkspace } from "@/lib/use-app-data";
 
@@ -194,6 +202,17 @@ function MatchEditorPageContent() {
     submitError?.scope === currentFormScope ? submitError.message : null;
   const visibleSaveMessage =
     saveMessage?.scope === currentFormScope ? saveMessage.message : null;
+  const activeAuthor =
+    data?.users.find((user) => user.role === "admin") ??
+    data?.users[0] ??
+    null;
+  const scopedResearchMemos = filterResearchMemosForMatch(data?.round.researchMemos ?? [], match);
+  const readiness = match
+    ? evaluateMatchReadiness({
+        match,
+        researchMemos: scopedResearchMemos,
+      })
+    : null;
 
   useEffect(() => {
     if (!hasVisibleUnsavedChanges) {
@@ -246,6 +265,39 @@ function MatchEditorPageContent() {
         injuryNote: nullableString(formData, "injuryNote"),
         motivationNote: nullableString(formData, "motivationNote"),
         adminNote: nullableString(formData, "adminNote"),
+        recentFormNote: nullableString(formData, "recentFormNote"),
+        availabilityInfo: nullableString(formData, "availabilityInfo"),
+        conditionsInfo: nullableString(formData, "conditionsInfo"),
+        homeStrengthAdjust: parseFloatOrNull(stringValue(formData, "homeStrengthAdjust")),
+        awayStrengthAdjust: parseFloatOrNull(stringValue(formData, "awayStrengthAdjust")),
+        availabilityAdjust: parseFloatOrNull(stringValue(formData, "availabilityAdjust")),
+        conditionsAdjust: parseFloatOrNull(stringValue(formData, "conditionsAdjust")),
+        tacticalAdjust: parseFloatOrNull(stringValue(formData, "tacticalAdjust")),
+        motivationAdjust: parseFloatOrNull(stringValue(formData, "motivationAdjust")),
+        adminAdjust1: parseFloatOrNull(stringValue(formData, "adminAdjust1")),
+        adminAdjust0: parseFloatOrNull(stringValue(formData, "adminAdjust0")),
+        adminAdjust2: parseFloatOrNull(stringValue(formData, "adminAdjust2")),
+        homeAdvantageAdjust: parseFloatOrNull(stringValue(formData, "homeAdvantageAdjust")),
+        restDaysAdjust: parseFloatOrNull(stringValue(formData, "restDaysAdjust")),
+        travelAdjust: parseFloatOrNull(stringValue(formData, "travelAdjust")),
+        leagueTableMotivationAdjust: parseFloatOrNull(
+          stringValue(formData, "leagueTableMotivationAdjust"),
+        ),
+        injurySuspensionAdjust: parseFloatOrNull(
+          stringValue(formData, "injurySuspensionAdjust"),
+        ),
+        rotationRiskAdjust: parseFloatOrNull(stringValue(formData, "rotationRiskAdjust")),
+        groupStandingMotivationAdjust: parseFloatOrNull(
+          stringValue(formData, "groupStandingMotivationAdjust"),
+        ),
+        travelClimateAdjust: parseFloatOrNull(stringValue(formData, "travelClimateAdjust")),
+        altitudeHumidityAdjust: parseFloatOrNull(
+          stringValue(formData, "altitudeHumidityAdjust"),
+        ),
+        squadDepthAdjust: parseFloatOrNull(stringValue(formData, "squadDepthAdjust")),
+        tournamentPressureAdjust: parseFloatOrNull(
+          stringValue(formData, "tournamentPressureAdjust"),
+        ),
         category: parseCategory(stringValue(formData, "category")),
         confidence: confidenceRaw === null ? null : Math.min(Math.max(confidenceRaw, 0), 1),
         recommendedOutcomes: serializeOutcomeList(
@@ -265,6 +317,74 @@ function MatchEditorPageContent() {
       });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSaveMemo = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!data || !match || !activeAuthor) {
+      setSubmitError({
+        scope: currentFormScope,
+        message: "メモを書けるメンバーが見つかりません。",
+      });
+      return;
+    }
+
+    const formData = new FormData(event.currentTarget);
+
+    try {
+      const payload = buildResearchMemoPayload({
+        confidence: parseResearchMemoConfidence(stringValue(formData, "memoConfidence")),
+        createdBy: activeAuthor.id,
+        matchId: match.id,
+        memoId: nullableString(formData, "memoId"),
+        memoType: parseResearchMemoType(stringValue(formData, "memoType")),
+        roundId: data.round.id,
+        sourceDate: nullableString(formData, "memoSourceDate"),
+        sourceName: nullableString(formData, "memoSourceName"),
+        sourceUrl: nullableString(formData, "memoSourceUrl"),
+        summary: stringValue(formData, "memoSummary"),
+        team: nullableString(formData, "memoTeam"),
+        title: stringValue(formData, "memoTitle"),
+      });
+
+      if (!payload.title || !payload.summary) {
+        throw new Error("メモのタイトルと要約を入れてください。");
+      }
+
+      await saveResearchMemo(payload);
+      setSaveMessage({
+        scope: currentFormScope,
+        message: "Research Memo を保存しました。",
+      });
+      await refresh();
+      event.currentTarget.reset();
+    } catch (nextError) {
+      setSubmitError({
+        scope: currentFormScope,
+        message: errorMessage(nextError),
+      });
+    }
+  };
+
+  const handleDeleteMemo = async (memoId: string) => {
+    if (!window.confirm("この Research Memo を削除しますか？")) {
+      return;
+    }
+
+    try {
+      await deleteResearchMemo(memoId);
+      setSaveMessage({
+        scope: currentFormScope,
+        message: "Research Memo を削除しました。",
+      });
+      await refresh();
+    } catch (nextError) {
+      setSubmitError({
+        scope: currentFormScope,
+        message: errorMessage(nextError),
+      });
     }
   };
 
@@ -352,7 +472,7 @@ function MatchEditorPageContent() {
             <EditingStatusNotice
               tone="amber"
               title="未保存の変更があります"
-              description="試合設定を変えたあとは、保存するまでは AI 比較や候補配分に反映されません。"
+              description="試合設定を変えたあとは、保存するまではモデル比較や候補配分に反映されません。"
               action={
                 <button type="submit" form={formId} className={buttonClassName} disabled={saving}>
                   {saving ? "保存中..." : "試合を保存"}
@@ -414,7 +534,7 @@ function MatchEditorPageContent() {
                 <StatCard
                   label="市場 / AI"
                   value={hasMarketInputs || hasAiInputs ? "あり" : "未入力"}
-                  hint={`市場 ${hasMarketInputs ? "あり" : "なし"} / AI ${hasAiInputs ? "あり" : "なし"}`}
+                  hint={`市場 ${hasMarketInputs ? "あり" : "なし"} / モデル ${hasAiInputs ? "あり" : "なし"}`}
                   tone={hasMarketInputs || hasAiInputs ? "positive" : "warning"}
                   compact
                 />
@@ -424,7 +544,72 @@ function MatchEditorPageContent() {
                   hint={noteCount > 0 ? "入力済みメモ数" : "まだメモはありません"}
                   compact
                 />
+                {readiness ? (
+                  <>
+                    <StatCard
+                      label="Probability"
+                      value={probabilityReadinessStatusLabel[data.round.probabilityReadiness]}
+                      hint={competitionTypeModeLabel[data.round.competitionType]}
+                      compact
+                      tone={
+                        data.round.probabilityReadiness === "ready"
+                          ? "positive"
+                          : data.round.probabilityReadiness === "partial"
+                            ? "draw"
+                            : "warning"
+                      }
+                    />
+                    <StatCard
+                      label="Match Readiness"
+                      value={probabilityConfidenceLabel[readiness.level]}
+                      hint={readiness.message}
+                      compact
+                      tone={
+                        readiness.level === "high"
+                          ? "positive"
+                          : readiness.level === "medium"
+                            ? "draw"
+                            : "warning"
+                      }
+                    />
+                  </>
+                ) : null}
               </section>
+
+              {readiness ? (
+                <SectionCard
+                  title="この試合の試算材料"
+                  description="通常totoでもW杯でも、共通確率エンジンがどこまで素直に回せるかをここで見ます。"
+                >
+                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                    {[
+                      { label: "市場確率", ready: readiness.hasMarketProb },
+                      { label: "公式人気", ready: readiness.hasOfficialVote },
+                      { label: "Human Scout", ready: readiness.hasHumanScout },
+                      { label: "直近成績", ready: readiness.hasRecentForm },
+                      { label: "戦力情報", ready: readiness.hasAvailabilityInfo },
+                      { label: "条件情報", ready: readiness.hasConditionsInfo },
+                      { label: "モチベーション", ready: readiness.hasMotivationInfo },
+                      { label: "手入力補正", ready: readiness.hasManualAdjust },
+                    ].map(({ label, ready }) => (
+                      <div
+                        key={label}
+                        className="rounded-[20px] border border-slate-200 bg-white/88 px-4 py-3"
+                      >
+                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                          {label}
+                        </p>
+                        <p className="mt-2 text-base font-semibold text-slate-950">
+                          {ready ? "あり" : "不足"}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-4 rounded-[22px] border border-slate-200 bg-slate-50/90 px-4 py-4 text-sm leading-6 text-slate-700">
+                    {readiness.message}
+                  </div>
+                </SectionCard>
+              ) : null}
 
               <SectionCard
                 title="まずここだけ入れる"
@@ -661,6 +846,137 @@ function MatchEditorPageContent() {
               </CollapsibleSectionCard>
 
               <CollapsibleSectionCard
+                title="試算材料と手入力補正"
+                description="通常totoは休養・移動・怪我、W杯はグループ状況や気候などを手で足して低信頼を少しずつ改善します。"
+                badge={<Badge tone="teal">共通Probability</Badge>}
+                defaultOpen={!hasMarketInputs}
+              >
+                <div className="grid gap-5 lg:grid-cols-2">
+                  <label className="grid gap-2 text-sm font-medium text-slate-700 lg:col-span-2">
+                    直近成績メモ
+                    <textarea
+                      name="recentFormNote"
+                      defaultValue={match.recentFormNote ?? ""}
+                      className={textAreaClassName}
+                    />
+                  </label>
+
+                  <label className="grid gap-2 text-sm font-medium text-slate-700">
+                    戦力 / 出場可否
+                    <textarea
+                      name="availabilityInfo"
+                      defaultValue={match.availabilityInfo ?? ""}
+                      className={textAreaClassName}
+                    />
+                  </label>
+
+                  <label className="grid gap-2 text-sm font-medium text-slate-700">
+                    条件 / 天候 / 会場
+                    <textarea
+                      name="conditionsInfo"
+                      defaultValue={match.conditionsInfo ?? ""}
+                      className={textAreaClassName}
+                    />
+                  </label>
+                </div>
+
+                <div className="mt-5 grid gap-4 xl:grid-cols-3">
+                  {[
+                    { name: "homeStrengthAdjust", label: "地力補正 1", value: match.homeStrengthAdjust },
+                    { name: "awayStrengthAdjust", label: "地力補正 2", value: match.awayStrengthAdjust },
+                    { name: "availabilityAdjust", label: "戦力補正", value: match.availabilityAdjust },
+                    { name: "conditionsAdjust", label: "条件補正", value: match.conditionsAdjust },
+                    { name: "tacticalAdjust", label: "戦術補正", value: match.tacticalAdjust },
+                    { name: "motivationAdjust", label: "モチベ補正", value: match.motivationAdjust },
+                    { name: "adminAdjust1", label: "管理補正 1", value: match.adminAdjust1 },
+                    { name: "adminAdjust0", label: "管理補正 0", value: match.adminAdjust0 },
+                    { name: "adminAdjust2", label: "管理補正 2", value: match.adminAdjust2 },
+                  ].map(({ name, label, value }) => (
+                    <label key={name} className="grid gap-2 text-sm font-medium text-slate-700">
+                      {label}
+                      <input
+                        name={name}
+                        type="number"
+                        min={-0.1}
+                        max={0.1}
+                        step={0.01}
+                        defaultValue={value ?? ""}
+                        className={fieldClassName}
+                      />
+                    </label>
+                  ))}
+                </div>
+
+                {data.round.competitionType === "domestic_toto" ? (
+                  <div className="mt-5 grid gap-4 xl:grid-cols-3">
+                    {[
+                      { name: "homeAdvantageAdjust", label: "ホーム補正", value: match.homeAdvantageAdjust },
+                      { name: "restDaysAdjust", label: "休養日数補正", value: match.restDaysAdjust },
+                      { name: "travelAdjust", label: "移動補正", value: match.travelAdjust },
+                      {
+                        name: "leagueTableMotivationAdjust",
+                        label: "順位/勝点モチベ補正",
+                        value: match.leagueTableMotivationAdjust,
+                      },
+                      {
+                        name: "injurySuspensionAdjust",
+                        label: "怪我/出停補正",
+                        value: match.injurySuspensionAdjust,
+                      },
+                      { name: "rotationRiskAdjust", label: "ローテ補正", value: match.rotationRiskAdjust },
+                    ].map(({ name, label, value }) => (
+                      <label key={name} className="grid gap-2 text-sm font-medium text-slate-700">
+                        {label}
+                        <input
+                          name={name}
+                          type="number"
+                          min={-0.1}
+                          max={0.1}
+                          step={0.01}
+                          defaultValue={value ?? ""}
+                          className={fieldClassName}
+                        />
+                      </label>
+                    ))}
+                  </div>
+                ) : null}
+
+                {data.round.competitionType === "world_cup" ? (
+                  <div className="mt-5 grid gap-4 xl:grid-cols-3">
+                    {[
+                      {
+                        name: "groupStandingMotivationAdjust",
+                        label: "勝点状況補正",
+                        value: match.groupStandingMotivationAdjust,
+                      },
+                      { name: "travelClimateAdjust", label: "移動/気候補正", value: match.travelClimateAdjust },
+                      { name: "altitudeHumidityAdjust", label: "高度/湿度補正", value: match.altitudeHumidityAdjust },
+                      { name: "squadDepthAdjust", label: "選手層補正", value: match.squadDepthAdjust },
+                      { name: "rotationRiskAdjust", label: "ローテ補正", value: match.rotationRiskAdjust },
+                      {
+                        name: "tournamentPressureAdjust",
+                        label: "大会プレッシャー補正",
+                        value: match.tournamentPressureAdjust,
+                      },
+                    ].map(({ name, label, value }) => (
+                      <label key={name} className="grid gap-2 text-sm font-medium text-slate-700">
+                        {label}
+                        <input
+                          name={name}
+                          type="number"
+                          min={-0.1}
+                          max={0.1}
+                          step={0.01}
+                          defaultValue={value ?? ""}
+                          className={fieldClassName}
+                        />
+                      </label>
+                    ))}
+                  </div>
+                ) : null}
+              </CollapsibleSectionCard>
+
+              <CollapsibleSectionCard
                 title="メモ"
                 description="長文メモは必要なときだけ。迷う試合だけ短く残す運用でも十分です。"
                 badge={<Badge tone="slate">補足</Badge>}
@@ -704,9 +1020,123 @@ function MatchEditorPageContent() {
                 </div>
               </CollapsibleSectionCard>
 
+              <CollapsibleSectionCard
+                title="Research Memo"
+                description="検索して分かったことをここにメモし、AI/人力補正に反映します。MVPでは手入力中心です。"
+                badge={<Badge tone="info">通常toto向け</Badge>}
+                defaultOpen={scopedResearchMemos.length === 0}
+              >
+                <div className="space-y-4">
+                  {scopedResearchMemos.length > 0 ? (
+                    <div className="grid gap-3">
+                      {scopedResearchMemos.map((memo) => (
+                        <div
+                          key={memo.id}
+                          className="rounded-[22px] border border-slate-200 bg-white/88 px-4 py-4"
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap gap-2">
+                                <Badge tone="info">{researchMemoTypeLabel[memo.memoType]}</Badge>
+                                <Badge tone="slate">
+                                  {researchMemoConfidenceLabel[memo.confidence]}
+                                </Badge>
+                              </div>
+                              <h3 className="mt-3 font-semibold text-slate-950">{memo.title}</h3>
+                              <p className="mt-2 text-sm leading-6 text-slate-700">{memo.summary}</p>
+                              <p className="mt-2 text-xs text-slate-500">
+                                {memo.team ? `${memo.team} / ` : ""}
+                                {memo.sourceName ?? "手入力"}{memo.sourceDate ? ` / ${memo.sourceDate}` : ""}
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => void handleDeleteMemo(memo.id)}
+                              className={secondaryButtonClassName}
+                            >
+                              削除
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-[22px] border border-dashed border-slate-300 bg-slate-50/90 px-4 py-4 text-sm leading-6 text-slate-600">
+                      まだメモはありません。通常totoではここに検索メモを残すと、後で「何を根拠に補正したか」を振り返りやすくなります。
+                    </div>
+                  )}
+
+                  <form onSubmit={handleSaveMemo} className="grid gap-4 rounded-[24px] border border-slate-200 bg-slate-50/90 p-5">
+                    <input type="hidden" name="memoId" value="" />
+                    <div className="grid gap-4 lg:grid-cols-2">
+                      <label className="grid gap-2 text-sm font-medium text-slate-700">
+                        メモ種別
+                        <select name="memoType" className={fieldClassName} defaultValue="recent_form">
+                          {Object.entries(researchMemoTypeLabel).map(([value, label]) => (
+                            <option key={value} value={value}>
+                              {label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="grid gap-2 text-sm font-medium text-slate-700">
+                        信頼度
+                        <select name="memoConfidence" className={fieldClassName} defaultValue="medium">
+                          {Object.entries(researchMemoConfidenceLabel).map(([value, label]) => (
+                            <option key={value} value={value}>
+                              {label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+
+                    <div className="grid gap-4 lg:grid-cols-2">
+                      <label className="grid gap-2 text-sm font-medium text-slate-700">
+                        タイトル
+                        <input name="memoTitle" className={fieldClassName} placeholder="例: 直近3試合の失点が重い" />
+                      </label>
+                      <label className="grid gap-2 text-sm font-medium text-slate-700">
+                        チーム
+                        <input name="memoTeam" className={fieldClassName} placeholder={`${match.homeTeam} / ${match.awayTeam}`} />
+                      </label>
+                    </div>
+
+                    <label className="grid gap-2 text-sm font-medium text-slate-700">
+                      要約
+                      <textarea name="memoSummary" className={textAreaClassName} />
+                    </label>
+
+                    <div className="grid gap-4 lg:grid-cols-3">
+                      <label className="grid gap-2 text-sm font-medium text-slate-700">
+                        Source 名
+                        <input name="memoSourceName" className={fieldClassName} placeholder="ニュース / J公式 / 手入力" />
+                      </label>
+                      <label className="grid gap-2 text-sm font-medium text-slate-700">
+                        Source 日付
+                        <input name="memoSourceDate" type="date" className={fieldClassName} />
+                      </label>
+                      <label className="grid gap-2 text-sm font-medium text-slate-700">
+                        Source URL
+                        <input name="memoSourceUrl" className={fieldClassName} placeholder="https://..." />
+                      </label>
+                    </div>
+
+                    <div className="flex flex-wrap gap-3">
+                      <button type="submit" className={buttonClassName}>
+                        Research Memo を保存
+                      </button>
+                      <p className="text-sm leading-6 text-slate-600">
+                        保存者: {activeAuthor?.name ?? "未選択"}
+                      </p>
+                    </div>
+                  </form>
+                </div>
+              </CollapsibleSectionCard>
+
               <SectionCard
                 title="現在の表示"
-                description="保存前のざっくり確認です。公式と AI の入り具合だけ見ておけば大丈夫です。"
+                description="保存前のざっくり確認です。公式とモデルの入り具合だけ見ておけば大丈夫です。"
                 actions={
                   <button type="submit" form={formId} className={buttonClassName} disabled={saving}>
                     {saving ? "保存中..." : "試合を保存"}

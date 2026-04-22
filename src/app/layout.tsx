@@ -95,6 +95,9 @@ export default function RootLayout({
                       <Link href={`${appRoute.dashboard}#create-round`} className={secondaryButtonClassName}>
                         新規ラウンド
                       </Link>
+                      <Link href={appRoute.devPlaybook} className={secondaryButtonClassName}>
+                        共同開発を始める
+                      </Link>
                     </div>
                   </div>
                   <div className="rounded-[20px] border border-white/12 bg-[linear-gradient(180deg,rgba(2,8,6,0.88),rgba(12,19,14,0.94))] px-4 py-3 text-right shadow-[0_20px_50px_-36px_rgba(0,0,0,0.8)]">
@@ -105,7 +108,7 @@ export default function RootLayout({
                       World Toto
                     </div>
                     <div className="mt-1 font-mono text-xs uppercase tracking-[0.22em] text-amber-300/88">
-                      AI基準線 / 人力上書き
+                      モデル試算 / 人力ライン
                     </div>
                   </div>
                 </div>

@@ -152,7 +152,7 @@ export function RoundContextCard({
           compact
         />
         <StatCard
-          label="AI試算"
+          label="モデル試算"
           value={`${aiReadyCount}/${data.round.matches.length}`}
           compact
         />

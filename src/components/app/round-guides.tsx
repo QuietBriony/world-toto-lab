@@ -55,6 +55,12 @@ const pageGuideMeta: Partial<
     description: "この画面は全体の土台と不足確認が役目です。迷ったら、まずここに戻れば大丈夫です。",
     summary: "全体の土台を整えながら、次に埋めるべき不足を確認する段階です。",
   },
+  [appRoute.play]: {
+    badge: "友人向け",
+    title: "遊ぼうページで見る言葉",
+    description: "友人向けの最小導線です。候補カードと自分の1 / 0 / 2入力だけを前に出しています。",
+    summary: "難しい分析をしまって、どれにするかをポチポチ決める段階です。",
+  },
   [appRoute.matchEditor]: {
     badge: "試合設定",
     title: "試合設定で見る言葉",
@@ -77,7 +83,7 @@ const pageGuideMeta: Partial<
     badge: "差分確認",
     title: "コンセンサスで見る言葉",
     description: "AIと人力がどこで一致し、どこで別筋になったかを見るための短い辞書です。",
-    summary: "AI基準線と人力ラインの差分を確認する段階です。",
+    summary: "モデル試算と人力ラインの差分を確認する段階です。",
   },
   [appRoute.edgeBoard]: {
     badge: "比較用",
@@ -102,6 +108,12 @@ const pageGuideMeta: Partial<
     title: "振り返りで見る言葉",
     description: "結果入力と学びの切り分けをしやすくするため、見出しの意味を短く揃えています。",
     summary: "結果を埋めて、次回へ残す学びを整理する段階です。",
+  },
+  [appRoute.practiceLab]: {
+    badge: "練習回",
+    title: "Practice Lab で見る言葉",
+    description: "通常toto回や練習回を、W杯本番前の検証用として軽く振り返る画面です。",
+    summary: "モデル・人気・人力がどこまで効いたかを確認する段階です。",
   },
 };
 
@@ -209,9 +221,31 @@ const pageGlossaryEntries: Partial<Record<GuideRoute, GlossaryEntry[]>> = {
       tone: "amber",
     },
     {
-      term: "AI試算",
-      body: "必要な項目が揃った試合だけ、AI基準線を後からまとめて作れます。",
+      term: "モデル試算",
+      body: "必要な項目が揃った試合だけ、モデル試算を後からまとめて作れます。",
       tone: "lime",
+    },
+  ],
+  [appRoute.play]: [
+    {
+      term: "遊ぼうページ",
+      body: "候補カードと自分の 1 / 0 / 2 入力だけに絞った、友人向けの共有ページです。",
+      tone: "teal",
+    },
+    {
+      term: "王道 / 人力推し / EV狙い",
+      body: "細かい分析語を減らした候補カードの並びです。まずはここから見ます。",
+      tone: "sky",
+    },
+    {
+      term: "自分の予想を入れる",
+      body: "各試合を 1 / 0 / 2 で入れるだけの簡易入力です。",
+      tone: "amber",
+    },
+    {
+      term: "Advanced View",
+      body: "もっと細かい分析や設定を見たい時だけ戻る先です。",
+      tone: "slate",
     },
   ],
   [appRoute.matchEditor]: [
@@ -243,8 +277,8 @@ const pageGlossaryEntries: Partial<Record<GuideRoute, GlossaryEntry[]>> = {
       tone: "amber",
     },
     {
-      term: "AI基準線",
-      body: "AI が先に出した叩き台です。予想者はここから上書きするかを見ます。",
+      term: "試算ライン",
+      body: "共通 probability engine が先に出した叩き台です。予想者はここから上書きするかを見ます。",
       tone: "sky",
     },
     {
@@ -292,8 +326,8 @@ const pageGlossaryEntries: Partial<Record<GuideRoute, GlossaryEntry[]>> = {
   ],
   [appRoute.consensus]: [
     {
-      term: "AI基準線",
-      body: "AIが先に見ている本線です。人力ラインとの差分を見る起点になります。",
+      term: "試算ライン",
+      body: "モデル側が先に見ている本線です。人力ラインとの差分を見る起点になります。",
       tone: "teal",
     },
     {
@@ -400,10 +434,33 @@ const pageGlossaryEntries: Partial<Record<GuideRoute, GlossaryEntry[]>> = {
       tone: "rose",
     },
   ],
+  [appRoute.practiceLab]: [
+    {
+      term: "通常toto練習回",
+      body: "W杯本番前のモデル検証、人力予想の練習、通常回の振り返りをする回です。",
+      tone: "teal",
+    },
+    {
+      term: "モデル最大",
+      body: "モデルが最も高く見た outcome が、どれだけ結果を拾えたかです。",
+      tone: "sky",
+    },
+    {
+      term: "公式人気最大",
+      body: "公式人気の最大 outcome が、どれだけ結果を拾えたかです。",
+      tone: "amber",
+    },
+    {
+      term: "引き分け警報",
+      body: "引き分け寄りシグナルが出た試合が、実際に 0 になったかを見る指標です。",
+      tone: "rose",
+    },
+  ],
 };
 
 const routeLabel: Partial<Record<GuideRoute, string>> = {
   [appRoute.workspace]: "ラウンド詳細",
+  [appRoute.play]: "遊ぼうページ",
   [appRoute.bigCarryover]: "BIG Carryover Monitor",
   [appRoute.goal3Value]: "GOAL3 Value Board",
   [appRoute.matchEditor]: "試合設定",
@@ -413,6 +470,7 @@ const routeLabel: Partial<Record<GuideRoute, string>> = {
   [appRoute.edgeBoard]: "優位ボード",
   [appRoute.ticketGenerator]: "詳細候補配分",
   [appRoute.review]: "振り返り",
+  [appRoute.practiceLab]: "Practice Lab",
 };
 
 function toneBarClassName(tone: GuideTone) {

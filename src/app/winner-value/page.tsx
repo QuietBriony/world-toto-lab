@@ -539,7 +539,7 @@ function WinnerValuePageContent() {
                   </td>
                   <td className="px-3 py-4">
                     <div className="flex flex-wrap gap-2">
-                      {row.modelFavorite ? <Badge tone="teal">AI本命</Badge> : null}
+                      {row.modelFavorite ? <Badge tone="teal">モデル本命</Badge> : null}
                       {row.publicFavorite ? <Badge tone="slate">人気本命</Badge> : null}
                       {row.reasons.length === 0 ? (
                         <Badge tone="slate">中立</Badge>

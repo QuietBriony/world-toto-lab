@@ -1,11 +1,19 @@
 import type {
+  CompetitionType,
+  DataProfile,
   MatchCategory,
   Outcome,
   Pick,
+  PrimaryUse,
   ProvisionalCall,
   ProductType,
+  ProbabilityReadiness,
+  ProbabilityConfidence,
+  ResearchMemoConfidence,
+  ResearchMemoType,
   RoundSource,
   RoundStatus,
+  SportContext,
   TicketMode,
   User,
 } from "@/lib/types";
@@ -161,6 +169,67 @@ export const roundSourceLabel: Record<RoundSource, string> = {
   toto_official_manual: "toto公式対象",
   user_manual: "手入力",
   demo_sample: "デモ",
+};
+
+export const competitionTypeLabel: Record<CompetitionType, string> = {
+  world_cup: "W杯totoモード",
+  domestic_toto: "通常totoモード",
+  winner: "WINNERモード",
+  custom: "カスタムモード",
+};
+
+export const sportContextLabel: Record<SportContext, string> = {
+  national_team: "代表戦",
+  j_league: "Jリーグ",
+  club: "クラブ戦",
+  other: "その他",
+};
+
+export const primaryUseLabel: Record<PrimaryUse, string> = {
+  real_round_research: "本番研究",
+  practice: "練習",
+  demo: "デモ",
+  friend_game: "友人会",
+};
+
+export const dataProfileLabel: Record<DataProfile, string> = {
+  worldcup_rich: "WorldCup Rich",
+  domestic_standard: "Domestic Standard",
+  manual_light: "Manual Light",
+  demo: "Demo",
+};
+
+export const probabilityReadinessLabel: Record<ProbabilityReadiness, string> = {
+  ready: "試算可能",
+  partial: "部分試算",
+  low_confidence: "低信頼",
+  not_ready: "未設定",
+};
+
+export const probabilityConfidenceLabel: Record<ProbabilityConfidence, string> = {
+  high: "高信頼",
+  medium: "中信頼",
+  low: "低信頼",
+  fallback: "fallback",
+};
+
+export const researchMemoTypeLabel: Record<ResearchMemoType, string> = {
+  recent_form: "直近成績",
+  injury: "怪我",
+  suspension: "出場停止",
+  motivation: "モチベ",
+  travel_rest: "移動/休養",
+  tactical: "戦術",
+  weather: "天候",
+  odds: "オッズ",
+  news: "ニュース",
+  other: "その他",
+};
+
+export const researchMemoConfidenceLabel: Record<ResearchMemoConfidence, string> = {
+  high: "高",
+  medium: "中",
+  low: "低",
 };
 
 export const categoryLabel: Record<MatchCategory, string> = {

@@ -40,6 +40,7 @@ async function main() {
 
   const routes = [
     buildUrl(baseUrl, "/", {}),
+    buildUrl(baseUrl, "/dev-playbook/", {}),
     buildUrl(baseUrl, "/workspace/", { round: roundId }),
     buildUrl(baseUrl, "/big-carryover/", {}),
     buildUrl(baseUrl, "/goal3-value/", {}),
@@ -66,6 +67,8 @@ async function main() {
     }),
     buildUrl(baseUrl, "/simple-view/", { round: roundId, user: userId || undefined }),
     buildUrl(baseUrl, "/pick-room/", { round: roundId, user: userId || undefined }),
+    buildUrl(baseUrl, "/play/", { round: roundId, user: userId || undefined }),
+    buildUrl(baseUrl, "/practice-lab/", { round: roundId }),
     buildUrl(baseUrl, "/winner-value/", { round: roundId, user: userId || undefined }),
     buildUrl(baseUrl, "/consensus/", { round: roundId }),
     buildUrl(baseUrl, "/edge-board/", { round: roundId }),

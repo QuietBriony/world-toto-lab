@@ -95,14 +95,14 @@ type DemoWatcherPlan = {
 
 export const demoRoundTitle = "デモ体験ラウンド";
 export const demoRoundNotes =
-  "チュートリアル用の仮ラウンドです。AI基準線、人力上書き、コンセンサス、優位差、候補配分、振り返りまで一通り入っています。金銭、配当、代理購入、精算は扱いません。";
+  "チュートリアル用の仮ラウンドです。モデル試算、人力判断、コンセンサス、優位差、候補配分、振り返りまで一通り入っています。金銭、配当、代理購入、精算は扱いません。";
 export const legacyDemoRoundTitles = ["Demo Tour Round"] as const;
 
 export const demoWalkthroughSteps = [
   {
     key: "overview",
     title: "確認カード",
-    body: "AI基準線、人力上書き、優位差の大きい試合を最初にざっと見ます。",
+    body: "モデル試算、人力判断、優位差の大きい試合を最初にざっと見ます。",
   },
   {
     key: "picks",
@@ -125,7 +125,7 @@ export const demoFocusMatches = [
   {
     matchNo: 1,
     label: "AI本線",
-    title: "まず #1 で AI基準線を見る",
+    title: "まず #1 で モデル試算を見る",
     body: "AI本線と人力一致が、いちばん素直に見える教材です。",
   },
   {
@@ -744,7 +744,7 @@ export function buildDemoPickRows(
             user: watchers[0],
           }
         : {
-            note: "AI基準線をそのまま支持。",
+            note: "モデル試算をそのまま支持。",
             support: { kind: "ai" },
             user: watchers[0],
           },
@@ -753,7 +753,7 @@ export function buildDemoPickRows(
 
   if (watchers[1]) {
     watcherPlans.push({
-      note: "AI基準線をそのまま支持。",
+      note: "モデル試算をそのまま支持。",
       support: { kind: "ai" },
       user: watchers[1],
     });
@@ -768,7 +768,7 @@ export function buildDemoPickRows(
             user: watchers[2],
           }
         : {
-            note: "AI基準線を参考に支持。",
+            note: "モデル試算を参考に支持。",
             support: { kind: "ai" },
             user: watchers[2],
           },
@@ -880,7 +880,7 @@ export function buildDemoReviewNotes(
       round_id: roundId,
       match_id: matchByNo.get(5)?.id ?? null,
       user_id: reporterB,
-      note: "人気先行の 1 に対して 2 を差し込んだ判断が刺さった例。AI基準線を見たうえで別筋を作る意義が分かります。",
+      note: "人気先行の 1 に対して 2 を差し込んだ判断が刺さった例。モデル試算を見たうえで別筋を作る意義が分かります。",
     },
     {
       round_id: roundId,
@@ -892,7 +892,7 @@ export function buildDemoReviewNotes(
       round_id: roundId,
       match_id: null,
       user_id: reporterA,
-      note: "このデモラウンドは、AI基準線 -> 人力上書き -> コンセンサス -> 候補配分 -> 振り返り の順で触ると全体像が掴みやすいです。",
+      note: "このデモラウンドは、モデル試算 -> 人力判断 -> コンセンサス -> 候補配分 -> 振り返り の順で触ると全体像が掴みやすいです。",
     },
   ] satisfies DemoReviewNoteInsert[];
 }

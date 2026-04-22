@@ -42,6 +42,10 @@ import {
   refreshCandidateTicketsForRound,
   upsertCandidateVote,
 } from "@/lib/repository";
+import {
+  modeMaterialsDescription,
+  probabilityReadinessDescription,
+} from "@/lib/round-mode";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { isWinnerLikeRound } from "@/lib/winner-value";
 import { resolveWorldTotoProductLabel } from "@/lib/world-toto";
@@ -313,6 +317,12 @@ function PickRoomPageContent() {
             >
               Simple View
             </Link>
+            <Link
+              href={buildRoundHref(appRoute.play, data.round.id, { user: activeUser?.id })}
+              className={secondaryButtonClassName}
+            >
+              遊ぼうページ
+            </Link>
             <button
               type="button"
               onClick={() => {
@@ -396,7 +406,7 @@ function PickRoomPageContent() {
       >
         {candidateTickets.length === 0 ? (
           <p className="text-sm leading-6 text-slate-600">
-            まだ候補カードがありません。試合データや AI 確率をそろえてから再読み込みしてください。
+            まだ候補カードがありません。試合データやモデル確率をそろえてから再読み込みしてください。
           </p>
         ) : (
           <div className="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory">
@@ -448,7 +458,7 @@ function PickRoomPageContent() {
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         <StatCard label="対象試合数" value={data.round.matches.length} compact />
         <StatCard label="公式人気" value={officialReadyLabel} compact />
-        <StatCard label="AI試算" value={aiReadyLabel} compact />
+        <StatCard label="モデル試算" value={aiReadyLabel} compact />
         <StatCard label="人力予想人数" value={dataQualitySummary.humanPickUserCount} compact />
         <StatCard
           label="EV計算"
@@ -465,6 +475,11 @@ function PickRoomPageContent() {
       <DataQualityCard
         summary={dataQualitySummary}
         extraLines={[
+          modeMaterialsDescription(data.round.competitionType),
+          probabilityReadinessDescription(
+            data.round.probabilityReadiness,
+            data.round.competitionType,
+          ),
           "推定EVは、入力されたモデル確率・公式人気・売上想定・配当原資想定から計算した参考値です。的中や利益を保証するものではありません。",
           data.round.totoOfficialRound
             ? "公式人気や売上前提は、管理者が取り込んだ toto公式対象回の情報を優先して使います。"

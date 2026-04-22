@@ -304,15 +304,18 @@ function SimpleViewPageContent() {
               </Link>
             ) : null}
             <Link
+              href={buildRoundHref(appRoute.play, data.round.id, { user: activeUser.id })}
+              className={secondaryButtonClassName}
+            >
+              遊ぼうページ
+            </Link>
+            <Link
               href={buildRoundHref(appRoute.pickRoom, data.round.id, { user: activeUser.id })}
               className={buttonClassName}
             >
               Friend Pick Room
             </Link>
-            <Link
-              href={buildRoundHref(appRoute.workspace, data.round.id)}
-              className={secondaryButtonClassName}
-            >
+            <Link href={buildRoundHref(appRoute.workspace, data.round.id)} className={secondaryButtonClassName}>
               Advanced View
             </Link>
           </div>

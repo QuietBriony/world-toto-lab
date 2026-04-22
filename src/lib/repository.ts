@@ -1,4 +1,3 @@
-import { canEstimateAiModel, estimateAiModel } from "@/lib/ai-estimator";
 import {
   generateCandidateTickets,
   isCandidateTicketSetStale,
@@ -38,14 +37,22 @@ import {
   normalizeOutcomeSet,
   normalizeRequiredMatchCount,
 } from "@/lib/product-rules";
+import { calculateModelProbabilities } from "@/lib/probability/engine";
+import { summarizeRoundReadiness } from "@/lib/probability/readiness";
+import {
+  inferRoundProbabilityReadiness,
+  resolveRoundModeDefaults,
+} from "@/lib/round-mode";
 import type {
   CandidateDataQuality,
   CandidateStrategyType,
   CandidateTicket,
   CandidateVote,
   CandidateVoteValue,
+  CompetitionType,
   DashboardData,
   DashboardRoundSummary,
+  DataProfile,
   FixtureDataConfidence,
   FixtureMaster,
   FixtureSource,
@@ -56,14 +63,20 @@ import type {
   Outcome,
   Pick,
   PickSupport,
+  PrimaryUse,
   ProductType,
   ProvisionalCall,
+  ProbabilityReadiness,
+  ResearchMemo,
+  ResearchMemoConfidence,
+  ResearchMemoType,
   ReviewNote,
   Round,
   RoundEvAssumption,
   RoundSource,
   RoundStatus,
   RoundWorkspace,
+  SportContext,
   TicketMode,
   TotoOfficialMatch,
   TotoOfficialMatchStatus,
@@ -87,14 +100,19 @@ type UserRow = {
 type RoundRow = {
   active_match_count: number | null;
   budget_yen: number | null;
+  competition_type: CompetitionType;
   created_at: string;
+  data_profile: DataProfile;
   id: string;
   notes: string | null;
   outcome_set_json: string[] | null;
+  primary_use: PrimaryUse;
+  probability_readiness: ProbabilityReadiness;
   product_type: ProductType;
   required_match_count: number | null;
   round_source: RoundSource;
   source_note: string | null;
+  sport_context: SportContext;
   status: RoundStatus;
   title: string;
   updated_at: string;
@@ -104,20 +122,34 @@ type RoundRow = {
 type MatchRow = {
   actual_result: Outcome | null;
   admin_note: string | null;
+  admin_adjust_0: number | null;
+  admin_adjust_1: number | null;
+  admin_adjust_2: number | null;
+  altitude_humidity_adjust: number | null;
+  availability_adjust: number | null;
+  availability_info: string | null;
   away_team: string;
+  away_strength_adjust: number | null;
   category: MatchCategory | null;
   confidence: number | null;
   consensus_call: string | null;
   consensus_d: number | null;
   consensus_f: number | null;
+  conditions_adjust: number | null;
+  conditions_info: string | null;
   created_at: string;
   disagreement_score: number | null;
   exception_count: number | null;
   fixture_master_id: string | null;
+  group_standing_motivation_adjust: number | null;
   home_team: string;
+  home_advantage_adjust: number | null;
+  home_strength_adjust: number | null;
   id: string;
   injury_note: string | null;
+  injury_suspension_adjust: number | null;
   kickoff_time: string | null;
+  league_table_motivation_adjust: number | null;
   market_prob_0: number | null;
   market_prob_1: number | null;
   market_prob_2: number | null;
@@ -125,15 +157,24 @@ type MatchRow = {
   model_prob_0: number | null;
   model_prob_1: number | null;
   model_prob_2: number | null;
+  motivation_adjust: number | null;
   motivation_note: string | null;
   official_match_no: number | null;
   official_vote_0: number | null;
   official_vote_1: number | null;
   official_vote_2: number | null;
+  recent_form_note: string | null;
   recommended_outcomes: string | null;
+  rest_days_adjust: number | null;
+  rotation_risk_adjust: number | null;
   round_id: string;
+  squad_depth_adjust: number | null;
   stage: string | null;
+  tactical_adjust: number | null;
   tactical_note: string | null;
+  tournament_pressure_adjust: number | null;
+  travel_adjust: number | null;
+  travel_climate_adjust: number | null;
   updated_at: string;
   venue: string | null;
 };
@@ -338,6 +379,23 @@ type ReviewNoteRow = {
   user_id: string | null;
 };
 
+type ResearchMemoRow = {
+  confidence: ResearchMemoConfidence;
+  created_at: string;
+  created_by: string;
+  id: string;
+  match_id: string | null;
+  memo_type: ResearchMemoType;
+  round_id: string;
+  source_date: string | null;
+  source_name: string | null;
+  source_url: string | null;
+  summary: string;
+  team: string | null;
+  title: string;
+  updated_at: string;
+};
+
 function mapUser(row: UserRow): User {
   return {
     id: row.id,
@@ -398,9 +456,14 @@ function mapRound(row: RoundRow): Round {
     status: row.status,
     budgetYen: row.budget_yen,
     notes: parsed.notes,
+    competitionType: row.competition_type,
     productType: row.product_type,
+    sportContext: row.sport_context,
+    primaryUse: row.primary_use,
     requiredMatchCount: row.required_match_count,
     activeMatchCount: row.active_match_count,
+    dataProfile: row.data_profile,
+    probabilityReadiness: row.probability_readiness,
     roundSource: row.round_source,
     sourceNote: row.source_note,
     outcomeSetJson: row.outcome_set_json,
@@ -444,6 +507,29 @@ function mapMatch(row: MatchRow): Match {
     injuryNote: row.injury_note,
     motivationNote: row.motivation_note,
     adminNote: row.admin_note,
+    recentFormNote: row.recent_form_note,
+    availabilityInfo: row.availability_info,
+    conditionsInfo: row.conditions_info,
+    homeStrengthAdjust: row.home_strength_adjust,
+    awayStrengthAdjust: row.away_strength_adjust,
+    availabilityAdjust: row.availability_adjust,
+    conditionsAdjust: row.conditions_adjust,
+    tacticalAdjust: row.tactical_adjust,
+    motivationAdjust: row.motivation_adjust,
+    adminAdjust1: row.admin_adjust_1,
+    adminAdjust0: row.admin_adjust_0,
+    adminAdjust2: row.admin_adjust_2,
+    homeAdvantageAdjust: row.home_advantage_adjust,
+    restDaysAdjust: row.rest_days_adjust,
+    travelAdjust: row.travel_adjust,
+    leagueTableMotivationAdjust: row.league_table_motivation_adjust,
+    injurySuspensionAdjust: row.injury_suspension_adjust,
+    rotationRiskAdjust: row.rotation_risk_adjust,
+    groupStandingMotivationAdjust: row.group_standing_motivation_adjust,
+    travelClimateAdjust: row.travel_climate_adjust,
+    altitudeHumidityAdjust: row.altitude_humidity_adjust,
+    squadDepthAdjust: row.squad_depth_adjust,
+    tournamentPressureAdjust: row.tournament_pressure_adjust,
     actualResult: row.actual_result,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -897,6 +983,27 @@ function mapReviewNote(row: ReviewNoteRow, user?: User, match?: Match): ReviewNo
     userId: row.user_id,
     note: row.note,
     createdAt: row.created_at,
+    user,
+    match,
+  };
+}
+
+function mapResearchMemo(row: ResearchMemoRow, user?: User, match?: Match): ResearchMemo {
+  return {
+    id: row.id,
+    roundId: row.round_id,
+    matchId: row.match_id,
+    team: row.team,
+    memoType: row.memo_type,
+    title: row.title,
+    summary: row.summary,
+    sourceUrl: row.source_url,
+    sourceName: row.source_name,
+    sourceDate: row.source_date,
+    confidence: row.confidence,
+    createdBy: row.created_by,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
     user,
     match,
   };
@@ -1699,12 +1806,19 @@ function buildFixtureIdentityKey(input: {
 }
 
 function resolveRoundProductDefaults(input: {
+  competitionType?: CompetitionType | null;
+  dataProfile?: DataProfile | null;
   matchCount?: number | null;
+  notes?: string | null;
   outcomeSetJson?: string[] | null;
+  primaryUse?: PrimaryUse | null;
   productType?: ProductType | null;
+  probabilityReadiness?: ProbabilityReadiness | null;
   requiredMatchCount?: number | null;
   roundSource?: RoundSource | null;
   sourceNote?: string | null;
+  sportContext?: SportContext | null;
+  title?: string | null;
   voidHandling?: VoidHandling | null;
 }) {
   const productType = input.productType ?? "toto13";
@@ -1714,14 +1828,30 @@ function resolveRoundProductDefaults(input: {
   );
   const activeMatchCount = normalizeMatchCount(input.matchCount ?? requiredMatchCount ?? 13);
   const outcomeSetJson = normalizeOutcomeSet(productType, input.outcomeSetJson);
+  const roundMode = resolveRoundModeDefaults({
+    competitionType: input.competitionType,
+    dataProfile: input.dataProfile,
+    notes: input.notes,
+    primaryUse: input.primaryUse,
+    productType,
+    roundSource: input.roundSource,
+    sourceNote: input.sourceNote,
+    sportContext: input.sportContext,
+    title: input.title,
+  });
 
   return {
     activeMatchCount,
+    competitionType: roundMode.competitionType,
+    dataProfile: roundMode.dataProfile,
     outcomeSetJson,
+    primaryUse: roundMode.primaryUse,
+    probabilityReadiness: input.probabilityReadiness ?? "not_ready",
     productType,
     requiredMatchCount,
     roundSource: input.roundSource ?? "user_manual",
     sourceNote: input.sourceNote ?? null,
+    sportContext: roundMode.sportContext,
     voidHandling: input.voidHandling ?? "manual",
   };
 }
@@ -1913,6 +2043,7 @@ export async function getRoundWorkspace(roundId: string): Promise<RoundWorkspace
     matchesResult,
     picksResult,
     reportsResult,
+    researchMemosResult,
     ticketsResult,
     evAssumptionResult,
     candidateTicketsResult,
@@ -1927,6 +2058,9 @@ export async function getRoundWorkspace(roundId: string): Promise<RoundWorkspace
       supabase.from("matches").select("*").eq("round_id", roundId).order("match_no"),
       supabase.from("picks").select("*").eq("round_id", roundId),
       supabase.from("human_scout_reports").select("*").eq("round_id", roundId),
+      supabase.from("research_memos").select("*").eq("round_id", roundId).order("updated_at", {
+        ascending: false,
+      }),
       supabase
         .from("generated_tickets")
         .select("*")
@@ -1956,6 +2090,11 @@ export async function getRoundWorkspace(roundId: string): Promise<RoundWorkspace
   throwIfError("Failed to load matches", matchesResult);
   throwIfError("Failed to load picks", picksResult);
   throwIfError("Failed to load scout reports", reportsResult);
+  const safeResearchMemosResult = ignoreMissingRelation(
+    researchMemosResult,
+    "research_memos",
+    [],
+  );
   const safeTicketsResult = ignoreMissingRelation(ticketsResult, "generated_tickets", []);
   const safeEvAssumptionResult = ignoreMissingRelation(evAssumptionResult, "round_ev_assumptions", null);
   const safeTotoOfficialRoundResult = ignoreMissingRelation(
@@ -1986,6 +2125,7 @@ export async function getRoundWorkspace(roundId: string): Promise<RoundWorkspace
   throwIfError("Failed to load toto official round", safeTotoOfficialRoundResult);
   throwIfError("Failed to load toto official matches", safeTotoOfficialMatchesResult);
   throwIfError("Failed to load review notes", safeNotesResult);
+  throwIfError("Failed to load research memos", safeResearchMemosResult);
 
   if (!roundResult.data) {
     return null;
@@ -1997,6 +2137,7 @@ export async function getRoundWorkspace(roundId: string): Promise<RoundWorkspace
   const rawPicks = picksResult.data as PickRow[];
   const rawScoutReports = reportsResult.data as HumanScoutReportRow[];
   const rawReviewNotes = safeNotesResult.data as ReviewNoteRow[];
+  const rawResearchMemos = safeResearchMemosResult.data as ResearchMemoRow[];
   const users = resolveUsersForRoundRows({
     allUsers,
     demoUsers,
@@ -2042,15 +2183,25 @@ export async function getRoundWorkspace(roundId: string): Promise<RoundWorkspace
   const reviewNotes = filterReviewNotesForScopedUsers(rawReviewNotes, users).map((row) =>
     mapReviewNote(row, userById.get(row.user_id ?? ""), scopedMatchById.get(row.match_id ?? "")),
   );
+  const researchMemos = rawResearchMemos.map((row) =>
+    mapResearchMemo(row, userById.get(row.created_by), scopedMatchById.get(row.match_id ?? "")),
+  );
+  const inferredProbabilityReadiness = summarizeRoundReadiness({
+    researchMemos,
+    round,
+    matches: scopedMatches,
+  }).level;
 
   return {
     availableUsers: isDemoRoundTitle(round.title) ? users : liveUsers,
     users,
     round: {
       ...round,
+      probabilityReadiness: inferredProbabilityReadiness ?? inferRoundProbabilityReadiness(scopedMatches),
       matches: scopedMatches,
       picks,
       scoutReports,
+      researchMemos,
       generatedTickets,
       evAssumption,
       candidateTickets,
@@ -2167,14 +2318,19 @@ export async function deleteUserIfInactive(userId: string) {
 
 export async function createRound(input: {
   budgetYen: number | null;
+  competitionType?: CompetitionType | null;
+  dataProfile?: DataProfile | null;
   matchCount?: number | null;
   notes: string | null;
   outcomeSetJson?: string[] | null;
   participantIds?: string[];
+  primaryUse?: PrimaryUse | null;
+  probabilityReadiness?: ProbabilityReadiness | null;
   productType?: ProductType;
   requiredMatchCount?: number | null;
   roundSource?: RoundSource;
   sourceNote?: string | null;
+  sportContext?: SportContext | null;
   status: RoundStatus;
   title: string;
   voidHandling?: VoidHandling;
@@ -2188,9 +2344,14 @@ export async function createRound(input: {
       status: input.status,
       budget_yen: input.budgetYen,
       notes: encodeRoundParticipantsNote(input.notes, input.participantIds),
+      competition_type: defaults.competitionType,
       product_type: defaults.productType,
+      sport_context: defaults.sportContext,
+      primary_use: defaults.primaryUse,
       required_match_count: defaults.requiredMatchCount,
       active_match_count: defaults.activeMatchCount,
+      data_profile: defaults.dataProfile,
+      probability_readiness: defaults.probabilityReadiness,
       round_source: defaults.roundSource,
       source_note: defaults.sourceNote,
       outcome_set_json: defaults.outcomeSetJson,
@@ -2276,9 +2437,14 @@ export async function createDemoRound() {
       status: "reviewed",
       budget_yen: demoTicketSettings.budgetYen,
       notes: demoRoundNotes,
+      competition_type: "world_cup",
       product_type: "toto13",
+      sport_context: "national_team",
+      primary_use: "demo",
       required_match_count: 13,
       active_match_count: 13,
+      data_profile: "demo",
+      probability_readiness: "partial",
       round_source: "demo_sample",
       source_note: "デモ用サンプルラウンド",
       outcome_set_json: buildProductRule({
@@ -2419,13 +2585,18 @@ export async function createDemoRound() {
 export async function updateRound(input: {
   roundId: string;
   budgetYen: number | null;
+  competitionType?: CompetitionType | null;
+  dataProfile?: DataProfile | null;
   notes: string | null;
   outcomeSetJson?: string[] | null;
   participantIds?: string[];
+  primaryUse?: PrimaryUse | null;
+  probabilityReadiness?: ProbabilityReadiness | null;
   productType?: ProductType;
   requiredMatchCount?: number | null;
   roundSource?: RoundSource;
   sourceNote?: string | null;
+  sportContext?: SportContext | null;
   status: RoundStatus;
   title: string;
   voidHandling?: VoidHandling;
@@ -2445,12 +2616,19 @@ export async function updateRound(input: {
 
   const currentRound = mapRound(currentRoundResult.data as RoundRow);
   const nextRule = resolveRoundProductDefaults({
+    competitionType: input.competitionType ?? currentRound.competitionType,
+    dataProfile: input.dataProfile ?? currentRound.dataProfile,
     matchCount: currentRound.activeMatchCount,
+    notes: input.notes,
     outcomeSetJson: input.outcomeSetJson ?? currentRound.outcomeSetJson,
+    primaryUse: input.primaryUse ?? currentRound.primaryUse,
     productType: input.productType ?? currentRound.productType,
+    probabilityReadiness: input.probabilityReadiness ?? currentRound.probabilityReadiness,
     requiredMatchCount: input.requiredMatchCount ?? currentRound.requiredMatchCount,
     roundSource: input.roundSource ?? currentRound.roundSource,
     sourceNote: input.sourceNote ?? currentRound.sourceNote,
+    sportContext: input.sportContext ?? currentRound.sportContext,
+    title: input.title,
     voidHandling: input.voidHandling ?? currentRound.voidHandling,
   });
   const result = await supabase
@@ -2460,9 +2638,14 @@ export async function updateRound(input: {
       status: input.status,
       budget_yen: input.budgetYen,
       notes: encodeRoundParticipantsNote(input.notes, input.participantIds),
+      competition_type: nextRule.competitionType,
       product_type: nextRule.productType,
+      sport_context: nextRule.sportContext,
+      primary_use: nextRule.primaryUse,
       required_match_count: nextRule.requiredMatchCount,
       active_match_count: currentRound.activeMatchCount ?? nextRule.activeMatchCount,
+      data_profile: nextRule.dataProfile,
+      probability_readiness: nextRule.probabilityReadiness,
       round_source: nextRule.roundSource,
       source_note: nextRule.sourceNote,
       outcome_set_json: nextRule.outcomeSetJson,
@@ -2475,8 +2658,13 @@ export async function updateRound(input: {
   if (
     currentRound.budgetYen !== input.budgetYen ||
     !sameParticipantIds(currentRound.participantIds, input.participantIds) ||
+    currentRound.competitionType !== nextRule.competitionType ||
     currentRound.productType !== nextRule.productType ||
+    currentRound.sportContext !== nextRule.sportContext ||
+    currentRound.primaryUse !== nextRule.primaryUse ||
     currentRound.requiredMatchCount !== nextRule.requiredMatchCount ||
+    currentRound.dataProfile !== nextRule.dataProfile ||
+    currentRound.probabilityReadiness !== nextRule.probabilityReadiness ||
     currentRound.roundSource !== nextRule.roundSource ||
     currentRound.sourceNote !== nextRule.sourceNote ||
     JSON.stringify(currentRound.outcomeSetJson ?? []) !==
@@ -2508,6 +2696,29 @@ export async function updateMatch(input: {
   injuryNote: string | null;
   motivationNote: string | null;
   adminNote: string | null;
+  recentFormNote: string | null;
+  availabilityInfo: string | null;
+  conditionsInfo: string | null;
+  homeStrengthAdjust: number | null;
+  awayStrengthAdjust: number | null;
+  availabilityAdjust: number | null;
+  conditionsAdjust: number | null;
+  tacticalAdjust: number | null;
+  motivationAdjust: number | null;
+  adminAdjust1: number | null;
+  adminAdjust0: number | null;
+  adminAdjust2: number | null;
+  homeAdvantageAdjust: number | null;
+  restDaysAdjust: number | null;
+  travelAdjust: number | null;
+  leagueTableMotivationAdjust: number | null;
+  injurySuspensionAdjust: number | null;
+  rotationRiskAdjust: number | null;
+  groupStandingMotivationAdjust: number | null;
+  travelClimateAdjust: number | null;
+  altitudeHumidityAdjust: number | null;
+  squadDepthAdjust: number | null;
+  tournamentPressureAdjust: number | null;
   category: MatchCategory | null;
   confidence: number | null;
   recommendedOutcomes: string | null;
@@ -2534,6 +2745,29 @@ export async function updateMatch(input: {
       injury_note: input.injuryNote,
       motivation_note: input.motivationNote,
       admin_note: input.adminNote,
+      recent_form_note: input.recentFormNote,
+      availability_info: input.availabilityInfo,
+      conditions_info: input.conditionsInfo,
+      home_strength_adjust: input.homeStrengthAdjust,
+      away_strength_adjust: input.awayStrengthAdjust,
+      availability_adjust: input.availabilityAdjust,
+      conditions_adjust: input.conditionsAdjust,
+      tactical_adjust: input.tacticalAdjust,
+      motivation_adjust: input.motivationAdjust,
+      admin_adjust_1: input.adminAdjust1,
+      admin_adjust_0: input.adminAdjust0,
+      admin_adjust_2: input.adminAdjust2,
+      home_advantage_adjust: input.homeAdvantageAdjust,
+      rest_days_adjust: input.restDaysAdjust,
+      travel_adjust: input.travelAdjust,
+      league_table_motivation_adjust: input.leagueTableMotivationAdjust,
+      injury_suspension_adjust: input.injurySuspensionAdjust,
+      rotation_risk_adjust: input.rotationRiskAdjust,
+      group_standing_motivation_adjust: input.groupStandingMotivationAdjust,
+      travel_climate_adjust: input.travelClimateAdjust,
+      altitude_humidity_adjust: input.altitudeHumidityAdjust,
+      squad_depth_adjust: input.squadDepthAdjust,
+      tournament_pressure_adjust: input.tournamentPressureAdjust,
       category: input.category,
       confidence: input.confidence,
       recommended_outcomes: input.recommendedOutcomes,
@@ -2609,11 +2843,16 @@ export async function estimateRoundAiModel(input: {
   roundId: string;
 }) {
   const supabase = requireSupabaseClient();
-  const matchesResult = await supabase.from("matches").select("*").eq("round_id", input.roundId);
+  const [matchesResult, roundResult] = await Promise.all([
+    supabase.from("matches").select("*").eq("round_id", input.roundId),
+    supabase.from("rounds").select("*").eq("id", input.roundId).maybeSingle(),
+  ]);
 
   throwIfError("Failed to load matches for AI estimation", matchesResult);
+  throwIfError("Failed to load round for AI estimation", roundResult);
 
   const matches = (matchesResult.data as MatchRow[]).map(mapMatch);
+  const round = roundResult.data ? mapRound(roundResult.data as RoundRow) : null;
   const targetMatches = matches.filter((match) => {
     const hasExistingModel =
       match.modelProb1 !== null || match.modelProb0 !== null || match.modelProb2 !== null;
@@ -2622,29 +2861,27 @@ export async function estimateRoundAiModel(input: {
       return false;
     }
 
-    return canEstimateAiModel(match);
+    return (
+      match.marketProb1 !== null ||
+      match.marketProb0 !== null ||
+      match.marketProb2 !== null ||
+      match.consensusF !== null ||
+      match.consensusD !== null
+    );
   });
 
   const updates = targetMatches
     .map((match) => {
-      const estimated = estimateAiModel(match);
-      if (!estimated) {
-        return null;
-      }
-
       return {
         matchId: match.id,
-        estimated,
+        estimated: calculateModelProbabilities({
+          ...match,
+          competitionType: round?.competitionType ?? "world_cup",
+          dataProfile: round?.dataProfile ?? "manual_light",
+        }),
       };
     })
-    .filter(
-      (
-        entry,
-      ): entry is {
-        estimated: NonNullable<ReturnType<typeof estimateAiModel>>;
-        matchId: string;
-      } => entry !== null,
-    );
+    .filter((entry) => entry.estimated !== null);
 
   const results = await Promise.all(
     updates.map((entry) =>
@@ -2654,7 +2891,12 @@ export async function estimateRoundAiModel(input: {
           model_prob_1: entry.estimated.modelProb1,
           model_prob_0: entry.estimated.modelProb0,
           model_prob_2: entry.estimated.modelProb2,
-          recommended_outcomes: entry.estimated.recommendedOutcomes,
+          recommended_outcomes: [entry.estimated.modelProb1, entry.estimated.modelProb0, entry.estimated.modelProb2]
+            .map((value, index) => ({ index, value }))
+            .sort((left, right) => right.value - left.value)
+            .slice(0, 2)
+            .map((entry) => (entry.index === 0 ? "1" : entry.index === 1 ? "0" : "2"))
+            .join(","),
         })
         .eq("id", entry.matchId)
         .eq("round_id", input.roundId),
@@ -4233,4 +4475,45 @@ export async function addReviewNote(input: {
   });
 
   throwIfError("Failed to save review note", result);
+}
+
+export async function saveResearchMemo(input: {
+  confidence: ResearchMemoConfidence;
+  createdBy: string;
+  matchId: string | null;
+  memoId?: string | null;
+  memoType: ResearchMemoType;
+  roundId: string;
+  sourceDate: string | null;
+  sourceName: string | null;
+  sourceUrl: string | null;
+  summary: string;
+  team: string | null;
+  title: string;
+}) {
+  const supabase = requireSupabaseClient();
+  const payload = {
+    confidence: input.confidence,
+    created_by: input.createdBy,
+    match_id: input.matchId,
+    memo_type: input.memoType,
+    round_id: input.roundId,
+    source_date: input.sourceDate,
+    source_name: input.sourceName,
+    source_url: input.sourceUrl,
+    summary: input.summary,
+    team: input.team,
+    title: input.title,
+  };
+  const result = input.memoId
+    ? await supabase.from("research_memos").update(payload).eq("id", input.memoId)
+    : await supabase.from("research_memos").insert(payload);
+
+  throwIfError("Failed to save research memo", result);
+}
+
+export async function deleteResearchMemo(memoId: string) {
+  const supabase = requireSupabaseClient();
+  const result = await supabase.from("research_memos").delete().eq("id", memoId);
+  throwIfError("Failed to delete research memo", result);
 }
