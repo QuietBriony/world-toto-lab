@@ -1,5 +1,4 @@
 const DEFAULT_BASE_URL = "https://quietbriony.github.io/world-toto-lab";
-const DEFAULT_ROUND_ID = "47f5d6b8-5120-46a3-b434-7312b11cb98a";
 
 function trimTrailingSlash(value) {
   return value.endsWith("/") ? value.slice(0, -1) : value;
@@ -35,13 +34,12 @@ async function main() {
   const baseUrl = trimTrailingSlash(
     process.env.WORLD_TOTO_LAB_BASE_URL || DEFAULT_BASE_URL,
   );
-  const roundId = process.env.WORLD_TOTO_LAB_ROUND_ID || DEFAULT_ROUND_ID;
+  const roundId = process.env.WORLD_TOTO_LAB_ROUND_ID || "";
   const userId = process.env.WORLD_TOTO_LAB_USER_ID || "";
 
   const routes = [
     buildUrl(baseUrl, "/", {}),
     buildUrl(baseUrl, "/dev-playbook/", {}),
-    buildUrl(baseUrl, "/workspace/", { round: roundId }),
     buildUrl(baseUrl, "/big-carryover/", {}),
     buildUrl(baseUrl, "/goal3-value/", {}),
     buildUrl(baseUrl, "/big-carryover/", {
@@ -54,31 +52,42 @@ async function main() {
       spend: "10000",
       sourceUrl: "https://www.toto-dream.com/big/",
     }),
-    buildUrl(baseUrl, "/workspace/", { debug: "1", round: roundId }),
-    buildUrl(baseUrl, "/official-schedule-import/", { round: roundId }),
-    buildUrl(baseUrl, "/fixture-selector/", { round: roundId }),
-    buildUrl(baseUrl, "/toto-official-round-import/", { round: roundId }),
-    buildUrl(baseUrl, "/toto-official-round-import/", {
-      round: roundId,
-      autoApply: "1",
-      autoSync: "1",
-      productType: "winner",
-      sourcePreset: "toto_official_detail",
-    }),
-    buildUrl(baseUrl, "/simple-view/", { round: roundId, user: userId || undefined }),
-    buildUrl(baseUrl, "/pick-room/", { round: roundId, user: userId || undefined }),
-    buildUrl(baseUrl, "/play/", { round: roundId, user: userId || undefined }),
-    buildUrl(baseUrl, "/practice-lab/", { round: roundId }),
-    buildUrl(baseUrl, "/winner-value/", { round: roundId, user: userId || undefined }),
-    buildUrl(baseUrl, "/consensus/", { round: roundId }),
-    buildUrl(baseUrl, "/edge-board/", { round: roundId }),
-    buildUrl(baseUrl, "/review/", { round: roundId }),
-    buildUrl(baseUrl, "/ticket-generator/", { round: roundId }),
   ];
+
+  if (roundId) {
+    routes.push(
+      buildUrl(baseUrl, "/workspace/", { round: roundId }),
+      buildUrl(baseUrl, "/workspace/", { debug: "1", round: roundId }),
+      buildUrl(baseUrl, "/official-schedule-import/", { round: roundId }),
+      buildUrl(baseUrl, "/fixture-selector/", { round: roundId }),
+      buildUrl(baseUrl, "/toto-official-round-import/", { round: roundId }),
+      buildUrl(baseUrl, "/toto-official-round-import/", {
+        round: roundId,
+        autoApply: "1",
+        autoSync: "1",
+        productType: "winner",
+        sourcePreset: "toto_official_detail",
+      }),
+      buildUrl(baseUrl, "/simple-view/", { round: roundId, user: userId || undefined }),
+      buildUrl(baseUrl, "/pick-room/", { round: roundId, user: userId || undefined }),
+      buildUrl(baseUrl, "/play/", { round: roundId, user: userId || undefined }),
+      buildUrl(baseUrl, "/practice-lab/", { round: roundId }),
+      buildUrl(baseUrl, "/winner-value/", { round: roundId, user: userId || undefined }),
+      buildUrl(baseUrl, "/consensus/", { round: roundId }),
+      buildUrl(baseUrl, "/edge-board/", { round: roundId }),
+      buildUrl(baseUrl, "/review/", { round: roundId }),
+      buildUrl(baseUrl, "/ticket-generator/", { round: roundId }),
+    );
+  }
 
   console.log("[world-toto-lab] pages route check");
   console.log(`baseUrl=${baseUrl}`);
-  console.log(`roundId=${roundId}`);
+  if (roundId) {
+    console.log(`roundId=${roundId}`);
+  } else {
+    console.log("roundId=<not set>");
+    console.log("note=round が必要な画面は WORLD_TOTO_LAB_ROUND_ID を入れたときだけ確認します");
+  }
   if (userId) {
     console.log(`userId=${userId}`);
   }
