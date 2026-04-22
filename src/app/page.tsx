@@ -102,7 +102,7 @@ import {
 import { useBigOfficialWatch, useDashboardData, useTotoOfficialRoundLibrary } from "@/lib/use-app-data";
 import { isWinnerLikeRound } from "@/lib/winner-value";
 import { resolveWorldTotoProductLabel } from "@/lib/world-toto";
-import { demoLabArt } from "@/lib/ui-art";
+import { candidateStrategyArt, demoLabArt } from "@/lib/ui-art";
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "不明なエラーです。";
@@ -550,6 +550,14 @@ export default function DashboardPage() {
     : null;
   const createRoundAnchor = "#create-round";
   const roundListAnchor = "#round-list";
+  const strategyPreviewCards = [
+    { key: "orthodox_model", label: "王道" },
+    { key: "public_favorite", label: "公式人気" },
+    { key: "human_consensus", label: "人力推し" },
+    { key: "ev_hunter", label: "EV狙い" },
+    { key: "draw_alert", label: "引分警報" },
+    { key: "upset", label: "荒れ狙い" },
+  ] as const;
 
   return (
     <div className="space-y-8">
@@ -580,6 +588,61 @@ export default function DashboardPage() {
         currentPath={appRoute.dashboard}
         defaultOpen={false}
       />
+
+      <SectionCard
+        title="こんな候補カードで遊べます"
+        description="トップでも雰囲気が分かるように、実際の候補カードに近い見た目を先に置いています。"
+      >
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {strategyPreviewCards.map((item) => {
+            const artwork = candidateStrategyArt[item.key];
+            return (
+              <div
+                key={item.key}
+                className="overflow-hidden rounded-[26px] border border-white/70 bg-white/90 shadow-[0_22px_56px_-36px_rgba(15,23,42,0.42)]"
+              >
+                <div
+                  className="relative min-h-[168px] bg-slate-950"
+                  style={{
+                    backgroundImage: `linear-gradient(180deg,rgba(7,12,18,0.12),rgba(7,12,18,0.78)), url(${artwork.src})`,
+                    backgroundPosition: "center",
+                    backgroundSize: "cover",
+                  }}
+                >
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),transparent_36%)]" />
+                  <div className="relative z-10 flex min-h-[168px] flex-col justify-between p-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge tone="slate">{artwork.accentLabel}</Badge>
+                    </div>
+                    <div>
+                      <h3 className="font-display text-[1.35rem] font-semibold tracking-[-0.05em] text-white">
+                        {item.label}
+                      </h3>
+                      <p className="mt-2 max-w-[22rem] text-sm leading-6 text-white/82">
+                        {artwork.description}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div className="mt-4 flex flex-wrap gap-3">
+          {latestRound ? (
+            <Link href={buildRoundHref(appRoute.pickRoom, latestRound.id)} className={buttonClassName}>
+              候補カードを開く
+            </Link>
+          ) : (
+            <a href="#demo-lab" className={buttonClassName}>
+              デモで見る
+            </a>
+          )}
+          <a href="#create-round" className={secondaryButtonClassName}>
+            自分のラウンドを作る
+          </a>
+        </div>
+      </SectionCard>
 
       <CollapsibleSectionCard
         title="GitHub 共同開発で遊ぼう"
