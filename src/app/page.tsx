@@ -602,10 +602,10 @@ export default function DashboardPage() {
               badge={<Badge tone="teal">{latestRound ? "進行中の本番回" : "最初の1回を作る"}</Badge>}
               className="border-emerald-200/55"
               backgroundGradient="linear-gradient(102deg,rgba(5,10,16,0.48),rgba(5,10,16,0.14)_52%,rgba(5,10,16,0.38))"
-              contentClassName="min-h-[320px] gap-6 px-4 py-4 sm:min-h-[360px] sm:px-6 sm:py-6 lg:min-h-[392px]"
-              bodyClassName="max-w-[44rem] space-y-4 drop-shadow-[0_18px_40px_rgba(0,0,0,0.48)]"
+              contentClassName="min-h-[272px] gap-5 px-4 py-4 sm:min-h-[304px] sm:px-5 sm:py-5 lg:min-h-[332px] lg:px-6 lg:py-6"
+              bodyClassName="max-w-[40rem] space-y-3 drop-shadow-[0_18px_40px_rgba(0,0,0,0.48)]"
               description={
-                <div className="space-y-4">
+                <div className="space-y-3">
                   <div className="flex flex-wrap gap-2">
                     <Badge tone="amber">{data.users.length}人</Badge>
                     <Badge tone="slate">
@@ -618,7 +618,7 @@ export default function DashboardPage() {
                     ) : null}
                     <Badge tone="sky">入力 {formatPercent(latestRoundProgress?.pickCompletion ?? 0)}</Badge>
                   </div>
-                  <p className="max-w-[36rem] text-sm leading-6 text-white/88 sm:text-base">
+                  <p className="max-w-[32rem] text-sm leading-6 text-white/84">
                     {latestRound
                       ? `${latestRound.title} の続きから入り、候補カード、自分の予想、振り返りまでつなげられます。`
                       : "まずはラウンドを1つ作り、試合を入れて、候補カードと自分の予想が見える状態まで進めます。"}
@@ -628,7 +628,7 @@ export default function DashboardPage() {
               imageSrc={spotlightHeroImageSrc}
               overlayClassName="bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.28),transparent_24%),linear-gradient(180deg,rgba(255,255,255,0.08),transparent_28%,rgba(4,9,15,0.16))]"
               title={
-                <div className="space-y-3">
+                <div className="space-y-2.5">
                   <div className="flex flex-wrap items-center gap-3">
                     <span className="inline-flex items-center gap-2 rounded-full border border-emerald-300/35 bg-emerald-400/12 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-emerald-50">
                       <span className="h-2 w-2 rounded-full bg-emerald-300" />
@@ -638,7 +638,7 @@ export default function DashboardPage() {
                       本番ラウンド
                     </span>
                   </div>
-                  <div className="font-display text-[2.15rem] font-semibold tracking-[-0.08em] text-white sm:text-[2.8rem] lg:text-[3.35rem]">
+                  <div className="font-display text-[1.85rem] font-semibold tracking-[-0.08em] text-white sm:text-[2.3rem] lg:text-[2.75rem]">
                     {latestRound ? latestRound.title : "最初の本番回を作る"}
                   </div>
                 </div>
@@ -647,8 +647,8 @@ export default function DashboardPage() {
                 <Badge tone="slate">{liveRoundCount}本番回</Badge>
               }
               footer={
-                <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr] xl:items-end">
-                  <div className="space-y-4">
+                <div className="grid gap-3 xl:grid-cols-[1.15fr_0.85fr] xl:items-end">
+                  <div className="space-y-3">
                     <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-white/78">
                       <span>
                         {latestRound ? `参加 ${latestRoundUsers.length || data.users.length}人` : "最初の1回から始める"}
@@ -660,7 +660,7 @@ export default function DashboardPage() {
                         {latestRound ? `入力 ${progressValue(latestRound.pickCount, latestRoundProgress?.expectedPickEntries ?? 0)}` : "予想入力は作成後に始めます"}
                       </span>
                     </div>
-                    <div className="flex flex-wrap gap-3">
+                    <div className="flex flex-wrap gap-2.5">
                       <Link
                         href={latestRound ? buildRoundHref(appRoute.workspace, latestRound.id) : createRoundAnchor}
                         className={buttonClassName}
@@ -677,7 +677,7 @@ export default function DashboardPage() {
                   </div>
 
                   <div className="space-y-3">
-                    <div className="rounded-[24px] border border-white/18 bg-[linear-gradient(145deg,rgba(8,14,22,0.52),rgba(8,14,22,0.24))] p-4 shadow-[0_22px_54px_-34px_rgba(0,0,0,0.45)] backdrop-blur-md md:hidden">
+                    <div className="rounded-[22px] border border-white/18 bg-[linear-gradient(145deg,rgba(8,14,22,0.52),rgba(8,14,22,0.24))] p-3.5 shadow-[0_22px_54px_-34px_rgba(0,0,0,0.45)] backdrop-blur-md md:hidden">
                       <div className="flex items-center justify-between gap-3">
                         <div>
                           <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/60">
@@ -687,24 +687,24 @@ export default function DashboardPage() {
                             {latestRoundProgress?.nextStep.label ?? "まずはラウンド作成"}
                           </p>
                         </div>
-                        <div className="rounded-full border border-emerald-300/30 bg-emerald-400/10 px-4 py-3 text-center">
-                          <div className="font-display text-[1.6rem] font-semibold tracking-[-0.08em] text-white">
+                        <div className="rounded-full border border-emerald-300/30 bg-emerald-400/10 px-3.5 py-2.5 text-center">
+                          <div className="font-display text-[1.45rem] font-semibold tracking-[-0.08em] text-white">
                             {spotlightProgressPercent !== null ? `${spotlightProgressPercent}%` : "0%"}
                           </div>
                         </div>
                       </div>
                       <div className="mt-3 grid grid-cols-2 gap-2">
-                        <div className="rounded-[18px] border border-white/8 bg-white/8 px-3 py-3 text-sm text-white/80">
+                        <div className="rounded-[16px] border border-white/8 bg-white/8 px-3 py-2.5 text-sm text-white/80">
                           試合設定 {latestRound ? progressValue(latestRoundProgress?.configuredMatches ?? 0, latestRound.matchCount) : "未作成"}
                         </div>
-                        <div className="rounded-[18px] border border-white/8 bg-white/8 px-3 py-3 text-sm text-white/80">
+                        <div className="rounded-[16px] border border-white/8 bg-white/8 px-3 py-2.5 text-sm text-white/80">
                           候補カード {latestRound ? `${latestRound.candidateTicketCount}` : "未作成"}
                         </div>
                       </div>
                     </div>
 
                     <div className="hidden gap-3 md:grid md:grid-cols-2 xl:grid-cols-1">
-                      <div className="rounded-[28px] border border-white/18 bg-[linear-gradient(145deg,rgba(8,14,22,0.52),rgba(8,14,22,0.24))] p-5 shadow-[0_22px_54px_-34px_rgba(0,0,0,0.45)] backdrop-blur-md">
+                      <div className="rounded-[24px] border border-white/18 bg-[linear-gradient(145deg,rgba(8,14,22,0.52),rgba(8,14,22,0.24))] p-4 shadow-[0_22px_54px_-34px_rgba(0,0,0,0.45)] backdrop-blur-md">
                       <div className="flex items-center justify-between gap-3">
                         <div>
                           <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/60">
@@ -716,33 +716,33 @@ export default function DashboardPage() {
                               : "まだ本番回はありません"}
                           </p>
                         </div>
-                        <div className="rounded-full border border-emerald-300/30 bg-emerald-400/10 px-4 py-3 text-center">
-                          <div className="font-display text-[1.8rem] font-semibold tracking-[-0.08em] text-white">
+                        <div className="rounded-full border border-emerald-300/30 bg-emerald-400/10 px-3.5 py-2.5 text-center">
+                          <div className="font-display text-[1.55rem] font-semibold tracking-[-0.08em] text-white">
                             {spotlightProgressPercent !== null ? `${spotlightProgressPercent}%` : "0%"}
                           </div>
                         </div>
                       </div>
-                      <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-2">
-                        <div className="rounded-[18px] border border-white/8 bg-white/8 px-3 py-3 text-sm text-white/80">
+                      <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-2">
+                        <div className="rounded-[16px] border border-white/8 bg-white/8 px-3 py-2.5 text-sm text-white/80">
                           試合設定 {latestRound ? progressValue(latestRoundProgress?.configuredMatches ?? 0, latestRound.matchCount) : "未作成"}
                         </div>
-                        <div className="rounded-[18px] border border-white/8 bg-white/8 px-3 py-3 text-sm text-white/80">
+                        <div className="rounded-[16px] border border-white/8 bg-white/8 px-3 py-2.5 text-sm text-white/80">
                           支持 / 予想 {latestRound ? progressValue(latestRound.pickCount, latestRoundProgress?.expectedPickEntries ?? 0) : "未作成"}
                         </div>
-                        <div className="rounded-[18px] border border-white/8 bg-white/8 px-3 py-3 text-sm text-white/80">
+                        <div className="rounded-[16px] border border-white/8 bg-white/8 px-3 py-2.5 text-sm text-white/80">
                           予想者カード {latestRound ? progressValue(latestRound.scoutReports.length, latestRoundProgress?.expectedScoutEntries ?? 0) : "未作成"}
                         </div>
-                        <div className="rounded-[18px] border border-white/8 bg-white/8 px-3 py-3 text-sm text-white/80">
+                        <div className="rounded-[16px] border border-white/8 bg-white/8 px-3 py-2.5 text-sm text-white/80">
                           候補カード {latestRound ? `${latestRound.candidateTicketCount}` : "未作成"}
                         </div>
                       </div>
                     </div>
 
-                      <div className="rounded-[28px] border border-white/18 bg-[linear-gradient(145deg,rgba(8,14,22,0.48),rgba(8,14,22,0.18))] p-5 shadow-[0_22px_54px_-34px_rgba(0,0,0,0.45)] backdrop-blur-md">
+                      <div className="rounded-[24px] border border-white/18 bg-[linear-gradient(145deg,rgba(8,14,22,0.48),rgba(8,14,22,0.18))] p-4 shadow-[0_22px_54px_-34px_rgba(0,0,0,0.45)] backdrop-blur-md">
                         <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/60">
                           今やること
                         </p>
-                        <h3 className="mt-2 font-display text-xl font-semibold tracking-[-0.05em] text-white">
+                        <h3 className="mt-2 font-display text-lg font-semibold tracking-[-0.05em] text-white">
                           {latestRoundProgress?.nextStep.label ?? "まずはラウンド作成"}
                         </h3>
                         <p className="mt-3 text-sm leading-6 text-white/76">
