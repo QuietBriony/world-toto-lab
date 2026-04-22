@@ -128,12 +128,26 @@ export function detectArtBasePath(pathname: string) {
   return routeIndex > 0 ? normalizedPathname.slice(0, routeIndex) : "";
 }
 
+function detectRuntimePathname(pathname: string) {
+  if (typeof window === "undefined" || !window.location?.pathname) {
+    return pathname;
+  }
+
+  const runtimePathname = trimTrailingSlash(window.location.pathname);
+
+  if (!runtimePathname || runtimePathname === "/") {
+    return pathname;
+  }
+
+  return runtimePathname;
+}
+
 export function resolveArtAsset(pathname: string, src: string) {
   if (!src || /^https?:\/\//.test(src) || src.startsWith("data:")) {
     return src;
   }
 
-  const basePath = detectArtBasePath(pathname);
+  const basePath = detectArtBasePath(detectRuntimePathname(pathname));
 
   if (src.startsWith("/")) {
     return `${basePath}${src}`;
