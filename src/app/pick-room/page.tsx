@@ -79,7 +79,7 @@ function roundSourceHint(source: RoundSource) {
     return "デモ混じりの参考ラウンドです。実運用の判断材料としては使わないでください。";
   }
 
-  return "手入力ベースのラウンドです。元データの出どころは sourceNote や管理メモも確認してください。";
+  return "手入力ベースのラウンドです。元データの出どころは取り込みメモや管理メモも確認してください。";
 }
 
 function PickRoomPageContent() {
@@ -190,7 +190,7 @@ function PickRoomPageContent() {
   }
 
   if (loading && !data) {
-    return <LoadingNotice title="Friend Pick Room を準備中" />;
+    return <LoadingNotice title="候補カードを準備中" />;
   }
 
   if (error) {
@@ -298,7 +298,7 @@ function PickRoomPageContent() {
   return (
     <div className="space-y-8">
       <PageHeader
-        eyebrow="Friend Pick Room"
+        eyebrow="候補カード"
         title="どれで行く？"
         description="王道・人力推し・EV狙いを数本に絞って、みんなで比較しながら最終候補を決めるための共有画面です。"
         actions={
@@ -308,14 +308,14 @@ function PickRoomPageContent() {
                 href={buildRoundHref(appRoute.winnerValue, data.round.id, { user: activeUser?.id })}
                 className={secondaryButtonClassName}
               >
-                WINNER Value
+                WINNERボード
               </Link>
             ) : null}
             <Link
               href={buildRoundHref(appRoute.simpleView, data.round.id, { user: activeUser?.id })}
               className={buttonClassName}
             >
-              Simple View
+              自分の予想
             </Link>
             <Link
               href={buildRoundHref(appRoute.play, data.round.id, { user: activeUser?.id })}
@@ -344,18 +344,18 @@ function PickRoomPageContent() {
         roundTitle={data.round.title}
         userId={activeUser?.id}
         items={[
-          { href: buildRoundHref(appRoute.simpleView, data.round.id, { user: activeUser?.id }), label: "Simple View" },
+          { href: buildRoundHref(appRoute.simpleView, data.round.id, { user: activeUser?.id }), label: "自分の予想" },
           ...(winnerLike
             ? [
                 {
                   href: buildRoundHref(appRoute.winnerValue, data.round.id, { user: activeUser?.id }),
-                  label: "WINNER Value",
+                  label: "WINNERボード",
                 },
               ]
             : []),
-          { href: buildRoundHref(appRoute.pickRoom, data.round.id, { user: activeUser?.id }), label: "Friend Pick Room" },
+          { href: buildRoundHref(appRoute.pickRoom, data.round.id, { user: activeUser?.id }), label: "候補カード" },
           { href: buildRoundHref(appRoute.picks, data.round.id, { user: activeUser?.id }), label: "自分の予想" },
-          { href: buildRoundHref(appRoute.workspace, data.round.id), label: "Advanced View" },
+          { href: buildRoundHref(appRoute.workspace, data.round.id), label: "ラウンド詳細" },
         ]}
       />
 
@@ -393,7 +393,7 @@ function PickRoomPageContent() {
       </SectionCard>
 
       <SectionCard
-        title="Candidate Cards"
+        title="候補カード"
         description="まずはここだけ見れば大丈夫です。横スワイプで候補を比べて、そのままリアクションを残せます。"
         actions={
           <div className="flex flex-wrap gap-2">
@@ -574,7 +574,7 @@ function PickRoomPageContent() {
 
 export default function PickRoomPage() {
   return (
-    <Suspense fallback={<LoadingNotice title="Friend Pick Room を準備中" />}>
+    <Suspense fallback={<LoadingNotice title="候補カードを準備中" />}>
       <PickRoomPageContent />
     </Suspense>
   );

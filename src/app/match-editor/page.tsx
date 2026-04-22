@@ -547,7 +547,7 @@ function MatchEditorPageContent() {
                 {readiness ? (
                   <>
                     <StatCard
-                      label="Probability"
+                      label="試算状態"
                       value={probabilityReadinessStatusLabel[data.round.probabilityReadiness]}
                       hint={competitionTypeModeLabel[data.round.competitionType]}
                       compact
@@ -848,7 +848,7 @@ function MatchEditorPageContent() {
               <CollapsibleSectionCard
                 title="試算材料と手入力補正"
                 description="通常totoは休養・移動・怪我、W杯はグループ状況や気候などを手で足して低信頼を少しずつ改善します。"
-                badge={<Badge tone="teal">共通Probability</Badge>}
+                badge={<Badge tone="teal">共通試算</Badge>}
                 defaultOpen={!hasMarketInputs}
               >
                 <div className="grid gap-5 lg:grid-cols-2">

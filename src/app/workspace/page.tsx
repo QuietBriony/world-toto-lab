@@ -457,7 +457,7 @@ function WorkspacePageContent() {
                 })
               : buildRoundHref(appRoute.fixtureSelector, data.round.id),
           secondaryLabel:
-            data.round.productType === "winner" ? "Pick Room へ" : "Fixture Selector へ",
+            data.round.productType === "winner" ? "候補カードへ" : "Fixture Selector へ",
           title: "いまの商品で進める",
           tone: "sky" as const,
         };
@@ -466,15 +466,15 @@ function WorkspacePageContent() {
           body:
             data.round.matches.length > 0
               ? "素材が入っているので、ここからは見る・投票する段階です。"
-              : "試合素材を入れたあとに、Simple View と Friend Pick Room で共有に進みます。",
+              : "試合素材を入れたあとに、自分の予想と候補カードで共有に進みます。",
           ctaHref: buildRoundHref(appRoute.pickRoom, data.round.id, {
             user: data.users[0]?.id,
           }),
-          ctaLabel: "Friend Pick Room を開く",
+          ctaLabel: "候補カードを開く",
           secondaryHref: buildRoundHref(appRoute.simpleView, data.round.id, {
             user: data.users[0]?.id,
           }),
-          secondaryLabel: "Simple View で確認",
+          secondaryLabel: "自分の予想で確認",
           title: "みんなで見る・投票する",
           tone: "amber" as const,
         };
@@ -668,7 +668,7 @@ function WorkspacePageContent() {
                       })}
                       className={buttonClassName}
                     >
-                      Friend Pick Room
+                      候補カード
                     </Link>
                     {winnerLike ? (
                       <Link
@@ -677,7 +677,7 @@ function WorkspacePageContent() {
                         })}
                         className={secondaryButtonClassName}
                       >
-                        WINNER Value
+                        WINNERボード
                       </Link>
                     ) : null}
                   </>
@@ -766,7 +766,7 @@ function WorkspacePageContent() {
                 hint={
                   data.round.primaryUse === "practice"
                     ? "通常totoの練習回として振り返りに寄せます。"
-                    : "友人向けは遊ぼうページと Pick Room を使います。"
+                    : "友人向けは遊ぼうページと候補カードを使います。"
                 }
               />
             </div>
@@ -789,7 +789,7 @@ function WorkspacePageContent() {
                 <p className="mt-3">
                   {data.round.matches.length === 0
                     ? "この Round はまだ材料が入っていません。まずは公式対象回を試し、まだ未発表なら確定日程ベースの手動準備へ回るのが自然です。"
-                    : "この Round には試合素材があります。更新したいときだけ取り込みへ戻り、ふだんは Simple View と Friend Pick Room を使えば十分です。"}
+                    : "このラウンドには試合素材があります。更新したいときだけ取り込みへ戻り、ふだんは自分の予想と候補カードを使えば十分です。"}
                 </p>
               </div>
 
@@ -1416,7 +1416,7 @@ function WorkspacePageContent() {
               </label>
 
               <label className="grid gap-2 text-sm font-medium text-slate-700">
-                voidHandling
+                中止時の扱い
                 <select
                   name="voidHandling"
                   className={fieldClassName}
@@ -1431,7 +1431,7 @@ function WorkspacePageContent() {
               </label>
 
               <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-950/5 p-4 text-sm text-slate-600 md:col-span-2">
-                activeMatchCount {data.round.activeMatchCount ?? data.round.matches.length} / outcomeSet{" "}
+                現在の試合数 {data.round.activeMatchCount ?? data.round.matches.length} / 選択肢{" "}
                 {data.round.outcomeSetJson?.join(" / ") ?? "1 / 0 / 2"}
               </div>
 
@@ -1476,7 +1476,7 @@ function WorkspacePageContent() {
               ) : null}
 
               <label className="grid gap-2 text-sm font-medium text-slate-700 md:col-span-2">
-                sourceNote
+                取り込みメモ
                 <input
                   name="sourceNote"
                   defaultValue={data.round.sourceNote ?? ""}
@@ -1590,7 +1590,7 @@ function WorkspacePageContent() {
                     市場確率があればそれを土台にし、足りない時は competition ごとの fallback prior、Human Scout、手入力補正で補います。
                   </p>
                   <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                    <Badge tone="slate">Common Probability Engine</Badge>
+                    <Badge tone="slate">共通試算ロジック</Badge>
                     <Badge tone="slate">{competitionTypeLabel[data.round.competitionType]}</Badge>
                     <Badge tone="slate">{dataProfileLabel[data.round.dataProfile]}</Badge>
                     <span>ロジック更新後に再計算して育てていけます。</span>

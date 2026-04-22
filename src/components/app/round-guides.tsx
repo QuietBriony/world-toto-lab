@@ -45,7 +45,7 @@ const pageGuideMeta: Partial<
   },
   [appRoute.goal3Value]: {
     badge: "別商品",
-    title: "GOAL3 Value Board で見る言葉",
+    title: "GOAL3ボードで見る言葉",
     description: "totoGOAL3 は 1/0/2 ではなく 6チームの得点帯を見るので、専用ボードで用語を分けています。",
     summary: "GOAL3 のイベント熱と、6チーム x 0/1/2/3+ の人気分布を見る段階です。",
   },
@@ -93,7 +93,7 @@ const pageGuideMeta: Partial<
   },
   [appRoute.winnerValue]: {
     badge: "1試合向け",
-    title: "WINNER Value Board で見る言葉",
+    title: "WINNERボードで見る言葉",
     description: "1試合の 1 / 0 / 2 を、公式人気との差として読むための短い辞書です。",
     summary: "WINNER や 1試合回で、outcome ごとの差分を比較する段階です。",
   },
@@ -243,7 +243,7 @@ const pageGlossaryEntries: Partial<Record<GuideRoute, GlossaryEntry[]>> = {
       tone: "amber",
     },
     {
-      term: "Advanced View",
+      term: "ラウンド詳細",
       body: "もっと細かい分析や設定を見たい時だけ戻る先です。",
       tone: "slate",
     },
@@ -370,13 +370,13 @@ const pageGlossaryEntries: Partial<Record<GuideRoute, GlossaryEntry[]>> = {
   ],
   [appRoute.winnerValue]: [
     {
-      term: "edge",
-      body: "AIモデル確率と公式人気の差です。プラスなら、公式人気より上に見ている意味です。",
+      term: "差分",
+      body: "モデル確率と公式人気の差です。プラスなら、公式人気より上に見ている意味です。",
       tone: "teal",
     },
     {
-      term: "valueRatio",
-      body: "modelProb / officialVote です。1 を大きく超えるほど、人気に対してモデル側が強めに見ています。",
+      term: "倍率差",
+      body: "モデル確率 / 公式人気 です。1 を大きく超えるほど、人気に対してモデル側が強めに見ています。",
       tone: "sky",
     },
     {
@@ -393,7 +393,7 @@ const pageGlossaryEntries: Partial<Record<GuideRoute, GlossaryEntry[]>> = {
   [appRoute.ticketGenerator]: [
     {
       term: "詳細候補配分",
-      body: "Friend Pick Room より細かく、先に確認したい候補の並び順と理由を見る管理寄り画面です。",
+      body: "候補カードより細かく、先に確認したい候補の並び順と理由を見る管理寄り画面です。",
       tone: "amber",
     },
     {
@@ -459,18 +459,22 @@ const pageGlossaryEntries: Partial<Record<GuideRoute, GlossaryEntry[]>> = {
 };
 
 const routeLabel: Partial<Record<GuideRoute, string>> = {
+  [appRoute.dashboard]: "ダッシュボード",
   [appRoute.workspace]: "ラウンド詳細",
   [appRoute.play]: "遊ぼうページ",
   [appRoute.bigCarryover]: "BIGウォッチ",
-  [appRoute.goal3Value]: "GOAL3 Value Board",
+  [appRoute.goal3Value]: "GOAL3ボード",
   [appRoute.matchEditor]: "試合設定",
   [appRoute.picks]: "支持 / 予想",
+  [appRoute.pickRoom]: "候補カード",
   [appRoute.scoutCards]: "予想者カード",
   [appRoute.consensus]: "コンセンサス",
   [appRoute.edgeBoard]: "優位ボード",
+  [appRoute.simpleView]: "自分の予想",
   [appRoute.ticketGenerator]: "詳細候補配分",
   [appRoute.review]: "振り返り",
   [appRoute.practiceLab]: "練習ラボ",
+  [appRoute.winnerValue]: "WINNERボード",
 };
 
 function toneBarClassName(tone: GuideTone) {

@@ -81,7 +81,7 @@ function roundSourceHint(source: RoundSource) {
     return "デモ混じりの参考ラウンドです。購入判断には使わないでください。";
   }
 
-  return "手入力ベースのラウンドです。補助表示の出どころは sourceNote や管理メモも確認してください。";
+  return "手入力ベースのラウンドです。補助表示の出どころは取り込みメモや管理メモも確認してください。";
 }
 
 function QuickPickButton(props: {
@@ -238,7 +238,7 @@ function SimpleViewPageContent() {
   }
 
   if (loading && !data) {
-    return <LoadingNotice title="Simple View を準備中" />;
+    return <LoadingNotice title="自分の予想を準備中" />;
   }
 
   if (error) {
@@ -290,7 +290,7 @@ function SimpleViewPageContent() {
   return (
     <div className="space-y-8">
       <PageHeader
-        eyebrow="Simple View"
+        eyebrow="自分の予想"
         title="ラウンドの見どころ"
         description="試合一覧を軽く追いながら、そのまま 1 / 0 / 2 を入れて保存できるシンプル入力画面です。"
         actions={
@@ -300,7 +300,7 @@ function SimpleViewPageContent() {
                 href={buildRoundHref(appRoute.winnerValue, data.round.id, { user: activeUser.id })}
                 className={secondaryButtonClassName}
               >
-                WINNER Value
+                WINNERボード
               </Link>
             ) : null}
             <Link
@@ -313,10 +313,10 @@ function SimpleViewPageContent() {
               href={buildRoundHref(appRoute.pickRoom, data.round.id, { user: activeUser.id })}
               className={buttonClassName}
             >
-              Friend Pick Room
+              候補カード
             </Link>
             <Link href={buildRoundHref(appRoute.workspace, data.round.id)} className={secondaryButtonClassName}>
-              Advanced View
+              ラウンド詳細
             </Link>
           </div>
         }
@@ -328,18 +328,18 @@ function SimpleViewPageContent() {
         roundTitle={data.round.title}
         userId={activeUser.id}
         items={[
-          { href: buildRoundHref(appRoute.simpleView, data.round.id, { user: activeUser.id }), label: "Simple View" },
+          { href: buildRoundHref(appRoute.simpleView, data.round.id, { user: activeUser.id }), label: "自分の予想" },
           ...(winnerLike
             ? [
                 {
                   href: buildRoundHref(appRoute.winnerValue, data.round.id, { user: activeUser.id }),
-                  label: "WINNER Value",
+                  label: "WINNERボード",
                 },
               ]
             : []),
-          { href: buildRoundHref(appRoute.pickRoom, data.round.id, { user: activeUser.id }), label: "Friend Pick Room" },
+          { href: buildRoundHref(appRoute.pickRoom, data.round.id, { user: activeUser.id }), label: "候補カード" },
           { href: buildRoundHref(appRoute.picks, data.round.id, { user: activeUser.id }), label: "詳細入力" },
-          { href: buildRoundHref(appRoute.workspace, data.round.id), label: "Advanced View" },
+          { href: buildRoundHref(appRoute.workspace, data.round.id), label: "ラウンド詳細" },
         ]}
       />
 
@@ -486,7 +486,7 @@ function SimpleViewPageContent() {
 
       <SectionCard
         title="いま出ている候補"
-        description="細かい比較は Friend Pick Room 側で行い、この画面では並びをざっと確認できます。"
+        description="細かい比較は候補カード側で行い、この画面では並びをざっと確認できます。"
         actions={
           <Link
             href={buildRoundHref(appRoute.pickRoom, data.round.id, { user: activeUser.id })}
@@ -498,7 +498,7 @@ function SimpleViewPageContent() {
       >
         {candidatePreviewTickets.length === 0 ? (
           <p className="text-sm leading-6 text-slate-600">
-            まだ候補カードがありません。Friend Pick Room を開くと、自動更新された候補が並ぶことがあります。
+            まだ候補カードがありません。候補カードを開くと、自動更新された候補が並ぶことがあります。
           </p>
         ) : (
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
@@ -585,7 +585,7 @@ function SimpleViewPageContent() {
             <p>
               {data.round.sourceNote
                 ? `管理メモ: ${data.round.sourceNote}`
-                : "管理メモは未設定です。気になるときは Advanced View の元データも確認してください。"}
+                : "管理メモは未設定です。気になるときはラウンド詳細の元データも確認してください。"}
             </p>
           </div>
           <div className="rounded-[22px] border border-amber-200 bg-amber-50 px-4 py-4 text-sm leading-6 text-amber-950">
@@ -614,7 +614,7 @@ function SimpleViewPageContent() {
 
 export default function SimpleViewPage() {
   return (
-    <Suspense fallback={<LoadingNotice title="Simple View を準備中" />}>
+    <Suspense fallback={<LoadingNotice title="自分の予想を準備中" />}>
       <SimpleViewPageContent />
     </Suspense>
   );

@@ -456,7 +456,7 @@ export default function DashboardPage() {
       }),
       ctaLabel: "WINNER で始める",
       secondaryHref: appRoute.bigCarryover,
-      secondaryLabel: "BIG Carryover Monitor",
+      secondaryLabel: "BIGウォッチ",
       title: "1試合や別商品で見る",
       tone: "amber" as const,
     },
@@ -692,7 +692,7 @@ export default function DashboardPage() {
             ) : null}
             <div className="mt-4 flex flex-wrap gap-2">
               <Link href={appRoute.goal3Value} className={buttonClassName}>
-                GOAL3 Value Board
+                GOAL3ボード
               </Link>
               <Link
                 href={buildOfficialRoundImportHref(undefined, {
@@ -730,7 +730,7 @@ export default function DashboardPage() {
             <h3 className="mt-3 font-display text-[1.35rem] font-semibold tracking-[-0.05em] text-slate-950">
               {featuredBigOfficialSnapshot
                 ? `${featuredBigOfficialSnapshot.officialRoundName ?? featuredBigOfficialSnapshot.productLabel}`
-                : "BIG Carryover Monitor"}
+                : "BIGウォッチ"}
             </h3>
             <p className="mt-3 text-sm leading-6 text-slate-600">
               {featuredBigOfficial
@@ -772,7 +772,7 @@ export default function DashboardPage() {
             ) : null}
             <div className="mt-4 flex flex-wrap gap-2">
               <Link href={appRoute.bigCarryover} className={buttonClassName}>
-                BIG Carryover Monitor
+                BIGウォッチ
               </Link>
               <Link
                 href={featuredBigOfficialHref ?? featuredBigHref}
@@ -789,7 +789,7 @@ export default function DashboardPage() {
               <Badge tone="slate">1試合</Badge>
             </div>
             <h3 className="mt-3 font-display text-[1.35rem] font-semibold tracking-[-0.05em] text-slate-950">
-              1試合の妙味は WINNER Value Board
+              1試合の妙味は WINNERボード
             </h3>
             <p className="mt-3 text-sm leading-6 text-slate-600">
               {winnerWatchRound
@@ -804,7 +804,7 @@ export default function DashboardPage() {
                   })}
                   className={buttonClassName}
                 >
-                  WINNER Value Board
+                  WINNERボード
                 </Link>
               ) : (
                 <Link
@@ -1995,7 +1995,7 @@ export default function DashboardPage() {
                 </div>
 
                 <label className="grid gap-2 text-sm font-medium text-slate-700 md:col-span-2">
-                  sourceNote
+                  取り込みメモ
                   <input
                     name="sourceNote"
                     className={fieldClassName}
@@ -2167,7 +2167,7 @@ export default function DashboardPage() {
                           })}
                           className={secondaryButtonClassName}
                         >
-                          Pick Room
+                          候補カード
                         </Link>
                         <Link
                           href={buildRoundHref(appRoute.practiceLab, round.id)}
@@ -2295,7 +2295,7 @@ export default function DashboardPage() {
                             })}
                             className="font-medium text-slate-700 underline underline-offset-2"
                           >
-                            Simple View
+                            自分の予想
                           </Link>
                           {winnerLike ? (
                             <Link
@@ -2304,7 +2304,7 @@ export default function DashboardPage() {
                               })}
                               className="font-medium text-slate-700 underline underline-offset-2"
                             >
-                              WINNER Value
+                              WINNERボード
                             </Link>
                           ) : null}
                         </div>

@@ -122,7 +122,7 @@ const officialProductFocusCards: Array<{
 }> = [
   {
     badgeTone: "teal",
-    body: "13試合の本命導線です。公式回を選んで、そのまま Candidate Cards と Friend Pick Room まで進めます。",
+    body: "13試合の本命導線です。公式回を選んで、そのまま候補カードまで進めます。",
     productType: "toto13",
     title: "toto を選ぶ",
   },
@@ -134,7 +134,7 @@ const officialProductFocusCards: Array<{
   },
   {
     badgeTone: "amber",
-    body: "1試合商品です。開催一覧より、公式くじ情報URLを直接読ませる方が安定します。WINNER Value Board と併用すると流れがきれいです。",
+    body: "1試合商品です。開催一覧より、公式くじ情報URLを直接読ませる方が安定します。WINNERボードと併用すると流れがきれいです。",
     productType: "winner",
     recommendedSourcePresetId: "toto_official_detail",
     title: "WINNER を選ぶ",
@@ -142,7 +142,7 @@ const officialProductFocusCards: Array<{
   {
     badgeLabel: "GOAL3",
     badgeTone: "amber",
-    body: "Round Builder 本体には混ぜず、公式一覧から拾えた GOAL3 回だけを別ボードと専用ライブラリで見ます。",
+    body: "ラウンド作成画面には混ぜず、公式一覧から拾えた GOAL3 回だけを別ボードと専用ライブラリで見ます。",
     productType: "custom",
     title: "GOAL3 を見る",
   },
@@ -445,11 +445,11 @@ function TotoOfficialRoundImportPageContent() {
         const latestEntry = syncedEntries[0] ?? null;
 
         if (!latestEntry) {
-          throw new Error("同期結果を Pick Room に反映するための公式回がありませんでした。");
+          throw new Error("同期結果を候補カードに反映するための公式回がありませんでした。");
         }
 
         setActionMessage(
-          `公式一覧を同期しました。最新の「${latestEntry.title}」で Pick Room を開きます。`,
+          `公式一覧を同期しました。最新の「${latestEntry.title}」で候補カードを開きます。`,
         );
         await handleUseLibraryEntry(latestEntry, "apply");
         return;
@@ -552,13 +552,13 @@ function TotoOfficialRoundImportPageContent() {
   return (
     <div className="space-y-8">
       <PageHeader
-        eyebrow="Admin"
-        title="Toto Official Round Import"
+        eyebrow="管理者"
+        title="公式対象回を取り込む"
         description="公式ソースから開催回を同期して一覧から選ぶか、CSV / TSV で足りない回だけ追加して Round に反映します。"
         actions={
           <div className="flex flex-wrap gap-3">
             <Link href={appRoute.goal3Value} className={secondaryButtonClassName}>
-              GOAL3 Value Board
+              GOAL3ボード
             </Link>
             {roundDetailHref ? (
               <Link href={roundDetailHref} className={secondaryButtonClassName}>
@@ -572,7 +572,7 @@ function TotoOfficialRoundImportPageContent() {
             ) : null}
             {savedRoundId ? (
               <Link href={buildRoundHref(appRoute.pickRoom, savedRoundId)} className={buttonClassName}>
-                Friend Pick Room
+                候補カード
               </Link>
             ) : null}
           </div>
@@ -639,9 +639,9 @@ function TotoOfficialRoundImportPageContent() {
           })}
         </div>
         <div className="mt-4 rounded-[22px] border border-amber-200 bg-amber-50/80 px-4 py-4 text-sm leading-6 text-amber-950">
-          `totoGOAL3` も公式同期には含めますが、Round Builder 本体へは流さず
+          `totoGOAL3` も公式同期には含めますが、ラウンド作成画面へは流さず
           <Link href={appRoute.goal3Value} className="ml-2 font-semibold underline underline-offset-2">
-            GOAL3 Value Board
+            GOAL3ボード
           </Link>
           で別枠表示します。
         </div>
@@ -660,7 +660,7 @@ function TotoOfficialRoundImportPageContent() {
 
       <SectionCard
         title="公式一覧を同期"
-        description="おすすめは Yahoo! toto 販売スケジュールです。開催回一覧から公式くじ情報ページを辿って、Round Builder で選べるライブラリを更新します。"
+        description="おすすめは Yahoo! toto 販売スケジュールです。開催回一覧から公式くじ情報ページを辿って、ラウンド作成画面で選べるライブラリを更新します。"
       >
         <div className="grid gap-3 lg:grid-cols-2">
           {officialSourcePresets.map((preset) => {
@@ -711,7 +711,7 @@ function TotoOfficialRoundImportPageContent() {
           <Badge tone="info">現在の同期元 {activeSyncPreset?.label ?? hostLabel(syncSourceUrl)}</Badge>
           <Badge tone="slate">試合明細 {includeMatchesInSync ? "含む" : "省略"}</Badge>
           <Badge tone={autoApplyAfterSync ? "teal" : "slate"}>
-            {autoApplyAfterSync ? "同期後に Pick Room" : "一覧更新のみ"}
+            {autoApplyAfterSync ? "同期後に候補カード" : "一覧更新のみ"}
           </Badge>
         </div>
 
@@ -730,14 +730,14 @@ function TotoOfficialRoundImportPageContent() {
             className={secondaryButtonClassName}
             disabled={syncing}
           >
-            {syncing ? "同期しつつ反映中..." : "公式一覧を同期してPick Roomへ"}
+            {syncing ? "同期しつつ反映中..." : "公式一覧を同期して候補カードへ"}
           </button>
         </div>
 
         <CollapsibleSectionCard
           className="mt-4"
           title="同期オプション"
-          description="URL を変えるとき、WINNER の公式詳細URLを入れるとき、または通常同期後に自動で Pick Room まで進めたいときだけ開きます。"
+          description="URL を変えるとき、WINNER の公式詳細URLを入れるとき、または通常同期後に自動で候補カードまで進めたいときだけ開きます。"
           defaultOpen={syncOptionsOpen}
           badge={<Badge tone="slate">オプション</Badge>}
         >
@@ -768,7 +768,7 @@ function TotoOfficialRoundImportPageContent() {
                   onChange={(event) => setAutoApplyAfterSync(event.currentTarget.checked)}
                   className="h-4 w-4"
                 />
-                <span>通常同期でも最新1件で Pick Room を開く</span>
+                <span>通常同期でも最新1件で候補カードを開く</span>
               </label>
             </div>
           </div>
@@ -813,8 +813,8 @@ function TotoOfficialRoundImportPageContent() {
         title="公式回ライブラリ"
         description={
           roundId
-            ? `同期済みの ${filterLabel} から、この Round にそのまま反映して Pick Room まで進めます。`
-            : `同期済みの ${filterLabel} から、新しい Round を作ってそのまま Pick Room へ進めます。`
+            ? `同期済みの ${filterLabel} から、この Round にそのまま反映して候補カードまで進めます。`
+            : `同期済みの ${filterLabel} から、新しい Round を作ってそのまま候補カードへ進めます。`
         }
       >
         <div className="grid gap-4 lg:grid-cols-[0.8fr_0.35fr]">
@@ -904,8 +904,8 @@ function TotoOfficialRoundImportPageContent() {
                       {isBusy
                         ? "反映中..."
                         : roundId
-                          ? "このRoundに反映してPick Roomへ"
-                          : "この回でPick Roomを開く"}
+                          ? "このRoundに反映して候補カードへ"
+                          : "この回で候補カードを開く"}
                     </button>
                     <button
                       type="button"
@@ -951,7 +951,7 @@ function TotoOfficialRoundImportPageContent() {
             [
               "1",
               "リストから 1 クリック適用",
-              "保存済みの公式回があれば、そのまま今の Round か新規 Round に反映して Pick Room まで進めます。",
+              "保存済みの公式回があれば、そのまま今の Round か新規 Round に反映して候補カードまで進めます。",
             ],
             [
               "2",

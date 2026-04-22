@@ -80,7 +80,7 @@ function WinnerValuePageContent() {
   }
 
   if (loading && !data) {
-    return <LoadingNotice title="WINNER Value Board を読み込み中" />;
+    return <LoadingNotice title="WINNERボードを読み込み中" />;
   }
 
   if (error && !data) {
@@ -132,7 +132,7 @@ function WinnerValuePageContent() {
     activeUser
       ? {
           href: buildRoundHref(appRoute.simpleView, data.round.id, { user: activeUser.id }),
-          label: "Simple View",
+          label: "自分の予想",
         }
       : null,
     {
@@ -140,7 +140,7 @@ function WinnerValuePageContent() {
         match: activeMatch?.id,
         user: activeUser?.id,
       }),
-      label: "WINNER Value",
+      label: "WINNERボード",
     },
     { href: buildRoundHref(appRoute.review, data.round.id), label: "振り返り" },
   ].filter(Boolean) as Array<{ href: string; label: string }>;
@@ -148,8 +148,8 @@ function WinnerValuePageContent() {
   return (
     <div className="space-y-8">
       <PageHeader
-        eyebrow="WINNER Value Board"
-        title={winnerLike ? "1試合の見どころを比較する" : "Outcome value を1試合単位で見る"}
+        eyebrow="WINNERボード"
+        title={winnerLike ? "1試合の見どころを比較する" : "1試合ごとの差分を見る"}
         description={
           winnerLike
             ? "1 / 0 / 2 の3候補を、モデル確率と公式人気の差で見比べるボードです。的中や利益の保証ではなく、参考比較として使います。"
@@ -162,14 +162,14 @@ function WinnerValuePageContent() {
                 href={buildRoundHref(appRoute.simpleView, data.round.id, { user: activeUser.id })}
                 className={secondaryButtonClassName}
               >
-                Simple View
+                自分の予想
               </Link>
             ) : null}
             <Link
               href={buildRoundHref(appRoute.workspace, data.round.id)}
               className={secondaryButtonClassName}
             >
-              Advanced View
+              ラウンド詳細
             </Link>
             {sourceHref ? (
               <a
@@ -564,7 +564,7 @@ function WinnerValuePageContent() {
 
 export default function WinnerValuePage() {
   return (
-    <Suspense fallback={<LoadingNotice title="WINNER Value Board を読み込み中" />}>
+    <Suspense fallback={<LoadingNotice title="WINNERボードを読み込み中" />}>
       <WinnerValuePageContent />
     </Suspense>
   );

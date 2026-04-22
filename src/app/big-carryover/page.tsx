@@ -168,7 +168,7 @@ function BigCarryoverPageContent() {
   return (
     <div className="space-y-8">
       <PageHeader
-        eyebrow="BIG Carryover Monitor"
+        eyebrow="BIGウォッチ"
         title="BIG の高還元イベントをざっくり測る"
         description="BIG は outcome を選ぶ商品ではない前提で、売上・キャリー・還元率からどれくらいアッパーかを概説する運用ページです。的中や利益の保証ではなく、参考比較として使います。"
         actions={

@@ -193,7 +193,7 @@ export default function Goal3ValuePage() {
   };
 
   if (library.loading && !library.data) {
-    return <LoadingNotice title="GOAL3 Value Board を読み込み中" />;
+    return <LoadingNotice title="GOAL3ボードを読み込み中" />;
   }
 
   if (library.error && !library.data) {
@@ -205,9 +205,9 @@ export default function Goal3ValuePage() {
   return (
     <div className="space-y-8">
       <PageHeader
-        eyebrow="GOAL3 Value Board"
+        eyebrow="GOAL3ボード"
         title="totoGOAL3 は別ボードで見る"
-        description="Round Builder 本体には混ぜず、公式同期した GOAL3 回だけを集めて、イベント熱と 6チーム x 0/1/2/3+ の人気分布を確認します。"
+        description="ラウンド作成画面には混ぜず、公式同期した GOAL3 回だけを集めて、イベント熱と 6チーム x 0/1/2/3+ の人気分布を確認します。"
         actions={
           <div className="flex flex-wrap gap-3">
             <Link href={appRoute.dashboard} className={secondaryButtonClassName}>
@@ -317,7 +317,7 @@ export default function Goal3ValuePage() {
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
               <Link href={appRoute.bigCarryover} className={secondaryButtonClassName}>
-                BIG Carryover Monitor
+                BIGウォッチ
               </Link>
             </div>
           </div>
@@ -328,7 +328,7 @@ export default function Goal3ValuePage() {
               <Badge tone="slate">1試合</Badge>
             </div>
             <h3 className="mt-3 font-display text-[1.35rem] font-semibold tracking-[-0.05em] text-slate-950">
-              1試合の妙味は WINNER Value Board
+              1試合の妙味は WINNERボード
             </h3>
             <p className="mt-3 text-sm leading-6 text-slate-600">
               公式人気との差は WINNER 側のボードで見るのが自然です。GOAL3 と混ぜず、別の導線に分けています。
@@ -372,7 +372,7 @@ export default function Goal3ValuePage() {
         <>
           <SectionCard
             title="GOAL3 ライブラリ"
-            description="Round Builder 本体へは流さず、ここで GOAL3 回だけ選びます。"
+            description="ラウンド作成画面へは流さず、ここで GOAL3 回だけ選びます。"
           >
             <div className="grid gap-4 xl:grid-cols-3">
               {goal3Entries.map((entry) => {

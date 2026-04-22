@@ -133,7 +133,7 @@ function PracticeLabPageContent() {
         items={[
           { href: buildRoundHref(appRoute.practiceLab, data.round.id), label: "練習ラボ" },
           { href: buildRoundHref(appRoute.play, data.round.id, { user: data.users[0]?.id }), label: "遊ぼう" },
-          { href: buildRoundHref(appRoute.pickRoom, data.round.id, { user: data.users[0]?.id }), label: "Pick Room" },
+          { href: buildRoundHref(appRoute.pickRoom, data.round.id, { user: data.users[0]?.id }), label: "候補カード" },
           { href: buildRoundHref(appRoute.workspace, data.round.id), label: "Round 詳細" },
         ]}
       />

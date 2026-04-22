@@ -396,7 +396,7 @@ function TicketGeneratorPageContent() {
       <PageHeader
         eyebrow="詳細候補配分"
         title="注目配分ジェネレーター"
-        description="Friend Pick Room より細かく、AI・予想者・ウォッチ支持の合成優位差から候補の並び順と理由を確認する管理寄り画面です。"
+        description="候補カードより細かく、AI・予想者・ウォッチ支持の合成優位差から候補の並び順と理由を確認する管理寄り画面です。"
         actions={
           data ? (
             <div className="flex flex-wrap gap-3">
@@ -404,7 +404,7 @@ function TicketGeneratorPageContent() {
                 href={buildRoundHref(appRoute.pickRoom, data.round.id, { user: data.users[0]?.id })}
                 className={secondaryButtonClassName}
               >
-                Friend Pick Room
+                候補カード
               </Link>
               <Link
                 href={buildRoundHref(appRoute.workspace, data.round.id)}
