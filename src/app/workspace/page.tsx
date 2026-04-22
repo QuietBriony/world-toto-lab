@@ -180,6 +180,7 @@ function WorkspacePageContent() {
   const roundId = getSingleSearchParam(searchParams.get("round"));
   const debugMode = getSingleSearchParam(searchParams.get("debug")) === "1";
   const { data, error, loading, refresh } = useRoundWorkspace(roundId);
+  const missingRound = error === "選択したラウンドが見つかりません。" && !data;
   const [saving, setSaving] = useState(false);
   const [submitError, setSubmitError] = useState<ScopedMessage | null>(null);
   const [saveMessage, setSaveMessage] = useState<ScopedMessage | null>(null);
@@ -627,10 +628,12 @@ function WorkspacePageContent() {
   return (
     <div className="space-y-8">
       <PageHeader
-        eyebrow="ラウンド詳細"
-        title={data?.round.title ?? "ラウンド詳細"}
+        eyebrow={missingRound ? "リンク確認" : "ラウンド詳細"}
+        title={missingRound ? "ラウンドが見つかりません" : data?.round.title ?? "ラウンド詳細"}
         description={
-          isDemoRound
+          missingRound
+            ? "古いリンクか削除済みラウンドの可能性があります。下から今ある本番回へ戻れます。"
+            : isDemoRound
             ? "このデモは、確認カード → 支持 / 予想 → コンセンサス → 振り返り の順で触ると全体像をつかみやすいです。"
             : `${data?.round.matches.length ?? 0}試合の分析入力状況を、モデル試算と予想者ラインを土台にして支持分布まで一気に俯瞰できます。`
         }
