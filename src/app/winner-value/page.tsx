@@ -16,6 +16,7 @@ import {
 } from "@/components/app/states";
 import { RoundNav } from "@/components/round-nav";
 import {
+  ArtBannerPanel,
   Badge,
   buttonClassName,
   HorizontalScrollTable,
@@ -38,6 +39,7 @@ import {
 import { buildOutcomeEdges } from "@/lib/outcome-edge";
 import { appRoute, buildRoundHref, getSingleSearchParam } from "@/lib/round-links";
 import { isSupabaseConfigured } from "@/lib/supabase";
+import { boardHeroArt } from "@/lib/ui-art";
 import { useRoundWorkspace } from "@/lib/use-app-data";
 import {
   buildWinnerOfficialSnapshot,
@@ -183,6 +185,13 @@ function WinnerValuePageContent() {
             ) : null}
           </div>
         }
+      />
+
+      <ArtBannerPanel
+        badge={<Badge tone="sky">{boardHeroArt.winner.accentLabel}</Badge>}
+        description={boardHeroArt.winner.description}
+        imageSrc={boardHeroArt.winner.src}
+        title={boardHeroArt.winner.title}
       />
 
       <RoundNav

@@ -6,6 +6,7 @@ import { Suspense, useMemo, useState } from "react";
 
 import { RouteGlossaryCard } from "@/components/app/round-guides";
 import {
+  ArtBannerPanel,
   Badge,
   buttonClassName,
   fieldClassName,
@@ -41,6 +42,7 @@ import {
   normalizeBigShockSignal,
 } from "@/lib/big-carryover";
 import { appRoute, buildHref } from "@/lib/round-links";
+import { boardHeroArt } from "@/lib/ui-art";
 import { useBigOfficialWatch } from "@/lib/use-app-data";
 
 function parseNumberInput(value: string | null, fallback: number) {
@@ -191,6 +193,13 @@ function BigCarryoverPageContent() {
             </Link>
           </div>
         }
+      />
+
+      <ArtBannerPanel
+        badge={<Badge tone="amber">{boardHeroArt.big.accentLabel}</Badge>}
+        description={boardHeroArt.big.description}
+        imageSrc={boardHeroArt.big.src}
+        title={boardHeroArt.big.title}
       />
 
       <RouteGlossaryCard currentPath={appRoute.bigCarryover} defaultOpen />

@@ -381,3 +381,64 @@ export function PageHeader({
     </header>
   );
 }
+
+type ArtBannerPanelProps = HTMLAttributes<HTMLElement> & {
+  badge?: ReactNode;
+  description: ReactNode;
+  eyebrow?: ReactNode;
+  imageSrc: string;
+  title: ReactNode;
+};
+
+export function ArtBannerPanel({
+  badge,
+  className,
+  description,
+  eyebrow,
+  imageSrc,
+  title,
+  ...props
+}: ArtBannerPanelProps) {
+  return (
+    <section
+      className={cx(
+        "relative overflow-hidden rounded-[28px] border border-slate-200 bg-slate-950 shadow-[0_28px_80px_-40px_rgba(15,23,42,0.62)]",
+        className,
+      )}
+      style={{
+        backgroundImage: `linear-gradient(90deg,rgba(7,12,18,0.88),rgba(7,12,18,0.56)_44%,rgba(7,12,18,0.36)), url(${imageSrc})`,
+        backgroundPosition: "center",
+        backgroundSize: "cover",
+      }}
+      {...props}
+    >
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.22),transparent_28%)]" />
+      <div className="relative z-10 flex min-h-[176px] flex-col justify-between gap-6 p-5 sm:p-6">
+        <div className="flex flex-wrap items-center gap-2">
+          {eyebrow ? (
+            <span className="text-xs font-semibold uppercase tracking-[0.24em] text-white/72">
+              {eyebrow}
+            </span>
+          ) : null}
+          {badge ? <div>{badge}</div> : null}
+        </div>
+        <div className="max-w-2xl space-y-2">
+          {typeof title === "string" ? (
+            <h2 className="font-display text-[1.45rem] font-semibold tracking-[-0.05em] text-white sm:text-[1.7rem]">
+              {title}
+            </h2>
+          ) : (
+            title
+          )}
+          {typeof description === "string" ? (
+            <p className="text-sm leading-6 text-white/82 sm:text-[0.95rem]">
+              {description}
+            </p>
+          ) : (
+            description
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}

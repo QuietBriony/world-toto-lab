@@ -16,15 +16,18 @@ World Toto Lab の画像アセット方針メモです。
 
 - `public/art/strategies/orthodox-model.webp`
 - `public/art/strategies/ev-hunter.webp`
+- `public/art/strategies/human-consensus.webp`
+- `public/art/strategies/draw-alert.webp`
 - `public/art/strategies/public-favorite.svg`
-- `public/art/strategies/human-consensus.svg`
 - `public/art/strategies/sleeping-value.svg`
-- `public/art/strategies/draw-alert.svg`
 - `public/art/strategies/upset.svg`
 
 ### ダッシュボードの体験バナー
 
 - `public/art/banners/demo-lab.webp`
+- `public/art/banners/big-watch.webp`
+- `public/art/banners/goal3-board.webp`
+- `public/art/banners/winner-board.webp`
 
 ## まず差し替える優先順
 
@@ -113,7 +116,12 @@ Constraints: no text, no watermark, no logos
 
 - `orthodox-model.webp`
 - `ev-hunter.webp`
+- `human-consensus.webp`
+- `draw-alert.webp`
 - `demo-lab.webp`
+- `big-watch.webp`
+- `goal3-board.webp`
+- `winner-board.webp`
 
-の 3 枚は、実生成した PNG を採用しています。  
+の 7 枚は、実生成した画像を `webp` 化して採用しています。  
 残りは SVG の簡易プレースホルダーなので、あとから同じ枠に差し替えできます。
