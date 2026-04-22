@@ -648,9 +648,23 @@ export default function DashboardPage() {
         </div>
       </CollapsibleSectionCard>
 
-      <SectionCard
+      <CollapsibleSectionCard
         title="期待値ウォッチ"
-        description="立ち上げ時に『いま見る価値が大きい別商品』を先に出します。GOAL3 は一覧同期寄り、BIG は公式同期ベースの高還元監視、WINNER は1試合ボードに分けています。"
+        description="GOAL3 / BIG / WINNER の別商品で、いま見ておきたい回だけをまとめています。通常は閉じておいて、要確認が出たときだけ開けば十分です。"
+        badge={
+          <Badge
+            tone={
+              goal3AttentionCount > 0 || bigOfficialAttentionCount > 0 || bigOfficialShockCount > 0
+                ? "teal"
+                : "slate"
+            }
+          >
+            {goal3AttentionCount > 0 || bigOfficialAttentionCount > 0 || bigOfficialShockCount > 0
+              ? "要確認あり"
+              : "補助導線"}
+          </Badge>
+        }
+        defaultOpen={goal3AttentionCount > 0 || bigOfficialAttentionCount > 0 || bigOfficialShockCount > 0}
       >
         <div className="grid gap-4 xl:grid-cols-3">
           <div className="rounded-[24px] border border-slate-200 bg-slate-50/90 p-5">
@@ -806,7 +820,7 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
-      </SectionCard>
+      </CollapsibleSectionCard>
 
       {!isSupabaseConfigured() ? (
         <ConfigurationNotice />

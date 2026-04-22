@@ -714,29 +714,43 @@ function WorkspacePageContent() {
             currentPath={appRoute.workspace}
           />
 
-          <SectionCard
-            title="Mode / Data Profile"
-            description="W杯と通常totoで材料の厚みを分けつつ、確率・Edge・EV のロジックは共通化しています。"
+          <CollapsibleSectionCard
+            title="モードと試算条件"
+            description="W杯と通常totoで材料の厚みは違いますが、確率・Edge・EV のロジックは共通です。細かい前提を確認したいときだけ開く想定です。"
+            badge={
+              <Badge
+                tone={
+                  data.round.probabilityReadiness === "ready"
+                    ? "teal"
+                    : data.round.probabilityReadiness === "partial"
+                      ? "amber"
+                      : "slate"
+                }
+              >
+                {probabilityReadinessLabel[data.round.probabilityReadiness]}
+              </Badge>
+            }
+            defaultOpen={data.round.probabilityReadiness !== "ready"}
           >
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
               <StatCard
-                label="Mode"
+                label="モード"
                 value={competitionTypeLabel[data.round.competitionType]}
                 compact
                 hint={sportContextLabel[data.round.sportContext]}
                 tone="positive"
               />
               <StatCard
-                label="Data Profile"
+                label="データの厚み"
                 value={dataProfileLabel[data.round.dataProfile]}
                 compact
                 hint={primaryUseLabel[data.round.primaryUse]}
               />
               <StatCard
-                label="Probability"
+                label="試算状態"
                 value={probabilityReadinessLabel[data.round.probabilityReadiness]}
                 compact
-                hint="ready / partial / low_confidence / not_ready"
+                hint="試算可能 / 部分試算 / 低信頼 / 未設定"
                 tone={
                   data.round.probabilityReadiness === "ready"
                     ? "positive"
@@ -756,7 +770,7 @@ function WorkspacePageContent() {
                 }
               />
             </div>
-          </SectionCard>
+          </CollapsibleSectionCard>
 
       <CollapsibleSectionCard
         title="Round Builder"
