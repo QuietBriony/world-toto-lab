@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 
 import {
@@ -5,7 +7,8 @@ import {
   secondaryButtonClassName,
   SectionCard,
 } from "@/components/ui";
-import { appRoute } from "@/lib/round-links";
+import { appRoute, buildRoundHref } from "@/lib/round-links";
+import { useDashboardData } from "@/lib/use-app-data";
 
 export function ConfigurationNotice() {
   return (
@@ -71,6 +74,51 @@ export function ErrorNotice({
       }
     >
       <p className="text-sm text-rose-700">{error}</p>
+    </SectionCard>
+  );
+}
+
+export function RoundMissingNotice({
+  onRetry,
+}: {
+  onRetry?: () => void;
+}) {
+  const { data } = useDashboardData();
+  const latestRound = data?.rounds[0] ?? null;
+
+  return (
+    <SectionCard
+      title="このラウンドは見つかりません"
+      description="古いリンクを開いたか、削除されたラウンドを見ている可能性があります。"
+      actions={
+        <div className="flex flex-wrap gap-2">
+          <Link href={appRoute.dashboard} className={secondaryButtonClassName}>
+            ダッシュボードへ
+          </Link>
+          {latestRound ? (
+            <Link
+              href={buildRoundHref(appRoute.workspace, latestRound.id)}
+              className={buttonClassName}
+            >
+              いまの本番回を開く
+            </Link>
+          ) : null}
+          {onRetry ? (
+            <button type="button" className={secondaryButtonClassName} onClick={onRetry}>
+              再読み込み
+            </button>
+          ) : null}
+        </div>
+      }
+    >
+      <p className="text-sm text-slate-600">
+        まずはダッシュボードへ戻り、今あるラウンドから開き直してください。
+      </p>
+      {latestRound ? (
+        <p className="mt-2 text-sm text-slate-500">
+          直近の本番回: {latestRound.title}
+        </p>
+      ) : null}
     </SectionCard>
   );
 }

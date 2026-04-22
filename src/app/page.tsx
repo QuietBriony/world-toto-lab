@@ -17,7 +17,6 @@ import {
   CollapsibleSectionCard,
   cx,
   fieldClassName,
-  PageHeader,
   secondaryButtonClassName,
   SectionCard,
   StatCard,
@@ -586,18 +585,7 @@ export default function DashboardPage() {
   const demoLabImageSrc = resolveArtAsset(pathname, demoLabArt.src);
 
   return (
-    <div className="space-y-8">
-      <PageHeader
-        className="gap-3 p-4 sm:p-5 xl:items-center"
-        eyebrow="ワールドtotoラボ"
-        title={
-          <div className="font-display text-[2rem] font-semibold tracking-[-0.08em] text-white sm:text-[2.4rem]">
-            W杯totoの共有ダッシュボード
-          </div>
-        }
-        description="本番回を作る、開く、候補を比べる。まず使う入口だけを先に置いています。"
-      />
-
+    <div className="space-y-6">
       {!isSupabaseConfigured() ? (
         <ConfigurationNotice />
       ) : loading && !data ? (
@@ -608,7 +596,7 @@ export default function DashboardPage() {
         <>
           <SectionCard
             title="本番ラウンド"
-            description="まずは直近の本番回を開くか、新しく1回作るだけで十分です。別の商品や補助機能は下にまとめています。"
+            description="まずは直近の本番回を開くか、新しく1回作るだけで十分です。補助機能は下にまとめています。"
           >
             <ArtBannerPanel
               badge={<Badge tone="teal">{latestRound ? "進行中の本番回" : "最初の1回を作る"}</Badge>}

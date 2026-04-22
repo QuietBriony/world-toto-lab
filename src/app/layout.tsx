@@ -25,12 +25,6 @@ export const metadata: Metadata = {
   applicationName: "ワールドtotoラボ",
 };
 
-const complianceNotes = [
-  "分析と記録のためのサイトです",
-  "的中や利益は保証しません",
-  "購入やお金のやり取りは扱いません",
-];
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -79,27 +73,6 @@ export default function RootLayout({
                   </Link>
                 </div>
               </div>
-
-              <details
-                className={cx(
-                  "rounded-[22px] border border-white/12 bg-[linear-gradient(135deg,rgba(33,15,4,0.88),rgba(87,48,12,0.78))] px-3 py-3",
-                  "shadow-[0_24px_80px_-40px_rgba(0,0,0,0.55)]",
-                )}
-              >
-                <summary className="cursor-pointer list-none text-sm font-semibold text-amber-50 [&::-webkit-details-marker]:hidden">
-                  このサイトの前提
-                </summary>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {complianceNotes.map((note) => (
-                    <span
-                      key={note}
-                      className="inline-flex items-center rounded-full border border-amber-300/25 bg-white/8 px-3 py-1.5 text-xs font-medium text-amber-50 shadow-[0_10px_24px_-22px_rgba(120,53,15,0.95)]"
-                    >
-                      {note}
-                    </span>
-                  ))}
-                </div>
-              </details>
             </div>
           </header>
 

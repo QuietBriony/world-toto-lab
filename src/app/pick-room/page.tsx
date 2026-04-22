@@ -14,6 +14,7 @@ import {
   ConfigurationNotice,
   ErrorNotice,
   LoadingNotice,
+  RoundMissingNotice,
   RoundRequiredNotice,
 } from "@/components/app/states";
 import { RoundNav } from "@/components/round-nav";
@@ -191,6 +192,10 @@ function PickRoomPageContent() {
 
   if (loading && !data) {
     return <LoadingNotice title="候補カードを準備中" />;
+  }
+
+  if (error === "選択したラウンドが見つかりません。") {
+    return <RoundMissingNotice onRetry={() => void refresh()} />;
   }
 
   if (error) {

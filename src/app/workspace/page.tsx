@@ -15,6 +15,7 @@ import {
   ConfigurationNotice,
   ErrorNotice,
   LoadingNotice,
+  RoundMissingNotice,
   RoundRequiredNotice,
 } from "@/components/app/states";
 import { RoundNav } from "@/components/round-nav";
@@ -700,6 +701,8 @@ function WorkspacePageContent() {
         <RoundRequiredNotice />
       ) : loading && !data ? (
         <LoadingNotice title="ラウンドを読み込み中" />
+      ) : error === "選択したラウンドが見つかりません。" ? (
+        <RoundMissingNotice onRetry={() => void refresh()} />
       ) : error && !data ? (
         <ErrorNotice error={error} onRetry={() => void refresh()} />
       ) : data ? (
