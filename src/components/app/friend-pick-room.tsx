@@ -35,9 +35,9 @@ const voteLabel: Record<CandidateVoteValue, string> = {
 };
 
 const candidateStrategyLabel: Record<CandidateStrategyType, string> = {
-  orthodox_model: "AI本線",
+  orthodox_model: "王道",
   public_favorite: "公式人気",
-  human_consensus: "人力集約",
+  human_consensus: "人力推し",
   ev_hunter: "EV狙い",
   sleeping_value: "人気薄狙い",
   draw_alert: "引分警報",
@@ -58,13 +58,13 @@ const candidateStrategyTone: Record<
 };
 
 const candidateOriginCue: Record<CandidateStrategyType, string> = {
-  orthodox_model: "AIの本線寄り。モデル確率を主軸にした比較用の並びです。",
-  public_favorite: "公式人気の並びを土台にした王道比較用です。",
-  human_consensus: "管理者の手入力予想を寄せて固めた人力ベースです。",
-  ev_hunter: "モデル確率と公式人気のズレから期待値を探す候補です。",
-  sleeping_value: "人気薄でも拾う価値がありそうな目を厚めに入れています。",
+  orthodox_model: "モデル試算を土台にした、まず比べるための本線です。",
+  public_favorite: "公式人気の並びをそのまま見たいときの比較用です。",
+  human_consensus: "みんなの手入力予想を寄せて固めた人力ベースです。",
+  ev_hunter: "モデル試算と公式人気の差から、妙味を探す候補です。",
+  sleeping_value: "人気薄でも拾う価値がありそうな目を厚めにしています。",
   draw_alert: "引き分けシグナルが強い試合を優先した候補です。",
-  upset: "人気サイドから外して遊び筋を混ぜた逆張り候補です。",
+  upset: "人気から外して、遊び筋を混ぜた逆張り候補です。",
 };
 
 const candidateDataQualityLabel: Record<CandidateDataQuality, string> = {
@@ -316,8 +316,8 @@ export function CandidateComparisonTable(props: {
 }) {
   return (
     <CollapsibleSectionCard
-      title="Candidate Comparison"
-      description="王道・人力・EV候補の出どころと注意点までまとめて比較できます。"
+      title="候補をまとめて比べる"
+      description="王道・人力推し・EV狙いの違いを、出どころと注意点ごとに比べられます。"
       defaultOpen={false}
       badge={<Badge tone="slate">比較表</Badge>}
     >

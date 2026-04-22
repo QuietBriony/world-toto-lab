@@ -11,6 +11,7 @@ import {
 } from "@/components/app/states";
 import { FeedbackBoard } from "@/components/feedback-board";
 import {
+  ArtBannerPanel,
   Badge,
   buttonClassName,
   CollapsibleSectionCard,
@@ -598,32 +599,25 @@ export default function DashboardPage() {
             title="本番ラウンド"
             description="まずは直近の本番回を開くか、新しく1回作るだけで十分です。別の商品や補助機能は下にまとめています。"
           >
-            <div className="grid gap-4 xl:grid-cols-[1.25fr_0.75fr]">
-              <div
-                className="relative overflow-hidden rounded-[32px] border border-emerald-200/55 bg-slate-950 p-5 shadow-[0_28px_80px_-42px_rgba(0,0,0,0.68)]"
-                style={{
-                  backgroundImage: `linear-gradient(120deg,rgba(4,12,17,0.86),rgba(4,12,17,0.54)_55%,rgba(6,12,18,0.78)), url(${demoLabArt.src})`,
-                  backgroundPosition: "center",
-                  backgroundSize: "cover",
-                }}
-              >
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,197,94,0.2),transparent_26%),radial-gradient(circle_at_bottom_right,rgba(245,158,11,0.16),transparent_20%)]" />
-                <div className="relative z-10 grid gap-6 xl:grid-cols-[1.18fr_0.82fr]">
+            <ArtBannerPanel
+              badge={<Badge tone="teal">{latestRound ? "進行中の本番回" : "最初の1回を作る"}</Badge>}
+              className="border-emerald-200/55"
+              contentClassName="min-h-[320px] gap-8"
+              description={
+                latestRound
+                  ? `${latestRound.title} の続きから入り、候補カード、自分の予想、振り返りまでつなげられます。`
+                  : "まずはラウンドを1つ作り、試合を入れて、候補カードと自分の予想が見える状態まで進めます。"
+              }
+              imageSrc={demoLabArt.src}
+              title={latestRound ? latestRound.title : "最初の本番回を作る"}
+              actions={
+                <Badge tone="slate">{liveRoundCount}本番回</Badge>
+              }
+              footer={
+                <div className="grid gap-4 xl:grid-cols-[1.12fr_0.88fr]">
                   <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge tone="teal">{latestRound ? "進行中の本番回" : "最初の1回を作る"}</Badge>
-                      <Badge tone="slate">{liveRoundCount}本番回</Badge>
+                    <div className="flex flex-wrap gap-2">
                       <Badge tone="amber">{data.users.length}人</Badge>
-                    </div>
-                    <h2 className="mt-4 font-display text-[2rem] font-semibold tracking-[-0.08em] text-white sm:text-[2.6rem]">
-                      {latestRound ? latestRound.title : "最初の本番回を作る"}
-                    </h2>
-                    <p className="mt-4 max-w-[34rem] text-sm leading-7 text-white/82 sm:text-base">
-                      {latestRound
-                        ? `${latestRound.title} の続きから入り、候補カード、自分の予想、振り返りまでつなげられます。`
-                        : "まずはラウンドを1つ作り、試合を入れて、候補カードと自分の予想が見える状態まで進めます。"}
-                    </p>
-                    <div className="mt-5 flex flex-wrap gap-2">
                       <Badge tone="slate">
                         {latestRound ? `${latestRound.matchCount}試合` : "13試合から始める"}
                       </Badge>
@@ -632,11 +626,9 @@ export default function DashboardPage() {
                           次: {latestRoundProgress.nextStep.label}
                         </Badge>
                       ) : null}
-                      <Badge tone="sky">
-                        入力 {formatPercent(latestRoundProgress?.pickCompletion ?? 0)}
-                      </Badge>
+                      <Badge tone="sky">入力 {formatPercent(latestRoundProgress?.pickCompletion ?? 0)}</Badge>
                     </div>
-                    <div className="mt-6 flex flex-wrap gap-3">
+                    <div className="mt-5 flex flex-wrap gap-3">
                       <Link
                         href={latestRound ? buildRoundHref(appRoute.workspace, latestRound.id) : createRoundAnchor}
                         className={buttonClassName}
@@ -652,7 +644,7 @@ export default function DashboardPage() {
                     </div>
                   </div>
 
-                  <div className="grid gap-3">
+                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
                     <div className="rounded-[28px] border border-white/16 bg-black/32 p-5 backdrop-blur-md">
                       <div className="flex items-center justify-between gap-3">
                         <div>
@@ -671,7 +663,7 @@ export default function DashboardPage() {
                           </div>
                         </div>
                       </div>
-                      <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                      <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-2">
                         <div className="rounded-[18px] bg-white/6 px-3 py-3 text-sm text-white/78">
                           試合設定 {latestRound ? progressValue(latestRoundProgress?.configuredMatches ?? 0, latestRound.matchCount) : "未作成"}
                         </div>
@@ -723,43 +715,8 @@ export default function DashboardPage() {
                     </div>
                   </div>
                 </div>
-              </div>
-
-              <div className="grid gap-3">
-                <div className="rounded-[28px] border border-emerald-200/65 bg-[linear-gradient(145deg,rgba(236,253,245,0.96),rgba(220,252,231,0.88))] p-5 shadow-[0_22px_52px_-34px_rgba(15,23,42,0.32)]">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge tone="teal">まず見る場所</Badge>
-                    <Badge tone="slate">{latestRound ? "準備済み" : "作成前"}</Badge>
-                  </div>
-                  <h3 className="mt-3 font-display text-[1.3rem] font-semibold tracking-[-0.05em] text-slate-950">
-                    候補カードと自分の予想
-                  </h3>
-                  <p className="mt-3 text-sm leading-6 text-slate-600">
-                    本番回を作ったら、まずは候補カードを見るか、自分の予想を入れるだけで十分です。
-                  </p>
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    <Link href={latestPickRoomHref} className={buttonClassName}>
-                      候補カード
-                    </Link>
-                    <Link href={latestSimpleViewHref} className={secondaryButtonClassName}>
-                      自分の予想
-                    </Link>
-                  </div>
-                </div>
-
-                <div className="rounded-[24px] border border-slate-200 bg-slate-50/92 p-4">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge tone="slate">補助機能</Badge>
-                  </div>
-                  <h3 className="mt-3 font-display text-lg font-semibold tracking-[-0.04em] text-slate-950">
-                    別の商品や特別回は下へ
-                  </h3>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">
-                    BIG、GOAL3、WINNER は下の `期待値ウォッチ` にまとめています。いつも使う導線ではありません。
-                  </p>
-                </div>
-              </div>
-            </div>
+              }
+            />
 
             <div className="mt-5 grid gap-4 md:grid-cols-3">
               {[

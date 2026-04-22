@@ -383,18 +383,24 @@ export function PageHeader({
 }
 
 type ArtBannerPanelProps = HTMLAttributes<HTMLElement> & {
+  actions?: ReactNode;
   badge?: ReactNode;
+  contentClassName?: string;
   description: ReactNode;
   eyebrow?: ReactNode;
+  footer?: ReactNode;
   imageSrc: string;
   title: ReactNode;
 };
 
 export function ArtBannerPanel({
+  actions,
   badge,
   className,
+  contentClassName,
   description,
   eyebrow,
+  footer,
   imageSrc,
   title,
   ...props
@@ -413,14 +419,22 @@ export function ArtBannerPanel({
       {...props}
     >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.22),transparent_28%)]" />
-      <div className="relative z-10 flex min-h-[176px] flex-col justify-between gap-6 p-5 sm:p-6">
-        <div className="flex flex-wrap items-center gap-2">
-          {eyebrow ? (
-            <span className="text-xs font-semibold uppercase tracking-[0.24em] text-white/72">
-              {eyebrow}
-            </span>
-          ) : null}
-          {badge ? <div>{badge}</div> : null}
+      <div
+        className={cx(
+          "relative z-10 flex min-h-[176px] flex-col justify-between gap-6 p-5 sm:p-6",
+          contentClassName,
+        )}
+      >
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            {eyebrow ? (
+              <span className="text-xs font-semibold uppercase tracking-[0.24em] text-white/72">
+                {eyebrow}
+              </span>
+            ) : null}
+            {badge ? <div>{badge}</div> : null}
+          </div>
+          {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
         </div>
         <div className="max-w-2xl space-y-2">
           {typeof title === "string" ? (
@@ -438,6 +452,7 @@ export function ArtBannerPanel({
             description
           )}
         </div>
+        {footer ? <div>{footer}</div> : null}
       </div>
     </section>
   );
