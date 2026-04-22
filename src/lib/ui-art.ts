@@ -13,6 +13,13 @@ type BoardHeroArt = {
   title: string;
 };
 
+type EmptyStateArt = {
+  accentLabel: string;
+  description: string;
+  src: string;
+  title: string;
+};
+
 export const candidateStrategyArt: Record<CandidateStrategyType, CardArt> = {
   orthodox_model: {
     accentLabel: "王道ライン",
@@ -22,7 +29,7 @@ export const candidateStrategyArt: Record<CandidateStrategyType, CardArt> = {
   public_favorite: {
     accentLabel: "人気比較",
     description: "人気の集まりをスコアパネル風に見せる背景です。",
-    src: "/art/strategies/public-favorite.svg",
+    src: "/art/strategies/public-favorite.webp",
   },
   human_consensus: {
     accentLabel: "みんなの声",
@@ -37,7 +44,7 @@ export const candidateStrategyArt: Record<CandidateStrategyType, CardArt> = {
   sleeping_value: {
     accentLabel: "人気薄チェック",
     description: "静かな暗色の中に細い光を置いた、人気薄向けの背景です。",
-    src: "/art/strategies/sleeping-value.svg",
+    src: "/art/strategies/sleeping-value.webp",
   },
   draw_alert: {
     accentLabel: "引分警報",
@@ -47,7 +54,7 @@ export const candidateStrategyArt: Record<CandidateStrategyType, CardArt> = {
   upset: {
     accentLabel: "波乱シグナル",
     description: "斜めのスピード線と強めの差し色で、荒れ筋を表します。",
-    src: "/art/strategies/upset.svg",
+    src: "/art/strategies/upset.webp",
   },
 };
 
@@ -75,5 +82,14 @@ export const boardHeroArt: Record<"big" | "goal3" | "winner", BoardHeroArt> = {
     description: "1試合の 1 / 0 / 2 を、公式人気との差で見比べるためのバナーです。",
     src: "/art/banners/winner-board.webp",
     title: "1試合の見どころを見やすく整理",
+  },
+};
+
+export const emptyStateArt: Record<"bigWatch", EmptyStateArt> = {
+  bigWatch: {
+    accentLabel: "BIGウォッチ",
+    description: "まだ公式 snapshot がない時も、次の更新待ちと比較テンプレを見分けやすくする空状態バナーです。",
+    src: "/art/banners/big-empty.webp",
+    title: "いまは次の更新を待ちながら比べる",
   },
 };

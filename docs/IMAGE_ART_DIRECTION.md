@@ -18,9 +18,9 @@ World Toto Lab の画像アセット方針メモです。
 - `public/art/strategies/ev-hunter.webp`
 - `public/art/strategies/human-consensus.webp`
 - `public/art/strategies/draw-alert.webp`
-- `public/art/strategies/public-favorite.svg`
-- `public/art/strategies/sleeping-value.svg`
-- `public/art/strategies/upset.svg`
+- `public/art/strategies/public-favorite.webp`
+- `public/art/strategies/sleeping-value.webp`
+- `public/art/strategies/upset.webp`
 
 ### ダッシュボードの体験バナー
 
@@ -28,6 +28,7 @@ World Toto Lab の画像アセット方針メモです。
 - `public/art/banners/big-watch.webp`
 - `public/art/banners/goal3-board.webp`
 - `public/art/banners/winner-board.webp`
+- `public/art/banners/big-empty.webp`
 
 ## まず差し替える優先順
 
@@ -118,10 +119,14 @@ Constraints: no text, no watermark, no logos
 - `ev-hunter.webp`
 - `human-consensus.webp`
 - `draw-alert.webp`
+- `public-favorite.webp`
+- `sleeping-value.webp`
+- `upset.webp`
 - `demo-lab.webp`
 - `big-watch.webp`
 - `goal3-board.webp`
 - `winner-board.webp`
+- `big-empty.webp`
 
-の 7 枚は、実生成した画像を `webp` 化して採用しています。  
-残りは SVG の簡易プレースホルダーなので、あとから同じ枠に差し替えできます。
+の 12 枚は、実生成した画像を `webp` 化して採用しています。  
+戦略カード側はこれで主要タイプがほぼ実画像化できたので、次は空状態やイベントカードを足していく方針です。

@@ -42,7 +42,7 @@ import {
   normalizeBigShockSignal,
 } from "@/lib/big-carryover";
 import { appRoute, buildHref } from "@/lib/round-links";
-import { boardHeroArt } from "@/lib/ui-art";
+import { boardHeroArt, emptyStateArt } from "@/lib/ui-art";
 import { useBigOfficialWatch } from "@/lib/use-app-data";
 
 function parseNumberInput(value: string | null, fallback: number) {
@@ -232,9 +232,17 @@ function BigCarryoverPageContent() {
           <p className="mt-3 text-sm text-slate-500">BIG公式ページから現在の5商品を同期しています...</p>
         ) : null}
         {!officialWatch.error && !officialWatch.loading && officialSnapshots.length === 0 ? (
-          <p className="mt-3 text-sm text-slate-500">
-            現在の BIG 商品 snapshot をまだ取得できていません。少し待って再読み込みするか、下のテンプレ条件で先に比較できます。
-          </p>
+          <div className="mt-4 space-y-4">
+            <ArtBannerPanel
+              badge={<Badge tone="amber">{emptyStateArt.bigWatch.accentLabel}</Badge>}
+              description={emptyStateArt.bigWatch.description}
+              imageSrc={emptyStateArt.bigWatch.src}
+              title={emptyStateArt.bigWatch.title}
+            />
+            <p className="text-sm text-slate-500">
+              現在の BIG 商品 snapshot をまだ取得できていません。少し待って再読み込みするか、下のテンプレ条件で先に比較できます。
+            </p>
+          </div>
         ) : null}
         <div className="mt-5 grid gap-4 xl:grid-cols-2">
           {officialSnapshots.map((snapshot) => {
