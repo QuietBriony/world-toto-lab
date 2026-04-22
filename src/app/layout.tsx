@@ -51,11 +51,11 @@ export default function RootLayout({
           <div className="pointer-events-none absolute left-1/2 top-[-10rem] -z-10 h-[26rem] w-[26rem] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(250,204,21,0.18),rgba(250,204,21,0.03)_55%,transparent_70%)] blur-3xl" />
           <div className="pointer-events-none absolute right-[-8rem] top-[12rem] -z-10 h-[18rem] w-[18rem] rounded-full bg-[radial-gradient(circle,rgba(34,197,94,0.2),rgba(34,197,94,0.02)_68%)] blur-3xl" />
           <header className="sticky top-0 z-50 border-b border-white/10 bg-[rgba(7,19,13,0.62)] backdrop-blur-2xl">
-            <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 py-4 sm:px-6 lg:px-8">
-              <div className="flex flex-col gap-4 rounded-[28px] border border-white/12 bg-[linear-gradient(135deg,rgba(6,24,16,0.88),rgba(12,48,31,0.86))] px-4 py-4 shadow-[0_30px_90px_-48px_rgba(0,0,0,0.7)] ring-1 ring-white/5 lg:flex-row lg:items-center lg:justify-between">
+            <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-4 py-3 sm:px-6 lg:px-8">
+              <div className="flex flex-col gap-3 rounded-[24px] border border-white/12 bg-[linear-gradient(135deg,rgba(6,24,16,0.88),rgba(12,48,31,0.86))] px-4 py-3 shadow-[0_30px_90px_-48px_rgba(0,0,0,0.7)] ring-1 ring-white/5 lg:flex-row lg:items-center lg:justify-between">
                 <Link
                   href={appRoute.dashboard}
-                  className="grid gap-3 rounded-[24px] outline-none transition hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-emerald-200/70 lg:grid-cols-[auto_1fr] lg:items-end"
+                  className="flex items-center gap-3 rounded-[20px] outline-none transition hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-emerald-200/70"
                 >
                   <div className="relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-[20px] border border-emerald-200/20 bg-[linear-gradient(180deg,rgba(8,32,20,0.95),rgba(10,60,34,0.96))] font-display text-xl font-bold text-white shadow-[0_24px_70px_-38px_rgba(0,0,0,0.9)] before:absolute before:inset-[10px] before:rounded-[14px] before:border before:border-white/35 before:content-[''] after:absolute after:left-1/2 after:top-[10px] after:h-[calc(100%-20px)] after:w-px after:-translate-x-1/2 after:bg-white/30 after:content-['']">
                     <span className="relative z-10">WT</span>
@@ -65,13 +65,11 @@ export default function RootLayout({
                       <Badge tone="teal">共有ラボ</Badge>
                       <Badge tone="amber">予想と記録</Badge>
                     </div>
-                    <h1 className="mt-3 max-w-3xl text-2xl font-semibold tracking-[-0.04em] text-white sm:text-3xl lg:text-[2.25rem]">
-                      予想を持ち寄って、
-                      <br className="hidden sm:block" />
-                      みんなで見比べる
+                    <h1 className="mt-2 text-xl font-semibold tracking-[-0.04em] text-white sm:text-2xl">
+                      ワールドtotoラボ
                     </h1>
-                    <p className="mt-3 max-w-2xl text-sm leading-6 text-emerald-50/78">
-                      候補カード、自分の予想、振り返りまでを、軽く回すためのページです。
+                    <p className="mt-1 max-w-2xl text-sm leading-6 text-emerald-50/78">
+                      候補カードと自分の予想を、みんなで見比べる共有ページです。
                     </p>
                   </div>
                 </Link>
@@ -82,13 +80,16 @@ export default function RootLayout({
                 </div>
               </div>
 
-              <div
+              <details
                 className={cx(
-                  "-mx-1 overflow-x-auto rounded-[24px] border border-white/12 bg-[linear-gradient(135deg,rgba(33,15,4,0.88),rgba(87,48,12,0.78))] px-3 py-3 sm:mx-0",
+                  "rounded-[22px] border border-white/12 bg-[linear-gradient(135deg,rgba(33,15,4,0.88),rgba(87,48,12,0.78))] px-3 py-3",
                   "shadow-[0_24px_80px_-40px_rgba(0,0,0,0.55)]",
                 )}
               >
-                <div className="flex min-w-max gap-2 px-1 sm:min-w-0 sm:flex-wrap sm:px-0">
+                <summary className="cursor-pointer list-none text-sm font-semibold text-amber-50 [&::-webkit-details-marker]:hidden">
+                  このサイトの前提
+                </summary>
+                <div className="mt-3 flex flex-wrap gap-2">
                   {complianceNotes.map((note) => (
                     <span
                       key={note}
@@ -98,7 +99,7 @@ export default function RootLayout({
                     </span>
                   ))}
                 </div>
-              </div>
+              </details>
             </div>
           </header>
 
