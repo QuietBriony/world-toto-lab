@@ -78,6 +78,8 @@ export function RoundNav({
     activeItemIndex >= 0 && activeItemIndex < resolvedItems.length - 1
       ? resolvedItems[activeItemIndex + 1]
       : null;
+  const activeItem =
+    activeItemIndex >= 0 ? resolvedItems[activeItemIndex] : null;
 
   return (
     <nav
@@ -101,7 +103,92 @@ export function RoundNav({
             {roundStatus ? <Badge tone="info">{roundStatus}</Badge> : null}
           </div>
 
-          <div className="-mx-1 overflow-x-auto pb-1 no-scrollbar lg:mx-0 lg:overflow-visible">
+          <div className="flex flex-col gap-3 lg:hidden">
+            <div className="rounded-[22px] border border-slate-200 bg-slate-50/82 px-4 py-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
+                    今いる場所
+                  </p>
+                  <p className="mt-1 text-base font-semibold tracking-tight text-slate-950">
+                    {activeItem?.label ?? roundTitle ?? "ラウンドメニュー"}
+                  </p>
+                </div>
+                {resolvedItems.length > 0 ? (
+                  <Badge tone="sky">
+                    {activeItemIndex >= 0 ? activeItemIndex + 1 : 1} / {resolvedItems.length}
+                  </Badge>
+                ) : null}
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Link
+                  href={appRoute.dashboard}
+                  className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-teal-200 hover:bg-teal-50 hover:text-teal-900"
+                >
+                  ダッシュボード
+                </Link>
+                {previousItem ? (
+                  <Link
+                    href={previousItem.href}
+                    className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+                  >
+                    前へ
+                  </Link>
+                ) : null}
+                {nextItem ? (
+                  <Link
+                    href={nextItem.href}
+                    className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-950 transition hover:border-emerald-300 hover:bg-emerald-100/70"
+                  >
+                    次へ
+                  </Link>
+                ) : null}
+              </div>
+            </div>
+
+            {resolvedItems.length > 0 ? (
+              <details className="rounded-[22px] border border-slate-200 bg-white/84 px-4 py-4 shadow-[0_18px_42px_-34px_rgba(15,23,42,0.18)]">
+                <summary className="cursor-pointer list-none text-sm font-semibold text-slate-800 marker:hidden">
+                  ほかの画面を開く
+                </summary>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {resolvedItems.map((item) => {
+                    const active = isActivePath(activePathname, item.href);
+                    const label = item.shortLabel ?? item.label;
+
+                    if (item.disabled) {
+                      return (
+                        <span
+                          key={`mobile-${item.href}`}
+                          className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-400"
+                        >
+                          {label}
+                        </span>
+                      );
+                    }
+
+                    return (
+                      <Link
+                        key={`mobile-${item.href}`}
+                        href={item.href}
+                        className={cx(
+                          "inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition",
+                          active
+                            ? "border-teal-300 bg-teal-50 text-teal-900"
+                            : "border-slate-200 bg-white text-slate-600 hover:border-teal-200 hover:bg-teal-50 hover:text-teal-900",
+                        )}
+                      >
+                        {label}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </details>
+            ) : null}
+          </div>
+
+          <div className="-mx-1 hidden overflow-x-auto pb-1 no-scrollbar lg:mx-0 lg:block lg:overflow-visible">
             <div className="flex min-w-max gap-2 px-1 lg:min-w-0 lg:flex-wrap lg:justify-end lg:px-0">
               <Link
                 href={appRoute.dashboard}
@@ -157,8 +244,8 @@ export function RoundNav({
 
         {resolvedItems.length > 0 ? (
           <div className="rounded-[24px] border border-slate-200 bg-slate-50/82 px-4 py-4">
-            <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-              <div className="min-w-0">
+            <div className="flex flex-col gap-3">
+              <div className="hidden min-w-0 xl:block">
                 <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
                   おすすめ順
                 </p>

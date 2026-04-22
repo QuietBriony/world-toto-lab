@@ -296,35 +296,8 @@ function SimpleViewPageContent() {
     <div className="space-y-8">
       <PageHeader
         eyebrow="自分の予想"
-        title="ラウンドの見どころ"
-        description="試合一覧を軽く追いながら、そのまま 1 / 0 / 2 を入れて保存できるシンプル入力画面です。"
-        actions={
-          <div className="flex flex-wrap gap-3">
-            {winnerLike ? (
-              <Link
-                href={buildRoundHref(appRoute.winnerValue, data.round.id, { user: activeUser.id })}
-                className={secondaryButtonClassName}
-              >
-                WINNERボード
-              </Link>
-            ) : null}
-            <Link
-              href={buildRoundHref(appRoute.play, data.round.id, { user: activeUser.id })}
-              className={secondaryButtonClassName}
-            >
-              みんなで見る
-            </Link>
-            <Link
-              href={buildRoundHref(appRoute.pickRoom, data.round.id, { user: activeUser.id })}
-              className={buttonClassName}
-            >
-              候補カード
-            </Link>
-            <Link href={buildRoundHref(appRoute.workspace, data.round.id)} className={secondaryButtonClassName}>
-              ラウンド詳細
-            </Link>
-          </div>
-        }
+        title="自分の予想を入れる"
+        description="試合を見ながら 1 / 0 / 2 を入れて、そのまま保存できます。"
       />
 
       <RoundNav
@@ -489,9 +462,9 @@ function SimpleViewPageContent() {
         </form>
       </SectionCard>
 
-      <SectionCard
+      <CollapsibleSectionCard
         title="いま出ている候補"
-        description="細かい比較は候補カード側で行い、この画面では並びをざっと確認できます。"
+        description="王道や EV 狙いの並びをざっと見たいときだけ開きます。細かい比較は候補カード側で見られます。"
         actions={
           <Link
             href={buildRoundHref(appRoute.pickRoom, data.round.id, { user: activeUser.id })}
@@ -500,6 +473,8 @@ function SimpleViewPageContent() {
             候補を詳しく見る
           </Link>
         }
+        defaultOpen={false}
+        badge={<Badge tone="slate">候補の見本</Badge>}
       >
         {candidatePreviewTickets.length === 0 ? (
           <p className="text-sm leading-6 text-slate-600">
@@ -525,7 +500,7 @@ function SimpleViewPageContent() {
             ))}
           </div>
         )}
-      </SectionCard>
+      </CollapsibleSectionCard>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         <StatCard label="ラウンド" value={data.round.title} compact />

@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
@@ -25,7 +24,6 @@ import {
   PageHeader,
   SectionCard,
   StatCard,
-  secondaryButtonClassName,
 } from "@/components/ui";
 import {
   favoriteOutcomeForBucket,
@@ -339,23 +337,7 @@ function PlayPageContent() {
       <PageHeader
         eyebrow="みんなで見る"
         title="どれにする？"
-        description="難しい分析はしまって、候補カードと自分の1 / 0 / 2だけを前に出した共有ページです。"
-        actions={
-          <div className="flex flex-wrap gap-3">
-            <Link
-              href={buildRoundHref(appRoute.pickRoom, data.round.id, { user: activeUser.id })}
-              className={secondaryButtonClassName}
-            >
-              候補カード
-            </Link>
-            <Link
-              href={buildRoundHref(appRoute.workspace, data.round.id)}
-              className={secondaryButtonClassName}
-            >
-              ラウンド詳細
-            </Link>
-          </div>
-        }
+        description="候補を見て、そのまま自分の予想も入れる共有ページです。"
       />
 
       <RoundNav

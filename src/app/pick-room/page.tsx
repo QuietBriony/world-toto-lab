@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 
@@ -304,43 +303,8 @@ function PickRoomPageContent() {
     <div className="space-y-8">
       <PageHeader
         eyebrow="候補カード"
-        title="どれで行く？"
-        description="王道・人力推し・EV狙いを数本に絞って、みんなで比較しながら最終候補を決めるための共有画面です。"
-        actions={
-          <div className="flex flex-wrap gap-3">
-            {winnerLike ? (
-              <Link
-                href={buildRoundHref(appRoute.winnerValue, data.round.id, { user: activeUser?.id })}
-                className={secondaryButtonClassName}
-              >
-                WINNERボード
-              </Link>
-            ) : null}
-            <Link
-              href={buildRoundHref(appRoute.simpleView, data.round.id, { user: activeUser?.id })}
-              className={buttonClassName}
-            >
-              自分の予想
-            </Link>
-            <Link
-              href={buildRoundHref(appRoute.play, data.round.id, { user: activeUser?.id })}
-              className={secondaryButtonClassName}
-            >
-              みんなで見る
-            </Link>
-            <button
-              type="button"
-              onClick={() => {
-                autoRefreshIdentityRef.current = null;
-                void refresh();
-              }}
-              className={secondaryButtonClassName}
-              disabled={busyKey === "refresh"}
-            >
-              候補を再読み込み
-            </button>
-          </div>
-        }
+        title="候補を比べる"
+        description="王道・人力推し・EV狙いを見比べて、どれで行くか決める画面です。"
       />
 
       <RoundNav
@@ -359,7 +323,7 @@ function PickRoomPageContent() {
               ]
             : []),
           { href: buildRoundHref(appRoute.pickRoom, data.round.id, { user: activeUser?.id }), label: "候補カード" },
-          { href: buildRoundHref(appRoute.picks, data.round.id, { user: activeUser?.id }), label: "自分の予想" },
+          { href: buildRoundHref(appRoute.picks, data.round.id, { user: activeUser?.id }), label: "詳細入力" },
           { href: buildRoundHref(appRoute.workspace, data.round.id), label: "ラウンド詳細" },
         ]}
       />
@@ -569,10 +533,17 @@ function PickRoomPageContent() {
         </div>
       </CollapsibleSectionCard>
 
-      <CandidateComparisonTable
-        tickets={candidateTickets}
-        summaries={candidateVoteSummary}
-      />
+      <CollapsibleSectionCard
+        title="候補を一覧で比べる"
+        description="細かい数字まで並べて見たいときだけ開きます。ふだんは上のカード比較だけで十分です。"
+        defaultOpen={false}
+        badge={<Badge tone="slate">詳細比較</Badge>}
+      >
+        <CandidateComparisonTable
+          tickets={candidateTickets}
+          summaries={candidateVoteSummary}
+        />
+      </CollapsibleSectionCard>
     </div>
   );
 }
