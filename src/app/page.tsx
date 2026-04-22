@@ -602,7 +602,7 @@ export default function DashboardPage() {
               badge={<Badge tone="teal">{latestRound ? "進行中の本番回" : "最初の1回を作る"}</Badge>}
               className="border-emerald-200/55"
               backgroundGradient="linear-gradient(102deg,rgba(5,10,16,0.48),rgba(5,10,16,0.14)_52%,rgba(5,10,16,0.38))"
-              contentClassName="min-h-[360px] gap-8 px-5 py-5 sm:px-6 sm:py-6 lg:min-h-[392px]"
+              contentClassName="min-h-[320px] gap-6 px-4 py-4 sm:min-h-[360px] sm:px-6 sm:py-6 lg:min-h-[392px]"
               bodyClassName="max-w-[44rem] space-y-4 drop-shadow-[0_18px_40px_rgba(0,0,0,0.48)]"
               description={
                 <div className="space-y-4">
@@ -676,8 +676,35 @@ export default function DashboardPage() {
                     </div>
                   </div>
 
-                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-                    <div className="rounded-[28px] border border-white/18 bg-[linear-gradient(145deg,rgba(8,14,22,0.52),rgba(8,14,22,0.24))] p-5 shadow-[0_22px_54px_-34px_rgba(0,0,0,0.45)] backdrop-blur-md">
+                  <div className="space-y-3">
+                    <div className="rounded-[24px] border border-white/18 bg-[linear-gradient(145deg,rgba(8,14,22,0.52),rgba(8,14,22,0.24))] p-4 shadow-[0_22px_54px_-34px_rgba(0,0,0,0.45)] backdrop-blur-md md:hidden">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/60">
+                            進み具合
+                          </p>
+                          <p className="mt-2 text-sm text-white/76">
+                            {latestRoundProgress?.nextStep.label ?? "まずはラウンド作成"}
+                          </p>
+                        </div>
+                        <div className="rounded-full border border-emerald-300/30 bg-emerald-400/10 px-4 py-3 text-center">
+                          <div className="font-display text-[1.6rem] font-semibold tracking-[-0.08em] text-white">
+                            {spotlightProgressPercent !== null ? `${spotlightProgressPercent}%` : "0%"}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mt-3 grid grid-cols-2 gap-2">
+                        <div className="rounded-[18px] border border-white/8 bg-white/8 px-3 py-3 text-sm text-white/80">
+                          試合設定 {latestRound ? progressValue(latestRoundProgress?.configuredMatches ?? 0, latestRound.matchCount) : "未作成"}
+                        </div>
+                        <div className="rounded-[18px] border border-white/8 bg-white/8 px-3 py-3 text-sm text-white/80">
+                          候補カード {latestRound ? `${latestRound.candidateTicketCount}` : "未作成"}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="hidden gap-3 md:grid md:grid-cols-2 xl:grid-cols-1">
+                      <div className="rounded-[28px] border border-white/18 bg-[linear-gradient(145deg,rgba(8,14,22,0.52),rgba(8,14,22,0.24))] p-5 shadow-[0_22px_54px_-34px_rgba(0,0,0,0.45)] backdrop-blur-md">
                       <div className="flex items-center justify-between gap-3">
                         <div>
                           <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/60">
@@ -711,38 +738,39 @@ export default function DashboardPage() {
                       </div>
                     </div>
 
-                    <div className="rounded-[28px] border border-white/18 bg-[linear-gradient(145deg,rgba(8,14,22,0.48),rgba(8,14,22,0.18))] p-5 shadow-[0_22px_54px_-34px_rgba(0,0,0,0.45)] backdrop-blur-md">
-                      <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/60">
-                        今やること
-                      </p>
-                      <h3 className="mt-2 font-display text-xl font-semibold tracking-[-0.05em] text-white">
-                        {latestRoundProgress?.nextStep.label ?? "まずはラウンド作成"}
-                      </h3>
-                      <p className="mt-3 text-sm leading-6 text-white/76">
-                        {latestRoundProgress?.nextStep.description ??
-                          "13試合の本番回を作って、試合設定から順に進めれば大丈夫です。"}
-                      </p>
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        <Link
-                          href={latestRoundProgress?.nextStep.href ?? createRoundAnchor}
-                          className={buttonClassName}
-                        >
-                          {latestRoundProgress?.nextStep.label ?? "ラウンドを作成"}
-                        </Link>
-                        {latestRound ? (
-                          <a href={roundListAnchor} className={secondaryButtonClassName}>
-                            一覧を見る
-                          </a>
-                        ) : (
-                          <button
-                            type="button"
-                            className={secondaryButtonClassName}
-                            onClick={handleOpenDemo}
-                            disabled={busy === "demo"}
+                      <div className="rounded-[28px] border border-white/18 bg-[linear-gradient(145deg,rgba(8,14,22,0.48),rgba(8,14,22,0.18))] p-5 shadow-[0_22px_54px_-34px_rgba(0,0,0,0.45)] backdrop-blur-md">
+                        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/60">
+                          今やること
+                        </p>
+                        <h3 className="mt-2 font-display text-xl font-semibold tracking-[-0.05em] text-white">
+                          {latestRoundProgress?.nextStep.label ?? "まずはラウンド作成"}
+                        </h3>
+                        <p className="mt-3 text-sm leading-6 text-white/76">
+                          {latestRoundProgress?.nextStep.description ??
+                            "13試合の本番回を作って、試合設定から順に進めれば大丈夫です。"}
+                        </p>
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          <Link
+                            href={latestRoundProgress?.nextStep.href ?? createRoundAnchor}
+                            className={buttonClassName}
                           >
-                            {busy === "demo" ? "準備中..." : "デモで流れを見る"}
-                          </button>
-                        )}
+                            {latestRoundProgress?.nextStep.label ?? "ラウンドを作成"}
+                          </Link>
+                          {latestRound ? (
+                            <a href={roundListAnchor} className={secondaryButtonClassName}>
+                              一覧を見る
+                            </a>
+                          ) : (
+                            <button
+                              type="button"
+                              className={secondaryButtonClassName}
+                              onClick={handleOpenDemo}
+                              disabled={busy === "demo"}
+                            >
+                              {busy === "demo" ? "準備中..." : "デモで流れを見る"}
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -753,19 +781,19 @@ export default function DashboardPage() {
             <div className="mt-5 grid gap-4 md:grid-cols-3">
               {[
                 {
-                  body: "候補カードと自分の予想を、1つの流れで見る一番やさしい入口です。",
+                  body: "候補カードと自分の予想を、ひとつの流れで見ます。",
                   href: latestPlayHref,
                   label: "みんなで見る",
                   strategy: "orthodox_model" as const,
                 },
                 {
-                  body: "王道・公式人気・人力推し・EV狙いを横に並べて比べる場所です。",
+                  body: "王道・公式人気・人力推し・EV狙いを見比べます。",
                   href: latestPickRoomHref,
                   label: "候補カード",
                   strategy: "public_favorite" as const,
                 },
                 {
-                  body: "自分で 1 / 0 / 2 を入れるならここ。スマホ向けのシンプルな入力画面です。",
+                  body: "1 / 0 / 2 を入れるだけの、やさしい入力画面です。",
                   href: latestSimpleViewHref,
                   label: "自分の予想",
                   strategy: "draw_alert" as const,
