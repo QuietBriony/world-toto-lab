@@ -1880,7 +1880,7 @@ export default function DashboardPage() {
                 </label>
 
                 <label className="grid gap-2 text-sm font-medium text-slate-700">
-                  productType
+                  商品タイプ
                   <select
                     name="productType"
                     className={fieldClassName}
@@ -1937,7 +1937,7 @@ export default function DashboardPage() {
                 </label>
 
                 <label className="grid gap-2 text-sm font-medium text-slate-700">
-                  Data Profile
+                  データの厚み
                   <select name="dataProfile" className={fieldClassName} defaultValue="worldcup_rich">
                     {(
                       ["worldcup_rich", "domestic_standard", "manual_light", "demo"] as const
@@ -1976,7 +1976,7 @@ export default function DashboardPage() {
                 </label>
 
                 <label className="grid gap-2 text-sm font-medium text-slate-700">
-                  sportContext
+                  競技文脈
                   <select name="sportContext" className={fieldClassName} defaultValue="national_team">
                     {(
                       ["national_team", "j_league", "club", "other"] as const

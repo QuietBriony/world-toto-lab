@@ -109,7 +109,7 @@ const prohibitedAreas = [
 ];
 
 export const metadata: Metadata = {
-  title: "共同開発スタートガイド",
+  title: "GitHub 共同開発で遊ぼう",
   description:
     "World Toto Lab の開発運用ルール、AI 並走ルール、PR チェックリストをまとめたページ。",
 };
@@ -118,7 +118,7 @@ export default function DevPlaybookPage() {
   return (
     <div className="space-y-8">
       <PageHeader
-        eyebrow="Development"
+        eyebrow="共同開発"
         title="GitHub で共同開発を始めよう"
         description="友人を GitHub に招待したあと、初心者でも迷いにくいように、branch 運用・AI 並走・Pages / Supabase の安全ルールをひとつにまとめています。"
         actions={
@@ -136,27 +136,27 @@ export default function DevPlaybookPage() {
       <div className="grid gap-4 xl:grid-cols-4">
         <StatCard
           label="main"
-          value="直push禁止"
+          value="通常は直pushしない"
           compact
-          hint="すべて branch + PR 経由で進めます。"
+          hint="普段の更新は branch + PR 経由で進めます。"
         />
         <StatCard
-          label="branch"
-          value="1 task"
+          label="ブランチ"
+          value="1タスク"
           compact
           hint="1タスクにつき 1 ブランチです。"
           tone="positive"
         />
         <StatCard
           label="PR"
-          value="1 purpose"
+          value="1目的"
           compact
           hint="1PR では目的を 1 つに絞ります。"
           tone="warning"
         />
         <StatCard
           label="AI"
-          value="Codex First"
+          value="Codex中心"
           compact
           hint="Claude 等は原則レビュー役です。"
           tone="draw"
@@ -173,7 +173,7 @@ export default function DevPlaybookPage() {
               key={rule}
               className="flex items-start gap-3 rounded-[24px] border border-slate-200 bg-slate-50/88 px-4 py-4"
             >
-              <Badge tone="teal">Rule</Badge>
+              <Badge tone="teal">ルール</Badge>
               <p className="text-sm leading-6 text-slate-700">{rule}</p>
             </div>
           ))}
@@ -303,7 +303,7 @@ export default function DevPlaybookPage() {
                 <div className="font-mono text-sm text-slate-900">{doc.path}</div>
                 <div className="mt-1 text-sm text-slate-600">{doc.label}</div>
               </div>
-              <Badge tone="slate">Read First</Badge>
+              <Badge tone="slate">最初に読む</Badge>
             </div>
           ))}
         </div>

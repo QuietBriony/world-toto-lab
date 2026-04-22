@@ -458,7 +458,7 @@ function WorkspacePageContent() {
               : buildRoundHref(appRoute.fixtureSelector, data.round.id),
           secondaryLabel:
             data.round.productType === "winner" ? "Pick Room へ" : "Fixture Selector へ",
-          title: "いまの productType で進める",
+          title: "いまの商品で進める",
           tone: "sky" as const,
         };
         const sharingCard = {
@@ -773,7 +773,7 @@ function WorkspacePageContent() {
           </CollapsibleSectionCard>
 
       <CollapsibleSectionCard
-        title="Round Builder"
+        title="ラウンド作成と取り込み"
         description="主導線は toto公式の対象回取り込みです。FIFA全試合から組む流れは、発売前に先に遊ぶ時だけ使う補助導線に寄せています。"
         defaultOpen={data.round.matches.length === 0}
         badge={<Badge tone="sky">導線</Badge>}
@@ -842,7 +842,7 @@ function WorkspacePageContent() {
 
                   <div className="rounded-[22px] border border-slate-200 bg-white/85 px-4 py-4 text-sm leading-6 text-slate-600">
                     上の 3 枚から入れば十分です。発売前は `試合素材を入れる`、販売後は
-                    `いまの productType で進める`、素材がそろったら `みんなで見る・投票する`
+                    `いまの商品で進める`、素材がそろったら `みんなで見る・投票する`
                     を開く、の順でほとんどの作業が済みます。
                   </div>
                 </div>
@@ -1242,7 +1242,7 @@ function WorkspacePageContent() {
 
           <SectionCard
             title="ラウンド設定"
-            description="productType、試合数要件、source、候補上限、参加メンバー、ステータス、当日の観戦メモをここで更新します。"
+            description="商品タイプ、試合数要件、取り込み元、候補上限、参加メンバー、ステータス、当日の観戦メモをここで更新します。"
           >
             <form
               id="workspace-round-form"
@@ -1280,7 +1280,7 @@ function WorkspacePageContent() {
               </label>
 
               <label className="grid gap-2 text-sm font-medium text-slate-700">
-                productType
+                商品タイプ
                 <select
                   name="productType"
                   className={fieldClassName}
@@ -1312,7 +1312,7 @@ function WorkspacePageContent() {
               </label>
 
               <label className="grid gap-2 text-sm font-medium text-slate-700">
-                requiredMatchCount
+                必要試合数
                 <input
                   name="requiredMatchCount"
                   type="number"
@@ -1325,7 +1325,7 @@ function WorkspacePageContent() {
               </label>
 
               <label className="grid gap-2 text-sm font-medium text-slate-700">
-                Data Profile
+                データの厚み
                 <select
                   name="dataProfile"
                   className={fieldClassName}
@@ -1372,7 +1372,7 @@ function WorkspacePageContent() {
               </label>
 
               <label className="grid gap-2 text-sm font-medium text-slate-700">
-                sportContext
+                競技文脈
                 <select
                   name="sportContext"
                   className={fieldClassName}
@@ -1394,7 +1394,7 @@ function WorkspacePageContent() {
               </div>
 
               <label className="grid gap-2 text-sm font-medium text-slate-700">
-                roundSource
+                取り込み元
                 <select
                   name="roundSource"
                   className={fieldClassName}

@@ -828,7 +828,7 @@ function TotoOfficialRoundImportPageContent() {
             />
           </label>
           <label className="space-y-2 text-sm">
-            <span className="font-medium text-slate-700">productType</span>
+            <span className="font-medium text-slate-700">商品タイプ</span>
             <select
               value={libraryProductType}
               onChange={(event) =>
@@ -1006,13 +1006,13 @@ function TotoOfficialRoundImportPageContent() {
           </button>
         </div>
 
-        <SectionCard title="Round Meta" description="round-level の公式情報を先に入れます。">
+        <SectionCard title="回全体の情報" description="ラウンド全体にかかる公式情報を先に入れます。">
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <input
               value={title}
               onChange={(event) => setTitle(event.currentTarget.value)}
               className={fieldClassName}
-              placeholder="title"
+              placeholder="ラウンド名"
             />
             <select
               value={productType}
@@ -1029,13 +1029,13 @@ function TotoOfficialRoundImportPageContent() {
               value={officialRoundName}
               onChange={(event) => setOfficialRoundName(event.currentTarget.value)}
               className={fieldClassName}
-              placeholder="official round name"
+              placeholder="公式回名"
             />
             <input
               value={officialRoundNumber}
               onChange={(event) => setOfficialRoundNumber(event.currentTarget.value)}
               className={fieldClassName}
-              placeholder="official round no"
+              placeholder="公式回番号"
             />
             <input
               value={stakeYen}

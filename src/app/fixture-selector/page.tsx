@@ -240,13 +240,13 @@ function FixtureSelectorPageContent() {
       </SectionCard>
 
       <SectionCard
-        title="Round Builder"
+        title="ラウンド化して保存"
         description={`保存対象 ${selectedIds.length} 件。13件で toto、5件で mini toto、1件で WINNER の目安です。公式未発表の段階では自動13試合化はしません。`}
       >
         <form className="space-y-4" onSubmit={handleSubmit}>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <label className="space-y-2 text-sm">
-              <span className="font-medium text-slate-700">title</span>
+              <span className="font-medium text-slate-700">ラウンド名</span>
               <input
                 value={title}
                 onChange={(event) => setTitle(event.currentTarget.value)}
@@ -254,7 +254,7 @@ function FixtureSelectorPageContent() {
               />
             </label>
             <label className="space-y-2 text-sm">
-              <span className="font-medium text-slate-700">productType</span>
+              <span className="font-medium text-slate-700">商品タイプ</span>
               <select
                 value={selectedProductType}
                 onChange={(event) =>

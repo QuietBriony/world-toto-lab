@@ -57,7 +57,7 @@ Issue を先に切ってほしい変更:
 - `codex/<task-slug>`
 - `docs/<task-slug>`
 - `fix/<task-slug>`
-- `feat/<task-slug>`
+- `feature/<task-slug>`
 - `experiment/<task-slug>`
 
 ## Keep PRs Small

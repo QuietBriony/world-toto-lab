@@ -139,9 +139,9 @@ function PracticeLabPageContent() {
       />
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Mode" value={competitionTypeModeLabel[data.round.competitionType]} compact hint={modeMaterialsDescription(data.round.competitionType)} tone="positive" />
-        <StatCard label="Data Profile" value={dataProfileLabel[data.round.dataProfile]} compact hint={roundProductLabel ?? productTypeLabel[data.round.productType]} />
-        <StatCard label="Probability" value={probabilityReadinessStatusLabel[data.round.probabilityReadiness]} compact hint={probabilityReadinessDescription(data.round.probabilityReadiness, data.round.competitionType)} tone={data.round.probabilityReadiness === "ready" ? "positive" : data.round.probabilityReadiness === "partial" ? "draw" : "warning"} />
+        <StatCard label="モード" value={competitionTypeModeLabel[data.round.competitionType]} compact hint={modeMaterialsDescription(data.round.competitionType)} tone="positive" />
+        <StatCard label="データの厚み" value={dataProfileLabel[data.round.dataProfile]} compact hint={roundProductLabel ?? productTypeLabel[data.round.productType]} />
+        <StatCard label="試算状態" value={probabilityReadinessStatusLabel[data.round.probabilityReadiness]} compact hint={probabilityReadinessDescription(data.round.probabilityReadiness, data.round.competitionType)} tone={data.round.probabilityReadiness === "ready" ? "positive" : data.round.probabilityReadiness === "partial" ? "draw" : "warning"} />
         <StatCard label="参加 / 入力" value={`${data.users.length} / ${Array.from(savedPickCounts.values()).filter((count) => count > 0).length}`} compact hint="予想を保存した人数" />
       </div>
 

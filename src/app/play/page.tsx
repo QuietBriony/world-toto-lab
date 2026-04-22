@@ -29,6 +29,7 @@ import {
   favoriteOutcomeForBucket,
   formatPercent,
   humanConsensusOutcomes,
+  probabilityReadinessLabel,
   productTypeLabel,
 } from "@/lib/domain";
 import {
@@ -339,13 +340,13 @@ function PlayPageContent() {
               href={buildRoundHref(appRoute.pickRoom, data.round.id, { user: activeUser.id })}
               className={secondaryButtonClassName}
             >
-              Friend Pick Room
+              候補カードへ
             </Link>
             <Link
               href={buildRoundHref(appRoute.workspace, data.round.id)}
               className={secondaryButtonClassName}
             >
-              Advanced View
+              ラウンド詳細
             </Link>
           </div>
         }
@@ -360,7 +361,7 @@ function PlayPageContent() {
           { href: buildRoundHref(appRoute.play, data.round.id, { user: activeUser.id }), label: "遊ぼう" },
           { href: buildRoundHref(appRoute.simpleView, data.round.id, { user: activeUser.id }), label: "自分の予想" },
           { href: buildRoundHref(appRoute.pickRoom, data.round.id, { user: activeUser.id }), label: "候補カード" },
-          { href: buildRoundHref(appRoute.workspace, data.round.id), label: "Advanced" },
+          { href: buildRoundHref(appRoute.workspace, data.round.id), label: "ラウンド詳細" },
         ]}
       />
 
@@ -375,7 +376,7 @@ function PlayPageContent() {
       ) : null}
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-        <StatCard label="Round" value={data.round.title} compact hint={roundProductLabel ?? productTypeLabel[data.round.productType]} />
+        <StatCard label="ラウンド" value={data.round.title} compact hint={roundProductLabel ?? productTypeLabel[data.round.productType]} />
         <StatCard label="モード" value={competitionTypeModeLabel[data.round.competitionType]} compact hint={modeMaterialsDescription(data.round.competitionType)} tone="positive" />
         <StatCard label="参加人数" value={`${summary.participantCount}人`} compact hint={`予想入力済み ${summary.inputtedUserCount}人`} />
         <StatCard label="候補カード" value={`${summary.candidateCount}`} compact hint="王道 / 人力 / EV / 引分 / 荒れ狙い" tone="draw" />
@@ -398,7 +399,7 @@ function PlayPageContent() {
         summary={dataQualitySummary}
         extraLines={[
           modeMaterialsDescription(data.round.competitionType),
-          `${competitionTypeModeLabel[data.round.competitionType]} / いまは ${data.round.probabilityReadiness} 判定です。`,
+          `${competitionTypeModeLabel[data.round.competitionType]} / いまは ${probabilityReadinessLabel[data.round.probabilityReadiness]} の状態です。`,
         ]}
       />
 

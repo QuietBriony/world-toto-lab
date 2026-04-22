@@ -12,7 +12,7 @@ World Toto Lab は、`Next.js 16 App Router + static export + GitHub Pages + Sup
 - 今日の実際の deploy は `main` push 起点
   - `.github/workflows/deploy-pages.yml`: `main` push で Pages を再配信
   - `.github/workflows/deploy-supabase-functions.yml`: `main` push かつ対象 path 変更で Edge Functions を再配備
-- 今後の推奨運用は `topic branch -> PR -> main merge`
+- 今後の推奨運用は `feature/*` などの作業 branch -> PR -> main merge
 
 GitHub の branch protection がまだ完全でなくても、`main` は live deploy branch として扱ってください。  
 直 push は緊急 hotfix 以外では避ける前提です。
@@ -55,6 +55,7 @@ npm ci
 NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-public-anon-key
 NEXT_PUBLIC_TOTO_OFFICIAL_ROUND_SYNC_FUNCTION_NAME=sync-toto-official-round-list
+NEXT_PUBLIC_BIG_OFFICIAL_WATCH_FUNCTION_NAME=sync-big-official-watch
 ```
 
 3. 新規 Supabase プロジェクトを使う場合は `supabase/schema.sql` を適用する
@@ -111,7 +112,7 @@ npm run check:pages
 - `codex/<task-slug>`
 - `docs/<task-slug>`
 - `fix/<task-slug>`
-- `feat/<task-slug>`
+- `feature/<task-slug>`
 
 補足:
 
