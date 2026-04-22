@@ -790,14 +790,14 @@ export default function DashboardPage() {
                     href={item.href}
                     className="group overflow-hidden rounded-[26px] border border-white/60 bg-white/90 shadow-[0_22px_56px_-36px_rgba(15,23,42,0.42)]"
                   >
-                    <div
-                      className="relative min-h-[220px] bg-slate-950"
-                      style={{
-                        backgroundImage: `linear-gradient(180deg,rgba(7,12,18,0.04),rgba(7,12,18,0.28)_52%,rgba(7,12,18,0.64)), url(${resolveArtAsset(pathname, artwork.src)})`,
-                        backgroundPosition: "center",
-                        backgroundSize: "cover",
-                      }}
-                    >
+                    <div className="relative min-h-[220px] bg-slate-950">
+                      <img
+                        alt=""
+                        aria-hidden="true"
+                        src={resolveArtAsset(pathname, artwork.src)}
+                        className="absolute inset-0 h-full w-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(7,12,18,0.04),rgba(7,12,18,0.28)_52%,rgba(7,12,18,0.64))]" />
                       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.2),transparent_34%)]" />
                       <div className="relative z-10 flex min-h-[220px] flex-col justify-between gap-4 p-4">
                         <div className="flex flex-wrap items-center gap-2">
@@ -862,14 +862,14 @@ export default function DashboardPage() {
               </div>
 
               <div className="rounded-[24px] border border-slate-200 bg-slate-50/85 p-5">
-                <div
-                  className="relative mb-4 overflow-hidden rounded-[22px] border border-slate-200 bg-slate-950"
-                  style={{
-                    backgroundImage: `linear-gradient(180deg,rgba(7,12,18,0.08),rgba(7,12,18,0.54)), url(${demoLabImageSrc})`,
-                    backgroundPosition: "center",
-                    backgroundSize: "cover",
-                  }}
-                >
+                <div className="relative mb-4 overflow-hidden rounded-[22px] border border-slate-200 bg-slate-950">
+                  <img
+                    alt=""
+                    aria-hidden="true"
+                    src={demoLabImageSrc}
+                    className="absolute inset-0 h-full w-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(7,12,18,0.08),rgba(7,12,18,0.54))]" />
                   <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),transparent_35%)]" />
                   <div className="relative z-10 px-4 py-4">
                     <p className="text-xs font-semibold uppercase tracking-[0.26em] text-white/72">

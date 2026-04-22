@@ -391,6 +391,7 @@ type ArtBannerPanelProps = Omit<HTMLAttributes<HTMLElement>, "title"> & {
   description: ReactNode;
   eyebrow?: ReactNode;
   footer?: ReactNode;
+  imageClassName?: string;
   imageSrc: string;
   overlayClassName?: string;
   title: ReactNode;
@@ -406,6 +407,7 @@ export function ArtBannerPanel({
   description,
   eyebrow,
   footer,
+  imageClassName,
   imageSrc,
   overlayClassName,
   title,
@@ -417,13 +419,22 @@ export function ArtBannerPanel({
         "relative overflow-hidden rounded-[28px] border border-slate-200 bg-slate-950 shadow-[0_28px_80px_-40px_rgba(15,23,42,0.62)]",
         className,
       )}
-      style={{
-        backgroundImage: `${backgroundGradient ?? "linear-gradient(90deg,rgba(7,12,18,0.88),rgba(7,12,18,0.56)_44%,rgba(7,12,18,0.36))"}, url(${imageSrc})`,
-        backgroundPosition: "center",
-        backgroundSize: "cover",
-      }}
       {...props}
     >
+      <img
+        alt=""
+        aria-hidden="true"
+        src={imageSrc}
+        className={cx("absolute inset-0 h-full w-full object-cover", imageClassName)}
+      />
+      <div
+        className="absolute inset-0"
+        style={{
+          backgroundImage:
+            backgroundGradient ??
+            "linear-gradient(90deg,rgba(7,12,18,0.88),rgba(7,12,18,0.56)_44%,rgba(7,12,18,0.36))",
+        }}
+      />
       <div
         className={cx(
           "absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.22),transparent_28%)]",

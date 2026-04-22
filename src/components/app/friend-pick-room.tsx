@@ -194,14 +194,14 @@ export function CandidateCard(props: {
 
   return (
     <article className="flex w-[86vw] max-w-[360px] shrink-0 snap-start flex-col gap-4 rounded-[28px] border border-white/70 bg-[linear-gradient(145deg,rgba(255,255,255,0.96),rgba(242,250,245,0.9))] p-5 shadow-[0_28px_72px_-44px_rgba(15,23,42,0.42)] sm:w-auto sm:min-w-[320px]">
-      <div
-        className="relative overflow-hidden rounded-[24px] border border-slate-200 bg-slate-950"
-        style={{
-          backgroundImage: `linear-gradient(180deg,rgba(7,12,18,0.04),rgba(7,12,18,0.34)_48%,rgba(7,12,18,0.72)), url(${artworkSrc})`,
-          backgroundPosition: "center",
-          backgroundSize: "cover",
-        }}
-      >
+      <div className="relative overflow-hidden rounded-[24px] border border-slate-200 bg-slate-950">
+        <img
+          alt=""
+          aria-hidden="true"
+          src={artworkSrc}
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(7,12,18,0.04),rgba(7,12,18,0.34)_48%,rgba(7,12,18,0.72))]" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.22),transparent_34%)]" />
         <div className="relative z-10 flex min-h-[136px] flex-col justify-between gap-4 p-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
