@@ -9,6 +9,7 @@ import {
   secondaryButtonClassName,
 } from "@/components/ui";
 import { formatCurrency, formatPercent } from "@/lib/domain";
+import { candidateStrategyArt } from "@/lib/ui-art";
 import type { RoundDataQualitySummary } from "@/lib/candidate-tickets";
 import type {
   CandidateDataQuality,
@@ -183,29 +184,42 @@ export function CandidateCard(props: {
 }) {
   const warning = props.candidate.warning;
   const warningBadgeTone = warningTone(warning);
+  const artwork = candidateStrategyArt[props.candidate.strategyType];
 
   return (
     <article className="flex w-[86vw] max-w-[360px] shrink-0 snap-start flex-col gap-4 rounded-[28px] border border-white/70 bg-[linear-gradient(145deg,rgba(255,255,255,0.96),rgba(242,250,245,0.9))] p-5 shadow-[0_28px_72px_-44px_rgba(15,23,42,0.42)] sm:w-auto sm:min-w-[320px]">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <p className="text-xs font-semibold uppercase tracking-[0.26em] text-emerald-700/70">
-            Candidate Card
-          </p>
-          <h3 className="mt-2 text-xl font-semibold tracking-tight text-slate-950">
-            {props.candidate.label}
-          </h3>
-          <p className="mt-2 text-sm leading-6 text-slate-600">
+      <div
+        className="relative overflow-hidden rounded-[24px] border border-slate-200 bg-slate-950"
+        style={{
+          backgroundImage: `linear-gradient(180deg,rgba(7,12,18,0.08),rgba(7,12,18,0.76)), url(${artwork.src})`,
+          backgroundPosition: "center",
+          backgroundSize: "cover",
+        }}
+      >
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.22),transparent_34%)]" />
+        <div className="relative z-10 flex min-h-[136px] flex-col justify-between gap-4 p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold uppercase tracking-[0.26em] text-white/72">
+                {artwork.accentLabel}
+              </p>
+              <h3 className="mt-2 text-xl font-semibold tracking-tight text-white">
+                {props.candidate.label}
+              </h3>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Badge tone={candidateStrategyTone[props.candidate.strategyType]}>
+                {candidateStrategyLabel[props.candidate.strategyType]}
+              </Badge>
+              <Badge tone={candidateDataQualityTone[props.candidate.dataQuality]}>
+                {candidateDataQualityLabel[props.candidate.dataQuality]}
+              </Badge>
+              {warningBadgeTone ? <Badge tone={warningBadgeTone}>注意あり</Badge> : null}
+            </div>
+          </div>
+          <p className="max-w-[22rem] text-sm leading-6 text-white/82">
             {candidateOriginCue[props.candidate.strategyType]}
           </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Badge tone={candidateStrategyTone[props.candidate.strategyType]}>
-            {candidateStrategyLabel[props.candidate.strategyType]}
-          </Badge>
-          <Badge tone={candidateDataQualityTone[props.candidate.dataQuality]}>
-            {candidateDataQualityLabel[props.candidate.dataQuality]}
-          </Badge>
-          {warningBadgeTone ? <Badge tone={warningBadgeTone}>注意あり</Badge> : null}
         </div>
       </div>
 

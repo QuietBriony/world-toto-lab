@@ -102,6 +102,7 @@ import {
 import { useBigOfficialWatch, useDashboardData, useTotoOfficialRoundLibrary } from "@/lib/use-app-data";
 import { isWinnerLikeRound } from "@/lib/winner-value";
 import { resolveWorldTotoProductLabel } from "@/lib/world-toto";
+import { demoLabArt } from "@/lib/ui-art";
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "不明なエラーです。";
@@ -1066,6 +1067,24 @@ export default function DashboardPage() {
               </div>
 
               <div className="rounded-[24px] border border-slate-200 bg-slate-50/85 p-5">
+                <div
+                  className="relative mb-4 overflow-hidden rounded-[22px] border border-slate-200 bg-slate-950"
+                  style={{
+                    backgroundImage: `linear-gradient(180deg,rgba(7,12,18,0.12),rgba(7,12,18,0.72)), url(${demoLabArt.src})`,
+                    backgroundPosition: "center",
+                    backgroundSize: "cover",
+                  }}
+                >
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),transparent_35%)]" />
+                  <div className="relative z-10 px-4 py-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.26em] text-white/72">
+                      {demoLabArt.title}
+                    </p>
+                    <p className="mt-2 max-w-[28rem] text-sm leading-6 text-white/82">
+                      {demoLabArt.description}
+                    </p>
+                  </div>
+                </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge tone="amber">デモ専用</Badge>
                   <Badge tone={demoRound ? "teal" : "amber"}>{demoRound ? "保存済み" : "未作成"}</Badge>

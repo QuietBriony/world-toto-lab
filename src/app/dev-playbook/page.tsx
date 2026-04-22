@@ -98,6 +98,10 @@ const docsToRead = [
     path: "docs/ARCHITECTURE.md",
     label: "構成、制約、危険変更ポイント",
   },
+  {
+    path: "docs/IMAGE_ART_DIRECTION.md",
+    label: "画像アセットの差し替え方と prompt 方針",
+  },
 ];
 
 const prohibitedAreas = [
