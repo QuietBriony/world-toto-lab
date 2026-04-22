@@ -579,6 +579,10 @@ export default function DashboardPage() {
         summary: featuredBigOfficial.summary,
       })
     : null;
+  const spotlightHeroImageSrc = resolveArtAsset(
+    pathname,
+    candidateStrategyArt.public_favorite.src,
+  );
   const demoLabImageSrc = resolveArtAsset(pathname, demoLabArt.src);
 
   return (
@@ -633,7 +637,7 @@ export default function DashboardPage() {
                   </p>
                 </div>
               }
-              imageSrc={demoLabImageSrc}
+              imageSrc={spotlightHeroImageSrc}
               overlayClassName="bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.28),transparent_24%),linear-gradient(180deg,rgba(255,255,255,0.08),transparent_28%,rgba(4,9,15,0.16))]"
               title={
                 <div className="space-y-3">
