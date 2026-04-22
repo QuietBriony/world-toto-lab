@@ -39,10 +39,10 @@ export function cx(...inputs: ClassValue[]) {
 }
 
 export const buttonClassName =
-  "inline-flex h-11 items-center justify-center rounded-full border border-emerald-200/22 bg-[linear-gradient(135deg,#0b2418,#0f5e2d_52%,#d97706_140%)] px-5 text-sm font-semibold text-white shadow-[0_22px_40px_-24px_rgba(0,0,0,0.7)] ring-1 ring-white/6 hover:-translate-y-0.5 hover:shadow-[0_30px_56px_-24px_rgba(0,0,0,0.76)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-400/20 disabled:cursor-not-allowed disabled:opacity-50";
+  "relative inline-flex h-11 items-center justify-center overflow-hidden rounded-full border border-emerald-200/22 bg-[linear-gradient(135deg,#0b2418,#0f5e2d_52%,#d97706_140%)] px-5 text-sm font-semibold text-white shadow-[0_22px_40px_-24px_rgba(0,0,0,0.7)] ring-1 ring-white/6 before:pointer-events-none before:absolute before:inset-y-0 before:left-[-35%] before:w-16 before:-skew-x-12 before:bg-white/16 before:blur-xl before:transition-[left] before:duration-500 hover:-translate-y-0.5 hover:shadow-[0_30px_56px_-24px_rgba(0,0,0,0.76)] hover:before:left-[120%] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-400/20 disabled:cursor-not-allowed disabled:opacity-50";
 
 export const secondaryButtonClassName =
-  "inline-flex h-11 items-center justify-center rounded-full border border-emerald-900/10 bg-[linear-gradient(135deg,rgba(252,255,252,0.96),rgba(239,247,241,0.92))] px-5 text-sm font-semibold text-slate-800 shadow-[0_18px_38px_-28px_rgba(0,0,0,0.35)] hover:-translate-y-0.5 hover:border-emerald-300/70 hover:bg-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-500/15 disabled:cursor-not-allowed disabled:opacity-50";
+  "relative inline-flex h-11 items-center justify-center overflow-hidden rounded-full border border-emerald-900/10 bg-[linear-gradient(135deg,rgba(252,255,252,0.96),rgba(239,247,241,0.92))] px-5 text-sm font-semibold text-slate-800 shadow-[0_18px_38px_-28px_rgba(0,0,0,0.35)] before:pointer-events-none before:absolute before:inset-y-0 before:left-[-40%] before:w-14 before:-skew-x-12 before:bg-white/45 before:blur-xl before:transition-[left] before:duration-500 hover:-translate-y-0.5 hover:border-emerald-300/70 hover:bg-white hover:before:left-[120%] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-500/15 disabled:cursor-not-allowed disabled:opacity-50";
 
 export const fieldClassName =
   "h-11 w-full rounded-2xl border border-emerald-950/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(244,250,245,0.94))] px-4 text-sm text-slate-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)] outline-none placeholder:text-slate-400 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/12";
@@ -307,7 +307,7 @@ export function StatCard({
   return (
     <div
       className={cx(
-        "relative overflow-hidden rounded-[26px] border p-4 shadow-[0_20px_54px_-34px_rgba(15,23,42,0.34)] backdrop-blur-xl before:absolute before:right-[-2rem] before:top-[-2rem] before:h-24 before:w-24 before:rounded-full before:bg-white/45 before:blur-2xl sm:p-5",
+        "relative overflow-hidden rounded-[26px] border p-4 shadow-[0_20px_54px_-34px_rgba(15,23,42,0.34)] backdrop-blur-xl before:absolute before:right-[-2rem] before:top-[-2rem] before:h-24 before:w-24 before:rounded-full before:bg-white/45 before:blur-2xl sm:p-5 hover:-translate-y-1 hover:shadow-[0_28px_64px_-36px_rgba(15,23,42,0.42)]",
         statToneClassName[tone],
         "after:absolute after:inset-x-0 after:top-0 after:h-1.5 after:bg-[linear-gradient(90deg,rgba(22,128,61,0.9),rgba(245,158,11,0.7),rgba(2,132,199,0.8))] after:content-['']",
         className,
@@ -351,7 +351,7 @@ export function PageHeader({
   return (
     <header
       className={cx(
-        "relative overflow-hidden flex flex-col gap-4 rounded-[32px] border border-white/14 bg-[linear-gradient(125deg,rgba(9,34,22,0.92),rgba(13,70,37,0.88)_42%,rgba(10,22,16,0.94))] p-5 shadow-[0_30px_90px_-50px_rgba(0,0,0,0.62)] backdrop-blur-xl before:pointer-events-none before:absolute before:right-[-4rem] before:top-[-5rem] before:h-40 before:w-40 before:rounded-full before:bg-[radial-gradient(circle,rgba(250,204,21,0.16),transparent_62%)] before:blur-xl after:pointer-events-none after:absolute after:inset-x-8 after:bottom-[-5rem] after:h-28 after:rounded-full after:border after:border-white/12 after:content-[''] sm:p-6 xl:flex-row xl:items-end xl:justify-between",
+        "scoreboard-glow pitch-stripes relative overflow-hidden flex flex-col gap-4 rounded-[32px] border border-white/14 bg-[linear-gradient(125deg,rgba(9,34,22,0.92),rgba(13,70,37,0.88)_42%,rgba(10,22,16,0.94))] p-5 shadow-[0_30px_90px_-50px_rgba(0,0,0,0.62)] backdrop-blur-xl before:pointer-events-none before:absolute before:right-[-4rem] before:top-[-5rem] before:h-40 before:w-40 before:rounded-full before:bg-[radial-gradient(circle,rgba(250,204,21,0.16),transparent_62%)] before:blur-xl after:pointer-events-none after:absolute after:inset-x-8 after:bottom-[-5rem] after:h-28 after:rounded-full after:border after:border-white/12 after:content-[''] sm:p-6 xl:flex-row xl:items-end xl:justify-between",
         className,
       )}
       {...props}
