@@ -105,6 +105,58 @@ export function Badge({
   );
 }
 
+type InfoBannerTone = "amber" | "slate" | "teal";
+
+const infoBannerToneClassName: Record<InfoBannerTone, string> = {
+  amber:
+    "border-amber-200 bg-[linear-gradient(145deg,rgba(255,247,237,0.98),rgba(254,243,199,0.9))] text-amber-950",
+  slate:
+    "border-slate-200 bg-[linear-gradient(145deg,rgba(248,250,252,0.98),rgba(241,245,249,0.92))] text-slate-900",
+  teal:
+    "border-emerald-200 bg-[linear-gradient(145deg,rgba(236,253,245,0.98),rgba(209,250,229,0.9))] text-emerald-950",
+};
+
+type InfoBannerProps = HTMLAttributes<HTMLDivElement> & {
+  body: ReactNode;
+  title: ReactNode;
+  tone?: InfoBannerTone;
+};
+
+export function InfoBanner({
+  body,
+  className,
+  title,
+  tone = "slate",
+  ...props
+}: InfoBannerProps) {
+  return (
+    <div
+      className={cx(
+        "rounded-[24px] border px-5 py-4 shadow-[0_18px_42px_-34px_rgba(15,23,42,0.28)]",
+        infoBannerToneClassName[tone],
+        className,
+      )}
+      {...props}
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge tone={tone === "teal" ? "teal" : tone === "amber" ? "amber" : "slate"}>
+          試算メモ
+        </Badge>
+        {typeof title === "string" ? (
+          <p className="font-display text-lg font-semibold tracking-[-0.04em]">{title}</p>
+        ) : (
+          title
+        )}
+      </div>
+      {typeof body === "string" ? (
+        <p className="mt-2 text-sm leading-6 opacity-85">{body}</p>
+      ) : (
+        <div className="mt-2 text-sm leading-6 opacity-85">{body}</div>
+      )}
+    </div>
+  );
+}
+
 type HorizontalScrollTableProps = HTMLAttributes<HTMLDivElement> & {
   children: ReactNode;
   hint?: ReactNode;

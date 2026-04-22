@@ -21,6 +21,7 @@ import {
   buttonClassName,
   CollapsibleSectionCard,
   cx,
+  InfoBanner,
   PageHeader,
   SectionCard,
   StatCard,
@@ -46,7 +47,11 @@ import {
   replacePicks,
   upsertCandidateVote,
 } from "@/lib/repository";
-import { competitionTypeModeLabel, modeMaterialsDescription } from "@/lib/round-mode";
+import {
+  competitionTypeModeLabel,
+  modeMaterialsDescription,
+  roundEstimateStatusBanner,
+} from "@/lib/round-mode";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { useRoundWorkspace } from "@/lib/use-app-data";
 import { resolveWorldTotoProductLabel } from "@/lib/world-toto";
@@ -156,6 +161,13 @@ function PlayPageContent() {
     () => (data ? buildPlayPageSummary(data.round) : null),
     [data],
   );
+  const estimateStatus = data
+    ? roundEstimateStatusBanner({
+        competitionType: data.round.competitionType,
+        probabilityReadiness: data.round.probabilityReadiness,
+        roundSource: data.round.roundSource,
+      })
+    : null;
 
   const autoRefreshIdentity =
     data && dataQualitySummary
@@ -352,6 +364,14 @@ function PlayPageContent() {
           { href: buildRoundHref(appRoute.workspace, data.round.id), label: "ラウンド詳細" },
         ]}
       />
+
+      {estimateStatus ? (
+        <InfoBanner
+          title={estimateStatus.title}
+          body={estimateStatus.body}
+          tone={estimateStatus.tone}
+        />
+      ) : null}
 
       {actionError ? (
         <ErrorNotice error={actionError} onRetry={() => void refresh()} />

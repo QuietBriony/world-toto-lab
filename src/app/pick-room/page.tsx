@@ -21,6 +21,7 @@ import {
   Badge,
   buttonClassName,
   CollapsibleSectionCard,
+  InfoBanner,
   PageHeader,
   SectionCard,
   StatCard,
@@ -45,6 +46,7 @@ import {
 import {
   modeMaterialsDescription,
   probabilityReadinessDescription,
+  roundEstimateStatusBanner,
 } from "@/lib/round-mode";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { isWinnerLikeRound } from "@/lib/winner-value";
@@ -132,6 +134,13 @@ function PickRoomPageContent() {
         : null,
     [data],
   );
+  const estimateStatus = data
+    ? roundEstimateStatusBanner({
+        competitionType: data.round.competitionType,
+        probabilityReadiness: data.round.probabilityReadiness,
+        roundSource: data.round.roundSource,
+      })
+    : null;
 
   const candidateIdentity =
     data && dataQualitySummary
@@ -327,6 +336,14 @@ function PickRoomPageContent() {
           { href: buildRoundHref(appRoute.workspace, data.round.id), label: "ラウンド詳細" },
         ]}
       />
+
+      {estimateStatus ? (
+        <InfoBanner
+          title={estimateStatus.title}
+          body={estimateStatus.body}
+          tone={estimateStatus.tone}
+        />
+      ) : null}
 
       <SectionCard
         title="メンバー"

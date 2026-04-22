@@ -899,13 +899,14 @@ export default function DashboardPage() {
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge tone="amber">デモ専用</Badge>
                   <Badge tone={demoRound ? "teal" : "amber"}>{demoRound ? "保存済み" : "未作成"}</Badge>
+                  <Badge tone="warning">固定の見本データ</Badge>
                   <h3 className="font-display text-lg font-semibold tracking-[-0.04em] text-slate-950">
                     {demoRoundTitle}
                   </h3>
                 </div>
                 <p className="mt-3 text-sm leading-6 text-slate-600">
-                  このラウンドには試合データ、AI予測、予想者ライン、支持入力、予想者カード、コンセンサス、候補配分、
-                  振り返りが最初から入ります。本番メンバーの状態判定には含めません。
+                  これは操作の流れを見るための固定サンプルです。試合データ、モデル試算、予想者ライン、支持入力、
+                  予想者カード、コンセンサス、候補配分、振り返りが最初から入っています。本番判断には使いません。
                 </p>
                 {demoRound ? (
                   <div className="mt-4 flex flex-wrap gap-2">

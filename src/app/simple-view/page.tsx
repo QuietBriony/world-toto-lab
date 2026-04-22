@@ -17,6 +17,7 @@ import {
   buttonClassName,
   CollapsibleSectionCard,
   cx,
+  InfoBanner,
   PageHeader,
   SectionCard,
   secondaryButtonClassName,
@@ -36,6 +37,7 @@ import {
 import { sortCandidateTickets } from "@/lib/candidate-tickets";
 import { appRoute, buildRoundHref, getSingleSearchParam } from "@/lib/round-links";
 import { replacePicks } from "@/lib/repository";
+import { roundEstimateStatusBanner } from "@/lib/round-mode";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { useRoundWorkspace } from "@/lib/use-app-data";
 import { isWinnerLikeRound } from "@/lib/winner-value";
@@ -229,6 +231,13 @@ function SimpleViewPageContent() {
     () => (data ? sortCandidateTickets(data.round.candidateTickets).slice(0, 4) : []),
     [data],
   );
+  const estimateStatus = data
+    ? roundEstimateStatusBanner({
+        competitionType: data.round.competitionType,
+        probabilityReadiness: data.round.probabilityReadiness,
+        roundSource: data.round.roundSource,
+      })
+    : null;
 
   if (!isSupabaseConfigured()) {
     return <ConfigurationNotice />;
@@ -320,6 +329,14 @@ function SimpleViewPageContent() {
           { href: buildRoundHref(appRoute.workspace, data.round.id), label: "ラウンド詳細" },
         ]}
       />
+
+      {estimateStatus ? (
+        <InfoBanner
+          title={estimateStatus.title}
+          body={estimateStatus.body}
+          tone={estimateStatus.tone}
+        />
+      ) : null}
 
       <SectionCard title="メンバー" description="誰の13予想を入れるかを選びます。スマホでは横にスワイプできます。">
         <div className="rounded-[22px] border border-slate-200 bg-slate-50/90 px-4 py-4">

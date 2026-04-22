@@ -10,6 +10,12 @@ import type {
   SportContext,
 } from "@/lib/types";
 
+type EstimateStatusBanner = {
+  body: string;
+  title: string;
+  tone: "amber" | "slate" | "teal";
+};
+
 const WORLD_TOTO_PATTERN = /(world\s*toto|ワールドtoto|world cup|w杯|fifa)/i;
 
 export const competitionTypeModeLabel: Record<CompetitionType, string> = {
@@ -215,6 +221,50 @@ export function modeMaterialsDescription(competitionType: CompetitionType) {
   }
 
   return "カスタムモードです。入力済みの材料に応じて、共通ロジックで差分を見ます。";
+}
+
+export function roundEstimateStatusBanner(input: {
+  competitionType: CompetitionType;
+  probabilityReadiness: ProbabilityReadiness;
+  roundSource: RoundSource;
+}): EstimateStatusBanner {
+  if (input.roundSource === "demo_sample") {
+    return {
+      title: "これは固定の見本データです",
+      body: "画面の流れを見るための教材で、試合・予想・モデル試算・振り返りが最初から入っています。本番判断には使いません。",
+      tone: "amber",
+    };
+  }
+
+  if (input.probabilityReadiness === "ready") {
+    return {
+      title: "いまは試算できます",
+      body: probabilityReadinessDescription(input.probabilityReadiness, input.competitionType),
+      tone: "teal",
+    };
+  }
+
+  if (input.probabilityReadiness === "partial") {
+    return {
+      title: "いまは一部だけ試算できます",
+      body: probabilityReadinessDescription(input.probabilityReadiness, input.competitionType),
+      tone: "amber",
+    };
+  }
+
+  if (input.probabilityReadiness === "low_confidence") {
+    return {
+      title: "いまは低信頼の試算です",
+      body: probabilityReadinessDescription(input.probabilityReadiness, input.competitionType),
+      tone: "amber",
+    };
+  }
+
+  return {
+    title: "いまは暫定の試算です",
+    body: probabilityReadinessDescription(input.probabilityReadiness, input.competitionType),
+    tone: "slate",
+  };
 }
 
 export function inferRoundProbabilityReadiness(matches: Match[]): ProbabilityReadiness {
