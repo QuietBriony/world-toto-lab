@@ -588,25 +588,8 @@ export default function DashboardPage() {
     <div className="space-y-8">
       <PageHeader
         eyebrow="ワールドtotoラボ"
-        title="W杯totoの予想・分析・記録ダッシュボード"
-        description="モデル試算と少数の予想者を見比べながら、他メンバーは支持先を選べる共有 MVP です。"
-        actions={
-          <div className="flex flex-wrap gap-3">
-            <a href={createRoundAnchor} className={buttonClassName}>
-              新規ラウンドを作成
-            </a>
-            {liveRoundCount > 0 ? (
-              <a href={roundListAnchor} className={secondaryButtonClassName}>
-                既存ラウンドから選ぶ
-              </a>
-            ) : null}
-            {data && data.users.length > 0 && latestRoundProgress ? (
-              <Link href={latestRoundProgress.nextStep.href} className={buttonClassName}>
-                続き: {latestRoundProgress.nextStep.label}
-              </Link>
-            ) : null}
-          </div>
-        }
+        title="W杯totoを、みんなで遊ぶ"
+        description="候補カード、自分の予想、振り返りまでを、友だちと軽く回すための入口です。"
       />
 
       {!isSupabaseConfigured() ? (
@@ -920,65 +903,64 @@ export default function DashboardPage() {
           </SectionCard>
 
           <SectionCard
-            title="本番セットアップ"
-            description="まずは本番ラウンドを1つ作り、必要なら `hazi` と空き枠も一緒に準備してから進めます。"
+            title="作る / 開く"
+            description="入口だけを先に置いています。細かい説明は下の折りたたみ側で必要なときだけ見れば大丈夫です。"
           >
             <div className="grid gap-4 lg:grid-cols-2">
               <div className="rounded-[24px] border border-white/80 bg-white/76 p-5 shadow-[0_18px_44px_-30px_rgba(15,23,42,0.4)]">
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge tone={liveRoundCount > 0 ? "teal" : "amber"}>
-                    {liveRoundCount > 0 ? "進行中" : "最初の一歩"}
+                    {liveRoundCount > 0 ? "新しく作る" : "最初の一歩"}
                   </Badge>
                   <h3 className="font-display text-lg font-semibold tracking-[-0.04em] text-slate-950">
-                    本番ラウンドを作る
+                    新しい本番回を作る
                   </h3>
                 </div>
                 <p className="mt-3 text-sm leading-6 text-slate-600">
-                  初回はここから始めれば十分です。必要なら `hazi` と空き枠も同時に作って、そのまま試合設定へ進めます。
+                  販売後の取り込みでも、手入力の細かい作成でも、まずはここから始めれば十分です。
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <a href={createRoundAnchor} className={buttonClassName}>
-                    {liveRoundCount === 0 ? "本番セットを始める" : "新規ラウンドを作る"}
+                    {liveRoundCount === 0 ? "本番回を作る" : "新規ラウンドを作る"}
                   </a>
-                  {liveRoundCount > 0 ? (
-                    <>
-                      <a href={roundListAnchor} className={secondaryButtonClassName}>
-                        既存ラウンド一覧
-                      </a>
-                      <Link
-                        href={buildRoundHref(appRoute.workspace, latestRound?.id ?? data.rounds[0].id)}
-                        className={secondaryButtonClassName}
-                      >
-                        直近ラウンドを開く
-                      </Link>
-                    </>
-                  ) : (
-                    <a href="#shared-members" className={secondaryButtonClassName}>
-                      メンバーを確認
-                    </a>
-                  )}
+                  <Link
+                    href={buildOfficialRoundImportHref(undefined, {
+                      autoSync: true,
+                      productType: "toto13",
+                      sourcePreset: "yahoo_toto_schedule",
+                    })}
+                    className={secondaryButtonClassName}
+                  >
+                    公式対象回から始める
+                  </Link>
                 </div>
               </div>
 
               <div className="rounded-[24px] border border-white/80 bg-white/76 p-5 shadow-[0_18px_44px_-30px_rgba(15,23,42,0.4)]">
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge tone={latestRoundProgress?.nextStep.tone ?? "sky"}>
-                    {latestRound ? "続きから" : "次にやる"}
+                    {latestRound ? "作ったものを開く" : "次にやる"}
                   </Badge>
                   <h3 className="font-display text-lg font-semibold tracking-[-0.04em] text-slate-950">
-                    今やること
+                    直近の本番回
                   </h3>
                 </div>
                 <p className="mt-3 text-sm leading-6 text-slate-600">
                   {latestRound && latestRoundProgress
-                    ? `${latestRound.title} の次アクションは「${latestRoundProgress.nextStep.label}」です。`
-                    : "本番ラウンドを作ったら、試合設定から順に進めます。"}
+                    ? `${latestRound.title} の続きは「${latestRoundProgress.nextStep.label}」です。`
+                    : "まだ本番回がないので、左から1回作るだけで大丈夫です。"}
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   {latestRound && latestRoundProgress ? (
                     <>
-                      <Link href={latestRoundProgress.nextStep.href} className={buttonClassName}>
-                        {latestRoundProgress.nextStep.label}
+                      <a href={roundListAnchor} className={buttonClassName}>
+                        本番ラウンド一覧
+                      </a>
+                      <Link
+                        href={latestRoundProgress.nextStep.href}
+                        className={secondaryButtonClassName}
+                      >
+                        続きから開く
                       </Link>
                       <Link
                         href={buildRoundHref(appRoute.workspace, latestRound.id)}
@@ -988,8 +970,8 @@ export default function DashboardPage() {
                       </Link>
                     </>
                   ) : (
-                    <a href="#create-round" className={secondaryButtonClassName}>
-                      ラウンド作成へ
+                    <a href="#shared-members" className={secondaryButtonClassName}>
+                      メンバーを見る
                     </a>
                   )}
                 </div>
@@ -1129,48 +1111,8 @@ export default function DashboardPage() {
           </CollapsibleSectionCard>
 
           <CollapsibleSectionCard
-            title="このサイトは何をするもの？"
-            description="友人グループで W杯toto / WINNER の見立てを共有し、モデル試算と少数の予想者ラインを比べながら、他メンバーは支持先を選べる分析ラボです。"
-            defaultOpen={false}
-            badge={<Badge tone="teal">全体像</Badge>}
-          >
-            <div className="grid gap-4 lg:grid-cols-3">
-              {[
-                {
-                  eyebrow: "入力",
-                  title: "試算ラインと予想者を並べる",
-                  body: "まず モデル試算 と予想者ラインを見ます。予想者は 1/0/2 とカードを入れ、他メンバーは支持先を選びます。",
-                },
-                {
-                  eyebrow: "比較",
-                  title: "優位差を比べる",
-                  body: "一般人気 / モデル / 予想者 / ウォッチ支持のズレを、ラウンド詳細・コンセンサス・優位ボードで並べて見ます。",
-                },
-                {
-                  eyebrow: "振り返り",
-                  title: "結果を振り返る",
-                  body: "振り返りで的中数、対立パターン、反省メモを残して次回に活かします。",
-                },
-              ].map((item) => (
-                <div
-                  key={item.title}
-                  className="rounded-[24px] border border-white/80 bg-white/76 p-5 shadow-[0_18px_44px_-30px_rgba(15,23,42,0.4)]"
-                >
-                  <div className="font-display text-[11px] uppercase tracking-[0.34em] text-teal-800/72">
-                    {item.eyebrow}
-                  </div>
-                  <h3 className="mt-3 font-display text-xl font-semibold tracking-[-0.05em] text-slate-950">
-                    {item.title}
-                  </h3>
-                  <p className="mt-3 text-sm leading-6 text-slate-600">{item.body}</p>
-                </div>
-              ))}
-            </div>
-          </CollapsibleSectionCard>
-
-          <CollapsibleSectionCard
-            title="最初の使い方"
-            description="初回はこの順で進めると迷いにくいです。"
+            title="はじめての人へ"
+            description="初回はこの順で進めれば十分です。細かい設計や運用の話は、さらに下の補助欄に寄せています。"
             defaultOpen={false}
             badge={<Badge tone="sky">チュートリアル</Badge>}
           >
@@ -1240,10 +1182,8 @@ export default function DashboardPage() {
             </div>
           </CollapsibleSectionCard>
 
-          <FeedbackBoard />
-
           <CollapsibleSectionCard
-            title="今どこまで使える？"
+            title="今できること"
             description="共有 MVP としてのコア機能は入っていますが、まだフルプロダクトではありません。"
             defaultOpen={false}
             badge={<Badge tone="amber">到達点</Badge>}
@@ -1306,8 +1246,8 @@ export default function DashboardPage() {
           </CollapsibleSectionCard>
 
           <CollapsibleSectionCard
-            title="運用メモと公開時の注意"
-            description="公開サイトとして使う前提の注意を、必要なときだけ開けるようにまとめています。"
+            title="公開前の注意"
+            description="公開サイトとして使う前に気をつけたい点だけを、必要なときに開けるようにしています。"
             defaultOpen={false}
             badge={<Badge tone="slate">注意</Badge>}
           >
@@ -2312,6 +2252,8 @@ export default function DashboardPage() {
               </>
             )}
           </section>
+
+          <FeedbackBoard />
 
           <CollapsibleSectionCard
             title="期待値ウォッチ"

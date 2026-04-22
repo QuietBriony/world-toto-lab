@@ -187,8 +187,8 @@ export function FeedbackBoard() {
 
   return (
     <CollapsibleSectionCard
-      title="触ってみての改善メモ"
-      description="一旦ここで締めたあとに、気づいたことを残しておける控えです。保存先はこのブラウザ内だけなので、最後にコピーして管理者へ渡します。"
+      title="気づいたことメモ"
+      description="使っていて気になったことを、このブラウザだけに残せます。最後にまとめてコピーして渡せば十分です。"
       defaultOpen={false}
       badge={<Badge tone="rose">要望メモ</Badge>}
     >
@@ -197,7 +197,7 @@ export function FeedbackBoard() {
           {[
             {
               step: "01",
-              title: "ここに入れる",
+              title: "メモする",
               body: "どこで詰まったかと、やりたかったことを短く残します。",
             },
             {
@@ -207,7 +207,7 @@ export function FeedbackBoard() {
             },
             {
               step: "03",
-              title: "管理者へ送る",
+              title: "あとで渡す",
               body: "コピーした内容を、管理者やこの開発チャットへ貼って伝えます。",
             },
           ].map((item) => (
