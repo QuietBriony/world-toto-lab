@@ -1,3 +1,7 @@
+"use client";
+
+import { usePathname } from "next/navigation";
+
 import { EditingStatusNotice } from "@/components/app/editing-status";
 import {
   Badge,
@@ -9,7 +13,7 @@ import {
   secondaryButtonClassName,
 } from "@/components/ui";
 import { formatCurrency, formatPercent } from "@/lib/domain";
-import { candidateStrategyArt } from "@/lib/ui-art";
+import { candidateStrategyArt, resolveArtAsset } from "@/lib/ui-art";
 import type { RoundDataQualitySummary } from "@/lib/candidate-tickets";
 import type {
   CandidateDataQuality,
@@ -182,16 +186,18 @@ export function CandidateCard(props: {
   onVote: (vote: CandidateVoteValue) => void;
   voteSummary: CandidateVoteSummary;
 }) {
+  const pathname = usePathname();
   const warning = props.candidate.warning;
   const warningBadgeTone = warningTone(warning);
   const artwork = candidateStrategyArt[props.candidate.strategyType];
+  const artworkSrc = resolveArtAsset(pathname, artwork.src);
 
   return (
     <article className="flex w-[86vw] max-w-[360px] shrink-0 snap-start flex-col gap-4 rounded-[28px] border border-white/70 bg-[linear-gradient(145deg,rgba(255,255,255,0.96),rgba(242,250,245,0.9))] p-5 shadow-[0_28px_72px_-44px_rgba(15,23,42,0.42)] sm:w-auto sm:min-w-[320px]">
       <div
         className="relative overflow-hidden rounded-[24px] border border-slate-200 bg-slate-950"
         style={{
-          backgroundImage: `linear-gradient(180deg,rgba(7,12,18,0.08),rgba(7,12,18,0.76)), url(${artwork.src})`,
+          backgroundImage: `linear-gradient(180deg,rgba(7,12,18,0.04),rgba(7,12,18,0.34)_48%,rgba(7,12,18,0.72)), url(${artworkSrc})`,
           backgroundPosition: "center",
           backgroundSize: "cover",
         }}

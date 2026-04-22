@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { RouteGlossaryCard } from "@/components/app/round-guides";
@@ -31,7 +32,7 @@ import {
   type SyncedTotoOfficialRoundEntry,
 } from "@/lib/repository";
 import { isSupabaseConfigured } from "@/lib/supabase";
-import { boardHeroArt } from "@/lib/ui-art";
+import { boardHeroArt, resolveArtAsset } from "@/lib/ui-art";
 import { useBigOfficialWatch, useTotoOfficialRoundLibrary } from "@/lib/use-app-data";
 
 function errorMessage(error: unknown) {
@@ -43,6 +44,7 @@ function proxyOutcomeLabel(outcome: Goal3OutcomeValue | null) {
 }
 
 export default function Goal3ValuePage() {
+  const pathname = usePathname();
   const library = useTotoOfficialRoundLibrary({ productType: "custom" });
   const bigOfficialWatch = useBigOfficialWatch();
   const [syncing, setSyncing] = useState(false);
@@ -228,7 +230,7 @@ export default function Goal3ValuePage() {
       <ArtBannerPanel
         badge={<Badge tone="sky">{boardHeroArt.goal3.accentLabel}</Badge>}
         description={boardHeroArt.goal3.description}
-        imageSrc={boardHeroArt.goal3.src}
+        imageSrc={resolveArtAsset(pathname, boardHeroArt.goal3.src)}
         title={boardHeroArt.goal3.title}
       />
 

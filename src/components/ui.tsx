@@ -333,7 +333,7 @@ export function StatCard({
   );
 }
 
-type PageHeaderProps = HTMLAttributes<HTMLElement> & {
+type PageHeaderProps = Omit<HTMLAttributes<HTMLElement>, "title"> & {
   actions?: ReactNode;
   description?: ReactNode;
   eyebrow?: ReactNode;
@@ -382,9 +382,10 @@ export function PageHeader({
   );
 }
 
-type ArtBannerPanelProps = HTMLAttributes<HTMLElement> & {
+type ArtBannerPanelProps = Omit<HTMLAttributes<HTMLElement>, "title"> & {
   actions?: ReactNode;
   badge?: ReactNode;
+  backgroundGradient?: string;
   bodyClassName?: string;
   contentClassName?: string;
   description: ReactNode;
@@ -398,6 +399,7 @@ type ArtBannerPanelProps = HTMLAttributes<HTMLElement> & {
 export function ArtBannerPanel({
   actions,
   badge,
+  backgroundGradient,
   bodyClassName,
   className,
   contentClassName,
@@ -416,7 +418,7 @@ export function ArtBannerPanel({
         className,
       )}
       style={{
-        backgroundImage: `linear-gradient(90deg,rgba(7,12,18,0.88),rgba(7,12,18,0.56)_44%,rgba(7,12,18,0.36)), url(${imageSrc})`,
+        backgroundImage: `${backgroundGradient ?? "linear-gradient(90deg,rgba(7,12,18,0.88),rgba(7,12,18,0.56)_44%,rgba(7,12,18,0.36))"}, url(${imageSrc})`,
         backgroundPosition: "center",
         backgroundSize: "cover",
       }}

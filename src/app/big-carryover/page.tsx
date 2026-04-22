@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense, useMemo, useState } from "react";
 
 import { RouteGlossaryCard } from "@/components/app/round-guides";
@@ -42,7 +42,7 @@ import {
   normalizeBigShockSignal,
 } from "@/lib/big-carryover";
 import { appRoute, buildHref } from "@/lib/round-links";
-import { boardHeroArt, emptyStateArt } from "@/lib/ui-art";
+import { boardHeroArt, emptyStateArt, resolveArtAsset } from "@/lib/ui-art";
 import { useBigOfficialWatch } from "@/lib/use-app-data";
 
 function parseNumberInput(value: string | null, fallback: number) {
@@ -56,6 +56,7 @@ function parseNumberInput(value: string | null, fallback: number) {
 }
 
 function BigCarryoverPageContent() {
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const shockSearchParam = searchParams.get("shock");
   const [eventType, setEventType] = useState(
@@ -198,7 +199,7 @@ function BigCarryoverPageContent() {
       <ArtBannerPanel
         badge={<Badge tone="amber">{boardHeroArt.big.accentLabel}</Badge>}
         description={boardHeroArt.big.description}
-        imageSrc={boardHeroArt.big.src}
+        imageSrc={resolveArtAsset(pathname, boardHeroArt.big.src)}
         title={boardHeroArt.big.title}
       />
 
@@ -236,7 +237,7 @@ function BigCarryoverPageContent() {
             <ArtBannerPanel
               badge={<Badge tone="amber">{emptyStateArt.bigWatch.accentLabel}</Badge>}
               description={emptyStateArt.bigWatch.description}
-              imageSrc={emptyStateArt.bigWatch.src}
+              imageSrc={resolveArtAsset(pathname, emptyStateArt.bigWatch.src)}
               title={emptyStateArt.bigWatch.title}
             />
             <p className="text-sm text-slate-500">

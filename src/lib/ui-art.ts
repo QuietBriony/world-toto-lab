@@ -1,4 +1,5 @@
 import type { CandidateStrategyType } from "@/lib/types";
+import { appRoute } from "@/lib/round-links";
 
 type CardArt = {
   accentLabel: string;
@@ -93,3 +94,50 @@ export const emptyStateArt: Record<"bigWatch", EmptyStateArt> = {
     title: "いまは次の更新を待ちながら比べる",
   },
 };
+
+function trimTrailingSlash(pathname: string) {
+  if (pathname.length > 1 && pathname.endsWith("/")) {
+    return pathname.slice(0, -1);
+  }
+
+  return pathname;
+}
+
+const routeBaseHints = Object.values(appRoute)
+  .filter((route) => route !== "/")
+  .map((route) => trimTrailingSlash(route))
+  .sort((left, right) => right.length - left.length);
+
+export function detectArtBasePath(pathname: string) {
+  const normalizedPathname = trimTrailingSlash(pathname);
+
+  if (!normalizedPathname || normalizedPathname === "/") {
+    return "";
+  }
+
+  const matchedRoute = routeBaseHints.find(
+    (route) =>
+      normalizedPathname === route || normalizedPathname.endsWith(route),
+  );
+
+  if (!matchedRoute) {
+    return normalizedPathname;
+  }
+
+  const routeIndex = normalizedPathname.lastIndexOf(matchedRoute);
+  return routeIndex > 0 ? normalizedPathname.slice(0, routeIndex) : "";
+}
+
+export function resolveArtAsset(pathname: string, src: string) {
+  if (!src || /^https?:\/\//.test(src) || src.startsWith("data:")) {
+    return src;
+  }
+
+  const basePath = detectArtBasePath(pathname);
+
+  if (src.startsWith("/")) {
+    return `${basePath}${src}`;
+  }
+
+  return basePath ? `${basePath}/${src}` : `/${src}`;
+}

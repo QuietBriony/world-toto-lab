@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useMemo, useState, type FormEvent } from "react";
 
 import {
@@ -102,7 +102,7 @@ import {
 import { useBigOfficialWatch, useDashboardData, useTotoOfficialRoundLibrary } from "@/lib/use-app-data";
 import { isWinnerLikeRound } from "@/lib/winner-value";
 import { resolveWorldTotoProductLabel } from "@/lib/world-toto";
-import { candidateStrategyArt, demoLabArt } from "@/lib/ui-art";
+import { candidateStrategyArt, demoLabArt, resolveArtAsset } from "@/lib/ui-art";
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "不明なエラーです。";
@@ -126,6 +126,7 @@ type MemberRoundActivity = {
 };
 
 export default function DashboardPage() {
+  const pathname = usePathname();
   const router = useRouter();
   const { data, error, loading, refresh } = useDashboardData();
   const goal3Library = useTotoOfficialRoundLibrary({ productType: "custom" });
@@ -578,13 +579,19 @@ export default function DashboardPage() {
         summary: featuredBigOfficial.summary,
       })
     : null;
+  const demoLabImageSrc = resolveArtAsset(pathname, demoLabArt.src);
 
   return (
     <div className="space-y-8">
       <PageHeader
+        className="gap-3 p-4 sm:p-5 xl:items-center"
         eyebrow="ワールドtotoラボ"
-        title="W杯totoの共有ダッシュボード"
-        description="本番回を作る、開く、候補を比べる。その入口だけを先に置いています。"
+        title={
+          <div className="font-display text-[2rem] font-semibold tracking-[-0.08em] text-white sm:text-[2.4rem]">
+            W杯totoの共有ダッシュボード
+          </div>
+        }
+        description="本番回を作る、開く、候補を比べる。まず使う入口だけを先に置いています。"
       />
 
       {!isSupabaseConfigured() ? (
@@ -602,35 +609,66 @@ export default function DashboardPage() {
             <ArtBannerPanel
               badge={<Badge tone="teal">{latestRound ? "進行中の本番回" : "最初の1回を作る"}</Badge>}
               className="border-emerald-200/55"
-              contentClassName="min-h-[320px] gap-8"
-              bodyClassName="rounded-[26px] border border-white/14 bg-[linear-gradient(145deg,rgba(6,18,25,0.58),rgba(8,22,30,0.34))] px-5 py-4 shadow-[0_24px_70px_-44px_rgba(0,0,0,0.7)] backdrop-blur-md"
+              backgroundGradient="linear-gradient(102deg,rgba(5,10,16,0.48),rgba(5,10,16,0.14)_52%,rgba(5,10,16,0.38))"
+              contentClassName="min-h-[360px] gap-8 px-5 py-5 sm:px-6 sm:py-6 lg:min-h-[392px]"
+              bodyClassName="max-w-[44rem] space-y-4 drop-shadow-[0_18px_40px_rgba(0,0,0,0.48)]"
               description={
-                latestRound
-                  ? `${latestRound.title} の続きから入り、候補カード、自分の予想、振り返りまでつなげられます。`
-                  : "まずはラウンドを1つ作り、試合を入れて、候補カードと自分の予想が見える状態まで進めます。"
+                <div className="space-y-4">
+                  <div className="flex flex-wrap gap-2">
+                    <Badge tone="amber">{data.users.length}人</Badge>
+                    <Badge tone="slate">
+                      {latestRound ? `${latestRound.matchCount}試合` : "13試合から始める"}
+                    </Badge>
+                    {latestRoundProgress ? (
+                      <Badge tone={latestRoundProgress.nextStep.tone}>
+                        次: {latestRoundProgress.nextStep.label}
+                      </Badge>
+                    ) : null}
+                    <Badge tone="sky">入力 {formatPercent(latestRoundProgress?.pickCompletion ?? 0)}</Badge>
+                  </div>
+                  <p className="max-w-[36rem] text-sm leading-6 text-white/88 sm:text-base">
+                    {latestRound
+                      ? `${latestRound.title} の続きから入り、候補カード、自分の予想、振り返りまでつなげられます。`
+                      : "まずはラウンドを1つ作り、試合を入れて、候補カードと自分の予想が見える状態まで進めます。"}
+                  </p>
+                </div>
               }
-              imageSrc={demoLabArt.src}
-              overlayClassName="bg-[linear-gradient(110deg,rgba(7,16,24,0.38),rgba(7,16,24,0.12)_42%,rgba(7,16,24,0.42)),radial-gradient(circle_at_top_right,rgba(255,255,255,0.2),transparent_28%)]"
-              title={latestRound ? latestRound.title : "最初の本番回を作る"}
+              imageSrc={demoLabImageSrc}
+              overlayClassName="bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.28),transparent_24%),linear-gradient(180deg,rgba(255,255,255,0.08),transparent_28%,rgba(4,9,15,0.16))]"
+              title={
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span className="inline-flex items-center gap-2 rounded-full border border-emerald-300/35 bg-emerald-400/12 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-emerald-50">
+                      <span className="h-2 w-2 rounded-full bg-emerald-300" />
+                      LIVE
+                    </span>
+                    <span className="text-xs font-semibold uppercase tracking-[0.26em] text-white/74">
+                      本番ラウンド
+                    </span>
+                  </div>
+                  <div className="font-display text-[2.15rem] font-semibold tracking-[-0.08em] text-white sm:text-[2.8rem] lg:text-[3.35rem]">
+                    {latestRound ? latestRound.title : "最初の本番回を作る"}
+                  </div>
+                </div>
+              }
               actions={
                 <Badge tone="slate">{liveRoundCount}本番回</Badge>
               }
               footer={
-                <div className="grid gap-4 xl:grid-cols-[1.12fr_0.88fr]">
-                  <div>
-                    <div className="flex flex-wrap gap-2">
-                      <Badge tone="amber">{data.users.length}人</Badge>
-                      <Badge tone="slate">
-                        {latestRound ? `${latestRound.matchCount}試合` : "13試合から始める"}
-                      </Badge>
-                      {latestRoundProgress ? (
-                        <Badge tone={latestRoundProgress.nextStep.tone}>
-                          次: {latestRoundProgress.nextStep.label}
-                        </Badge>
-                      ) : null}
-                      <Badge tone="sky">入力 {formatPercent(latestRoundProgress?.pickCompletion ?? 0)}</Badge>
+                <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr] xl:items-end">
+                  <div className="space-y-4">
+                    <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-white/78">
+                      <span>
+                        {latestRound ? `参加 ${latestRoundUsers.length || data.users.length}人` : "最初の1回から始める"}
+                      </span>
+                      <span>
+                        {latestRound ? `候補 ${latestRound.candidateTicketCount}枚` : "候補カードは後から自動で並びます"}
+                      </span>
+                      <span>
+                        {latestRound ? `入力 ${progressValue(latestRound.pickCount, latestRoundProgress?.expectedPickEntries ?? 0)}` : "予想入力は作成後に始めます"}
+                      </span>
                     </div>
-                    <div className="mt-5 flex flex-wrap gap-3">
+                    <div className="flex flex-wrap gap-3">
                       <Link
                         href={latestRound ? buildRoundHref(appRoute.workspace, latestRound.id) : createRoundAnchor}
                         className={buttonClassName}
@@ -647,7 +685,7 @@ export default function DashboardPage() {
                   </div>
 
                   <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-                    <div className="rounded-[28px] border border-white/16 bg-black/32 p-5 backdrop-blur-md">
+                    <div className="rounded-[28px] border border-white/18 bg-[linear-gradient(145deg,rgba(8,14,22,0.52),rgba(8,14,22,0.24))] p-5 shadow-[0_22px_54px_-34px_rgba(0,0,0,0.45)] backdrop-blur-md">
                       <div className="flex items-center justify-between gap-3">
                         <div>
                           <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/60">
@@ -666,22 +704,22 @@ export default function DashboardPage() {
                         </div>
                       </div>
                       <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-2">
-                        <div className="rounded-[18px] bg-white/6 px-3 py-3 text-sm text-white/78">
+                        <div className="rounded-[18px] border border-white/8 bg-white/8 px-3 py-3 text-sm text-white/80">
                           試合設定 {latestRound ? progressValue(latestRoundProgress?.configuredMatches ?? 0, latestRound.matchCount) : "未作成"}
                         </div>
-                        <div className="rounded-[18px] bg-white/6 px-3 py-3 text-sm text-white/78">
+                        <div className="rounded-[18px] border border-white/8 bg-white/8 px-3 py-3 text-sm text-white/80">
                           支持 / 予想 {latestRound ? progressValue(latestRound.pickCount, latestRoundProgress?.expectedPickEntries ?? 0) : "未作成"}
                         </div>
-                        <div className="rounded-[18px] bg-white/6 px-3 py-3 text-sm text-white/78">
+                        <div className="rounded-[18px] border border-white/8 bg-white/8 px-3 py-3 text-sm text-white/80">
                           予想者カード {latestRound ? progressValue(latestRound.scoutReports.length, latestRoundProgress?.expectedScoutEntries ?? 0) : "未作成"}
                         </div>
-                        <div className="rounded-[18px] bg-white/6 px-3 py-3 text-sm text-white/78">
+                        <div className="rounded-[18px] border border-white/8 bg-white/8 px-3 py-3 text-sm text-white/80">
                           候補カード {latestRound ? `${latestRound.candidateTicketCount}` : "未作成"}
                         </div>
                       </div>
                     </div>
 
-                    <div className="rounded-[28px] border border-white/16 bg-black/28 p-5 backdrop-blur-md">
+                    <div className="rounded-[28px] border border-white/18 bg-[linear-gradient(145deg,rgba(8,14,22,0.48),rgba(8,14,22,0.18))] p-5 shadow-[0_22px_54px_-34px_rgba(0,0,0,0.45)] backdrop-blur-md">
                       <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/60">
                         今やること
                       </p>
@@ -749,19 +787,19 @@ export default function DashboardPage() {
                     className="group overflow-hidden rounded-[26px] border border-white/60 bg-white/90 shadow-[0_22px_56px_-36px_rgba(15,23,42,0.42)]"
                   >
                     <div
-                      className="relative min-h-[204px] bg-slate-950"
+                      className="relative min-h-[220px] bg-slate-950"
                       style={{
-                        backgroundImage: `linear-gradient(180deg,rgba(7,12,18,0.08),rgba(7,12,18,0.58)_55%,rgba(7,12,18,0.74)), url(${artwork.src})`,
+                        backgroundImage: `linear-gradient(180deg,rgba(7,12,18,0.04),rgba(7,12,18,0.28)_52%,rgba(7,12,18,0.64)), url(${resolveArtAsset(pathname, artwork.src)})`,
                         backgroundPosition: "center",
                         backgroundSize: "cover",
                       }}
                     >
-                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.14),transparent_34%)]" />
-                      <div className="relative z-10 flex min-h-[204px] flex-col justify-between gap-4 p-4">
+                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.2),transparent_34%)]" />
+                      <div className="relative z-10 flex min-h-[220px] flex-col justify-between gap-4 p-4">
                         <div className="flex flex-wrap items-center gap-2">
                           <Badge tone="slate">{artwork.accentLabel}</Badge>
                         </div>
-                        <div className="rounded-[20px] border border-white/14 bg-[linear-gradient(145deg,rgba(8,14,22,0.54),rgba(8,14,22,0.22))] p-4 backdrop-blur-sm">
+                        <div className="rounded-[22px] border border-white/16 bg-[linear-gradient(145deg,rgba(8,14,22,0.4),rgba(8,14,22,0.14))] p-4 shadow-[0_18px_44px_-34px_rgba(0,0,0,0.42)] backdrop-blur-sm">
                           <h3 className="font-display text-[1.35rem] font-semibold tracking-[-0.05em] text-white">
                             {item.label}
                           </h3>
@@ -823,7 +861,7 @@ export default function DashboardPage() {
                 <div
                   className="relative mb-4 overflow-hidden rounded-[22px] border border-slate-200 bg-slate-950"
                   style={{
-                    backgroundImage: `linear-gradient(180deg,rgba(7,12,18,0.12),rgba(7,12,18,0.72)), url(${demoLabArt.src})`,
+                    backgroundImage: `linear-gradient(180deg,rgba(7,12,18,0.08),rgba(7,12,18,0.54)), url(${demoLabImageSrc})`,
                     backgroundPosition: "center",
                     backgroundSize: "cover",
                   }}

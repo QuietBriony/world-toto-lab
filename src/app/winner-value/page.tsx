@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 
 import {
@@ -39,7 +39,7 @@ import {
 import { buildOutcomeEdges } from "@/lib/outcome-edge";
 import { appRoute, buildRoundHref, getSingleSearchParam } from "@/lib/round-links";
 import { isSupabaseConfigured } from "@/lib/supabase";
-import { boardHeroArt } from "@/lib/ui-art";
+import { boardHeroArt, resolveArtAsset } from "@/lib/ui-art";
 import { useRoundWorkspace } from "@/lib/use-app-data";
 import {
   buildWinnerOfficialSnapshot,
@@ -67,6 +67,7 @@ function badgeToneForReason(reason: string) {
 }
 
 function WinnerValuePageContent() {
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const roundId = getSingleSearchParam(searchParams.get("round"));
   const requestedMatchId = getSingleSearchParam(searchParams.get("match"));
@@ -190,7 +191,7 @@ function WinnerValuePageContent() {
       <ArtBannerPanel
         badge={<Badge tone="sky">{boardHeroArt.winner.accentLabel}</Badge>}
         description={boardHeroArt.winner.description}
-        imageSrc={boardHeroArt.winner.src}
+        imageSrc={resolveArtAsset(pathname, boardHeroArt.winner.src)}
         title={boardHeroArt.winner.title}
       />
 
