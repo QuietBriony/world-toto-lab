@@ -49,7 +49,11 @@ export function LoadingNotice({
 }) {
   return (
     <SectionCard title={title} description={description}>
-      <p className="text-sm text-slate-600">{description}</p>
+      <div className="space-y-3" aria-hidden="true">
+        <div className="h-3 w-28 rounded-full bg-slate-200/80" />
+        <div className="h-3 w-full max-w-md rounded-full bg-slate-100" />
+        <div className="h-3 w-3/4 max-w-sm rounded-full bg-slate-100" />
+      </div>
     </SectionCard>
   );
 }
