@@ -385,23 +385,27 @@ export function PageHeader({
 type ArtBannerPanelProps = HTMLAttributes<HTMLElement> & {
   actions?: ReactNode;
   badge?: ReactNode;
+  bodyClassName?: string;
   contentClassName?: string;
   description: ReactNode;
   eyebrow?: ReactNode;
   footer?: ReactNode;
   imageSrc: string;
+  overlayClassName?: string;
   title: ReactNode;
 };
 
 export function ArtBannerPanel({
   actions,
   badge,
+  bodyClassName,
   className,
   contentClassName,
   description,
   eyebrow,
   footer,
   imageSrc,
+  overlayClassName,
   title,
   ...props
 }: ArtBannerPanelProps) {
@@ -418,7 +422,12 @@ export function ArtBannerPanel({
       }}
       {...props}
     >
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.22),transparent_28%)]" />
+      <div
+        className={cx(
+          "absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.22),transparent_28%)]",
+          overlayClassName,
+        )}
+      />
       <div
         className={cx(
           "relative z-10 flex min-h-[176px] flex-col justify-between gap-6 p-5 sm:p-6",
@@ -436,7 +445,7 @@ export function ArtBannerPanel({
           </div>
           {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
         </div>
-        <div className="max-w-2xl space-y-2">
+        <div className={cx("max-w-2xl space-y-2", bodyClassName)}>
           {typeof title === "string" ? (
             <h2 className="font-display text-[1.45rem] font-semibold tracking-[-0.05em] text-white sm:text-[1.7rem]">
               {title}

@@ -603,12 +603,14 @@ export default function DashboardPage() {
               badge={<Badge tone="teal">{latestRound ? "進行中の本番回" : "最初の1回を作る"}</Badge>}
               className="border-emerald-200/55"
               contentClassName="min-h-[320px] gap-8"
+              bodyClassName="rounded-[26px] border border-white/14 bg-[linear-gradient(145deg,rgba(6,18,25,0.58),rgba(8,22,30,0.34))] px-5 py-4 shadow-[0_24px_70px_-44px_rgba(0,0,0,0.7)] backdrop-blur-md"
               description={
                 latestRound
                   ? `${latestRound.title} の続きから入り、候補カード、自分の予想、振り返りまでつなげられます。`
                   : "まずはラウンドを1つ作り、試合を入れて、候補カードと自分の予想が見える状態まで進めます。"
               }
               imageSrc={demoLabArt.src}
+              overlayClassName="bg-[linear-gradient(110deg,rgba(7,16,24,0.38),rgba(7,16,24,0.12)_42%,rgba(7,16,24,0.42)),radial-gradient(circle_at_top_right,rgba(255,255,255,0.2),transparent_28%)]"
               title={latestRound ? latestRound.title : "最初の本番回を作る"}
               actions={
                 <Badge tone="slate">{liveRoundCount}本番回</Badge>
@@ -747,23 +749,23 @@ export default function DashboardPage() {
                     className="group overflow-hidden rounded-[26px] border border-white/60 bg-white/90 shadow-[0_22px_56px_-36px_rgba(15,23,42,0.42)]"
                   >
                     <div
-                      className="relative min-h-[188px] bg-slate-950"
+                      className="relative min-h-[204px] bg-slate-950"
                       style={{
-                        backgroundImage: `linear-gradient(180deg,rgba(7,12,18,0.16),rgba(7,12,18,0.82)), url(${artwork.src})`,
+                        backgroundImage: `linear-gradient(180deg,rgba(7,12,18,0.08),rgba(7,12,18,0.58)_55%,rgba(7,12,18,0.74)), url(${artwork.src})`,
                         backgroundPosition: "center",
                         backgroundSize: "cover",
                       }}
                     >
                       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.14),transparent_34%)]" />
-                      <div className="relative z-10 flex min-h-[188px] flex-col justify-between p-4">
+                      <div className="relative z-10 flex min-h-[204px] flex-col justify-between gap-4 p-4">
                         <div className="flex flex-wrap items-center gap-2">
                           <Badge tone="slate">{artwork.accentLabel}</Badge>
                         </div>
-                        <div>
+                        <div className="rounded-[20px] border border-white/14 bg-[linear-gradient(145deg,rgba(8,14,22,0.54),rgba(8,14,22,0.22))] p-4 backdrop-blur-sm">
                           <h3 className="font-display text-[1.35rem] font-semibold tracking-[-0.05em] text-white">
                             {item.label}
                           </h3>
-                          <p className="mt-2 max-w-[22rem] text-sm leading-6 text-white/82">
+                          <p className="mt-2 max-w-[22rem] text-sm leading-6 text-white/84">
                             {item.body}
                           </p>
                           <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-white/18 bg-white/8 px-4 py-2 text-sm font-semibold text-white transition-transform duration-200 group-hover:translate-x-1">
