@@ -683,7 +683,7 @@ function BigCarryoverPageContent() {
 
       <SectionCard
         title="計算式"
-        description="この monitor では、まず簡易式でイベントの熱さを掴みます。"
+        description="このページでは、まず簡易式でイベントの熱さを掴みます。"
       >
         <div className="rounded-[24px] border border-slate-200 bg-slate-950 px-5 py-5 text-sm leading-7 text-slate-100">
           <p>EV倍率 ≈ returnRate + carryover / totalSales</p>
@@ -704,7 +704,7 @@ export default function BigCarryoverPage() {
     <Suspense
       fallback={
         <SectionCard
-          title="BIG Carryover Monitor を読み込み中"
+          title="BIGウォッチを読み込み中"
           description="条件を準備しています。"
         >
           <p className="text-sm text-slate-600">条件を準備しています。</p>

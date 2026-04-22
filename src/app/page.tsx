@@ -622,7 +622,7 @@ export default function DashboardPage() {
 
           <div className="rounded-[28px] border border-emerald-200 bg-emerald-50/80 p-5 shadow-[0_18px_44px_-34px_rgba(15,23,42,0.16)]">
             <div className="flex flex-wrap items-center gap-2">
-              <Badge tone="teal">Starter</Badge>
+              <Badge tone="teal">はじめて向け</Badge>
               <Badge tone="slate">5分で読める</Badge>
             </div>
             <h3 className="mt-3 font-display text-[1.35rem] font-semibold tracking-[-0.05em] text-slate-950">
@@ -636,7 +636,7 @@ export default function DashboardPage() {
             </div>
             <div className="mt-5 flex flex-wrap gap-3">
               <Link href={appRoute.devPlaybook} className={buttonClassName}>
-                共同開発スタートガイド
+                共同開発を始める
               </Link>
               <a href="#create-round" className={secondaryButtonClassName}>
                 アプリも触ってみる

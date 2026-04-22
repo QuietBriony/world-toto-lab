@@ -39,7 +39,7 @@ const pageGuideMeta: Partial<
   },
   [appRoute.bigCarryover]: {
     badge: "運用向け",
-    title: "BIG Carryover Monitor で見る言葉",
+    title: "BIGウォッチで見る言葉",
     description: "BIG は outcome を選ぶ画面ではないので、売上・キャリー・還元率だけに絞って短くまとめています。",
     summary: "高還元イベントかどうかを、ざっくり判定する段階です。",
   },
@@ -111,7 +111,7 @@ const pageGuideMeta: Partial<
   },
   [appRoute.practiceLab]: {
     badge: "練習回",
-    title: "Practice Lab で見る言葉",
+    title: "練習ラボで見る言葉",
     description: "通常toto回や練習回を、W杯本番前の検証用として軽く振り返る画面です。",
     summary: "モデル・人気・人力がどこまで効いたかを確認する段階です。",
   },
@@ -461,7 +461,7 @@ const pageGlossaryEntries: Partial<Record<GuideRoute, GlossaryEntry[]>> = {
 const routeLabel: Partial<Record<GuideRoute, string>> = {
   [appRoute.workspace]: "ラウンド詳細",
   [appRoute.play]: "遊ぼうページ",
-  [appRoute.bigCarryover]: "BIG Carryover Monitor",
+  [appRoute.bigCarryover]: "BIGウォッチ",
   [appRoute.goal3Value]: "GOAL3 Value Board",
   [appRoute.matchEditor]: "試合設定",
   [appRoute.picks]: "支持 / 予想",
@@ -470,7 +470,7 @@ const routeLabel: Partial<Record<GuideRoute, string>> = {
   [appRoute.edgeBoard]: "優位ボード",
   [appRoute.ticketGenerator]: "詳細候補配分",
   [appRoute.review]: "振り返り",
-  [appRoute.practiceLab]: "Practice Lab",
+  [appRoute.practiceLab]: "練習ラボ",
 };
 
 function toneBarClassName(tone: GuideTone) {

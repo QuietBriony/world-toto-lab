@@ -96,7 +96,7 @@ function PracticeLabPageContent() {
   }
 
   if (loading && !data) {
-    return <LoadingNotice title="Practice Lab を準備中" />;
+    return <LoadingNotice title="練習ラボを準備中" />;
   }
 
   if (error) {
@@ -110,7 +110,7 @@ function PracticeLabPageContent() {
   return (
     <div className="space-y-8">
       <PageHeader
-        eyebrow="Practice Lab"
+        eyebrow="練習ラボ"
         title="通常toto練習回"
         description="W杯前のモデル検証、人力予想の練習、通常totoでどこまで試算できるかを軽く振り返るページです。"
         actions={
@@ -131,7 +131,7 @@ function PracticeLabPageContent() {
         roundStatus={competitionTypeModeLabel[data.round.competitionType]}
         currentPath={appRoute.practiceLab}
         items={[
-          { href: buildRoundHref(appRoute.practiceLab, data.round.id), label: "Practice Lab" },
+          { href: buildRoundHref(appRoute.practiceLab, data.round.id), label: "練習ラボ" },
           { href: buildRoundHref(appRoute.play, data.round.id, { user: data.users[0]?.id }), label: "遊ぼう" },
           { href: buildRoundHref(appRoute.pickRoom, data.round.id, { user: data.users[0]?.id }), label: "Pick Room" },
           { href: buildRoundHref(appRoute.workspace, data.round.id), label: "Round 詳細" },
@@ -244,7 +244,7 @@ function PracticeLabPageContent() {
 
 export default function PracticeLabPage() {
   return (
-    <Suspense fallback={<LoadingNotice title="Practice Lab を準備中" />}>
+    <Suspense fallback={<LoadingNotice title="練習ラボを準備中" />}>
       <PracticeLabPageContent />
     </Suspense>
   );

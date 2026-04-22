@@ -747,7 +747,7 @@ function WorkspacePageContent() {
               />
               <StatCard
                 label="遊ぶ導線"
-                value={data.round.primaryUse === "practice" ? "Practice Lab" : "Friend Play"}
+                value={data.round.primaryUse === "practice" ? "練習ラボ" : "遊ぼうページ"}
                 compact
                 hint={
                   data.round.primaryUse === "practice"
