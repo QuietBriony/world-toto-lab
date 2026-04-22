@@ -62,25 +62,22 @@ export default function RootLayout({
                   </div>
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <Badge tone="teal">友だちと遊ぶ</Badge>
+                      <Badge tone="teal">共有ラボ</Badge>
                       <Badge tone="amber">予想と記録</Badge>
                     </div>
                     <h1 className="mt-3 max-w-3xl text-2xl font-semibold tracking-[-0.04em] text-white sm:text-3xl lg:text-[2.25rem]">
                       予想を持ち寄って、
                       <br className="hidden sm:block" />
-                      みんなで見比べる共有ラボ
+                      みんなで見比べる
                     </h1>
                     <p className="mt-3 max-w-2xl text-sm leading-6 text-emerald-50/78">
-                      候補カード、自分の予想、振り返りまでを、なるべく軽く回すためのページです。
+                      候補カード、自分の予想、振り返りまでを、軽く回すためのページです。
                     </p>
                   </div>
                 </Link>
                 <div className="flex flex-wrap gap-2 lg:justify-end">
                   <Link href={`${appRoute.dashboard}#create-round`} className={secondaryButtonClassName}>
                     新規ラウンド
-                  </Link>
-                  <Link href={appRoute.devPlaybook} className={secondaryButtonClassName}>
-                    共同開発
                   </Link>
                 </div>
               </div>
