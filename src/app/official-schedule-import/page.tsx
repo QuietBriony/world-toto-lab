@@ -172,7 +172,7 @@ function OfficialScheduleImportPageContent() {
   }
 
   if (fixtureMaster.loading && !fixtureMaster.data) {
-    return <LoadingNotice title="Official Schedule Import Wizard を準備中" />;
+    return <LoadingNotice title="公式日程の取り込みを準備中" />;
   }
 
   if (fixtureMaster.error) {
@@ -303,16 +303,16 @@ function OfficialScheduleImportPageContent() {
     <div className="space-y-8">
       <PageHeader
         eyebrow="Admin"
-        title="Official Schedule Import Wizard"
+        title="公式日程を取り込む"
         description="FIFA公式由来の確定日程を Fixture Master に入れる補助導線です。公式対象回がまだ出ていない時に、発売前の手動準備として使います。"
         actions={
           <div className="flex flex-wrap gap-3">
             <Link href={fixtureSelectorHref} className={secondaryButtonClassName}>
-              Fixture Selector
+              試合を選んで保存
             </Link>
             {roundDetailHref ? (
               <Link href={roundDetailHref} className={secondaryButtonClassName}>
-                Round Detailへ戻る
+                ラウンド詳細へ戻る
               </Link>
             ) : null}
             <button
@@ -483,7 +483,7 @@ function OfficialScheduleImportPageContent() {
         <p className="text-sm leading-6 text-slate-600">
           主導線は `この画面で取得 → Parse Preview → Save to Fixture Master` です。ここで扱うのは
           W杯全体の fixture master なので、13試合はまだ決めません。13試合の Round 化は次の
-          `Fixture Selector` か、公式対象回が出たあとの `Toto Official Round Import` で行います。
+          `試合を選んで保存` か、公式対象回が出たあとの `Toto Official Round Import` で行います。
         </p>
       </CollapsibleSectionCard>
 
@@ -516,7 +516,7 @@ function OfficialScheduleImportPageContent() {
           <div className="rounded-[22px] border border-sky-200 bg-sky-50/80 px-4 py-4">
             <Badge tone="info">13試合はまだ未選択</Badge>
             <p className="mt-3 text-sm leading-6 text-slate-700">
-              この段階では Round はまだ作りません。保存後に `Fixture Selector` で今回遊ぶ13試合を選びます。
+              この段階では Round はまだ作りません。保存後に `試合を選んで保存` で今回遊ぶ13試合を選びます。
             </p>
           </div>
           <div className="rounded-[22px] border border-amber-200 bg-amber-50/80 px-4 py-4">
@@ -852,7 +852,7 @@ function OfficialScheduleImportPageContent() {
 
 export default function OfficialScheduleImportPage() {
   return (
-    <Suspense fallback={<LoadingNotice title="Official Schedule Import Wizard を準備中" />}>
+    <Suspense fallback={<LoadingNotice title="公式日程の取り込みを準備中" />}>
       <OfficialScheduleImportPageContent />
     </Suspense>
   );

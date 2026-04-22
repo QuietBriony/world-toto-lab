@@ -307,7 +307,7 @@ function SimpleViewPageContent() {
               href={buildRoundHref(appRoute.play, data.round.id, { user: activeUser.id })}
               className={secondaryButtonClassName}
             >
-              遊ぼうページ
+              みんなで見る
             </Link>
             <Link
               href={buildRoundHref(appRoute.pickRoom, data.round.id, { user: activeUser.id })}
@@ -395,8 +395,8 @@ function SimpleViewPageContent() {
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
-                        Match {match.matchNo}
+                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
+                        試合 {match.matchNo}
                       </p>
                       {match.stage ? <Badge tone="slate">{match.stage}</Badge> : null}
                       {match.kickoffTime ? (
@@ -407,7 +407,7 @@ function SimpleViewPageContent() {
                       {match.homeTeam} vs {match.awayTeam}
                     </h3>
                     <p className="mt-2 text-sm leading-6 text-slate-600">
-                      crowd は公式人気、AI はモデル、人力は管理者の手入力予想です。
+                      公式は人気、モデルは試算、人力は手入力の見立てです。
                     </p>
                   </div>
 
@@ -523,7 +523,7 @@ function SimpleViewPageContent() {
       </SectionCard>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-        <StatCard label="Round" value={data.round.title} compact />
+        <StatCard label="ラウンド" value={data.round.title} compact />
         <StatCard label="対象試合数" value={data.round.matches.length} compact />
         <StatCard
           label="入力済み"

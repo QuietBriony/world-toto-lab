@@ -44,7 +44,7 @@ function FixtureSelectorPageContent() {
   const [stage, setStage] = useState("");
   const [groupName, setGroupName] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [title, setTitle] = useState("公式日程から作るRound");
+  const [title, setTitle] = useState("公式日程から作るラウンド");
   const [productTypeOverride, setProductTypeOverride] = useState<ProductType | null>(null);
   const [saving, setSaving] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -105,7 +105,7 @@ function FixtureSelectorPageContent() {
   }
 
   if (fixtures.loading && !fixtures.data) {
-    return <LoadingNotice title="Fixture Selector を準備中" />;
+    return <LoadingNotice title="試合選択を準備中" />;
   }
 
   const recommendedProductType =
@@ -121,7 +121,7 @@ function FixtureSelectorPageContent() {
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (selectedIds.length === 0) {
-      setActionError("Round に入れる試合を1件以上選んでください。");
+      setActionError("ラウンドに入れる試合を1件以上選んでください。");
       return;
     }
 
@@ -153,8 +153,8 @@ function FixtureSelectorPageContent() {
     <div className="space-y-8">
       <PageHeader
         eyebrow="Admin"
-        title="Fixture Selector"
-        description="販売前の手動準備として、Fixture Master に入った大会全体の試合から今回遊ぶ13試合を選んで Round 化します。公式対象13試合が出たあとは Toto Official Round Import の方が本番向きです。"
+        title="試合を選んで保存"
+        description="販売前の手動準備として、Fixture Master に入った大会全体の試合から今回遊ぶ13試合を選んでラウンド化します。公式対象13試合が出たあとは Toto Official Round Import の方が本番向きです。"
         actions={
           <div className="flex flex-wrap gap-3">
             <Link href={officialScheduleHref} className={secondaryButtonClassName}>
@@ -165,12 +165,12 @@ function FixtureSelectorPageContent() {
             </Link>
             {roundDetailHref ? (
               <Link href={roundDetailHref} className={secondaryButtonClassName}>
-                Round Detailへ戻る
+                ラウンド詳細へ戻る
               </Link>
             ) : null}
             {createdRoundId ? (
               <Link href={buildRoundHref(appRoute.workspace, createdRoundId)} className={buttonClassName}>
-                Round を開く
+                ラウンドを開く
               </Link>
             ) : null}
           </div>
@@ -180,7 +180,7 @@ function FixtureSelectorPageContent() {
       <RoundContextCard
         roundId={existingRoundId}
         backHref={roundDetailHref}
-        description="既存 Round の置換か、新規 Round 作成かをこのカードで見分けられるようにしています。"
+        description="既存ラウンドの置換か、新規ラウンド作成かをこのカードで見分けられるようにしています。"
       />
 
       <SectionCard
@@ -191,13 +191,13 @@ function FixtureSelectorPageContent() {
           <div className="rounded-[22px] border border-slate-200 bg-slate-50/90 px-4 py-4">
             <Badge tone="slate">1. 全試合は保存済み</Badge>
             <p className="mt-3 text-sm leading-6 text-slate-700">
-              `Official Schedule Import Wizard` では大会全体の fixture master を作ります。
+              `公式日程を取り込む` では大会全体の fixture master を作ります。
             </p>
           </div>
           <div className="rounded-[22px] border border-teal-200 bg-teal-50/80 px-4 py-4">
             <Badge tone="teal">2. ここで13試合を選ぶ</Badge>
             <p className="mt-3 text-sm leading-6 text-slate-700">
-              発売前の段階では、この画面で今回遊ぶ13試合を手で選んで Round にします。
+              発売前の段階では、この画面で今回遊ぶ13試合を手で選んでラウンドにします。
             </p>
           </div>
           <div className="rounded-[22px] border border-sky-200 bg-sky-50/80 px-4 py-4">
@@ -210,7 +210,7 @@ function FixtureSelectorPageContent() {
         </div>
       </SectionCard>
 
-      <SectionCard title="Filter" description="competition / team / group / stage で絞り込みます。">
+      <SectionCard title="絞り込み" description="大会 / チーム / グループ / ステージで絞り込みます。">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <input
             value={competition}
@@ -278,13 +278,13 @@ function FixtureSelectorPageContent() {
               <Badge tone="warning">フィルタ外で保持 {hiddenSelectedCount}</Badge>
             ) : null}
             <Badge tone="info">おすすめ {productTypeLabel[recommendedProductType]}</Badge>
-            {existingRoundId ? <Badge tone="warning">既存Roundを置換</Badge> : <Badge tone="teal">新規Round作成</Badge>}
+            {existingRoundId ? <Badge tone="warning">既存ラウンドを置換</Badge> : <Badge tone="teal">新規ラウンド作成</Badge>}
           </div>
 
           {hiddenSelectedCount > 0 ? (
             <div className="rounded-[22px] border border-amber-200 bg-amber-50 px-4 py-4 text-sm leading-6 text-amber-950">
               いまのフィルタでは見えていない試合が {hiddenSelectedCount} 件、保存対象に残っています。
-              今見えている試合だけで Round を作りたいときは、下のボタンで整理してください。
+              今見えている試合だけでラウンドを作りたいときは、下のボタンで整理してください。
             </div>
           ) : null}
 
@@ -326,7 +326,7 @@ function FixtureSelectorPageContent() {
           {actionError ? <p className="text-sm text-rose-700">{actionError}</p> : null}
 
           <button type="submit" className={buttonClassName} disabled={saving || selectedIds.length === 0}>
-            {saving ? "保存中..." : existingRoundId ? "このRoundに反映" : "Round を作成"}
+            {saving ? "保存中..." : existingRoundId ? "このラウンドに反映" : "ラウンドを作成"}
           </button>
         </form>
       </SectionCard>
@@ -413,7 +413,7 @@ function FixtureSelectorPageContent() {
 
 export default function FixtureSelectorPage() {
   return (
-    <Suspense fallback={<LoadingNotice title="Fixture Selector を準備中" />}>
+    <Suspense fallback={<LoadingNotice title="試合選択を準備中" />}>
       <FixtureSelectorPageContent />
     </Suspense>
   );

@@ -321,7 +321,7 @@ function PickRoomPageContent() {
               href={buildRoundHref(appRoute.play, data.round.id, { user: activeUser?.id })}
               className={secondaryButtonClassName}
             >
-              遊ぼうページ
+              みんなで見る
             </Link>
             <button
               type="button"
@@ -491,7 +491,7 @@ function PickRoomPageContent() {
       />
 
       <CollapsibleSectionCard
-        title="このRoomの前提"
+        title="この回の前提"
         description="候補の出どころと注意点を先にそろえておくと、投票の意味がぶれません。"
         defaultOpen={dataQualitySummary.isDemoData || !data.round.totoOfficialRound}
         badge={<Badge tone="slate">補助説明</Badge>}

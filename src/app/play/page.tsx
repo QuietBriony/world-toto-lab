@@ -19,6 +19,7 @@ import { RoundNav } from "@/components/round-nav";
 import {
   Badge,
   buttonClassName,
+  CollapsibleSectionCard,
   cx,
   PageHeader,
   SectionCard,
@@ -331,7 +332,7 @@ function PlayPageContent() {
   return (
     <div className="space-y-8">
       <PageHeader
-        eyebrow="遊ぼうページ"
+        eyebrow="みんなで見る"
         title="どれにする？"
         description="難しい分析はしまって、候補カードと自分の1 / 0 / 2だけを前に出した共有ページです。"
         actions={
@@ -340,7 +341,7 @@ function PlayPageContent() {
               href={buildRoundHref(appRoute.pickRoom, data.round.id, { user: activeUser.id })}
               className={secondaryButtonClassName}
             >
-              候補カードへ
+              候補カード
             </Link>
             <Link
               href={buildRoundHref(appRoute.workspace, data.round.id)}
@@ -358,7 +359,7 @@ function PlayPageContent() {
         roundStatus={competitionTypeModeLabel[data.round.competitionType]}
         currentPath={appRoute.play}
         items={[
-          { href: buildRoundHref(appRoute.play, data.round.id, { user: activeUser.id }), label: "遊ぼう" },
+          { href: buildRoundHref(appRoute.play, data.round.id, { user: activeUser.id }), label: "みんなで見る" },
           { href: buildRoundHref(appRoute.simpleView, data.round.id, { user: activeUser.id }), label: "自分の予想" },
           { href: buildRoundHref(appRoute.pickRoom, data.round.id, { user: activeUser.id }), label: "候補カード" },
           { href: buildRoundHref(appRoute.workspace, data.round.id), label: "ラウンド詳細" },
@@ -381,7 +382,7 @@ function PlayPageContent() {
         <StatCard label="参加人数" value={`${summary.participantCount}人`} compact hint={`予想入力済み ${summary.inputtedUserCount}人`} />
         <StatCard label="候補カード" value={`${summary.candidateCount}`} compact hint="王道 / 人力 / EV / 引分 / 荒れ狙い" tone="draw" />
         <StatCard
-          label="ソース"
+          label="商品"
           value={roundProductLabel ?? productTypeLabel[data.round.productType]}
           compact
           hint={data.round.sourceNote ?? "共通ロジックを使います"}
@@ -395,13 +396,20 @@ function PlayPageContent() {
         />
       </div>
 
-      <DataQualityCard
-        summary={dataQualitySummary}
-        extraLines={[
-          modeMaterialsDescription(data.round.competitionType),
-          `${competitionTypeModeLabel[data.round.competitionType]} / いまは ${probabilityReadinessLabel[data.round.probabilityReadiness]} の状態です。`,
-        ]}
-      />
+      <CollapsibleSectionCard
+        title="この回の前提"
+        description="候補の出どころや試算の厚みは、必要なときだけここで確認します。"
+        defaultOpen={dataQualitySummary.isDemoData || !data.round.totoOfficialRound}
+        badge={<Badge tone="slate">補助説明</Badge>}
+      >
+        <DataQualityCard
+          summary={dataQualitySummary}
+          extraLines={[
+            modeMaterialsDescription(data.round.competitionType),
+            `${competitionTypeModeLabel[data.round.competitionType]} / いまは ${probabilityReadinessLabel[data.round.probabilityReadiness]} の状態です。`,
+          ]}
+        />
+      </CollapsibleSectionCard>
 
       <SectionCard
         title="候補カード"

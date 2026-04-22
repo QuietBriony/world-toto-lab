@@ -1577,10 +1577,12 @@ export default function DashboardPage() {
             {memberActionError ? <p className="text-sm text-rose-700">{memberActionError}</p> : null}
           </CollapsibleSectionCard>
 
-          <SectionCard
+          <CollapsibleSectionCard
             id="create-round"
-            title="ラウンドを作成"
+            title="別の始め方と細かい作成"
             description="主導線は toto公式の対象回取り込みです。FIFA全試合から組む流れは、発売前に先に遊ぶときだけ使う補助導線に寄せています。"
+            defaultOpen={inventoryRounds.length === 0}
+            badge={<Badge tone="slate">補助導線</Badge>}
           >
             <div className="mb-6 space-y-4">
               <div className="rounded-[24px] border border-slate-200 bg-slate-50/90 px-5 py-4 text-sm leading-6 text-slate-700">
@@ -1847,7 +1849,7 @@ export default function DashboardPage() {
               </form>
             </CollapsibleSectionCard>
             {actionError ? <p className="text-sm text-rose-700">{actionError}</p> : null}
-          </SectionCard>
+          </CollapsibleSectionCard>
 
           <section id="round-list" className="grid gap-5 xl:grid-cols-2">
             {inventoryRounds.length === 0 ? (
@@ -1930,7 +1932,7 @@ export default function DashboardPage() {
                           })}
                           className={buttonClassName}
                         >
-                          遊ぼう
+                          みんなで見る
                         </Link>
                         <Link
                           href={buildRoundHref(appRoute.pickRoom, round.id, {
@@ -1944,7 +1946,7 @@ export default function DashboardPage() {
                           href={buildRoundHref(appRoute.practiceLab, round.id)}
                           className={secondaryButtonClassName}
                         >
-                          Practice Lab
+                          練習ラボ
                         </Link>
                         <Link
                           href={buildRoundHref(appRoute.workspace, round.id)}

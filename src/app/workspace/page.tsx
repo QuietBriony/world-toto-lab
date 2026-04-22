@@ -429,7 +429,7 @@ function WorkspacePageContent() {
             data.round.matches.length === 0
               ? "発売前の手動準備へ"
               : "確定日程ベースで見直す",
-          title: data.round.matches.length === 0 ? "試合素材を入れる" : "Round の素材を整える",
+          title: data.round.matches.length === 0 ? "試合素材を入れる" : "ラウンド素材を整える",
           tone: "teal" as const,
         };
         const productCard = {
@@ -437,7 +437,7 @@ function WorkspacePageContent() {
           body:
             data.round.productType === "winner"
               ? "WINNER は公式くじ情報URLを直接読む導線がいちばん安定です。"
-              : "今の商品に合った公式回の一覧を開き、そのままこの Round に反映できます。",
+              : "今の商品に合った公式回の一覧を開き、そのままこのラウンドに反映できます。",
           ctaHref: buildOfficialRoundImportHref(data.round.id, {
             autoSync: data.round.productType === "winner" ? false : true,
             productType: data.round.productType,
@@ -457,7 +457,7 @@ function WorkspacePageContent() {
                 })
               : buildRoundHref(appRoute.fixtureSelector, data.round.id),
           secondaryLabel:
-            data.round.productType === "winner" ? "候補カードへ" : "Fixture Selector へ",
+            data.round.productType === "winner" ? "候補カードへ" : "試合を選んで保存",
           title: "いまの商品で進める",
           tone: "sky" as const,
         };
@@ -649,7 +649,7 @@ function WorkspacePageContent() {
                       href={buildRoundHref(appRoute.fixtureSelector, data.round.id)}
                       className={secondaryButtonClassName}
                     >
-                      Fixture Selector
+                      試合を選んで保存
                     </Link>
                   </>
                 ) : (
@@ -660,7 +660,7 @@ function WorkspacePageContent() {
                       })}
                       className={secondaryButtonClassName}
                     >
-                      遊ぼうページ
+                      みんなで見る
                     </Link>
                     <Link
                       href={buildRoundHref(appRoute.pickRoom, data.round.id, {
@@ -686,10 +686,7 @@ function WorkspacePageContent() {
               <div className="flex flex-wrap items-center gap-2">
                 {isDemoRound ? <Badge tone="amber">デモ</Badge> : null}
                 <Badge tone="teal">{roundProductLabel ?? productTypeLabel[data.round.productType]}</Badge>
-                <Badge tone="info">{competitionTypeLabel[data.round.competitionType]}</Badge>
-                <Badge tone="slate">{dataProfileLabel[data.round.dataProfile]}</Badge>
                 <Badge tone="slate">{probabilityReadinessLabel[data.round.probabilityReadiness]}</Badge>
-                <Badge tone="slate">{roundSourceLabel[data.round.roundSource]}</Badge>
                 <Badge tone="sky">{roundStatusLabel[data.round.status]}</Badge>
               </div>
             </div>
@@ -761,12 +758,12 @@ function WorkspacePageContent() {
               />
               <StatCard
                 label="遊ぶ導線"
-                value={data.round.primaryUse === "practice" ? "練習ラボ" : "遊ぼうページ"}
+                value={data.round.primaryUse === "practice" ? "練習ラボ" : "みんなで見る"}
                 compact
                 hint={
                   data.round.primaryUse === "practice"
                     ? "通常totoの練習回として振り返りに寄せます。"
-                    : "友人向けは遊ぼうページと候補カードを使います。"
+                    : "友人向けは みんなで見る と候補カードを使います。"
                 }
               />
             </div>
@@ -826,7 +823,7 @@ function WorkspacePageContent() {
                       <p className="text-sm font-semibold text-teal-950">発売前の補助導線</p>
                       <p className="mt-2 text-sm leading-6 text-teal-900">
                         公式対象回がまだ出ていない時だけ{" "}
-                        <span className="font-medium">公式日程を取り込む → Fixture Selector</span>{" "}
+                        <span className="font-medium">公式日程を取り込む → 試合を選んで保存</span>{" "}
                         の順で仮Roundを組みます。
                       </p>
                     </div>
@@ -1481,7 +1478,7 @@ function WorkspacePageContent() {
                   name="sourceNote"
                   defaultValue={data.round.sourceNote ?? ""}
                   className={fieldClassName}
-                  placeholder="Fixture Selector から作成 / toto公式貼り付け / 仮想Round など"
+                  placeholder="試合を選んで保存 / toto公式貼り付け / 仮想ラウンド など"
                 />
               </label>
 
