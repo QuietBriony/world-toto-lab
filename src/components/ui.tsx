@@ -1,3 +1,4 @@
+import Image from "next/image";
 import type { HTMLAttributes, ReactNode } from "react";
 
 type ClassDictionary = Record<string, boolean | null | undefined>;
@@ -473,11 +474,14 @@ export function ArtBannerPanel({
       )}
       {...props}
     >
-      <img
+      <Image
         alt=""
         aria-hidden="true"
         src={imageSrc}
+        fill
+        sizes="(max-width: 768px) 100vw, 900px"
         className={cx("absolute inset-0 h-full w-full object-cover", imageClassName)}
+        unoptimized
       />
       <div
         className="absolute inset-0"

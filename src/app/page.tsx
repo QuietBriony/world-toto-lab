@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useMemo, useState, type FormEvent } from "react";
@@ -807,11 +808,14 @@ export default function DashboardPage() {
                     className="group overflow-hidden rounded-[26px] border border-white/60 bg-white/90 shadow-[0_22px_56px_-36px_rgba(15,23,42,0.42)]"
                   >
                     <div className="relative min-h-[220px] bg-slate-950">
-                      <img
+                      <Image
                         alt=""
                         aria-hidden="true"
                         src={resolveArtAsset(pathname, artwork.src)}
+                        fill
+                        sizes="(max-width: 768px) 100vw, 33vw"
                         className="absolute inset-0 h-full w-full object-cover"
+                        unoptimized
                       />
                       <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(7,12,18,0.04),rgba(7,12,18,0.28)_52%,rgba(7,12,18,0.64))]" />
                       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.2),transparent_34%)]" />
@@ -879,11 +883,14 @@ export default function DashboardPage() {
 
               <div className="rounded-[24px] border border-slate-200 bg-slate-50/85 p-5">
                 <div className="relative mb-4 overflow-hidden rounded-[22px] border border-slate-200 bg-slate-950">
-                  <img
+                  <Image
                     alt=""
                     aria-hidden="true"
                     src={demoLabImageSrc}
+                    fill
+                    sizes="(max-width: 1024px) 100vw, 50vw"
                     className="absolute inset-0 h-full w-full object-cover"
+                    unoptimized
                   />
                   <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(7,12,18,0.08),rgba(7,12,18,0.54))]" />
                   <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),transparent_35%)]" />
