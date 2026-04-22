@@ -9,7 +9,6 @@ import {
   ErrorNotice,
   LoadingNotice,
 } from "@/components/app/states";
-import { RouteGlossaryCard } from "@/components/app/round-guides";
 import { FeedbackBoard } from "@/components/feedback-board";
 import {
   Badge,
@@ -102,7 +101,7 @@ import {
 import { useBigOfficialWatch, useDashboardData, useTotoOfficialRoundLibrary } from "@/lib/use-app-data";
 import { isWinnerLikeRound } from "@/lib/winner-value";
 import { resolveWorldTotoProductLabel } from "@/lib/world-toto";
-import { candidateStrategyArt, demoLabArt } from "@/lib/ui-art";
+import { demoLabArt } from "@/lib/ui-art";
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "不明なエラーです。";
@@ -550,14 +549,6 @@ export default function DashboardPage() {
     : null;
   const createRoundAnchor = "#create-round";
   const roundListAnchor = "#round-list";
-  const strategyPreviewCards = [
-    { key: "orthodox_model", label: "王道" },
-    { key: "public_favorite", label: "公式人気" },
-    { key: "human_consensus", label: "人力推し" },
-    { key: "ev_hunter", label: "EV狙い" },
-    { key: "draw_alert", label: "引分警報" },
-    { key: "upset", label: "荒れ狙い" },
-  ] as const;
 
   return (
     <div className="space-y-8">
@@ -583,308 +574,6 @@ export default function DashboardPage() {
           </div>
         }
       />
-
-      <RouteGlossaryCard
-        currentPath={appRoute.dashboard}
-        defaultOpen={false}
-      />
-
-      <SectionCard
-        title="こんな候補カードで遊べます"
-        description="トップでも雰囲気が分かるように、実際の候補カードに近い見た目を先に置いています。"
-      >
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {strategyPreviewCards.map((item) => {
-            const artwork = candidateStrategyArt[item.key];
-            return (
-              <div
-                key={item.key}
-                className="overflow-hidden rounded-[26px] border border-white/70 bg-white/90 shadow-[0_22px_56px_-36px_rgba(15,23,42,0.42)]"
-              >
-                <div
-                  className="relative min-h-[168px] bg-slate-950"
-                  style={{
-                    backgroundImage: `linear-gradient(180deg,rgba(7,12,18,0.12),rgba(7,12,18,0.78)), url(${artwork.src})`,
-                    backgroundPosition: "center",
-                    backgroundSize: "cover",
-                  }}
-                >
-                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),transparent_36%)]" />
-                  <div className="relative z-10 flex min-h-[168px] flex-col justify-between p-4">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge tone="slate">{artwork.accentLabel}</Badge>
-                    </div>
-                    <div>
-                      <h3 className="font-display text-[1.35rem] font-semibold tracking-[-0.05em] text-white">
-                        {item.label}
-                      </h3>
-                      <p className="mt-2 max-w-[22rem] text-sm leading-6 text-white/82">
-                        {artwork.description}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        <div className="mt-4 flex flex-wrap gap-3">
-          {latestRound ? (
-            <Link href={buildRoundHref(appRoute.pickRoom, latestRound.id)} className={buttonClassName}>
-              候補カードを開く
-            </Link>
-          ) : (
-            <a href="#demo-lab" className={buttonClassName}>
-              デモで見る
-            </a>
-          )}
-          <a href="#create-round" className={secondaryButtonClassName}>
-            自分のラウンドを作る
-          </a>
-        </div>
-      </SectionCard>
-
-      <CollapsibleSectionCard
-        title="GitHub 共同開発で遊ぼう"
-        description="GitHub 招待から branch と PR の作り方まで、共同開発の最初の流れだけをまとめています。必要になったときだけ開けば十分です。"
-        badge={<Badge tone="sky">共同開発</Badge>}
-        defaultOpen={false}
-        action={
-          <Link href={appRoute.devPlaybook} className={buttonClassName}>
-            共同開発ガイドを見る
-          </Link>
-        }
-      >
-        <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-          <div className="grid gap-3">
-            <div className="flex items-start gap-3 rounded-[24px] border border-slate-200 bg-white/84 px-4 py-4">
-              <Badge tone="teal">1</Badge>
-              <div>
-                <div className="text-sm font-semibold text-slate-900">GitHub に参加してローカル起動</div>
-                <p className="mt-1 text-sm leading-6 text-slate-600">
-                  招待を受けたら clone して、`.env` を入れ、`npm ci` と `npm run dev` でまず動かします。
-                </p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3 rounded-[24px] border border-slate-200 bg-white/84 px-4 py-4">
-              <Badge tone="sky">2</Badge>
-              <div>
-                <div className="text-sm font-semibold text-slate-900">1タスク 1ブランチで小さく進める</div>
-                <p className="mt-1 text-sm leading-6 text-slate-600">
-                  `main` へ直接 push はせず、目的を 1 つに絞った branch と PR で進めます。
-                </p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3 rounded-[24px] border border-slate-200 bg-white/84 px-4 py-4">
-              <Badge tone="amber">3</Badge>
-              <div>
-                <div className="text-sm font-semibold text-slate-900">Codex に狭い範囲で依頼する</div>
-                <p className="mt-1 text-sm leading-6 text-slate-600">
-                  Codex を基本実装担当にし、同じファイルを複数 AI に同時編集させないようにします。
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-[28px] border border-emerald-200 bg-emerald-50/80 p-5 shadow-[0_18px_44px_-34px_rgba(15,23,42,0.16)]">
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge tone="teal">はじめて向け</Badge>
-              <Badge tone="slate">5分で読める</Badge>
-            </div>
-            <h3 className="mt-3 font-display text-[1.35rem] font-semibold tracking-[-0.05em] text-slate-950">
-              共同開発の最初の約束
-            </h3>
-            <div className="mt-4 space-y-2 text-sm leading-6 text-slate-700">
-              <p>main 直接 push 禁止</p>
-              <p>1PR 1目的</p>
-              <p>PR にテスト / スクショ / 影響範囲を書く</p>
-              <p>DB migration は最小差分、Supabase 本番データは消さない</p>
-            </div>
-            <div className="mt-5 flex flex-wrap gap-3">
-              <Link href={appRoute.devPlaybook} className={buttonClassName}>
-                共同開発を始める
-              </Link>
-              <a href="#create-round" className={secondaryButtonClassName}>
-                アプリも触ってみる
-              </a>
-            </div>
-          </div>
-        </div>
-      </CollapsibleSectionCard>
-
-      <CollapsibleSectionCard
-        title="期待値ウォッチ"
-        description="GOAL3 / BIG / WINNER の別商品で、いま見ておきたい回だけをまとめています。通常は閉じておいて、要確認が出たときだけ開けば十分です。"
-        badge={
-          <Badge
-            tone={
-              goal3AttentionCount > 0 || bigOfficialAttentionCount > 0 || bigOfficialShockCount > 0
-                ? "teal"
-                : "slate"
-            }
-          >
-            {goal3AttentionCount > 0 || bigOfficialAttentionCount > 0 || bigOfficialShockCount > 0
-              ? "要確認あり"
-              : "補助導線"}
-          </Badge>
-        }
-        defaultOpen={goal3AttentionCount > 0 || bigOfficialAttentionCount > 0 || bigOfficialShockCount > 0}
-      >
-        <div className="grid gap-4 xl:grid-cols-3">
-          <div className="rounded-[24px] border border-slate-200 bg-slate-50/90 p-5">
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge tone={featuredGoal3Watch?.requiresAttention ? "teal" : "sky"}>
-                {featuredGoal3Watch?.requiresAttention ? "期待値大" : "GOAL3 ウォッチ"}
-              </Badge>
-              <Badge tone="slate">{goal3Entries.length}回</Badge>
-            </div>
-            <h3 className="mt-3 font-display text-[1.35rem] font-semibold tracking-[-0.05em] text-slate-950">
-              {featuredGoal3Entry?.title ?? "totoGOAL3 を別枠で監視"}
-            </h3>
-            <p className="mt-3 text-sm leading-6 text-slate-600">
-              {featuredGoal3Entry
-                ? featuredGoal3Watch?.snapshot.headline
-                : "Yahoo! toto 販売スケジュールに GOAL3 回が載っている時期だけ、専用ボードへ集約して表示します。"}
-            </p>
-            <div className="mt-4 flex flex-wrap gap-3 text-xs text-slate-500">
-              <span>要確認 {goal3AttentionCount}</span>
-              <span>概算倍率 {formatPercent(featuredGoal3Watch?.summary.approxEvMultiple)}</span>
-              <span>売上 {formatCurrency(featuredGoal3Entry?.totalSalesYen ?? null)}</span>
-            </div>
-            {goal3Library.error ? (
-              <p className="mt-3 text-xs text-rose-700">GOAL3一覧取得: {goal3Library.error}</p>
-            ) : null}
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Link href={appRoute.goal3Value} className={buttonClassName}>
-                GOAL3ボード
-              </Link>
-              <Link
-                href={buildOfficialRoundImportHref(undefined, {
-                  productType: "custom",
-                  sourcePreset: "yahoo_toto_schedule",
-                })}
-                className={secondaryButtonClassName}
-              >
-                GOAL3 を一覧で探す
-              </Link>
-            </div>
-          </div>
-
-          <div className="rounded-[24px] border border-slate-200 bg-slate-50/90 p-5">
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge tone="amber">BIG ウォッチ</Badge>
-              <Badge
-                tone={
-                  featuredBigOfficial
-                    ? featuredBigOfficial.heatBand.badgeTone
-                    : "info"
-                }
-              >
-                {featuredBigOfficial?.heatBand.label ?? "テンプレ比較"}
-              </Badge>
-              <Badge tone="slate">
-                {bigOfficialWatch.data ? `同期 ${bigOfficialSnapshots.length}商品` : "テンプレ"}
-              </Badge>
-              {featuredBigOfficial?.shockSignal !== "none" && featuredBigShockAlert ? (
-                <Badge tone={featuredBigShockAlert.badgeTone}>
-                  {featuredBigShockAlert.label}
-                </Badge>
-              ) : null}
-            </div>
-            <h3 className="mt-3 font-display text-[1.35rem] font-semibold tracking-[-0.05em] text-slate-950">
-              {featuredBigOfficialSnapshot
-                ? `${featuredBigOfficialSnapshot.officialRoundName ?? featuredBigOfficialSnapshot.productLabel}`
-                : "BIGウォッチ"}
-            </h3>
-            <p className="mt-3 text-sm leading-6 text-slate-600">
-              {featuredBigOfficial
-                ? featuredBigOfficial.eventSnapshot.headline
-                : "BIG は売上とキャリーから `特大上振れ候補 / 期待値大 / 分岐付近 / キャリーなし` を見ます。公式同期が取れないときはテンプレ条件で比較できます。"}
-            </p>
-            <div className="mt-4 flex flex-wrap gap-3 text-xs text-slate-500">
-              <span>
-                {featuredBigOfficialSnapshot
-                  ? `要確認 ${bigOfficialAttentionCount}商品`
-                  : `例: ${featuredBigPreset.eventLabel}`}
-              </span>
-              {bigOfficialShockCount > 0 ? <span>ショック候補 {bigOfficialShockCount}商品</span> : null}
-              <span>
-                概算倍率{" "}
-                {formatPercent(
-                  featuredBigOfficial?.summary.approxEvMultiple ?? featuredBigSummary.approxEvMultiple,
-                )}
-              </span>
-              <span>
-                売上{" "}
-                {formatCurrency(
-                  featuredBigOfficialSnapshot?.totalSalesYen ?? featuredBigPreset.salesYen,
-                )}
-              </span>
-            </div>
-            <p className="mt-3 text-xs leading-5 text-slate-500">
-              {featuredBigOfficial?.heatBand.hint ?? featuredBigHeat.hint}
-            </p>
-            <p className="mt-2 text-[11px] leading-5 text-slate-500">
-              {featuredBigOfficial?.shockSignal !== "none" && featuredBigShockAlert
-                ? featuredBigShockAlert.hint
-                : "いまの判定は主に `売上 + キャリー` 由来です。台風などの中止・成立条件の上振れは、別ロジックで追加する前提です。"}
-            </p>
-            {bigOfficialWatch.error ? (
-              <p className="mt-3 text-xs text-rose-700">BIG公式同期: {bigOfficialWatch.error}</p>
-            ) : bigOfficialWatch.loading && !bigOfficialWatch.data ? (
-              <p className="mt-3 text-xs text-slate-500">BIG公式同期を確認中です...</p>
-            ) : null}
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Link href={appRoute.bigCarryover} className={buttonClassName}>
-                BIGウォッチ
-              </Link>
-              <Link
-                href={featuredBigOfficialHref ?? featuredBigHref}
-                className={secondaryButtonClassName}
-              >
-                {featuredBigOfficialHref ? "公式同期で開く" : "テンプレで開く"}
-              </Link>
-            </div>
-          </div>
-
-          <div className="rounded-[24px] border border-slate-200 bg-slate-50/90 p-5">
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge tone="sky">WINNER</Badge>
-              <Badge tone="slate">1試合</Badge>
-            </div>
-            <h3 className="mt-3 font-display text-[1.35rem] font-semibold tracking-[-0.05em] text-slate-950">
-              1試合の妙味は WINNERボード
-            </h3>
-            <p className="mt-3 text-sm leading-6 text-slate-600">
-              {winnerWatchRound
-                ? `直近は「${winnerWatchRound.title}」をそのまま見に行けます。`
-                : "WINNER round がまだ無いときは、公式くじ情報URLから 1試合回を作るのが速いです。"}
-            </p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {winnerWatchRound ? (
-                <Link
-                  href={buildRoundHref(appRoute.winnerValue, winnerWatchRound.id, {
-                    user: winnerWatchUsers[0]?.id,
-                  })}
-                  className={buttonClassName}
-                >
-                  WINNERボード
-                </Link>
-              ) : (
-                <Link
-                  href={buildOfficialRoundImportHref(undefined, {
-                    productType: "winner",
-                    sourcePreset: "toto_official_detail",
-                  })}
-                  className={buttonClassName}
-                >
-                  WINNER を作る
-                </Link>
-              )}
-            </div>
-          </div>
-        </div>
-      </CollapsibleSectionCard>
 
       {!isSupabaseConfigured() ? (
         <ConfigurationNotice />
@@ -2405,6 +2094,240 @@ export default function DashboardPage() {
               </>
             )}
           </section>
+
+          <CollapsibleSectionCard
+            title="期待値ウォッチ"
+            description="GOAL3 / BIG / WINNER の別商品で、いま見ておきたい回だけをまとめています。ふだんは閉じたままで大丈夫です。"
+            badge={
+              <Badge
+                tone={
+                  goal3AttentionCount > 0 || bigOfficialAttentionCount > 0 || bigOfficialShockCount > 0
+                    ? "teal"
+                    : "slate"
+                }
+              >
+                {goal3AttentionCount > 0 || bigOfficialAttentionCount > 0 || bigOfficialShockCount > 0
+                  ? "要確認あり"
+                  : "補助機能"}
+              </Badge>
+            }
+            defaultOpen={false}
+          >
+            <div className="grid gap-4 xl:grid-cols-3">
+              <div className="rounded-[24px] border border-slate-200 bg-slate-50/90 p-5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge tone={featuredGoal3Watch?.requiresAttention ? "teal" : "sky"}>
+                    {featuredGoal3Watch?.requiresAttention ? "期待値大" : "GOAL3 ウォッチ"}
+                  </Badge>
+                  <Badge tone="slate">{goal3Entries.length}回</Badge>
+                </div>
+                <h3 className="mt-3 font-display text-[1.35rem] font-semibold tracking-[-0.05em] text-slate-950">
+                  {featuredGoal3Entry?.title ?? "totoGOAL3 を別枠で監視"}
+                </h3>
+                <p className="mt-3 text-sm leading-6 text-slate-600">
+                  {featuredGoal3Entry
+                    ? featuredGoal3Watch?.snapshot.headline
+                    : "Yahoo! toto 販売スケジュールに GOAL3 回が載っている時期だけ、専用ボードへ集約して表示します。"}
+                </p>
+                <div className="mt-4 flex flex-wrap gap-3 text-xs text-slate-500">
+                  <span>要確認 {goal3AttentionCount}</span>
+                  <span>概算倍率 {formatPercent(featuredGoal3Watch?.summary.approxEvMultiple)}</span>
+                  <span>売上 {formatCurrency(featuredGoal3Entry?.totalSalesYen ?? null)}</span>
+                </div>
+                {goal3Library.error ? (
+                  <p className="mt-3 text-xs text-rose-700">GOAL3一覧取得: {goal3Library.error}</p>
+                ) : null}
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Link href={appRoute.goal3Value} className={buttonClassName}>
+                    GOAL3ボード
+                  </Link>
+                  <Link
+                    href={buildOfficialRoundImportHref(undefined, {
+                      productType: "custom",
+                      sourcePreset: "yahoo_toto_schedule",
+                    })}
+                    className={secondaryButtonClassName}
+                  >
+                    GOAL3 を一覧で探す
+                  </Link>
+                </div>
+              </div>
+
+              <div className="rounded-[24px] border border-slate-200 bg-slate-50/90 p-5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge tone="amber">BIG ウォッチ</Badge>
+                  <Badge tone={featuredBigOfficial ? featuredBigOfficial.heatBand.badgeTone : "info"}>
+                    {featuredBigOfficial?.heatBand.label ?? "テンプレ比較"}
+                  </Badge>
+                  <Badge tone="slate">
+                    {bigOfficialWatch.data ? `同期 ${bigOfficialSnapshots.length}商品` : "テンプレ"}
+                  </Badge>
+                  {featuredBigOfficial?.shockSignal !== "none" && featuredBigShockAlert ? (
+                    <Badge tone={featuredBigShockAlert.badgeTone}>{featuredBigShockAlert.label}</Badge>
+                  ) : null}
+                </div>
+                <h3 className="mt-3 font-display text-[1.35rem] font-semibold tracking-[-0.05em] text-slate-950">
+                  {featuredBigOfficialSnapshot
+                    ? `${featuredBigOfficialSnapshot.officialRoundName ?? featuredBigOfficialSnapshot.productLabel}`
+                    : "BIGウォッチ"}
+                </h3>
+                <p className="mt-3 text-sm leading-6 text-slate-600">
+                  {featuredBigOfficial
+                    ? featuredBigOfficial.eventSnapshot.headline
+                    : "BIG は売上とキャリーから `特大上振れ候補 / 期待値大 / 分岐付近 / キャリーなし` を見ます。公式同期が取れないときはテンプレ条件で比較できます。"}
+                </p>
+                <div className="mt-4 flex flex-wrap gap-3 text-xs text-slate-500">
+                  <span>
+                    {featuredBigOfficialSnapshot
+                      ? `要確認 ${bigOfficialAttentionCount}商品`
+                      : `例: ${featuredBigPreset.eventLabel}`}
+                  </span>
+                  {bigOfficialShockCount > 0 ? <span>ショック候補 {bigOfficialShockCount}商品</span> : null}
+                  <span>
+                    概算倍率{" "}
+                    {formatPercent(
+                      featuredBigOfficial?.summary.approxEvMultiple ?? featuredBigSummary.approxEvMultiple,
+                    )}
+                  </span>
+                  <span>
+                    売上{" "}
+                    {formatCurrency(
+                      featuredBigOfficialSnapshot?.totalSalesYen ?? featuredBigPreset.salesYen,
+                    )}
+                  </span>
+                </div>
+                <p className="mt-3 text-xs leading-5 text-slate-500">
+                  {featuredBigOfficial?.heatBand.hint ?? featuredBigHeat.hint}
+                </p>
+                <p className="mt-2 text-[11px] leading-5 text-slate-500">
+                  {featuredBigOfficial?.shockSignal !== "none" && featuredBigShockAlert
+                    ? featuredBigShockAlert.hint
+                    : "いまの判定は主に `売上 + キャリー` 由来です。台風などの中止・成立条件の上振れは、別ロジックで追加する前提です。"}
+                </p>
+                {bigOfficialWatch.error ? (
+                  <p className="mt-3 text-xs text-rose-700">BIG公式同期: {bigOfficialWatch.error}</p>
+                ) : bigOfficialWatch.loading && !bigOfficialWatch.data ? (
+                  <p className="mt-3 text-xs text-slate-500">BIG公式同期を確認中です...</p>
+                ) : null}
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Link href={appRoute.bigCarryover} className={buttonClassName}>
+                    BIGウォッチ
+                  </Link>
+                  <Link
+                    href={featuredBigOfficialHref ?? featuredBigHref}
+                    className={secondaryButtonClassName}
+                  >
+                    {featuredBigOfficialHref ? "公式同期で開く" : "テンプレで開く"}
+                  </Link>
+                </div>
+              </div>
+
+              <div className="rounded-[24px] border border-slate-200 bg-slate-50/90 p-5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge tone="sky">WINNER</Badge>
+                  <Badge tone="slate">1試合</Badge>
+                </div>
+                <h3 className="mt-3 font-display text-[1.35rem] font-semibold tracking-[-0.05em] text-slate-950">
+                  1試合の妙味は WINNERボード
+                </h3>
+                <p className="mt-3 text-sm leading-6 text-slate-600">
+                  {winnerWatchRound
+                    ? `直近は「${winnerWatchRound.title}」をそのまま見に行けます。`
+                    : "WINNER round がまだ無いときは、公式くじ情報URLから 1試合回を作るのが速いです。"}
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {winnerWatchRound ? (
+                    <Link
+                      href={buildRoundHref(appRoute.winnerValue, winnerWatchRound.id, {
+                        user: winnerWatchUsers[0]?.id,
+                      })}
+                      className={buttonClassName}
+                    >
+                      WINNERボード
+                    </Link>
+                  ) : (
+                    <Link
+                      href={buildOfficialRoundImportHref(undefined, {
+                        productType: "winner",
+                        sourcePreset: "toto_official_detail",
+                      })}
+                      className={buttonClassName}
+                    >
+                      WINNER を作る
+                    </Link>
+                  )}
+                </div>
+              </div>
+            </div>
+          </CollapsibleSectionCard>
+
+          <CollapsibleSectionCard
+            title="GitHub 共同開発で遊ぼう"
+            description="GitHub 招待から branch と PR の作り方まで、共同開発の最初の流れだけをまとめています。必要なときだけ開けば十分です。"
+            badge={<Badge tone="sky">共同開発</Badge>}
+            defaultOpen={false}
+            action={
+              <Link href={appRoute.devPlaybook} className={buttonClassName}>
+                共同開発ガイドを見る
+              </Link>
+            }
+          >
+            <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+              <div className="grid gap-3">
+                <div className="flex items-start gap-3 rounded-[24px] border border-slate-200 bg-white/84 px-4 py-4">
+                  <Badge tone="teal">1</Badge>
+                  <div>
+                    <div className="text-sm font-semibold text-slate-900">GitHub に参加してローカル起動</div>
+                    <p className="mt-1 text-sm leading-6 text-slate-600">
+                      招待を受けたら clone して、`.env` を入れ、`npm ci` と `npm run dev` でまず動かします。
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3 rounded-[24px] border border-slate-200 bg-white/84 px-4 py-4">
+                  <Badge tone="sky">2</Badge>
+                  <div>
+                    <div className="text-sm font-semibold text-slate-900">1タスク 1ブランチで小さく進める</div>
+                    <p className="mt-1 text-sm leading-6 text-slate-600">
+                      `main` へ直接 push はせず、目的を 1 つに絞った branch と PR で進めます。
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3 rounded-[24px] border border-slate-200 bg-white/84 px-4 py-4">
+                  <Badge tone="amber">3</Badge>
+                  <div>
+                    <div className="text-sm font-semibold text-slate-900">Codex に狭い範囲で依頼する</div>
+                    <p className="mt-1 text-sm leading-6 text-slate-600">
+                      Codex を基本実装担当にし、同じファイルを複数 AI に同時編集させないようにします。
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-[28px] border border-emerald-200 bg-emerald-50/80 p-5 shadow-[0_18px_44px_-34px_rgba(15,23,42,0.16)]">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge tone="teal">はじめて向け</Badge>
+                  <Badge tone="slate">5分で読める</Badge>
+                </div>
+                <h3 className="mt-3 font-display text-[1.35rem] font-semibold tracking-[-0.05em] text-slate-950">
+                  共同開発の最初の約束
+                </h3>
+                <div className="mt-4 space-y-2 text-sm leading-6 text-slate-700">
+                  <p>main 直接 push 禁止</p>
+                  <p>1PR 1目的</p>
+                  <p>PR にテスト / スクショ / 影響範囲を書く</p>
+                  <p>DB migration は最小差分、Supabase 本番データは消さない</p>
+                </div>
+                <div className="mt-5 flex flex-wrap gap-3">
+                  <Link href={appRoute.devPlaybook} className={buttonClassName}>
+                    共同開発を始める
+                  </Link>
+                  <a href="#create-round" className={secondaryButtonClassName}>
+                    アプリも触ってみる
+                  </a>
+                </div>
+              </div>
+            </div>
+          </CollapsibleSectionCard>
         </>
       ) : null}
     </div>
