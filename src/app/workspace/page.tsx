@@ -118,13 +118,7 @@ function previewNotes(value: string | null | undefined, maxSentences = 2) {
 }
 
 function canCalculateModelPreview(match: Match) {
-  return (
-    match.marketProb1 !== null ||
-    match.marketProb0 !== null ||
-    match.marketProb2 !== null ||
-    match.consensusF !== null ||
-    match.consensusD !== null
-  );
+  return Boolean(match.homeTeam.trim() && match.awayTeam.trim());
 }
 
 function previewRecommendedOutcomes(input: {
@@ -179,6 +173,7 @@ function WorkspacePageContent() {
   const searchParams = useSearchParams();
   const roundId = getSingleSearchParam(searchParams.get("round"));
   const debugMode = getSingleSearchParam(searchParams.get("debug")) === "1";
+  const focus = getSingleSearchParam(searchParams.get("focus"));
   const { data, error, loading, refresh } = useRoundWorkspace(roundId);
   const missingRound = error === "選択したラウンドが見つかりません。" && !data;
   const [saving, setSaving] = useState(false);
@@ -263,6 +258,8 @@ function WorkspacePageContent() {
         match,
       }))
       .filter((entry) => entry.estimated !== null) ?? [];
+  const aiSectionOpen =
+    focus === "ai" || Boolean(data && data.round.matches.length > 0 && missingAiCount > 0);
   const orderedOverviewMatches =
     data?.round.matches
       .slice()
@@ -616,7 +613,7 @@ function WorkspacePageContent() {
       setAiSuccess(
         result.updatedCount > 0
           ? `${result.updatedCount} 試合のモデル確率を${overwriteExisting ? "再" : ""}計算しました。`
-          : "試算できる試合がありませんでした。先に市場確率か Human Scout を入れてください。",
+          : "試算できる試合がありませんでした。先に対戦カードを入れてください。",
       );
     } catch (nextError) {
       setAiError(errorMessage(nextError));
@@ -1559,10 +1556,17 @@ function WorkspacePageContent() {
             </div>
           </CollapsibleSectionCard>
 
+          {focus === "ai" ? (
+            <div className="rounded-[24px] border border-sky-200 bg-sky-50/90 px-5 py-4 text-sm leading-7 text-sky-950">
+              公式回を取り込んだら、次はここでモデル試算です。市場確率や Human Scout がまだなくても、通常toto / W杯の共通ロジックでまず暫定の 1 / 0 / 2 を入れられます。
+            </div>
+          ) : null}
+
           <CollapsibleSectionCard
             title="モデル確率をまとめて試算する"
             description="市場確率、Human Scout、手入力補正を見て、このアプリ内の共通 probability engine で 1 / 0 / 2 を試算します。あとで試合編集で上書きできます。"
             badge={<Badge tone="sky">モデル試算</Badge>}
+            defaultOpen={aiSectionOpen}
           >
             <div className="grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
               <div className="space-y-4">
@@ -1576,7 +1580,7 @@ function WorkspacePageContent() {
                   <StatCard
                     label="試算できる試合"
                     value={`${estimableMatchCount}`}
-                    hint="市場確率または Human Scout が入っていて、先に試算できる試合数"
+                    hint="対戦カードが入っていて、いま試算できる試合数"
                     compact
                   />
                   <StatCard
@@ -1647,7 +1651,7 @@ function WorkspacePageContent() {
                   <div className="mt-3 space-y-3">
                     {aiPreviewMatches.length === 0 ? (
                       <p className="text-sm leading-6 text-slate-600">
-                        市場確率か Human Scout が入ると、ここに試算プレビューが出ます。
+                        対戦カードが入ると、ここに暫定の試算プレビューが出ます。
                       </p>
                     ) : (
                       aiPreviewMatches.map(({ match, estimated, readiness }) => (

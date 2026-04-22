@@ -2861,13 +2861,7 @@ export async function estimateRoundAiModel(input: {
       return false;
     }
 
-    return (
-      match.marketProb1 !== null ||
-      match.marketProb0 !== null ||
-      match.marketProb2 !== null ||
-      match.consensusF !== null ||
-      match.consensusD !== null
-    );
+    return true;
   });
 
   const updates = targetMatches

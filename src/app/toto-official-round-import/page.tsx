@@ -31,6 +31,7 @@ import {
 import { productTypeOptions } from "@/lib/product-rules";
 import { appRoute, buildRoundHref, getSingleSearchParam } from "@/lib/round-links";
 import {
+  estimateRoundAiModel,
   instantiateTotoOfficialRoundLibraryEntry,
   listTotoOfficialRoundLibrary as loadTotoOfficialRoundLibraryEntries,
   syncTotoOfficialRoundListFromOfficial,
@@ -122,13 +123,13 @@ const officialProductFocusCards: Array<{
 }> = [
   {
     badgeTone: "teal",
-    body: "13試合の本命導線です。公式回を選んで、そのまま候補カードまで進めます。",
+    body: "13試合の本命導線です。公式回を選んだら、まずモデル試算を見てから候補カードへ進めます。",
     productType: "toto13",
     title: "toto を選ぶ",
   },
   {
     badgeTone: "sky",
-    body: "5試合で軽く回せるので、友人会の試運転や短時間の投票会に向いています。",
+    body: "5試合で軽く回せるので、友人会の試運転や短時間の投票会に向いています。まず試算を見て整えます。",
     productType: "mini_toto",
     title: "mini toto を選ぶ",
   },
@@ -290,6 +291,9 @@ function TotoOfficialRoundImportPageContent() {
   const roundDetailHref = roundContextId
     ? buildRoundHref(appRoute.workspace, roundContextId)
     : null;
+  const roundAiHref = roundContextId
+    ? buildRoundHref(appRoute.workspace, roundContextId, { focus: "ai" })
+    : null;
   const filterLabel =
     libraryProductType === "all"
       ? "すべて"
@@ -386,12 +390,16 @@ function TotoOfficialRoundImportPageContent() {
         status: "analyzing",
         title: entry.title,
       });
+      await estimateRoundAiModel({
+        overwriteExisting: false,
+        roundId: nextRoundId,
+      });
       await refreshCandidateTicketsForRound({
         force: true,
         roundId: nextRoundId,
       });
       setSavedRoundId(nextRoundId);
-      router.push(buildRoundHref(appRoute.pickRoom, nextRoundId));
+      router.push(buildRoundHref(appRoute.workspace, nextRoundId, { focus: "ai" }));
     } catch (nextError) {
       setActionError(errorMessage(nextError));
     } finally {
@@ -445,11 +453,11 @@ function TotoOfficialRoundImportPageContent() {
         const latestEntry = syncedEntries[0] ?? null;
 
         if (!latestEntry) {
-          throw new Error("同期結果を候補カードに反映するための公式回がありませんでした。");
+          throw new Error("同期結果から試算を開くための公式回がありませんでした。");
         }
 
         setActionMessage(
-          `公式一覧を同期しました。最新の「${latestEntry.title}」で候補カードを開きます。`,
+          `公式一覧を同期しました。最新の「${latestEntry.title}」で、まずモデル試算を開きます。`,
         );
         await handleUseLibraryEntry(latestEntry, "apply");
         return;
@@ -534,6 +542,10 @@ function TotoOfficialRoundImportPageContent() {
         ...payload,
       });
       const nextRoundId = await saveTotoOfficialRoundImport(payload);
+      await estimateRoundAiModel({
+        overwriteExisting: false,
+        roundId: nextRoundId,
+      });
       await refreshCandidateTicketsForRound({
         force: true,
         roundId: nextRoundId,
@@ -570,9 +582,9 @@ function TotoOfficialRoundImportPageContent() {
                 Round を開く
               </Link>
             ) : null}
-            {savedRoundId ? (
-              <Link href={buildRoundHref(appRoute.pickRoom, savedRoundId)} className={buttonClassName}>
-                候補カード
+            {roundAiHref ? (
+              <Link href={roundAiHref} className={buttonClassName}>
+                まず試算を見る
               </Link>
             ) : null}
           </div>
@@ -711,7 +723,7 @@ function TotoOfficialRoundImportPageContent() {
           <Badge tone="info">現在の同期元 {activeSyncPreset?.label ?? hostLabel(syncSourceUrl)}</Badge>
           <Badge tone="slate">試合明細 {includeMatchesInSync ? "含む" : "省略"}</Badge>
           <Badge tone={autoApplyAfterSync ? "teal" : "slate"}>
-            {autoApplyAfterSync ? "同期後に候補カード" : "一覧更新のみ"}
+            {autoApplyAfterSync ? "同期後にまず試算" : "一覧更新のみ"}
           </Badge>
         </div>
 
@@ -730,14 +742,14 @@ function TotoOfficialRoundImportPageContent() {
             className={secondaryButtonClassName}
             disabled={syncing}
           >
-            {syncing ? "同期しつつ反映中..." : "公式一覧を同期して候補カードへ"}
+            {syncing ? "同期しつつ反映中..." : "公式一覧を同期して試算を見る"}
           </button>
         </div>
 
         <CollapsibleSectionCard
           className="mt-4"
           title="同期オプション"
-          description="URL を変えるとき、WINNER の公式詳細URLを入れるとき、または通常同期後に自動で候補カードまで進めたいときだけ開きます。"
+          description="URL を変えるとき、WINNER の公式詳細URLを入れるとき、または通常同期後に自動で試算まで進めたいときだけ開きます。"
           defaultOpen={syncOptionsOpen}
           badge={<Badge tone="slate">オプション</Badge>}
         >
@@ -768,7 +780,7 @@ function TotoOfficialRoundImportPageContent() {
                   onChange={(event) => setAutoApplyAfterSync(event.currentTarget.checked)}
                   className="h-4 w-4"
                 />
-                <span>通常同期でも最新1件で候補カードを開く</span>
+                <span>通常同期でも最新1件の試算をすぐ開く</span>
               </label>
             </div>
           </div>
@@ -813,8 +825,8 @@ function TotoOfficialRoundImportPageContent() {
         title="公式回ライブラリ"
         description={
           roundId
-            ? `同期済みの ${filterLabel} から、この Round にそのまま反映して候補カードまで進めます。`
-            : `同期済みの ${filterLabel} から、新しい Round を作ってそのまま候補カードへ進めます。`
+            ? `同期済みの ${filterLabel} から、この Round にそのまま反映して、まず試算を見ます。`
+            : `同期済みの ${filterLabel} から、新しい Round を作って、まず試算へ進みます。`
         }
       >
         <div className="grid gap-4 lg:grid-cols-[0.8fr_0.35fr]">
@@ -904,8 +916,8 @@ function TotoOfficialRoundImportPageContent() {
                       {isBusy
                         ? "反映中..."
                         : roundId
-                          ? "このRoundに反映して候補カードへ"
-                          : "この回で候補カードを開く"}
+                          ? "このRoundに反映して試算を見る"
+                          : "この回でまず試算を見る"}
                     </button>
                     <button
                       type="button"
@@ -951,7 +963,7 @@ function TotoOfficialRoundImportPageContent() {
             [
               "1",
               "リストから 1 クリック適用",
-              "保存済みの公式回があれば、そのまま今の Round か新規 Round に反映して候補カードまで進めます。",
+              "保存済みの公式回があれば、そのまま今の Round か新規 Round に反映して、まずモデル試算を確認できます。",
             ],
             [
               "2",
