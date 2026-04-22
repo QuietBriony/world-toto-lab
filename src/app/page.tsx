@@ -580,12 +580,14 @@ export default function DashboardPage() {
         defaultOpen={false}
       />
 
-      <SectionCard
-        title="初心者から GitHub で共同開発しよう"
-        description="友人を招待しても迷いにくいように、最初の一歩だけを短くまとめた入口です。実装は Codex 中心、作業は branch + PR ベース、同じファイルの AI 同時編集は禁止、という前提で進めます。"
+      <CollapsibleSectionCard
+        title="GitHub 共同開発で遊ぼう"
+        description="GitHub 招待から branch と PR の作り方まで、共同開発の最初の流れだけをまとめています。必要になったときだけ開けば十分です。"
+        badge={<Badge tone="sky">共同開発</Badge>}
+        defaultOpen={false}
         action={
           <Link href={appRoute.devPlaybook} className={buttonClassName}>
-            初心者向けガイドを見る
+            共同開発ガイドを見る
           </Link>
         }
       >
@@ -644,7 +646,7 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
-      </SectionCard>
+      </CollapsibleSectionCard>
 
       <SectionCard
         title="期待値ウォッチ"
@@ -1413,13 +1415,15 @@ export default function DashboardPage() {
             />
           </section>
 
-          <SectionCard
-            title="今後の試合予定"
-            description="キックオフ時刻が入っている試合を近い順に並べています。AIや試合情報の入力状況もここで確認できます。"
+          <CollapsibleSectionCard
+            title="対象回の今後予定と入力状況"
+            description="対象ラウンドの試合予定を近い順にまとめています。キックオフ時刻や試合情報、モデル試算の入り具合を確認したいときだけ開く想定です。"
+            badge={<Badge tone="slate">{upcomingMatches.length}件</Badge>}
+            defaultOpen={false}
           >
             {upcomingMatches.length === 0 ? (
               <div className="rounded-[24px] border border-dashed border-slate-300 bg-slate-50/88 p-5 text-sm leading-7 text-slate-600">
-                まだ今後の試合予定はありません。ラウンド詳細の「試合編集」でキックオフ日時を入れると、ここに次の試合が出ます。
+                まだ対象回の今後予定はありません。ラウンド詳細の「試合編集」でキックオフ日時を入れると、ここに次の試合が出ます。
               </div>
             ) : (
               <div className="grid gap-4 xl:grid-cols-2">
@@ -1475,7 +1479,7 @@ export default function DashboardPage() {
                 })}
               </div>
             )}
-          </SectionCard>
+          </CollapsibleSectionCard>
 
           <CollapsibleSectionCard
             title="試合データとモデル試算の入り方"
