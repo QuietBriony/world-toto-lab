@@ -125,7 +125,7 @@ export const demoFocusMatches = [
   {
     matchNo: 1,
     label: "AI本線",
-    title: "まず #1 で モデル試算を見る",
+    title: "まず #1 で 下書き予想を見る",
     body: "AI本線と人力一致が、いちばん素直に見える教材です。",
   },
   {

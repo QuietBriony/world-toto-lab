@@ -238,8 +238,8 @@ export function SectionCard({
         </div>
       )}
 
-  <div className={cx("relative z-10 space-y-4", contentClassName)}>{children}</div>
-      </section>
+      <div className={cx("relative z-10 space-y-4", contentClassName)}>{children}</div>
+    </section>
   );
 }
 

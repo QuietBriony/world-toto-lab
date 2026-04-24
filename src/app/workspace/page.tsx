@@ -393,9 +393,9 @@ function WorkspacePageContent() {
           body:
             data.round.matches.length === 0
               ? data.round.productType === "winner"
-                ? "この Round にはまだ試合が入っていません。WINNER は公式くじ情報URLから入れるのが最短です。"
-                : "この Round にはまだ試合が入っていません。まずは公式対象回を取り込み、まだ未発表なら確定日程ベースの手動準備へ回ります。"
-              : "試合素材を入れ直したいときの入口です。ふだんは公式対象回で更新し、発売前の仮Roundだけ確定日程ベースを使います。",
+                ? "この回にはまだ試合が入っていません。WINNER は公式くじ情報URLから入れるのが最短です。"
+                : "この回にはまだ試合が入っていません。まずは公式toto回から入れ、まだ未発表なら W杯日程から準備します。"
+              : "試合を入れ直したいときの入口です。ふだんは公式toto回で更新し、発売前の仮Roundだけ W杯日程を使います。",
           ctaHref:
             data.round.matches.length === 0
               ? buildOfficialRoundImportHref(data.round.id, {
@@ -418,16 +418,16 @@ function WorkspacePageContent() {
             data.round.productType === "winner"
               ? "公式URLから更新する"
               : data.round.matches.length === 0
-                ? "公式対象回から始める"
-                : "公式回を同期して更新する",
+                ? "この回に試合を入れる"
+                : "公式toto回で更新する",
           secondaryHref:
             data.round.matches.length === 0
               ? buildRoundHref(appRoute.officialScheduleImport, data.round.id)
               : buildRoundHref(appRoute.officialScheduleImport, data.round.id),
           secondaryLabel:
             data.round.matches.length === 0
-              ? "発売前の手動準備へ"
-              : "確定日程ベースで見直す",
+              ? "W杯日程から準備する"
+              : "W杯日程で見直す",
           title: data.round.matches.length === 0 ? "試合素材を入れる" : "ラウンド素材を整える",
           tone: "teal" as const,
         };
@@ -448,7 +448,7 @@ function WorkspacePageContent() {
           ctaLabel:
             data.round.productType === "winner"
               ? "WINNER 公式URLを開く"
-              : "この商品で公式回を見る",
+              : "この商品の回を見る",
           secondaryHref:
             data.round.productType === "winner"
               ? buildRoundHref(appRoute.pickRoom, data.round.id, {
@@ -456,7 +456,7 @@ function WorkspacePageContent() {
                 })
               : buildRoundHref(appRoute.fixtureSelector, data.round.id),
           secondaryLabel:
-            data.round.productType === "winner" ? "候補カードへ" : "試合を選んで保存",
+            data.round.productType === "winner" ? "候補を見る" : "13試合を選ぶ",
           title: "いまの商品で進める",
           tone: "sky" as const,
         };
@@ -469,18 +469,18 @@ function WorkspacePageContent() {
           ctaHref: buildRoundHref(appRoute.pickRoom, data.round.id, {
             user: data.users[0]?.id,
           }),
-          ctaLabel: "候補カードを開く",
+          ctaLabel: "候補を見る",
           secondaryHref: buildRoundHref(appRoute.simpleView, data.round.id, {
             user: data.users[0]?.id,
           }),
-          secondaryLabel: "自分の予想で確認",
+          secondaryLabel: "予想を入れる",
           title: "みんなで見る・投票する",
           tone: "amber" as const,
         };
 
         return data.round.matches.length > 0
           ? [sharingCard, productCard, materialCard]
-          : [materialCard, productCard, sharingCard];
+          : [materialCard];
       })()
     : [];
 
@@ -632,58 +632,41 @@ function WorkspacePageContent() {
             ? "古いリンクか削除済みラウンドの可能性があります。下から今ある本番回へ戻れます。"
             : isDemoRound
             ? "このデモは、確認カード → 支持 / 予想 → コンセンサス → 振り返り の順で触ると全体像をつかみやすいです。"
-            : `${data?.round.matches.length ?? 0}試合の分析入力状況を、モデル試算と予想者ラインを土台にして支持分布まで一気に俯瞰できます。`
+            : `${data?.round.matches.length ?? 0}試合の準備状況を確認して、次にやることへそのまま進めます。`
         }
         actions={
           data ? (
             <div className="flex flex-col gap-3 sm:items-end">
-              <div className="flex flex-wrap gap-2">
-                {data.round.matches.length === 0 ? (
-                  <>
+              {data.round.matches.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  <Link
+                    href={buildRoundHref(appRoute.play, data.round.id, {
+                      user: data.users[0]?.id,
+                    })}
+                    className={secondaryButtonClassName}
+                  >
+                    みんなで見る
+                  </Link>
+                  <Link
+                    href={buildRoundHref(appRoute.pickRoom, data.round.id, {
+                      user: data.users[0]?.id,
+                    })}
+                    className={buttonClassName}
+                  >
+                    候補カード
+                  </Link>
+                  {winnerLike ? (
                     <Link
-                      href={buildRoundHref(appRoute.officialScheduleImport, data.round.id)}
-                      className={buttonClassName}
-                    >
-                      試合素材を入れる
-                    </Link>
-                    <Link
-                      href={buildRoundHref(appRoute.fixtureSelector, data.round.id)}
-                      className={secondaryButtonClassName}
-                    >
-                      試合を選んで保存
-                    </Link>
-                  </>
-                ) : (
-                  <>
-                    <Link
-                      href={buildRoundHref(appRoute.play, data.round.id, {
+                      href={buildRoundHref(appRoute.winnerValue, data.round.id, {
                         user: data.users[0]?.id,
                       })}
                       className={secondaryButtonClassName}
                     >
-                      みんなで見る
+                      WINNERボード
                     </Link>
-                    <Link
-                      href={buildRoundHref(appRoute.pickRoom, data.round.id, {
-                        user: data.users[0]?.id,
-                      })}
-                      className={buttonClassName}
-                    >
-                      候補カード
-                    </Link>
-                    {winnerLike ? (
-                      <Link
-                        href={buildRoundHref(appRoute.winnerValue, data.round.id, {
-                          user: data.users[0]?.id,
-                        })}
-                        className={secondaryButtonClassName}
-                      >
-                        WINNERボード
-                      </Link>
-                    ) : null}
-                  </>
-                )}
-              </div>
+                  ) : null}
+                </div>
+              ) : null}
               <div className="flex flex-wrap items-center gap-2">
                 {isDemoRound ? <Badge tone="amber">デモ</Badge> : null}
                 <Badge tone="teal">{roundProductLabel ?? productTypeLabel[data.round.productType]}</Badge>
@@ -772,12 +755,12 @@ function WorkspacePageContent() {
             </div>
           </CollapsibleSectionCard>
 
-      <CollapsibleSectionCard
-        title="ラウンド作成と取り込み"
-        description="主導線は toto公式の対象回取り込みです。FIFA全試合から組む流れは、発売前に先に遊ぶ時だけ使う補助導線に寄せています。"
-        defaultOpen={data.round.matches.length === 0}
-        badge={<Badge tone="sky">導線</Badge>}
-      >
+          <CollapsibleSectionCard
+            title="次にやること"
+            description="試合を入れる時だけ作成導線へ戻り、素材がそろったら予想と候補に進みます。"
+            defaultOpen={data.round.matches.length === 0}
+            badge={<Badge tone="sky">導線</Badge>}
+          >
             <div className="space-y-6">
               <div className="rounded-[24px] border border-slate-200 bg-slate-50/90 px-5 py-4 text-sm leading-6 text-slate-700">
                 <div className="flex flex-wrap items-center gap-2">
@@ -788,12 +771,12 @@ function WorkspacePageContent() {
                 </div>
                 <p className="mt-3">
                   {data.round.matches.length === 0
-                    ? "この Round はまだ材料が入っていません。まずは公式対象回を試し、まだ未発表なら確定日程ベースの手動準備へ回るのが自然です。"
+                    ? "この回はまだ材料が入っていません。まずは公式toto回を試し、まだ未発表なら W杯日程から準備するのが自然です。"
                     : "このラウンドには試合素材があります。更新したいときだけ取り込みへ戻り、ふだんは自分の予想と候補カードを使えば十分です。"}
                 </p>
               </div>
 
-              <div className="grid gap-4 xl:grid-cols-3">
+              <div className={`grid gap-4 ${data.round.matches.length > 0 ? "xl:grid-cols-3" : ""}`}>
                 {roundBuilderSpotlightCards.map((entry) => (
                   <div
                     key={entry.title}
@@ -821,29 +804,10 @@ function WorkspacePageContent() {
                   進め方メモ
                 </summary>
                 <div className="mt-4 space-y-4">
-                  <div className="grid gap-4 lg:grid-cols-2">
-                    <div className="rounded-[22px] border border-teal-200 bg-teal-50 px-4 py-4">
-                      <p className="text-sm font-semibold text-teal-950">発売前の補助導線</p>
-                      <p className="mt-2 text-sm leading-6 text-teal-900">
-                        公式対象回がまだ出ていない時だけ{" "}
-                        <span className="font-medium">公式日程を取り込む → 試合を選んで保存</span>{" "}
-                        の順で仮Roundを組みます。
-                      </p>
-                    </div>
-                    <div className="rounded-[22px] border border-amber-200 bg-amber-50 px-4 py-4">
-                      <p className="text-sm font-semibold text-amber-950">ふだんの主導線</p>
-                      <p className="mt-2 text-sm leading-6 text-amber-900">
-                        売り出し後は{" "}
-                        <span className="font-medium">公式回を同期して選ぶ</span>{" "}
-                        で対象試合と売上前提を取り込みます。
-                      </p>
-                    </div>
-                  </div>
-
                   <div className="rounded-[22px] border border-slate-200 bg-white/85 px-4 py-4 text-sm leading-6 text-slate-600">
-                    上の 3 枚から入れば十分です。発売前は `試合素材を入れる`、販売後は
-                    `いまの商品で進める`、素材がそろったら `みんなで見る・投票する`
-                    を開く、の順でほとんどの作業が済みます。
+                    {data.round.matches.length === 0
+                      ? "この状態では入口を 1 本に絞っています。まずは `この回に試合を入れる` を押し、まだ公式対象回が出ていない時だけ `W杯日程から準備する` を使えば十分です。"
+                      : "素材がそろったあとは `候補を見る` と `予想を入れる` が主導線です。試合を入れ直したい時だけ作成導線へ戻れば十分です。"}
                   </div>
                 </div>
               </details>
@@ -1481,7 +1445,7 @@ function WorkspacePageContent() {
                   name="sourceNote"
                   defaultValue={data.round.sourceNote ?? ""}
                   className={fieldClassName}
-                  placeholder="試合を選んで保存 / toto公式貼り付け / 仮想ラウンド など"
+                  placeholder="13試合を選ぶ / toto公式貼り付け / 仮想ラウンド など"
                 />
               </label>
 
@@ -1558,7 +1522,7 @@ function WorkspacePageContent() {
 
           {focus === "ai" ? (
             <div className="rounded-[24px] border border-sky-200 bg-sky-50/90 px-5 py-4 text-sm leading-7 text-sky-950">
-              公式回を取り込んだら、次はここでモデル試算です。市場確率や Human Scout がまだなくても、通常toto / W杯の共通ロジックでまず暫定の 1 / 0 / 2 を入れられます。
+              公式回を取り込んだあとに、ここで 1 / 0 / 2 の下書きを確認できます。市場確率や Human Scout がまだなくても、通常toto / W杯の共通ロジックで暫定値を入れられます。
             </div>
           ) : null}
 

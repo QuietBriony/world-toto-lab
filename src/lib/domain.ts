@@ -165,7 +165,7 @@ export const productTypeLabel: Record<ProductType, string> = {
 };
 
 export const roundSourceLabel: Record<RoundSource, string> = {
-  fixture_master: "Fixture Master",
+  fixture_master: "全試合リスト",
   toto_official_manual: "toto公式対象",
   user_manual: "手入力",
   demo_sample: "デモ",

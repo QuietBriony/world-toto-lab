@@ -348,7 +348,7 @@ export default function DashboardPage() {
           users: resolveRoundParticipantUsers(data.users, latestRound.participantIds),
         })
       : null;
-  const createRoundAnchor = "#create-round";
+  const createRoundAnchor = appRoute.totoOfficialRoundImport;
   const roundListAnchor = "#round-list";
   const latestRoundUsers =
     data && latestRound ? resolveRoundParticipantUsers(data.users, latestRound.participantIds) : [];
@@ -462,46 +462,28 @@ export default function DashboardPage() {
     data?.users.filter((user) => user.role === "member").length ?? 0;
   const livePickCount = inventoryRounds.reduce((sum, round) => sum + round.pickCount, 0);
   const liveResultCount = inventoryRounds.reduce((sum, round) => sum + round.resultedCount, 0);
-  const createRoundJourneyCards = [
-    {
-      body: "売り出しが始まったら、公式対象回を同期してそのまま toto / mini toto の Round に流し込みます。",
-      ctaHref: buildOfficialRoundImportHref(undefined, {
-        autoSync: true,
-        productType: "toto13",
-        sourcePreset: "yahoo_toto_schedule",
-      }),
-      ctaLabel: "toto を同期して選ぶ",
-      secondaryHref: buildOfficialRoundImportHref(undefined, {
-        autoSync: true,
-        productType: "mini_toto",
-        sourcePreset: "yahoo_toto_schedule",
-      }),
-      secondaryLabel: "mini toto で始める",
-      title: "販売後に始める",
-      tone: "sky" as const,
-    },
-    {
-      body: "1試合の WINNER は、開催一覧より公式くじ情報URLから入るほうが安定します。BIG は別監視ページに切っています。",
-      ctaHref: buildOfficialRoundImportHref(undefined, {
-        productType: "winner",
-        sourcePreset: "toto_official_detail",
-      }),
-      ctaLabel: "WINNER で始める",
-      secondaryHref: appRoute.bigCarryover,
-      secondaryLabel: "BIGウォッチ",
-      title: "1試合や別商品で見る",
-      tone: "amber" as const,
-    },
-    {
-      body: "FIFA全試合の取り込みは、公式対象回がまだ出ていない時だけ使う補助導線です。発売前に遊び用Roundを先に作りたいときだけ開けば十分です。",
-      ctaHref: appRoute.officialScheduleImport,
-      ctaLabel: "発売前の手動準備へ",
-      secondaryHref: appRoute.fixtureSelector,
-      secondaryLabel: "13試合を手で選ぶ",
-      title: "発売前に先に遊ぶ",
-      tone: "teal" as const,
-    },
-  ];
+  const spotlightActionCards = latestRound
+    ? [
+        {
+          body: "候補カードと自分の予想を、ひとつの流れで見ます。",
+          href: latestPlayHref,
+          label: "みんなで見る",
+          strategy: "orthodox_model" as const,
+        },
+        {
+          body: "王道・公式人気・人力推し・EV狙いを見比べます。",
+          href: latestPickRoomHref,
+          label: "候補カード",
+          strategy: "public_favorite" as const,
+        },
+        {
+          body: "1 / 0 / 2 を入れるだけの、やさしい入力画面です。",
+          href: latestSimpleViewHref,
+          label: "自分の予想",
+          strategy: "draw_alert" as const,
+        },
+      ]
+    : [];
   const goal3Entries = useMemo(
     () => (goal3Library.data ?? []).filter(isGoal3LibraryEntry),
     [goal3Library.data],
@@ -652,7 +634,9 @@ export default function DashboardPage() {
                   <div className="space-y-3">
                     <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-white/78">
                       <span>
-                        {latestRound ? `参加 ${latestRoundUsers.length || data.users.length}人` : "最初の1回から始める"}
+                        {latestRound
+                          ? `参加 ${latestRoundUsers.length || data.users.length}人`
+                          : "最初の1回から始める"}
                       </span>
                       <span>
                         {latestRound ? `候補 ${latestRound.candidateTicketCount}枚` : "候補カードは後から自動で並びます"}
@@ -668,12 +652,16 @@ export default function DashboardPage() {
                       >
                         {latestRound ? "本番回を開く" : "本番回を作る"}
                       </Link>
-                      <Link href={latestPickRoomHref} className={secondaryButtonClassName}>
-                        候補カード
-                      </Link>
-                      <Link href={latestSimpleViewHref} className={secondaryButtonClassName}>
-                        自分の予想
-                      </Link>
+                      {latestRound ? (
+                        <>
+                          <Link href={latestPickRoomHref} className={secondaryButtonClassName}>
+                            候補カード
+                          </Link>
+                          <Link href={latestSimpleViewHref} className={secondaryButtonClassName}>
+                            自分の予想
+                          </Link>
+                        </>
+                      ) : null}
                     </div>
                   </div>
 
@@ -706,38 +694,38 @@ export default function DashboardPage() {
 
                     <div className="hidden gap-3 md:grid md:grid-cols-2 xl:grid-cols-1">
                       <div className="rounded-[24px] border border-white/18 bg-[linear-gradient(145deg,rgba(8,14,22,0.52),rgba(8,14,22,0.24))] p-4 shadow-[0_22px_54px_-34px_rgba(0,0,0,0.45)] backdrop-blur-md">
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/60">
-                            ラウンド進み具合
-                          </p>
-                          <p className="mt-2 text-sm text-white/72">
-                            {latestRoundProgress
-                              ? `${latestRoundProgress.nextStep.label} まで進んでいます`
-                              : "まだ本番回はありません"}
-                          </p>
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/60">
+                              ラウンド進み具合
+                            </p>
+                            <p className="mt-2 text-sm text-white/72">
+                              {latestRoundProgress
+                                ? `${latestRoundProgress.nextStep.label} まで進んでいます`
+                                : "まだ本番回はありません"}
+                            </p>
+                          </div>
+                          <div className="rounded-full border border-emerald-300/30 bg-emerald-400/10 px-3.5 py-2.5 text-center">
+                            <div className="font-display text-[1.55rem] font-semibold tracking-[-0.08em] text-white">
+                              {spotlightProgressPercent !== null ? `${spotlightProgressPercent}%` : "0%"}
+                            </div>
+                          </div>
                         </div>
-                        <div className="rounded-full border border-emerald-300/30 bg-emerald-400/10 px-3.5 py-2.5 text-center">
-                          <div className="font-display text-[1.55rem] font-semibold tracking-[-0.08em] text-white">
-                            {spotlightProgressPercent !== null ? `${spotlightProgressPercent}%` : "0%"}
+                        <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-2">
+                          <div className="rounded-[16px] border border-white/8 bg-white/8 px-3 py-2.5 text-sm text-white/80">
+                            試合設定 {latestRound ? progressValue(latestRoundProgress?.configuredMatches ?? 0, latestRound.matchCount) : "未作成"}
+                          </div>
+                          <div className="rounded-[16px] border border-white/8 bg-white/8 px-3 py-2.5 text-sm text-white/80">
+                            支持 / 予想 {latestRound ? progressValue(latestRound.pickCount, latestRoundProgress?.expectedPickEntries ?? 0) : "未作成"}
+                          </div>
+                          <div className="rounded-[16px] border border-white/8 bg-white/8 px-3 py-2.5 text-sm text-white/80">
+                            予想者カード {latestRound ? progressValue(latestRound.scoutReports.length, latestRoundProgress?.expectedScoutEntries ?? 0) : "未作成"}
+                          </div>
+                          <div className="rounded-[16px] border border-white/8 bg-white/8 px-3 py-2.5 text-sm text-white/80">
+                            候補カード {latestRound ? `${latestRound.candidateTicketCount}` : "未作成"}
                           </div>
                         </div>
                       </div>
-                      <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-2">
-                        <div className="rounded-[16px] border border-white/8 bg-white/8 px-3 py-2.5 text-sm text-white/80">
-                          試合設定 {latestRound ? progressValue(latestRoundProgress?.configuredMatches ?? 0, latestRound.matchCount) : "未作成"}
-                        </div>
-                        <div className="rounded-[16px] border border-white/8 bg-white/8 px-3 py-2.5 text-sm text-white/80">
-                          支持 / 予想 {latestRound ? progressValue(latestRound.pickCount, latestRoundProgress?.expectedPickEntries ?? 0) : "未作成"}
-                        </div>
-                        <div className="rounded-[16px] border border-white/8 bg-white/8 px-3 py-2.5 text-sm text-white/80">
-                          予想者カード {latestRound ? progressValue(latestRound.scoutReports.length, latestRoundProgress?.expectedScoutEntries ?? 0) : "未作成"}
-                        </div>
-                        <div className="rounded-[16px] border border-white/8 bg-white/8 px-3 py-2.5 text-sm text-white/80">
-                          候補カード {latestRound ? `${latestRound.candidateTicketCount}` : "未作成"}
-                        </div>
-                      </div>
-                    </div>
 
                       <div className="rounded-[24px] border border-white/18 bg-[linear-gradient(145deg,rgba(8,14,22,0.48),rgba(8,14,22,0.18))] p-4 shadow-[0_22px_54px_-34px_rgba(0,0,0,0.45)] backdrop-blur-md">
                         <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/60">
@@ -779,67 +767,50 @@ export default function DashboardPage() {
               }
             />
 
-            <div className="mt-5 grid gap-4 md:grid-cols-3">
-              {[
-                {
-                  body: "候補カードと自分の予想を、ひとつの流れで見ます。",
-                  href: latestPlayHref,
-                  label: "みんなで見る",
-                  strategy: "orthodox_model" as const,
-                },
-                {
-                  body: "王道・公式人気・人力推し・EV狙いを見比べます。",
-                  href: latestPickRoomHref,
-                  label: "候補カード",
-                  strategy: "public_favorite" as const,
-                },
-                {
-                  body: "1 / 0 / 2 を入れるだけの、やさしい入力画面です。",
-                  href: latestSimpleViewHref,
-                  label: "自分の予想",
-                  strategy: "draw_alert" as const,
-                },
-              ].map((item) => {
-                const artwork = candidateStrategyArt[item.strategy];
-                return (
-                  <Link
-                    key={item.label}
-                    href={item.href}
-                    className="group overflow-hidden rounded-[26px] border border-white/60 bg-white/90 shadow-[0_22px_56px_-36px_rgba(15,23,42,0.42)]"
-                  >
-                    <div className="relative min-h-[220px] bg-slate-950">
-                      <Image
-                        alt=""
-                        aria-hidden="true"
-                        src={resolveArtAsset(pathname, artwork.src)}
-                        fill
-                        sizes="(max-width: 768px) 100vw, 33vw"
-                        className="absolute inset-0 h-full w-full object-cover"
-                        unoptimized
-                      />
-                      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(7,12,18,0.04),rgba(7,12,18,0.28)_52%,rgba(7,12,18,0.64))]" />
-                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.2),transparent_34%)]" />
-                      <div className="relative z-10 flex min-h-[220px] flex-col justify-between gap-4 p-4">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Badge tone="slate">{artwork.accentLabel}</Badge>
-                        </div>
-                        <div className="rounded-[22px] border border-white/16 bg-[linear-gradient(145deg,rgba(8,14,22,0.4),rgba(8,14,22,0.14))] p-4 shadow-[0_18px_44px_-34px_rgba(0,0,0,0.42)] backdrop-blur-sm">
-                          <h3 className="font-display text-[1.35rem] font-semibold tracking-[-0.05em] text-white">
-                            {item.label}
-                          </h3>
-                          <p className="mt-2 max-w-[22rem] text-sm leading-6 text-white/84">
-                            {item.body}
-                          </p>
-                          <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-white/18 bg-white/8 px-4 py-2 text-sm font-semibold text-white transition-transform duration-200 group-hover:translate-x-1">
-                            開く
+            {spotlightActionCards.length > 0 ? (
+              <div className="mt-5 grid gap-4 md:grid-cols-3">
+                {spotlightActionCards.map((item) => {
+                  const artwork = candidateStrategyArt[item.strategy];
+                  return (
+                    <Link
+                      key={item.label}
+                      href={item.href}
+                      className="group overflow-hidden rounded-[26px] border border-white/60 bg-white/90 shadow-[0_22px_56px_-36px_rgba(15,23,42,0.42)]"
+                    >
+                      <div className="relative min-h-[220px] bg-slate-950">
+                        <Image
+                          alt=""
+                          aria-hidden="true"
+                          src={resolveArtAsset(pathname, artwork.src)}
+                          fill
+                          sizes="(max-width: 768px) 100vw, 33vw"
+                          className="absolute inset-0 h-full w-full object-cover"
+                          unoptimized
+                        />
+                        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(7,12,18,0.04),rgba(7,12,18,0.28)_52%,rgba(7,12,18,0.64))]" />
+                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.2),transparent_34%)]" />
+                        <div className="relative z-10 flex min-h-[220px] flex-col justify-between gap-4 p-4">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Badge tone="slate">{artwork.accentLabel}</Badge>
+                          </div>
+                          <div className="rounded-[22px] border border-white/16 bg-[linear-gradient(145deg,rgba(8,14,22,0.4),rgba(8,14,22,0.14))] p-4 shadow-[0_18px_44px_-34px_rgba(0,0,0,0.42)] backdrop-blur-sm">
+                            <h3 className="font-display text-[1.35rem] font-semibold tracking-[-0.05em] text-white">
+                              {item.label}
+                            </h3>
+                            <p className="mt-2 max-w-[22rem] text-sm leading-6 text-white/84">
+                              {item.body}
+                            </p>
+                            <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-white/18 bg-white/8 px-4 py-2 text-sm font-semibold text-white transition-transform duration-200 group-hover:translate-x-1">
+                              開く
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            ) : null}
           </SectionCard>
 
           <CollapsibleSectionCard
@@ -1604,9 +1575,9 @@ export default function DashboardPage() {
 
           <CollapsibleSectionCard
             id="create-round"
-            title="別の始め方と細かい作成"
-            description="主導線は toto公式の対象回取り込みです。FIFA全試合から組む流れは、発売前に先に遊ぶときだけ使う補助導線に寄せています。"
-            defaultOpen={inventoryRounds.length === 0}
+            title="詳細設定"
+            description="ふだんは上の `本番回を作る` だけで十分です。ここでは補助導線と細かい手入力だけ扱います。"
+            defaultOpen={false}
             badge={<Badge tone="slate">補助導線</Badge>}
           >
             <div className="mb-6 space-y-4">
@@ -1616,37 +1587,29 @@ export default function DashboardPage() {
                   <Badge tone="slate">迷ったらここ</Badge>
                 </div>
                 <p className="mt-3">
-                  ふだんは「販売後」か「1試合 / 別商品」から入れば十分です。
-                  まだ公式対象回が出ていない時だけ「発売前に先に遊ぶ」を使い、URLや同期を使わずに細かく作りたいときだけ、下の `手入力で細かく作る`
-                  を開けば大丈夫です。
+                  ダッシュボードでは入口を 1 本にまとめています。
+                  まずは `回を作る` を押して、次の画面で必要な作り方だけを選べば大丈夫です。
                 </p>
               </div>
 
-              <div className="grid gap-4 xl:grid-cols-3">
-                {createRoundJourneyCards.map((card) => (
-                  <div
-                    key={card.title}
-                    className="rounded-[24px] border border-slate-200 bg-slate-50/90 p-5"
-                  >
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge tone={card.tone}>{card.title}</Badge>
-                    </div>
-                    <p className="mt-3 text-sm leading-6 text-slate-600">{card.body}</p>
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      <Link href={card.ctaHref} className={buttonClassName}>
-                        {card.ctaLabel}
-                      </Link>
-                      <Link href={card.secondaryHref} className={secondaryButtonClassName}>
-                        {card.secondaryLabel}
-                      </Link>
-                    </div>
-                  </div>
-                ))}
+              <div className="rounded-[24px] border border-slate-200 bg-white/90 p-5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge tone="teal">通常はこれ</Badge>
+                  <Badge tone="slate">入口を一本化</Badge>
+                </div>
+                <p className="mt-3 text-sm leading-6 text-slate-600">
+                  公式toto回から作るのが主導線です。発売前だけ W杯日程、一覧にない回だけ CSV / 手入力を使います。
+                </p>
+                <div className="mt-5">
+                  <Link href={createRoundAnchor} className={buttonClassName}>
+                    回を作る
+                  </Link>
+                </div>
               </div>
 
               <div className="rounded-[24px] border border-slate-200 bg-slate-50/90 px-4 py-4 text-sm leading-6 text-slate-600">
-                上の 3 枚で入口は足ります。ふだんは `toto / mini toto を選ぶ`、1試合商品は
-                `WINNER`、まだ公式対象回が出ていない時だけ `発売前に先に遊ぶ` を開けば十分です。
+                同じ意味の入口はここでは増やしていません。`回を作る` の先でだけ分岐するので、
+                まず何を押せばよいか迷わない形にしています。
               </div>
             </div>
 
@@ -1893,9 +1856,9 @@ export default function DashboardPage() {
                   description="新規作成はいつでも上の `新規ラウンドを作成` から進められます。ここでは既に作った本番ラウンドを選びます。"
                 >
                   <div className="flex flex-wrap gap-2">
-                    <a href={createRoundAnchor} className={buttonClassName}>
-                      新規ラウンドを作成
-                    </a>
+                    <Link href={createRoundAnchor} className={buttonClassName}>
+                      回を作る
+                    </Link>
                     {inventoryRounds.map((round) => (
                       <Link
                         key={`round-shortcut-${round.id}`}
@@ -1907,37 +1870,36 @@ export default function DashboardPage() {
                     ))}
                   </div>
                 </SectionCard>
-                {inventoryRounds.map((round) => (
-              (() => {
-                const roundUsers = resolveRoundParticipantUsers(data.users, round.participantIds);
-                const progress = deriveRoundProgressSummary({
-                  matches: round.matches,
-                  picks: round.picks,
-                  resultedCount: round.resultedCount,
-                  roundId: round.id,
-                  scoutReports: round.scoutReports,
-                  users: roundUsers,
-                });
-                const winnerLike = isWinnerLikeRound({
-                  matchCount: round.matchCount,
-                  productType: round.productType,
-                  requiredMatchCount: round.requiredMatchCount,
-                });
-                const roundProductLabel = resolveWorldTotoProductLabel({
-                  matchCount: round.matchCount,
-                  matches: round.matches,
-                  notes: round.notes,
-                  productType: round.productType,
-                  sourceNote: round.sourceNote,
-                  title: round.title,
-                }, productTypeLabel[round.productType as ProductType]);
+                {inventoryRounds.map((round) => {
+                  const roundUsers = resolveRoundParticipantUsers(data.users, round.participantIds);
+                  const progress = deriveRoundProgressSummary({
+                    matches: round.matches,
+                    picks: round.picks,
+                    resultedCount: round.resultedCount,
+                    roundId: round.id,
+                    scoutReports: round.scoutReports,
+                    users: roundUsers,
+                  });
+                  const winnerLike = isWinnerLikeRound({
+                    matchCount: round.matchCount,
+                    productType: round.productType,
+                    requiredMatchCount: round.requiredMatchCount,
+                  });
+                  const roundProductLabel = resolveWorldTotoProductLabel({
+                    matchCount: round.matchCount,
+                    matches: round.matches,
+                    notes: round.notes,
+                    productType: round.productType,
+                    sourceNote: round.sourceNote,
+                    title: round.title,
+                  }, productTypeLabel[round.productType as ProductType]);
 
-                return (
-                  <SectionCard
-                    key={round.id}
-                    title={round.title}
-                    description={round.notes ?? "ラウンドメモはまだありません。"}
-                  >
+                  return (
+                    <SectionCard
+                      key={round.id}
+                      title={round.title}
+                      description={round.notes ?? "ラウンドメモはまだありません。"}
+                    >
                     <div className="rounded-[24px] border border-slate-200 bg-slate-50/90 px-4 py-4 shadow-[0_18px_44px_-34px_rgba(15,23,42,0.16)]">
                       <div className="flex flex-wrap items-center gap-2">
                         <Badge tone="slate">{roundUsers.length}人</Badge>
@@ -2114,10 +2076,9 @@ export default function DashboardPage() {
                         </div>
                       </div>
                     </div>
-                  </SectionCard>
-                );
-              })()
-                ))}
+                    </SectionCard>
+                  );
+                })}
               </>
             )}
           </section>

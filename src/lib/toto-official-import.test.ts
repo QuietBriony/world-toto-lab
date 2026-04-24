@@ -79,7 +79,7 @@ describe("toto official import parser", () => {
     expect(matched[0]?.warnings.join(" ")).toContain("管理者確認");
   });
 
-  it("keeps a manually selected fixture candidate on rematch and avoids duplicate warnings", () => {
+  it("keeps a manually selected candidate match on rematch and avoids duplicate warnings", () => {
     const row = {
       ...parseTotoOfficialRoundCsv({
         sourceText: [

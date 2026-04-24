@@ -5,7 +5,7 @@
 ## 目的
 
 - 実データの Round を 1 本流し込む前に、GitHub Pages と Supabase の最低限の導線が生きているかを短時間で確認する
-- 友人向け主導線の `Simple View` / `Friend Pick Room` と、管理導線の `Round Builder` / `公式取り込み` を切り分けて確認する
+- 友人向け主導線の `Simple View` / `Friend Pick Room` と、管理導線の `回を作る` / `公式取り込み` を切り分けて確認する
 
 ## 事前確認
 
@@ -33,12 +33,11 @@ npm run check:pages
 ### 1. Dashboard
 
 - `/world-toto-lab/` を開く
-- `BIG Carryover Monitor`
-- `公式日程を取り込む`
-- `Fixture Selector`
-- `toto を同期して選ぶ`
-- `mini toto を同期して選ぶ`
-- 5 ボタンがそれぞれ画面遷移する
+- `本番回を作る` または `回を作る`
+- `GOAL3ボード`
+- `BIGウォッチ`
+- 本番ラウンドがある場合は `みんなで見る` / `候補カード` / `自分の予想`
+- 主要ボタンがそれぞれ画面遷移する
 
 ### 1.5. BIG Carryover Monitor
 
@@ -50,39 +49,40 @@ npm run check:pages
 ### 2. Round Detail
 
 - `/world-toto-lab/workspace/?round=<roundId>` を開く
-- `Round Builder` が見える
-- `toto で作る`
-- `mini toto で作る`
-- `公式日程を取り込む`
-- `Fixture Selector`
-- `現在の product で公式回を見る`
+- `次にやること` が見える
+- 試合未設定なら `この回に試合を入れる`
+- `W杯日程から準備する`
+- 試合設定済みなら `みんなで見る`
 - `Simple View`
 - `Friend Pick Room`
 - 上記導線が反応し、URL に `round=<roundId>` が残る
 
-### 3. Official Schedule Import
+### 3. W杯日程から準備する
 
 - `Round Context` が出る
 - 新規導線なら `新規Round向け` と出れば正常
-- `Round Detailへ戻る` が押せる
-- `Fixture Selector` が押せる
-- `Parse Preview` が押せる
+- `ラウンド詳細へ戻る` が押せる
+- `13試合を選ぶ` が押せる
+- `入力内容を確認` が押せる
 
-### 4. Fixture Selector
+### 4. 13試合を選ぶ
 
 - `Round Context` が出る
 - `公式日程を取り込む` に戻れる
-- `Round Detailへ戻る` が押せる
+- `ラウンド詳細へ戻る` が押せる
 - fixture がある場合は選択できる
 
-### 5. Toto Official Round Import
+### 5. 回を作る
 
 - `Round Context` が出る
-- `Round Detailへ戻る` が押せる
+- `ラウンド詳細へ戻る` が押せる
+- `作り方を選ぶ` が見える
+- `公式toto回から作る` が `回を選ぶ` へ移動する
+- `CSV / 手入力で作る` が補完入力セクションを開く
 - `公式一覧を同期`
 - `同期結果:` が出る、または意味のある警告が出る
 - `UNAUTHORIZED_INVALID_JWT_FORMAT` / `Invalid JWT` / 無反応にならない
-- `公式一覧を同期してPick Roomへ`
+- `公式一覧を同期してこの回で作る`
 - `Friend Pick Room`
 - 上記ボタン群が無反応でない
 
@@ -131,5 +131,5 @@ npm run check:pages
 ## まだ手動で見るべき項目
 
 - iPhone 実機 Safari のタップ感
-- `Toto Official Round Import` の実データ 1 回分適用
+- `回を作る` の実データ 1 回分適用
 - `Pick Room` の候補自動更新タイミング
