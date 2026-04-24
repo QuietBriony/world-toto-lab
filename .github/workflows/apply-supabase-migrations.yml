@@ -11,6 +11,7 @@ on:
         options:
           - dry-run
           - apply
+          - api-apply
 
 permissions:
   contents: read
@@ -34,7 +35,7 @@ jobs:
             echo "Missing SUPABASE_ACCESS_TOKEN GitHub Actions secret."
             exit 1
           fi
-          if [ -z "$SUPABASE_DB_PASSWORD" ]; then
+          if [ "${{ inputs.mode }}" != "api-apply" ] && [ -z "$SUPABASE_DB_PASSWORD" ]; then
             echo "Missing SUPABASE_DB_PASSWORD GitHub Actions secret."
             echo "Add the Supabase project database password in Settings > Secrets and variables > Actions."
             exit 1
@@ -46,6 +47,7 @@ jobs:
           version: latest
 
       - name: Link Supabase project
+        if: ${{ inputs.mode != 'api-apply' }}
         run: supabase link --project-ref "$PROJECT_ID" --password "$SUPABASE_DB_PASSWORD"
 
       - name: Show migration dry-run
@@ -57,18 +59,63 @@ jobs:
         run: supabase db push --linked --include-all --password "$SUPABASE_DB_PASSWORD"
 
       - name: Setup Node
-        if: ${{ inputs.mode == 'apply' }}
+        if: ${{ inputs.mode != 'dry-run' }}
         uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: npm
 
       - name: Install dependencies
-        if: ${{ inputs.mode == 'apply' }}
+        if: ${{ inputs.mode != 'dry-run' }}
         run: npm ci
 
+      - name: Apply migration through Management API
+        if: ${{ inputs.mode == 'api-apply' }}
+        run: |
+          node <<'NODE'
+          const fs = require("node:fs");
+
+          const projectId = process.env.PROJECT_ID;
+          const token = process.env.SUPABASE_ACCESS_TOKEN;
+          const query = fs.readFileSync(
+            "supabase/migrations/20260424024500_round_context_research_memos.sql",
+            "utf8",
+          );
+
+          async function main() {
+            const response = await fetch(
+              `https://api.supabase.com/v1/projects/${projectId}/database/query`,
+              {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ query, read_only: false }),
+              },
+            );
+
+            const text = await response.text();
+            if (!response.ok) {
+              console.error(`Management API query failed: ${response.status} ${response.statusText}`);
+              console.error(text);
+              process.exit(1);
+            }
+
+            console.log("Management API migration query completed.");
+            if (text.trim()) {
+              console.log(text);
+            }
+          }
+
+          main().catch((error) => {
+            console.error(error);
+            process.exit(1);
+          });
+          NODE
+
       - name: Verify production Supabase schema
-        if: ${{ inputs.mode == 'apply' }}
+        if: ${{ inputs.mode != 'dry-run' }}
         run: npm run check:supabase
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
