@@ -44,7 +44,7 @@ function countMatchesWithModelProbabilities(
 
 export function RoundContextCard({
   backHref,
-  backLabel = "Round Detailへ戻る",
+  backLabel = "ラウンド詳細へ戻る",
   description = "いま開いている導線が、どの Round に紐づいているかを最初に確認します。",
   roundId,
   title = "対象Round",

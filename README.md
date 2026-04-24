@@ -162,17 +162,18 @@ GitHub Pages は静的配信なので、build 後に増える Round を動的ル
 - 一致 / 対立パターンの振り返り
 - 反省メモ
 
-### 10. Fixture Master / 公式日程取り込み
+### 10. 全試合リスト / W杯日程取り込み
 
-- `Official Schedule Import Wizard` で FIFA公式記事 URL からその場で日程を取得できます
+- `W杯日程から準備する` で FIFA公式記事 URL からその場で日程を取得できます
 - `FIFA抽出ブックマーク` または抽出スクリプトで、FIFA公式ページの本文をこの画面へ持ち帰れます
-- `Fixture Master` に保存
-- `Fixture Selector` で試合を選び、`toto / mini toto / WINNER / custom` の Round を作成
+- `全試合リスト` に保存
+- `13試合を選ぶ` で試合を選び、`toto / mini toto / WINNER / custom` の Round を作成
 - main は `FIFA公式 API -> article richtext -> date/match line 抽出` で、fallback として body text 抽出も残しています
 
-### 11. Toto Official Round Import
+### 11. 回を作る / toto公式回
 
-- `Toto Official Round Import` で対象試合 CSV / TSV を preview
+- `回を作る` 画面で、通常は同期済みの公式toto回を選んで Round に反映します
+- 一覧に無い回だけ CSV / TSV を貼り、`入力内容を確認` から補完します
 - 公式投票率 `0.52 / 52% / 52` をすべて受け付けます
 - 合計が 1 から大きくズレる場合は警告します
 - `toto_official_rounds / toto_official_matches` に公式スナップショットを保存しつつ、既存 `matches` にも同期します
@@ -262,7 +263,7 @@ sum(log(modelProb_selected))
 
 ## 公式データとデモデータ
 
-- `Fixture Master` は `source` と `dataConfidence` を持ちます
+- `全試合リスト` は `source` と `dataConfidence` を持ちます
 - `Round` 側でも `roundSource` を保持します
 - `Friend Pick Room` では `FIFA公式日程 / toto公式対象 / 手入力 / デモ / Proxy EV` などの由来を表示します
 - デモデータが混じる Round では「本番分析には使わないでください」と明示します
@@ -272,34 +273,34 @@ sum(log(modelProb_selected))
 
 ### 1. FIFA公式日程の取り込み方法
 
-1. `Official Schedule Import Wizard` を開く
+1. `W杯日程から準備する` を開く
 2. 既定で入っている FIFA公式日程 URL を確認して、`この画面で取得` を押します
-3. FIFA公式 API から本文を読み、date / match line を自動で preview に入れます
+3. FIFA公式 API から本文を読み、date / match line を自動で確認画面に入れます
 4. home / away / date / group / venue を確認します
-5. `Fixture Master` に保存します
+5. `全試合リスト` に保存します
 
 補足:
 - main 導線は FIFA公式 API の article richtext を読むので、スマホでも別タブ往復なしで使えます
 - もし直接取得が通らない環境では、fallback の `FIFA抽出ブックマーク` または抽出スクリプトを使えます
 
-### 2. Fixture Master とは何か
+### 2. 全試合リストとは何か
 
 - W杯全体の日程を再利用可能なマスターデータとして持つテーブルです
 - Round はこのマスターから何度でも組み直せます
 
 ### 3. 公式日程から Round を作る方法
 
-1. `Fixture Selector` を開く
+1. `13試合を選ぶ` を開く
 2. 試合をチェックする
 3. 13試合なら `toto`、5試合なら `mini toto`、1試合なら `WINNER`、それ以外は `custom` を選ぶ
 4. Round を作成する
 
 ### 4. toto公式対象試合を取り込む方法
 
-1. `Toto Official Round Import` を開く
-2. 対象試合 CSV / TSV を貼る
-3. 公式人気や fixture candidate を確認する
-4. 保存して Round に反映する
+1. `回を作る` を開く
+2. `公式一覧を同期` でライブラリを更新する
+3. `回を選ぶ` から対象回を選んで、この回で作る
+4. 一覧に無い回だけ CSV / TSV を貼って、候補試合と公式人気を確認して保存する
 
 ### 5. 公式人気・売上・キャリーの入力方法
 
@@ -363,12 +364,13 @@ npm ci
 NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-public-anon-key
 NEXT_PUBLIC_TOTO_OFFICIAL_ROUND_SYNC_FUNCTION_NAME=sync-toto-official-round-list
+NEXT_PUBLIC_BIG_OFFICIAL_WATCH_FUNCTION_NAME=sync-big-official-watch
 ```
 
 ### 公式一覧の一発同期（推奨導線）
 
-`Round Builder` の `toto で作る` / `mini toto で作る` から入ると、
-`Toto Official Round Import` で対象 product に絞った状態からおすすめソースをそのまま同期できます。
+ダッシュボードやラウンド詳細の `回を作る` から入ると、
+対象 product に絞った状態でおすすめソースをそのまま同期できます。
 
 現状のおすすめ同期元は次です。
 
@@ -378,7 +380,7 @@ NEXT_PUBLIC_TOTO_OFFICIAL_ROUND_SYNC_FUNCTION_NAME=sync-toto-official-round-list
 - `store.toto-dream.com` の個別 `くじ情報` URL
   - 1回分だけ直接読みたいときの補助用です
 
-`Toto Official Round Import` で `公式一覧を同期` すると  
+`回を作る` で `公式一覧を同期` すると
 `Supabase Edge Function` (`sync-toto-official-round-list`) を経由して取り込みます。
 
 Edge Function は次を行います。
@@ -391,7 +393,7 @@ Edge Function は次を行います。
 
 注意:
 
-- `totoGOAL3` は公式同期対象に含めますが、Round Builder 本体ではなく `GOAL3 Value Board` へ分けて表示します
+- `totoGOAL3` は公式同期対象に含めますが、通常の回作成ではなく `GOAL3 Value Board` へ分けて表示します
 - 公式人気 (`official_vote_1 / 0 / 2`) は一覧ページや `くじ情報` ページだけでは揃わない場合があるため、必要なら CSV / TSV で補完します
 
 GitHub Pages 側はこのFunction名を `NEXT_PUBLIC_TOTO_OFFICIAL_ROUND_SYNC_FUNCTION_NAME` から参照します。  

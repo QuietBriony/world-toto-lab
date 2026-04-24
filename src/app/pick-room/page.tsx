@@ -70,7 +70,7 @@ function errorMessage(error: unknown) {
 
 function roundSourceHint(source: RoundSource) {
   if (source === "fixture_master") {
-    return "Fixture Master から組んだラウンドです。日程や会場を直したいときは管理者フロー側を更新してください。";
+    return "全試合リストから組んだラウンドです。日程や会場を直したいときは管理者フロー側を更新してください。";
   }
 
   if (source === "toto_official_manual") {

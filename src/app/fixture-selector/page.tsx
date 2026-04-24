@@ -137,7 +137,7 @@ function FixtureSelectorPageContent() {
         requiredMatchCount:
           selectedProductType === "custom" ? selectedIds.length : undefined,
         roundId: existingRoundId,
-        sourceNote: "Fixture Selector から選択",
+        sourceNote: "13試合を選ぶ から選択",
         status: "analyzing",
         title,
       });
@@ -153,15 +153,15 @@ function FixtureSelectorPageContent() {
     <div className="space-y-8">
       <PageHeader
         eyebrow="Admin"
-        title="試合を選んで保存"
-        description="販売前の手動準備として、Fixture Master に入った大会全体の試合から今回遊ぶ13試合を選んでラウンド化します。公式対象13試合が出たあとは Toto Official Round Import の方が本番向きです。"
+        title="13試合を選ぶ"
+        description="販売前の手動準備として、全試合リストに入った大会全体の試合から今回遊ぶ13試合を選んで1回分を作ります。公式対象13試合が出たあとは `公式toto回から作る` の方が本番向きです。"
         actions={
           <div className="flex flex-wrap gap-3">
             <Link href={officialScheduleHref} className={secondaryButtonClassName}>
               公式日程を取り込む
             </Link>
             <Link href={officialRoundImportHref} className={secondaryButtonClassName}>
-              公式対象13試合へ
+              公式toto回を見る
             </Link>
             {roundDetailHref ? (
               <Link href={roundDetailHref} className={secondaryButtonClassName}>
@@ -180,7 +180,7 @@ function FixtureSelectorPageContent() {
       <RoundContextCard
         roundId={existingRoundId}
         backHref={roundDetailHref}
-        description="既存ラウンドの置換か、新規ラウンド作成かをこのカードで見分けられるようにしています。"
+        description="既存の回を置き換えるのか、新しく作るのかをこのカードで見分けられるようにしています。"
       />
 
       <SectionCard
@@ -191,7 +191,7 @@ function FixtureSelectorPageContent() {
           <div className="rounded-[22px] border border-slate-200 bg-slate-50/90 px-4 py-4">
             <Badge tone="slate">1. 全試合は保存済み</Badge>
             <p className="mt-3 text-sm leading-6 text-slate-700">
-              `公式日程を取り込む` では大会全体の fixture master を作ります。
+              `公式日程を取り込む` では大会全体の全試合リストを作ります。
             </p>
           </div>
           <div className="rounded-[22px] border border-teal-200 bg-teal-50/80 px-4 py-4">
@@ -201,40 +201,40 @@ function FixtureSelectorPageContent() {
             </p>
           </div>
           <div className="rounded-[22px] border border-sky-200 bg-sky-50/80 px-4 py-4">
-            <Badge tone="info">3. 本番は公式対象回 import</Badge>
+            <Badge tone="info">3. 本番は公式toto回から作る</Badge>
             <p className="mt-3 text-sm leading-6 text-slate-700">
-              公式対象13試合が出たあとは、自動で取り込みやすい `Toto Official Round Import`
+              公式対象13試合が出たあとは、自動で取り込みやすい `公式toto回を見る`
               を使う方が自然です。
             </p>
           </div>
         </div>
       </SectionCard>
 
-      <SectionCard title="絞り込み" description="大会 / チーム / グループ / ステージで絞り込みます。">
+      <SectionCard title="絞り込み" description="大会 / チーム / 組 / ステージで絞り込みます。">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <input
             value={competition}
             onChange={(event) => setCompetition(event.currentTarget.value)}
             className={fieldClassName}
-            placeholder="competition"
+            placeholder="大会ID"
           />
           <input
             value={teamQuery}
             onChange={(event) => setTeamQuery(event.currentTarget.value)}
             className={fieldClassName}
-            placeholder="team"
+            placeholder="チーム名"
           />
           <input
             value={groupName}
             onChange={(event) => setGroupName(event.currentTarget.value)}
             className={fieldClassName}
-            placeholder="group"
+            placeholder="組"
           />
           <input
             value={stage}
             onChange={(event) => setStage(event.currentTarget.value)}
             className={fieldClassName}
-            placeholder="stage"
+            placeholder="ステージ"
           />
         </div>
       </SectionCard>
@@ -332,14 +332,14 @@ function FixtureSelectorPageContent() {
       </SectionCard>
 
       <SectionCard
-        title="Fixtures"
+        title="試合一覧"
         description={`表示 ${fixtures.data?.length ?? 0} 件 / 現在見えている選択 ${selectedFixtures.length} 件`}
       >
         {(fixtures.data?.length ?? 0) === 0 ? (
           <div className="rounded-[24px] border border-dashed border-slate-300 bg-slate-50/90 px-5 py-5 text-sm leading-7 text-slate-600">
             <p>いまの条件では試合が見つかりません。</p>
             <p className="mt-2">
-              team / group / stage を少しゆるめるか、まだ日程が入っていなければ先に `公式日程を取り込む`
+              チーム名 / 組 / ステージ を少しゆるめるか、まだ日程が入っていなければ先に `公式日程を取り込む`
               へ戻るのが最短です。
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
@@ -365,12 +365,12 @@ function FixtureSelectorPageContent() {
             <thead>
               <tr className="border-b border-slate-200 text-slate-500">
                 <th className="px-3 py-3">選択</th>
-                <th className="px-3 py-3">date</th>
-                <th className="px-3 py-3">fixture</th>
-                <th className="px-3 py-3">group</th>
-                <th className="px-3 py-3">stage</th>
-                <th className="px-3 py-3">venue</th>
-                <th className="px-3 py-3">source</th>
+                <th className="px-3 py-3">日付</th>
+                <th className="px-3 py-3">カード</th>
+                <th className="px-3 py-3">組</th>
+                <th className="px-3 py-3">ステージ</th>
+                <th className="px-3 py-3">会場</th>
+                <th className="px-3 py-3">元データ</th>
               </tr>
             </thead>
             <tbody>

@@ -27,7 +27,7 @@ export type TotoOfficialImportResult = {
 };
 
 export const multipleFixtureCandidatesWarning =
-  "Fixture候補が複数あります。管理者確認をおすすめします。";
+  "候補試合が複数あります。管理者確認をおすすめします。";
 
 function normalizeSearch(value: string | null | undefined) {
   return (value ?? "")

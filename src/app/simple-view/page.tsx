@@ -73,7 +73,7 @@ function enumToOutcomeValue(value: "ONE" | "DRAW" | "TWO") {
 
 function roundSourceHint(source: RoundSource) {
   if (source === "fixture_master") {
-    return "Fixture Master 由来のラウンドです。日程や会場は管理者フロー側の更新が優先されます。";
+    return "全試合リスト由来のラウンドです。日程や会場は管理者フロー側の更新が優先されます。";
   }
 
   if (source === "toto_official_manual") {

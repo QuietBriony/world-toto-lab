@@ -123,13 +123,13 @@ const officialProductFocusCards: Array<{
 }> = [
   {
     badgeTone: "teal",
-    body: "13試合の本命導線です。公式回を選んだら、まずモデル試算を見てから候補カードへ進めます。",
+    body: "13試合の本命導線です。公式回を選んで、そのままRoundを作る流れに向いています。",
     productType: "toto13",
     title: "toto を選ぶ",
   },
   {
     badgeTone: "sky",
-    body: "5試合で軽く回せるので、友人会の試運転や短時間の投票会に向いています。まず試算を見て整えます。",
+    body: "5試合で軽く回せるので、友人会の試運転や短時間の投票会に向いています。",
     productType: "mini_toto",
     title: "mini toto を選ぶ",
   },
@@ -239,6 +239,7 @@ function TotoOfficialRoundImportPageContent() {
   const autoApplyRequested = getSingleSearchParam(searchParams.get("autoApply")) === "1";
   const sourcePresetId = getSingleSearchParam(searchParams.get("sourcePreset"));
   const autoSyncRequested = getSingleSearchParam(searchParams.get("autoSync")) === "1";
+  const startMode = getSingleSearchParam(searchParams.get("start"));
   const requestedProductType = (() => {
     const raw = getSingleSearchParam(searchParams.get("productType"));
     return productTypeOptions.includes((raw ?? "") as ProductType)
@@ -291,16 +292,23 @@ function TotoOfficialRoundImportPageContent() {
   const roundDetailHref = roundContextId
     ? buildRoundHref(appRoute.workspace, roundContextId)
     : null;
-  const roundAiHref = roundContextId
-    ? buildRoundHref(appRoute.workspace, roundContextId, { focus: "ai" })
-    : null;
+  const manualEntryHref = `${buildRoundHref(appRoute.totoOfficialRoundImport, roundId, {
+    productType,
+    start: "manual",
+  })}#manual-entry`;
   const filterLabel =
     libraryProductType === "all"
       ? "すべて"
       : libraryProductType === "custom"
         ? "GOAL3 / カスタム"
         : productTypeLabel[libraryProductType];
-  const manualEntryOpen = Boolean(editingLibraryEntryId || sourceText.trim() || rows.length > 0);
+  const manualEntryOpen = Boolean(
+    startMode === "csv" ||
+      startMode === "manual" ||
+      editingLibraryEntryId ||
+      sourceText.trim() ||
+      rows.length > 0,
+  );
   const activeSyncPreset =
     officialSourcePresets.find((preset) => preset.sourceUrl === syncSourceUrl) ?? null;
   const syncOptionsOpen =
@@ -399,7 +407,7 @@ function TotoOfficialRoundImportPageContent() {
         roundId: nextRoundId,
       });
       setSavedRoundId(nextRoundId);
-      router.push(buildRoundHref(appRoute.workspace, nextRoundId, { focus: "ai" }));
+      router.push(buildRoundHref(appRoute.workspace, nextRoundId));
     } catch (nextError) {
       setActionError(errorMessage(nextError));
     } finally {
@@ -453,11 +461,11 @@ function TotoOfficialRoundImportPageContent() {
         const latestEntry = syncedEntries[0] ?? null;
 
         if (!latestEntry) {
-          throw new Error("同期結果から試算を開くための公式回がありませんでした。");
+          throw new Error("同期結果から回作成に使える公式回がありませんでした。");
         }
 
         setActionMessage(
-          `公式一覧を同期しました。最新の「${latestEntry.title}」で、まずモデル試算を開きます。`,
+          `公式一覧を同期しました。最新の「${latestEntry.title}」でRoundを作ります。`,
         );
         await handleUseLibraryEntry(latestEntry, "apply");
         return;
@@ -553,7 +561,7 @@ function TotoOfficialRoundImportPageContent() {
       await library.refresh();
       setEditingLibraryEntryId(savedLibraryEntry.id);
       setSavedRoundId(nextRoundId);
-      setActionMessage("公式回ライブラリと Round を更新しました。");
+      setActionMessage("公式回ライブラリとこの回を更新しました。");
     } catch (nextError) {
       setActionError(errorMessage(nextError));
     } finally {
@@ -565,8 +573,8 @@ function TotoOfficialRoundImportPageContent() {
     <div className="space-y-8">
       <PageHeader
         eyebrow="管理者"
-        title="公式対象回を取り込む"
-        description="公式ソースから開催回を同期して一覧から選ぶか、CSV / TSV で足りない回だけ追加して Round に反映します。"
+        title="回を作る"
+        description="入口はここだけです。通常は公式toto回から作り、足りない時だけ W杯日程 や CSV / 手入力 を使います。"
         actions={
           <div className="flex flex-wrap gap-3">
             <Link href={appRoute.goal3Value} className={secondaryButtonClassName}>
@@ -574,17 +582,12 @@ function TotoOfficialRoundImportPageContent() {
             </Link>
             {roundDetailHref ? (
               <Link href={roundDetailHref} className={secondaryButtonClassName}>
-                Round Detailへ戻る
+                ラウンド詳細へ戻る
               </Link>
             ) : null}
             {savedRoundId ? (
               <Link href={buildRoundHref(appRoute.workspace, savedRoundId)} className={secondaryButtonClassName}>
-                Round を開く
-              </Link>
-            ) : null}
-            {roundAiHref ? (
-              <Link href={roundAiHref} className={buttonClassName}>
-                まず試算を見る
+                作成した回を開く
               </Link>
             ) : null}
           </div>
@@ -594,8 +597,63 @@ function TotoOfficialRoundImportPageContent() {
       <RoundContextCard
         roundId={roundContextId}
         backHref={roundDetailHref}
-        description="この取り込みが、どの Round の公式対象回データとして使われるかを先に確認できます。"
+        description="この取り込みが、どのRoundに入るかを先に確認できます。Round未指定なら新しく作成します。"
       />
+
+      <SectionCard
+        title="作り方を選ぶ"
+        description="同じ意味の入口を増やさず、このページの中で必要な作り方だけ選べるようにしています。"
+      >
+        <div className="grid gap-4 xl:grid-cols-3">
+          <div className="rounded-[24px] border border-slate-200 bg-slate-50/90 p-5">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge tone="teal">通常はこれ</Badge>
+              <Badge tone="slate">主導線</Badge>
+            </div>
+            <h3 className="mt-3 font-semibold text-slate-950">公式toto回から作る</h3>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              ふだんはこれで十分です。下の回一覧から選んで、そのまま1件作ります。
+            </p>
+            <div className="mt-5">
+              <a href="#official-round-library" className={buttonClassName}>
+                このまま進む
+              </a>
+            </div>
+          </div>
+
+          <div className="rounded-[24px] border border-slate-200 bg-slate-50/90 p-5">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge tone="sky">発売前だけ</Badge>
+              <Badge tone="slate">補助導線</Badge>
+            </div>
+            <h3 className="mt-3 font-semibold text-slate-950">W杯日程から作る</h3>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              公式対象回がまだ出ていない時だけ使います。全試合日程から先に準備します。
+            </p>
+            <div className="mt-5">
+              <Link href={buildRoundHref(appRoute.officialScheduleImport, roundId)} className={buttonClassName}>
+                W杯日程から作る
+              </Link>
+            </div>
+          </div>
+
+          <div className="rounded-[24px] border border-slate-200 bg-slate-50/90 p-5">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge tone="amber">一覧にない回だけ</Badge>
+              <Badge tone="slate">補完入力</Badge>
+            </div>
+            <h3 className="mt-3 font-semibold text-slate-950">CSV / 手入力で作る</h3>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              ライブラリにない回だけ、下の補完入力へ進みます。まずはホーム / アウェイだけでも大丈夫です。
+            </p>
+            <div className="mt-5">
+              <Link href={manualEntryHref} className={buttonClassName}>
+                CSV / 手入力で作る
+              </Link>
+            </div>
+          </div>
+        </div>
+      </SectionCard>
 
       <CollapsibleSectionCard
         title="商品別の進め方"
@@ -723,7 +781,7 @@ function TotoOfficialRoundImportPageContent() {
           <Badge tone="info">現在の同期元 {activeSyncPreset?.label ?? hostLabel(syncSourceUrl)}</Badge>
           <Badge tone="slate">試合明細 {includeMatchesInSync ? "含む" : "省略"}</Badge>
           <Badge tone={autoApplyAfterSync ? "teal" : "slate"}>
-            {autoApplyAfterSync ? "同期後にまず試算" : "一覧更新のみ"}
+            {autoApplyAfterSync ? "同期後に最新の回で作る" : "一覧更新のみ"}
           </Badge>
         </div>
 
@@ -742,14 +800,14 @@ function TotoOfficialRoundImportPageContent() {
             className={secondaryButtonClassName}
             disabled={syncing}
           >
-            {syncing ? "同期しつつ反映中..." : "公式一覧を同期して試算を見る"}
+            {syncing ? "同期しつつ作成中..." : "公式一覧を同期してこの回で作る"}
           </button>
         </div>
 
         <CollapsibleSectionCard
           className="mt-4"
           title="同期オプション"
-          description="URL を変えるとき、WINNER の公式詳細URLを入れるとき、または通常同期後に自動で試算まで進めたいときだけ開きます。"
+          description="URL を変えるとき、WINNER の公式詳細URLを入れるとき、または通常同期後に自動で回作成まで進めたいときだけ開きます。"
           defaultOpen={syncOptionsOpen}
           badge={<Badge tone="slate">オプション</Badge>}
         >
@@ -780,7 +838,7 @@ function TotoOfficialRoundImportPageContent() {
                   onChange={(event) => setAutoApplyAfterSync(event.currentTarget.checked)}
                   className="h-4 w-4"
                 />
-                <span>通常同期でも最新1件の試算をすぐ開く</span>
+                <span>通常同期でも最新1件で回を作る</span>
               </label>
             </div>
           </div>
@@ -822,11 +880,12 @@ function TotoOfficialRoundImportPageContent() {
       </SectionCard>
 
       <SectionCard
-        title="公式回ライブラリ"
+        id="official-round-library"
+        title="回を選ぶ"
         description={
           roundId
-            ? `同期済みの ${filterLabel} から、この Round にそのまま反映して、まず試算を見ます。`
-            : `同期済みの ${filterLabel} から、新しい Round を作って、まず試算へ進みます。`
+            ? `同期済みの ${filterLabel} から、この回に反映します。`
+            : `同期済みの ${filterLabel} から、新しい回を作ります。`
         }
       >
         <div className="grid gap-4 lg:grid-cols-[0.8fr_0.35fr]">
@@ -916,8 +975,8 @@ function TotoOfficialRoundImportPageContent() {
                       {isBusy
                         ? "反映中..."
                         : roundId
-                          ? "このRoundに反映して試算を見る"
-                          : "この回でまず試算を見る"}
+                          ? "この回に反映する"
+                          : "この回で作る"}
                     </button>
                     <button
                       type="button"
@@ -925,7 +984,7 @@ function TotoOfficialRoundImportPageContent() {
                       className={secondaryButtonClassName}
                       disabled={Boolean(libraryBusyId)}
                     >
-                      {isBusy ? "読込中..." : "編集に読み込む"}
+                      {isBusy ? "読込中..." : "下書きにする"}
                     </button>
                     {entry.sourceUrl ? (
                       <a
@@ -954,7 +1013,7 @@ function TotoOfficialRoundImportPageContent() {
 
       <CollapsibleSectionCard
         title="実データ1回分ならこの順です"
-        description="1. ライブラリ一覧から 1クリック反映  2. まだない回だけ CSV / TSV で追加、の順で使うのがいちばん速いです。"
+        description="1. 回を選ぶ  2. この回で作る  3. 一覧にない回だけ CSV / TSV で追加、の順がいちばん速いです。"
         defaultOpen={false}
         badge={<Badge tone="sky">はじめに</Badge>}
       >
@@ -962,18 +1021,18 @@ function TotoOfficialRoundImportPageContent() {
           {[
             [
               "1",
-              "リストから 1 クリック適用",
-              "保存済みの公式回があれば、そのまま今の Round か新規 Round に反映して、まずモデル試算を確認できます。",
+              "回を選ぶ",
+              "保存済みの公式回があれば、そのまま今のRoundか新規Roundに反映できます。",
             ],
             [
               "2",
-              "まだない回だけ CSV を貼る",
-              "match no と vote 1/0/2 が入った表を貼れば大丈夫です。52 や 52% も受け付けます。",
+              "この回で作る",
+              "13試合が入っている回なら、そのまま回作成まで進めます。",
             ],
             [
               "3",
-              "ライブラリ保存と Round 反映",
-              "手入力した回も保存時にライブラリへ残るので、次回からは一覧から 1クリックで使い回せます。",
+              "まだない回だけ CSV を貼る",
+              "match no と vote 1/0/2 が入った表を貼れば大丈夫です。52 や 52% も受け付けます。",
             ],
           ].map(([step, title, body]) => (
             <div
@@ -989,6 +1048,7 @@ function TotoOfficialRoundImportPageContent() {
       </CollapsibleSectionCard>
 
       <CollapsibleSectionCard
+        id="manual-entry"
         title="まだない回だけ CSV / 手入力で追加"
         description="ライブラリに無い回だけ、ここで手入力します。ふだんは上の一覧から 1 クリック反映で十分です。"
         defaultOpen={manualEntryOpen}
@@ -1081,7 +1141,7 @@ function TotoOfficialRoundImportPageContent() {
           description="official_match_no, home_team, away_team, kickoff_time, venue, stage, official_vote_1, official_vote_0, official_vote_2 の順を基本にします。"
           actions={
             <button type="button" onClick={handleParse} className={buttonClassName}>
-              Parse Preview
+              入力内容を確認
             </button>
           }
         >
@@ -1094,8 +1154,8 @@ function TotoOfficialRoundImportPageContent() {
         </SectionCard>
 
         <SectionCard
-          title="Preview"
-          description={`抽出 ${rows.length} 件。fixture master 候補も併記します。`}
+          title="確認して保存"
+          description={`抽出 ${rows.length} 件。全試合リスト候補も併記します。`}
           actions={
             <div className="flex flex-wrap gap-3">
               <button
@@ -1105,14 +1165,14 @@ function TotoOfficialRoundImportPageContent() {
                   setActionError(null);
                   setActionMessage(
                     matchedRows.length > 0
-                      ? "現在の入力内容で Fixture 候補を再照合しました。"
+                      ? "現在の入力内容で候補試合を照合し直しました。"
                       : "再照合する行がまだありません。",
                   );
                 }}
                 className={secondaryButtonClassName}
                 disabled={rows.length === 0}
               >
-                Fixture候補を再照合
+                候補試合を照合し直す
               </button>
               <button
                 type="button"
@@ -1123,20 +1183,20 @@ function TotoOfficialRoundImportPageContent() {
                 {saving
                   ? "保存中..."
                   : editingLibraryEntryId
-                    ? "一覧を更新してRound反映"
-                    : "一覧に保存してRound反映"}
+                    ? "一覧を更新して回へ反映"
+                    : "一覧に保存して回へ反映"}
               </button>
             </div>
           }
         >
           <div className="flex flex-wrap gap-2">
-            <Badge tone="slate">rows {rows.length}</Badge>
-            {roundId ? <Badge tone="warning">既存Roundを上書き</Badge> : <Badge tone="teal">新規Round作成</Badge>}
+            <Badge tone="slate">行数 {rows.length}</Badge>
+            {roundId ? <Badge tone="warning">既存の回を上書き</Badge> : <Badge tone="teal">新しい回を作成</Badge>}
             {editingLibraryEntryId ? <Badge tone="info">既存ライブラリを更新</Badge> : <Badge tone="sky">新規ライブラリ追加</Badge>}
           </div>
 
           <p className="mt-3 text-xs leading-6 text-slate-500">
-            vote 1/0/2 は `0.52` / `52%` / `52` のどれでも扱えます。Preview 上で `52`
+            vote 1/0/2 は `0.52` / `52%` / `52` のどれでも扱えます。確認画面上で `52`
             と入れた値も、保存時には `0.52` としてそろえます。
           </p>
 
@@ -1397,7 +1457,7 @@ function TotoOfficialRoundImportPageContent() {
 
 export default function TotoOfficialRoundImportPage() {
   return (
-    <Suspense fallback={<LoadingNotice title="Toto Official Round Import を準備中" />}>
+    <Suspense fallback={<LoadingNotice title="公式toto回の画面を準備中" />}>
       <TotoOfficialRoundImportPageContent />
     </Suspense>
   );

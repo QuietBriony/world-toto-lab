@@ -119,7 +119,7 @@ function OfficialScheduleImportPageContent() {
   );
   const [importMessage, setImportMessage] = useState<string | null>(() =>
     initialTransferPreview
-      ? `FIFA公式ページから ${initialTransferPreview.fixtures.length} 件の候補行を取り込みました。必要な行だけ整えて Fixture Master に保存できます。`
+      ? `FIFA公式ページから ${initialTransferPreview.fixtures.length} 件の候補行を取り込みました。必要な行だけ整えて全試合リストに保存できます。`
       : null,
   );
   const [bookmarkletCopied, setBookmarkletCopied] = useState<string | null>(null);
@@ -172,7 +172,7 @@ function OfficialScheduleImportPageContent() {
   }
 
   if (fixtureMaster.loading && !fixtureMaster.data) {
-    return <LoadingNotice title="公式日程の取り込みを準備中" />;
+    return <LoadingNotice title="W杯日程の画面を準備中" />;
   }
 
   if (fixtureMaster.error) {
@@ -188,7 +188,7 @@ function OfficialScheduleImportPageContent() {
     setImportMessage(
       parsedPreview.fixtures.length > 0
         ? `抽出プレビューを ${parsedPreview.fixtures.length} 件に更新しました。`
-        : "貼り付け内容を見直して、もう一度 Parse Preview を押してください。",
+        : "貼り付け内容を見直して、もう一度 入力内容を確認 を押してください。",
     );
   };
 
@@ -303,12 +303,12 @@ function OfficialScheduleImportPageContent() {
     <div className="space-y-8">
       <PageHeader
         eyebrow="Admin"
-        title="公式日程を取り込む"
-        description="FIFA公式由来の確定日程を Fixture Master に入れる補助導線です。公式対象回がまだ出ていない時に、発売前の手動準備として使います。"
+        title="W杯日程から準備する"
+        description="FIFA公式由来の確定日程を全試合リストに入れる補助導線です。公式対象回がまだ出ていない時だけ、発売前の準備として使います。"
         actions={
           <div className="flex flex-wrap gap-3">
             <Link href={fixtureSelectorHref} className={secondaryButtonClassName}>
-              試合を選んで保存
+              13試合を選ぶ
             </Link>
             {roundDetailHref ? (
               <Link href={roundDetailHref} className={secondaryButtonClassName}>
@@ -322,7 +322,7 @@ function OfficialScheduleImportPageContent() {
                 setSourceText(officialScheduleImportSample);
                 setFixtureSource("demo_sample");
                 setFixtureConfidence("demo");
-                setImportMessage("サンプル日程をセットしました。Parse Preview を押すとプレビューできます。");
+                setImportMessage("サンプル日程をセットしました。入力内容を確認 を押すとプレビューできます。");
               }}
               className={buttonClassName}
             >
@@ -335,7 +335,7 @@ function OfficialScheduleImportPageContent() {
       <RoundContextCard
         roundId={roundId}
         backHref={roundDetailHref}
-        description="発売前の手動準備として使う画面です。いまどの Round の素材づくりかをここで確認します。"
+        description="発売前の手動準備として使う画面です。いまどの回の素材づくりかをここで確認します。"
       />
 
       <CollapsibleSectionCard
@@ -359,7 +359,7 @@ function OfficialScheduleImportPageContent() {
             [
               "3",
               "確認して保存",
-              "home / away / group / venue / kickoff を軽く整えて Fixture Master に保存します。",
+              "ホーム / アウェイ / 組 / 会場 / 開始時刻を軽く整えて全試合リストに保存します。",
             ],
           ].map(([step, title, body]) => (
             <div
@@ -424,7 +424,7 @@ function OfficialScheduleImportPageContent() {
             [
               "3",
               "この画面へ戻って確認",
-              "戻ってきたら自動で Parse Preview まで進むので、そのまま Fixture Master に保存できます。",
+              "戻ってきたら自動で確認画面まで進むので、そのまま全試合リストに保存できます。",
             ],
           ].map(([step, title, body]) => (
             <div
@@ -476,20 +476,20 @@ function OfficialScheduleImportPageContent() {
 
       <CollapsibleSectionCard
         title="手順"
-        description="1. 全試合を取得  2. Parse Preview で全試合を確認  3. Fixture Master に保存、の順で進めます。"
+        description="1. 全試合を取得  2. 全試合を確認  3. 全試合リストに保存、の順で進めます。"
         defaultOpen={false}
         badge={<Badge tone="sky">はじめに</Badge>}
       >
         <p className="text-sm leading-6 text-slate-600">
-          主導線は `この画面で取得 → Parse Preview → Save to Fixture Master` です。ここで扱うのは
-          W杯全体の fixture master なので、13試合はまだ決めません。13試合の Round 化は次の
-          `試合を選んで保存` か、公式対象回が出たあとの `Toto Official Round Import` で行います。
+          主導線は `この画面で取得 → 入力内容を確認 → 全試合を保存` です。ここで扱うのは
+          W杯全体の全試合リストなので、13試合はまだ決めません。13試合の回作成は次の
+          `13試合を選ぶ` か、公式対象回が出たあとの `公式toto回から作る` で行います。
         </p>
       </CollapsibleSectionCard>
 
       <SectionCard
-        title="Parse Preview"
-        description="抽出された全試合を保存前に確認・微修正する場所です。source と confidence もここで確認できます。"
+        title="入力内容を確認"
+        description="抽出された全試合を保存前に確認・微修正する場所です。元データと確からしさもここで確認できます。"
         actions={
           <div className="flex flex-wrap gap-3">
             <button
@@ -498,7 +498,7 @@ function OfficialScheduleImportPageContent() {
               className={buttonClassName}
               disabled={saving || draftRows.length === 0}
             >
-              {saving ? "保存中..." : "Save to Fixture Master"}
+              {saving ? "保存中..." : "全試合を保存"}
             </button>
             <Link href={fixtureSelectorHref} className={secondaryButtonClassName}>
               次: 13試合を選ぶ
@@ -508,21 +508,21 @@ function OfficialScheduleImportPageContent() {
       >
         <div className="grid gap-3 lg:grid-cols-3">
           <div className="rounded-[22px] border border-teal-200 bg-teal-50/80 px-4 py-4">
-            <Badge tone="teal">Parse Preview = 全試合の確認</Badge>
+            <Badge tone="teal">ここで全試合を確認</Badge>
             <p className="mt-3 text-sm leading-6 text-slate-700">
-              ここでは 72試合や104試合の大会全体を見直して、Fixture Master に保存します。
+              ここでは 72試合や104試合の大会全体を見直して、全試合リストに保存します。
             </p>
           </div>
           <div className="rounded-[22px] border border-sky-200 bg-sky-50/80 px-4 py-4">
             <Badge tone="info">13試合はまだ未選択</Badge>
             <p className="mt-3 text-sm leading-6 text-slate-700">
-              この段階では Round はまだ作りません。保存後に `試合を選んで保存` で今回遊ぶ13試合を選びます。
+              この段階では Round はまだ作りません。保存後に `13試合を選ぶ` で今回遊ぶ13試合を選びます。
             </p>
           </div>
           <div className="rounded-[22px] border border-amber-200 bg-amber-50/80 px-4 py-4">
             <Badge tone="warning">本番の13試合は別導線</Badge>
             <p className="mt-3 text-sm leading-6 text-slate-700">
-              公式対象回が出たあとは、自動で寄せやすい `Toto Official Round Import` の方が本番向きです。
+              公式対象回が出たあとは、自動で寄せやすい `公式toto回から作る` の方が本番向きです。
             </p>
           </div>
         </div>
@@ -531,7 +531,7 @@ function OfficialScheduleImportPageContent() {
           <Badge tone="slate">抽出 {draftRows.length} 件</Badge>
           <Badge tone="info">プレビュー {parsedPreview.fixtures.length} 件</Badge>
           {parsedPreview.duplicates.length > 0 ? <Badge tone="warning">重複候補あり</Badge> : null}
-          {!sourceUrl.trim() ? <Badge tone="warning">sourceUrl 未入力</Badge> : null}
+          {!sourceUrl.trim() ? <Badge tone="warning">元URL 未入力</Badge> : null}
         </div>
 
         {parseWarnings.length > 0 ? (
@@ -555,7 +555,7 @@ function OfficialScheduleImportPageContent() {
         {draftRows.length === 0 ? (
           <p className="text-sm leading-6 text-slate-600">
             まだ保存対象の行がありません。上の `この画面で取得` か、下の `手貼り・URL調整`
-            から Parse Preview を押すとここに全試合一覧が出ます。
+            から `入力内容を確認` を押すとここに全試合一覧が出ます。
           </p>
         ) : (
           <>
@@ -574,7 +574,7 @@ function OfficialScheduleImportPageContent() {
 
                   <div className="mt-4 grid gap-3">
                     <label className="space-y-2 text-sm">
-                      <span className="font-medium text-slate-700">date</span>
+                      <span className="font-medium text-slate-700">日付</span>
                       <input
                         value={row.matchDate ?? ""}
                         onChange={(event) =>
@@ -586,7 +586,7 @@ function OfficialScheduleImportPageContent() {
                       />
                     </label>
                     <label className="space-y-2 text-sm">
-                      <span className="font-medium text-slate-700">kickoff</span>
+                      <span className="font-medium text-slate-700">開始</span>
                       <input
                         value={row.kickoffTime ?? ""}
                         onChange={(event) =>
@@ -598,7 +598,7 @@ function OfficialScheduleImportPageContent() {
                       />
                     </label>
                     <label className="space-y-2 text-sm">
-                      <span className="font-medium text-slate-700">home</span>
+                      <span className="font-medium text-slate-700">ホーム</span>
                       <input
                         value={row.homeTeam}
                         onChange={(event) =>
@@ -608,7 +608,7 @@ function OfficialScheduleImportPageContent() {
                       />
                     </label>
                     <label className="space-y-2 text-sm">
-                      <span className="font-medium text-slate-700">away</span>
+                      <span className="font-medium text-slate-700">アウェイ</span>
                       <input
                         value={row.awayTeam}
                         onChange={(event) =>
@@ -618,7 +618,7 @@ function OfficialScheduleImportPageContent() {
                       />
                     </label>
                     <label className="space-y-2 text-sm">
-                      <span className="font-medium text-slate-700">group</span>
+                      <span className="font-medium text-slate-700">組</span>
                       <input
                         value={row.groupName ?? ""}
                         onChange={(event) =>
@@ -630,7 +630,7 @@ function OfficialScheduleImportPageContent() {
                       />
                     </label>
                     <label className="space-y-2 text-sm">
-                      <span className="font-medium text-slate-700">stage</span>
+                      <span className="font-medium text-slate-700">ステージ</span>
                       <input
                         value={row.stage ?? ""}
                         onChange={(event) =>
@@ -642,7 +642,7 @@ function OfficialScheduleImportPageContent() {
                       />
                     </label>
                     <label className="space-y-2 text-sm">
-                      <span className="font-medium text-slate-700">venue</span>
+                      <span className="font-medium text-slate-700">会場</span>
                       <input
                         value={row.venue ?? ""}
                         onChange={(event) =>
@@ -663,15 +663,15 @@ function OfficialScheduleImportPageContent() {
                 <table className="min-w-[1460px] text-left text-sm">
                   <thead>
                     <tr className="border-b border-slate-200 text-slate-500">
-                      <th className="px-3 py-3">date</th>
-                      <th className="px-3 py-3">kickoff</th>
-                      <th className="px-3 py-3">home</th>
-                      <th className="px-3 py-3">away</th>
-                      <th className="px-3 py-3">group</th>
-                      <th className="px-3 py-3">stage</th>
-                      <th className="px-3 py-3">venue</th>
-                      <th className="px-3 py-3">source</th>
-                      <th className="px-3 py-3">confidence</th>
+                      <th className="px-3 py-3">日付</th>
+                      <th className="px-3 py-3">開始</th>
+                      <th className="px-3 py-3">ホーム</th>
+                      <th className="px-3 py-3">アウェイ</th>
+                      <th className="px-3 py-3">組</th>
+                      <th className="px-3 py-3">ステージ</th>
+                      <th className="px-3 py-3">会場</th>
+                      <th className="px-3 py-3">元データ</th>
+                      <th className="px-3 py-3">確からしさ</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -773,12 +773,12 @@ function OfficialScheduleImportPageContent() {
 
       <CollapsibleSectionCard
         title="手貼り・URL調整"
-        description={`既存 Fixture Master: ${fixtureMaster.data?.length ?? 0} 件。ふだんは上の 1タップ取得 だけで足ります。`}
+        description={`既存の全試合リスト: ${fixtureMaster.data?.length ?? 0} 件。ふだんは上の 1タップ取得 だけで足ります。`}
         defaultOpen={fixtureSource !== "fifa_official_api" || fixtureConfidence !== "official"}
         badge={<Badge tone="slate">補助入力</Badge>}
         actions={
           <button type="button" onClick={handleParse} className={buttonClassName}>
-            Parse Preview
+            入力内容を確認
           </button>
         }
       >
@@ -789,7 +789,7 @@ function OfficialScheduleImportPageContent() {
           </Badge>
           <Badge tone="slate">{competition}</Badge>
           <Badge tone="info">{officialScheduleImportSourceLabel}</Badge>
-          {!sourceUrl.trim() ? <Badge tone="warning">sourceUrl 未入力</Badge> : null}
+          {!sourceUrl.trim() ? <Badge tone="warning">元URL 未入力</Badge> : null}
         </div>
 
         <div className="rounded-[22px] border border-slate-200 bg-slate-50 px-4 py-4 text-sm leading-6 text-slate-700">
@@ -812,7 +812,7 @@ function OfficialScheduleImportPageContent() {
 
         <div className="grid gap-4 md:grid-cols-2">
           <label className="space-y-2 text-sm">
-            <span className="font-medium text-slate-700">competition</span>
+            <span className="font-medium text-slate-700">大会ID</span>
             <input
               value={competition}
               onChange={(event) => setCompetition(event.currentTarget.value)}
@@ -820,7 +820,7 @@ function OfficialScheduleImportPageContent() {
             />
           </label>
           <label className="space-y-2 text-sm">
-            <span className="font-medium text-slate-700">sourceUrl</span>
+            <span className="font-medium text-slate-700">元URL</span>
             <input
               value={sourceUrl}
               onChange={(event) => setSourceUrl(event.currentTarget.value)}
@@ -852,7 +852,7 @@ function OfficialScheduleImportPageContent() {
 
 export default function OfficialScheduleImportPage() {
   return (
-    <Suspense fallback={<LoadingNotice title="公式日程の取り込みを準備中" />}>
+    <Suspense fallback={<LoadingNotice title="W杯日程の画面を準備中" />}>
       <OfficialScheduleImportPageContent />
     </Suspense>
   );
