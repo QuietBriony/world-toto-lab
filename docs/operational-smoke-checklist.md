@@ -127,6 +127,7 @@ npm run check:pages
   - `supabase/schema.sql` を再適用
 - `rounds.competition_type` / `matches.recent_form_note` / `research_memos` 系の不足
   - `supabase/production-hotfix-round-context-research-memos.sql` を Supabase SQL Editor で適用
+  - または GitHub Actions secret `SUPABASE_DB_PASSWORD` を追加し、`Apply Supabase DB Migrations` を `apply` で実行
   - その後 `npm run check:supabase` を再実行
 - route は 200 だが中身が変
   - `workspace?round=<id>&debug=1` で Debug Panel を見る
