@@ -20,8 +20,13 @@ const TABLES = [
       "budget_yen",
       "notes",
       "product_type",
+      "competition_type",
+      "sport_context",
+      "primary_use",
       "required_match_count",
       "active_match_count",
+      "data_profile",
+      "probability_readiness",
       "round_source",
       "source_note",
       "outcome_set_json",
@@ -65,6 +70,29 @@ const TABLES = [
       "injury_note",
       "motivation_note",
       "admin_note",
+      "recent_form_note",
+      "availability_info",
+      "conditions_info",
+      "home_strength_adjust",
+      "away_strength_adjust",
+      "availability_adjust",
+      "conditions_adjust",
+      "tactical_adjust",
+      "motivation_adjust",
+      "admin_adjust_1",
+      "admin_adjust_0",
+      "admin_adjust_2",
+      "home_advantage_adjust",
+      "rest_days_adjust",
+      "travel_adjust",
+      "league_table_motivation_adjust",
+      "injury_suspension_adjust",
+      "rotation_risk_adjust",
+      "group_standing_motivation_adjust",
+      "travel_climate_adjust",
+      "altitude_humidity_adjust",
+      "squad_depth_adjust",
+      "tournament_pressure_adjust",
       "actual_result",
       "created_at",
       "updated_at",
@@ -205,6 +233,26 @@ const TABLES = [
     name: "review_notes",
     critical: false,
     columns: ["id", "round_id", "match_id", "user_id", "note", "created_at"],
+  },
+  {
+    name: "research_memos",
+    critical: true,
+    columns: [
+      "id",
+      "round_id",
+      "match_id",
+      "team",
+      "memo_type",
+      "title",
+      "summary",
+      "source_url",
+      "source_name",
+      "source_date",
+      "confidence",
+      "created_by",
+      "created_at",
+      "updated_at",
+    ],
   },
   {
     name: "toto_official_round_library",
@@ -395,7 +443,8 @@ async function checkTables(supabase) {
     try {
       const result = await supabase
         .from(table.name)
-        .select(table.columns.join(","), { count: "exact", head: true });
+        .select(table.columns.join(","), { count: "exact" })
+        .limit(1);
 
       if (result.error) {
         if (isMissingRelationError(result.error)) {
@@ -504,7 +553,7 @@ async function main() {
   const results = await checkTables(supabase);
 
   for (const row of results) {
-    if (row.ok || !row.error || row.error !== "{\"message\":\"\"}") {
+    if (row.ok || !row.error) {
       continue;
     }
 
@@ -514,7 +563,7 @@ async function main() {
     }
 
     const detailedError = await loadDetailedRestError(url, anon, row.name, table.columns);
-    if (detailedError) {
+    if (detailedError && detailedError !== row.error) {
       row.error = detailedError;
     }
   }

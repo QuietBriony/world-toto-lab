@@ -125,6 +125,9 @@ npm run check:pages
   - 新規作成導線なら `新規Round向け` が出るのが正常
 - `candidate_tickets` 系の schema cache
   - `supabase/schema.sql` を再適用
+- `rounds.competition_type` / `matches.recent_form_note` / `research_memos` 系の不足
+  - `supabase/production-hotfix-round-context-research-memos.sql` を Supabase SQL Editor で適用
+  - その後 `npm run check:supabase` を再実行
 - route は 200 だが中身が変
   - `workspace?round=<id>&debug=1` で Debug Panel を見る
 
