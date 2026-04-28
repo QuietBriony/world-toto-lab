@@ -1,8 +1,24 @@
-import { detectBigShockSignal, type BigShockSignal } from "@/lib/big-carryover";
-import {
-  bigCarryoverProductDefaults,
-  bigCarryoverProductTypeFromOfficialKey,
-} from "@/lib/big-carryover/calculator";
+export type BigShockSignal = "none" | "possible" | "strong";
+
+const bigShockStrongPattern = /台風|中止|試合中止|大量中止|返還|不成立|成立条件|特例|災害/u;
+const bigShockPossiblePattern = /延期|荒天|警報|要確認|日程変更|例外/u;
+
+export function detectBigShockSignal(text: string | null | undefined): BigShockSignal {
+  const normalized = text?.trim() ?? "";
+  if (!normalized) {
+    return "none";
+  }
+
+  if (bigShockStrongPattern.test(normalized)) {
+    return "strong";
+  }
+
+  if (bigShockPossiblePattern.test(normalized)) {
+    return "possible";
+  }
+
+  return "none";
+}
 
 export type BigEventType = "carryover_event" | "high_return_watch";
 
@@ -276,6 +292,47 @@ const bigOfficialProductStakeYen: Record<BigOfficialProductKey, number> = {
   mini_big: 200,
 };
 
+const bigOfficialCarryoverQueryDefaults: Record<
+  BigOfficialProductKey,
+  {
+    firstPrizeCapYen: number | null;
+    firstPrizeOdds: number | null;
+    productType: "BIG" | "MEGA_BIG" | "100YEN_BIG" | "custom";
+    ticketPriceYen: number;
+  }
+> = {
+  big: {
+    firstPrizeCapYen: 600_000_000,
+    firstPrizeOdds: 4_782_969,
+    productType: "BIG",
+    ticketPriceYen: 300,
+  },
+  mega_big: {
+    firstPrizeCapYen: 1_200_000_000,
+    firstPrizeOdds: 16_777_216,
+    productType: "MEGA_BIG",
+    ticketPriceYen: 300,
+  },
+  hyakuen_big: {
+    firstPrizeCapYen: 200_000_000,
+    firstPrizeOdds: 4_782_969,
+    productType: "100YEN_BIG",
+    ticketPriceYen: 100,
+  },
+  big1000: {
+    firstPrizeCapYen: null,
+    firstPrizeOdds: null,
+    productType: "custom",
+    ticketPriceYen: 200,
+  },
+  mini_big: {
+    firstPrizeCapYen: null,
+    firstPrizeOdds: null,
+    productType: "custom",
+    ticketPriceYen: 200,
+  },
+};
+
 const anchorToProductKey: Record<string, BigOfficialProductKey> = {
   BIG: "big",
   MegaBig: "mega_big",
@@ -546,8 +603,7 @@ export function buildBigCarryoverQueryFromOfficialSnapshot(
   } = {},
 ) {
   const watch = buildBigOfficialWatch(snapshot, options);
-  const productType = bigCarryoverProductTypeFromOfficialKey(snapshot.productKey);
-  const productDefaults = bigCarryoverProductDefaults[productType];
+  const productDefaults = bigOfficialCarryoverQueryDefaults[snapshot.productKey];
 
   return {
     carryover: snapshot.carryoverYen || undefined,
@@ -556,7 +612,7 @@ export function buildBigCarryoverQueryFromOfficialSnapshot(
     firstPrizeOdds: productDefaults.firstPrizeOdds ?? undefined,
     label: watch.label,
     note: snapshot.sourceText || undefined,
-    productType,
+    productType: productDefaults.productType,
     projectedSales: snapshot.totalSalesYen ?? undefined,
     returnRate: Math.round(snapshot.returnRate * 100),
     sales: snapshot.totalSalesYen ?? undefined,
