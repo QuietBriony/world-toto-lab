@@ -40,8 +40,8 @@ const pageGuideMeta: Partial<
   [appRoute.bigCarryover]: {
     badge: "運用向け",
     title: "BIGウォッチで見る言葉",
-    description: "BIG は outcome を選ぶ画面ではないので、売上・キャリー・還元率だけに絞って短くまとめています。",
-    summary: "高還元イベントかどうかを、ざっくり判定する段階です。",
+    description: "BIG はランダム発券なので、キャリー圧・1等発生確率・上限・真EV未計算を分けて見ます。",
+    summary: "公式ルール確認前の粗い上振れ指標を、真EVと混同しないための画面です。",
   },
   [appRoute.goal3Value]: {
     badge: "別商品",
@@ -162,23 +162,23 @@ const pageGlossaryEntries: Partial<Record<GuideRoute, GlossaryEntry[]>> = {
   ],
   [appRoute.bigCarryover]: [
     {
-      term: "概算EV",
-      body: "還元率とキャリーから見た簡易期待値です。等級別配分まで再現する厳密値ではありません。",
+      term: "キャリー圧",
+      body: "売上とキャリーだけで見た粗い上振れ指標です。1等確率、上限、等級配分、繰越ルールを含む真EVではありません。",
       tone: "teal",
     },
     {
-      term: "還元率からの上振れ",
-      body: "平時の還元率から、キャリーがどれだけ上に押し上げているかです。",
+      term: "1等発生確率",
+      body: "想定最終売上から口数を推定し、その回で1等が少なくとも1本出る確率を見ます。",
       tone: "sky",
     },
     {
-      term: "損益分岐",
-      body: "概算EVが 100% に届く境目です。ここを超えると理論上はプラス圏です。",
+      term: "上限調整後proxy",
+      body: "1等上限だけを機械的に入れた参考値です。複数当選時の分配や下位等級は含みません。",
       tone: "amber",
     },
     {
-      term: "期待損益",
-      body: "投下額に対して、簡易式で見た期待値ベースの損益です。ブレは大きい前提で見ます。",
+      term: "真EV未計算",
+      body: "公式ルール、等級配分、当選上限、キャリー反映ルールが揃うまで真EVとして表示しない状態です。",
       tone: "lime",
     },
   ],

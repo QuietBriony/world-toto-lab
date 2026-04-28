@@ -23,6 +23,7 @@ describe("big carryover monitor", () => {
 
     expect(summary.carryoverUplift).toBe(0.75);
     expect(summary.approxEvMultiple).toBe(1.25);
+    expect(summary.naiveCarryPressure).toBe(1.25);
     expect(summary.overBreakEven).toBe(0.25);
     expect(summary.expectedProfitYen).toBe(2_500);
   });
@@ -74,7 +75,7 @@ describe("big carryover monitor", () => {
     });
 
     expect(snapshot.status).toBe("plus_ev");
-    expect(snapshot.headline).toContain("プラス期待値圏");
+    expect(snapshot.headline).toContain("キャリー圧");
   });
 
   it("normalizes unknown event types to carryover_event", () => {
@@ -115,9 +116,9 @@ describe("big carryover monitor", () => {
       }),
     );
 
-    expect(plusBand.label).toBe("期待値大");
-    expect(surgeBand.label).toBe("特大上振れ候補");
-    expect(watchBand.label).toBe("監視中");
+    expect(plusBand.label).toBe("粗い上振れ指標");
+    expect(surgeBand.label).toBe("要公式確認");
+    expect(watchBand.label).toBe("見送り");
   });
 
   it("provides reusable presets for common BIG watch scenarios", () => {
@@ -138,6 +139,6 @@ describe("big carryover monitor", () => {
       }),
     });
 
-    expect(alert.label).toBe("成立条件ショック候補");
+    expect(alert.label).toBe("成立条件要確認");
   });
 });

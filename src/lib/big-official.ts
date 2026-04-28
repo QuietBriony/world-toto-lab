@@ -1,4 +1,8 @@
 import { detectBigShockSignal, type BigShockSignal } from "@/lib/big-carryover";
+import {
+  bigCarryoverProductDefaults,
+  bigCarryoverProductTypeFromOfficialKey,
+} from "@/lib/big-carryover/calculator";
 
 export type BigEventType = "carryover_event" | "high_return_watch";
 
@@ -8,6 +12,7 @@ export type BigCarryoverSummary = {
   breakEvenGapYen: number | null;
   carryoverUplift: number | null;
   expectedProfitYen: number | null;
+  naiveCarryPressure: number | null;
   overBreakEven: number | null;
   overReturnRate: number | null;
 };
@@ -64,6 +69,7 @@ function calculateBigCarryoverSummary(input: {
       breakEvenGapYen: null,
       carryoverUplift: null,
       expectedProfitYen: null,
+      naiveCarryPressure: null,
       overBreakEven: null,
       overReturnRate: null,
     };
@@ -84,6 +90,7 @@ function calculateBigCarryoverSummary(input: {
     breakEvenGapYen,
     carryoverUplift,
     expectedProfitYen,
+    naiveCarryPressure: approxEvMultiple,
     overBreakEven,
     overReturnRate,
   };
@@ -109,24 +116,24 @@ function buildBigCarryoverEventSnapshot(input: {
   if (input.summary.approxEvMultiple >= 1) {
     if (input.summary.approxEvMultiple >= 1.7) {
       return {
-        headline: `${label} は特大上振れ候補です`,
+        headline: `${label} はキャリー圧が高く、要公式確認です`,
         nextAction:
           input.eventType === "carryover_event"
-            ? "キャリーだけでなく、売上の急増や中止・成立条件の扱いまで追加で確認したい強い水準です。"
-            : "売上・キャリー由来だけでもかなり強いので、特別回や成立条件の変化がないかを確認します。",
-        statusLabel: "特大上振れ",
+            ? "1等発生確率、当選上限、等級配分、キャリー繰越ルールを公式情報で確認します。"
+            : "売上・キャリー由来の粗い指標として高いため、特別回や成立条件の変化がないかを確認します。",
+        statusLabel: "要公式確認",
         status: "plus_ev",
         tone: "positive",
       };
     }
 
     return {
-      headline: `${label} はプラス期待値圏です`,
+      headline: `${label} はキャリー圧が上振れしています`,
       nextAction:
         input.eventType === "carryover_event"
-          ? "売上の伸びで薄まる前に、次のキャリー更新と売上推移を続けて確認します。"
-          : "高還元ウォッチとして、売上急増で期待値が崩れていないかを見張ります。",
-      statusLabel: "プラス圏",
+          ? "売上の伸びで薄まる前提で、次のキャリー更新と最終売上シナリオを確認します。"
+          : "高還元ウォッチとして、売上急増でキャリー圧が薄まっていないかを見張ります。",
+      statusLabel: "ルール確認前",
       status: "plus_ev",
       tone: "positive",
     };
@@ -137,8 +144,8 @@ function buildBigCarryoverEventSnapshot(input: {
       headline: `${label} は損益分岐にかなり近いです`,
       nextAction:
         input.eventType === "carryover_event"
-          ? "あと少しのキャリー積み増しか売上減速で分岐を超えるので、更新頻度を上げて監視します。"
-          : "売上の鈍化や還元率条件の変化があれば、一気にプラス圏へ寄る可能性があります。",
+          ? "あと少しのキャリー積み増しか売上減速でキャリー圧が上がるため、更新頻度を上げて監視します。"
+          : "売上の鈍化や還元率条件の変化があれば、粗い指標の見え方が変わります。",
       statusLabel: "分岐付近",
       status: "near_break_even",
       tone: "warning",
@@ -180,30 +187,30 @@ function classifyBigHeatBand(summary: BigCarryoverSummary): BigHeatBand {
     if (summary.approxEvMultiple >= 1.7) {
       return {
         badgeTone: "positive",
-        hint: "かなり強い上振れです。売上の急増や成立条件の変更がないかを追加で確認したい水準です。",
-        label: "特大上振れ候補",
+        hint: "キャリー圧は高いですが、1等発生確率・上限・等級配分・繰越ルールの確認が必要です。",
+        label: "要公式確認",
       };
     }
 
     return {
       badgeTone: "positive",
-      hint: "平時還元を超えていて、概算ではプラス圏です。",
-      label: "期待値大",
+      hint: "売上とキャリーだけで見た粗い上振れ指標です。真EVではありません。",
+      label: "粗い上振れ指標",
     };
   }
 
   if (summary.overBreakEven !== null && summary.overBreakEven >= -0.08) {
     return {
       badgeTone: "warning",
-      hint: "あと少しのキャリー増や売上減速で分岐を超える近さです。",
-      label: "分岐付近",
+      hint: "キャリー圧が変わりやすい近さです。最終売上と公式ルールを確認します。",
+      label: "ルール確認前",
     };
   }
 
   return {
     badgeTone: "info",
-    hint: "まだ監視段階ですが、比較材料として残す価値があります。",
-    label: "監視中",
+    hint: "キャリー圧だけでは買い材料にしません。比較メモとして慎重に残します。",
+    label: "見送り",
   };
 }
 
@@ -539,16 +546,22 @@ export function buildBigCarryoverQueryFromOfficialSnapshot(
   } = {},
 ) {
   const watch = buildBigOfficialWatch(snapshot, options);
+  const productType = bigCarryoverProductTypeFromOfficialKey(snapshot.productKey);
+  const productDefaults = bigCarryoverProductDefaults[productType];
 
   return {
     carryover: snapshot.carryoverYen || undefined,
     eventType: watch.eventType,
+    firstPrizeCap: productDefaults.firstPrizeCapYen ?? undefined,
+    firstPrizeOdds: productDefaults.firstPrizeOdds ?? undefined,
     label: watch.label,
     note: snapshot.sourceText || undefined,
+    productType,
+    projectedSales: snapshot.totalSalesYen ?? undefined,
     returnRate: Math.round(snapshot.returnRate * 100),
     sales: snapshot.totalSalesYen ?? undefined,
     snapshotDate: (snapshot.snapshotAt ?? snapshot.salesStartAt ?? undefined)?.slice(0, 10),
     sourceUrl: snapshot.sourceUrl,
-    spend: options.spendYen ?? 10_000,
+    ticketPrice: snapshot.stakeYen || productDefaults.ticketPriceYen,
   };
 }

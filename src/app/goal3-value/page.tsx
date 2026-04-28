@@ -320,11 +320,11 @@ export default function Goal3ValuePage() {
               </Badge>
             </div>
             <h3 className="mt-3 font-display text-[1.35rem] font-semibold tracking-[-0.05em] text-slate-950">
-              BIG の激アツ回は別監視ページ
+              BIG のキャリー回は別監視ページ
             </h3>
             <p className="mt-3 text-sm leading-6 text-slate-600">
               BIG は公式同期ウォッチに対応済みで、同期エラーや取得失敗のときだけテンプレ条件へ切り替えて比較します。
-              売上・キャリーが取れれば、高還元ウォッチとしてプラス圏かどうかをすぐ見られます。
+              売上・キャリーが取れれば、キャリー圧と公式確認前の注意点を分けて見られます。
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
               <Link href={appRoute.bigCarryover} className={secondaryButtonClassName}>

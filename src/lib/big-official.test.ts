@@ -71,13 +71,15 @@ describe("big official sync parser", () => {
 
     const watch = buildBigOfficialWatch(featured!);
     expect(watch.summary.approxEvMultiple).toBeGreaterThan(1);
-    expect(watch.heatBand.label).toBe("特大上振れ候補");
-    expect(watch.eventSnapshot.statusLabel).toBe("特大上振れ");
+    expect(watch.heatBand.label).toBe("要公式確認");
+    expect(watch.eventSnapshot.statusLabel).toBe("要公式確認");
 
     const query = buildBigCarryoverQueryFromOfficialSnapshot(featured!);
     expect(query.eventType).toBe("carryover_event");
+    expect(query.productType).toBe("BIG");
     expect(query.sales).toBe(484_739_700);
     expect(query.carryover).toBe(3_239_484_780);
+    expect(query.firstPrizeOdds).toBe(4_782_969);
     expect(query.note).toContain("前開催回からの繰越金");
   });
 

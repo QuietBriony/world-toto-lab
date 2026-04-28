@@ -515,7 +515,7 @@ export default function DashboardPage() {
     carryoverYen: featuredBigPreset.carryoverYen,
     returnRate: featuredBigPreset.returnRatePercent / 100,
     salesYen: featuredBigPreset.salesYen,
-    spendYen: featuredBigPreset.spendYen,
+    spendYen: null,
   });
   const featuredBigHeat = classifyBigHeatBand(featuredBigSummary);
   const featuredBigHref = buildHref(appRoute.bigCarryover, {
@@ -524,7 +524,6 @@ export default function DashboardPage() {
     label: featuredBigPreset.eventLabel,
     returnRate: featuredBigPreset.returnRatePercent,
     sales: featuredBigPreset.salesYen,
-    spend: featuredBigPreset.spendYen,
   });
   const bigOfficialSnapshots = useMemo(
     () => bigOfficialWatch.data?.snapshots ?? [],
@@ -2164,7 +2163,7 @@ export default function DashboardPage() {
                 <p className="mt-3 text-sm leading-6 text-slate-600">
                   {featuredBigOfficial
                     ? featuredBigOfficial.eventSnapshot.headline
-                    : "BIG は売上とキャリーから `特大上振れ候補 / 期待値大 / 分岐付近 / キャリーなし` を見ます。公式同期が取れないときはテンプレ条件で比較できます。"}
+                    : "BIG は売上とキャリーからキャリー圧を見ます。公式同期が取れないときはテンプレ条件で比較できます。"}
                 </p>
                 <div className="mt-4 flex flex-wrap gap-3 text-xs text-slate-500">
                   <span>
@@ -2174,7 +2173,7 @@ export default function DashboardPage() {
                   </span>
                   {bigOfficialShockCount > 0 ? <span>ショック候補 {bigOfficialShockCount}商品</span> : null}
                   <span>
-                    概算倍率{" "}
+                    キャリー圧{" "}
                     {formatPercent(
                       featuredBigOfficial?.summary.approxEvMultiple ?? featuredBigSummary.approxEvMultiple,
                     )}
@@ -2192,7 +2191,7 @@ export default function DashboardPage() {
                 <p className="mt-2 text-[11px] leading-5 text-slate-500">
                   {featuredBigOfficial?.shockSignal !== "none" && featuredBigShockAlert
                     ? featuredBigShockAlert.hint
-                    : "いまの判定は主に `売上 + キャリー` 由来です。台風などの中止・成立条件の上振れは、別ロジックで追加する前提です。"}
+                    : "いまの判定は主に `売上 + キャリー` 由来の粗い指標です。真EVは公式ルール確認後に分けて扱います。"}
                 </p>
                 {bigOfficialWatch.error ? (
                   <p className="mt-3 text-xs text-rose-700">BIG公式同期: {bigOfficialWatch.error}</p>

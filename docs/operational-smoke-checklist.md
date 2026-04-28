@@ -42,7 +42,7 @@ npm run check:pages
 ### 1.5. BIG Carryover Monitor
 
 - `/world-toto-lab/big-carryover/` を開く
-- 概算EV、還元率からの上振れ、損益分岐との差が見える
+- キャリー圧、1等発生確率、上限調整後proxy、真EV未計算が分かれて見える
 - 入力欄を変えると概算値が更新される
 - `この条件を共有` で開いた URL でも、イベント種別 / snapshot 日付 / イベント名 / 売上 / キャリー / 還元率 / 投下額 / 元ソース が復元される
 

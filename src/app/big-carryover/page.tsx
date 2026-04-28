@@ -16,12 +16,7 @@ import {
   StatCard,
   textAreaClassName,
 } from "@/components/ui";
-import {
-  formatCurrency,
-  formatDateTime,
-  formatPercent,
-  formatSignedPercent,
-} from "@/lib/domain";
+import { formatCurrency, formatDateTime, formatPercent } from "@/lib/domain";
 import {
   buildBigCarryoverQueryFromOfficialSnapshot,
   buildBigOfficialWatch,
@@ -29,21 +24,33 @@ import {
   pickFeaturedBigOfficialSnapshot,
 } from "@/lib/big-official";
 import {
+  bigCarryoverPresets,
   bigEventTypeDescription,
   bigEventTypeLabel,
-  bigCarryoverPresets,
   buildBigCarryoverEventSnapshot,
   buildBigShockAlert,
-  buildBigCarryoverScenarioRows,
   calculateBigCarryoverSummary,
   classifyBigHeatBand,
   detectBigShockSignal,
   normalizeBigEventType,
-  normalizeBigShockSignal,
 } from "@/lib/big-carryover";
+import {
+  bigCarryoverProductDefaults,
+  bigCarryoverProductTypeFromOfficialKey,
+  bigTrueEvStatusLabel,
+  buildBigCarryoverSalesScenarios,
+  calculateBigCarryover,
+  classifyBigCarryoverPosition,
+  normalizeBigCarryoverProductType,
+  type BigCarryoverProductType,
+} from "@/lib/big-carryover/calculator";
 import { appRoute, buildHref } from "@/lib/round-links";
 import { boardHeroArt, emptyStateArt, resolveArtAsset } from "@/lib/ui-art";
 import { useBigOfficialWatch } from "@/lib/use-app-data";
+
+const productTypeOptions = Object.keys(
+  bigCarryoverProductDefaults,
+) as BigCarryoverProductType[];
 
 function parseNumberInput(value: string | null, fallback: number) {
   if (!value) {
@@ -55,21 +62,68 @@ function parseNumberInput(value: string | null, fallback: number) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+function parseOptionalNumberInput(value: string | null | undefined) {
+  if (!value) {
+    return null;
+  }
+
+  const normalized = value.replaceAll(",", "").trim();
+  if (!normalized) {
+    return null;
+  }
+
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function formatCount(value: number | null | undefined, digits = 2) {
+  if (value === null || value === undefined) {
+    return "—";
+  }
+
+  return value.toLocaleString("ja-JP", {
+    maximumFractionDigits: digits,
+    minimumFractionDigits: digits,
+  });
+}
+
+function formatOdds(value: number | null | undefined) {
+  if (!value || !Number.isFinite(value)) {
+    return "—";
+  }
+
+  return `1 / ${Math.round(value).toLocaleString("ja-JP")}`;
+}
+
+function formatProxyPercent(value: number | null | undefined) {
+  return value === null || value === undefined ? "—" : formatPercent(value);
+}
+
 function BigCarryoverPageContent() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const shockSearchParam = searchParams.get("shock");
+  const initialProductType = normalizeBigCarryoverProductType(searchParams.get("productType"));
+  const initialDefaults = bigCarryoverProductDefaults[initialProductType];
   const [eventType, setEventType] = useState(
     normalizeBigEventType(searchParams.get("eventType")),
   );
   const [eventLabel, setEventLabel] = useState(
-    searchParams.get("label")?.trim() || "BIG 高還元イベント",
+    searchParams.get("label")?.trim() || "BIG キャリー圧ウォッチ",
   );
   const [snapshotDate, setSnapshotDate] = useState(
     searchParams.get("snapshotDate")?.trim() || "",
   );
-  const [salesYen, setSalesYen] = useState(
+  const [productType, setProductType] = useState<BigCarryoverProductType>(initialProductType);
+  const [currentSalesYen, setCurrentSalesYen] = useState(
     String(parseNumberInput(searchParams.get("sales"), 8_000_000_000)),
+  );
+  const [projectedFinalSalesYen, setProjectedFinalSalesYen] = useState(
+    String(
+      parseNumberInput(
+        searchParams.get("projectedSales"),
+        parseNumberInput(searchParams.get("sales"), 8_000_000_000),
+      ),
+    ),
   );
   const [carryoverYen, setCarryoverYen] = useState(
     String(parseNumberInput(searchParams.get("carryover"), 3_000_000_000)),
@@ -77,43 +131,95 @@ function BigCarryoverPageContent() {
   const [returnRatePercent, setReturnRatePercent] = useState(
     String(parseNumberInput(searchParams.get("returnRate"), 50)),
   );
-  const [spendYen, setSpendYen] = useState(
-    String(parseNumberInput(searchParams.get("spend"), 10_000)),
+  const [ticketPriceYen, setTicketPriceYen] = useState(
+    String(parseNumberInput(searchParams.get("ticketPrice"), initialDefaults.ticketPriceYen)),
+  );
+  const [firstPrizeOdds, setFirstPrizeOdds] = useState(
+    String(
+      parseNumberInput(
+        searchParams.get("firstPrizeOdds"),
+        initialDefaults.firstPrizeOdds ?? 0,
+      ),
+    ),
+  );
+  const [firstPrizeCapYen, setFirstPrizeCapYen] = useState(
+    initialDefaults.firstPrizeCapYen === null
+      ? searchParams.get("firstPrizeCap")?.trim() || ""
+      : String(parseNumberInput(searchParams.get("firstPrizeCap"), initialDefaults.firstPrizeCapYen)),
   );
   const [sourceUrl, setSourceUrl] = useState(searchParams.get("sourceUrl")?.trim() || "");
-  const [shockMode, setShockMode] = useState<"auto" | "none" | "possible" | "strong">(
-    shockSearchParam === "possible" || shockSearchParam === "strong"
-      ? shockSearchParam
-      : shockSearchParam === "none"
-        ? "none"
-        : "auto",
-  );
   const [eventNote, setEventNote] = useState(searchParams.get("note")?.trim() || "");
   const officialWatch = useBigOfficialWatch();
 
-  const numericSalesYen = Number(salesYen.replaceAll(",", "")) || 0;
-  const numericCarryoverYen = Number(carryoverYen.replaceAll(",", "")) || 0;
-  const numericReturnRate = (Number(returnRatePercent) || 0) / 100;
-  const numericSpendYen = Number(spendYen.replaceAll(",", "")) || 0;
+  const productDefaults = bigCarryoverProductDefaults[productType];
+  const numericCurrentSalesYen = parseOptionalNumberInput(currentSalesYen);
+  const numericProjectedFinalSalesYen =
+    parseOptionalNumberInput(projectedFinalSalesYen) ?? numericCurrentSalesYen;
+  const numericCarryoverYen = parseOptionalNumberInput(carryoverYen);
+  const numericReturnRatePercent = parseOptionalNumberInput(returnRatePercent);
+  const numericReturnRate =
+    numericReturnRatePercent !== null ? numericReturnRatePercent / 100 : null;
+  const numericTicketPriceYen = parseOptionalNumberInput(ticketPriceYen);
+  const numericFirstPrizeOdds = parseOptionalNumberInput(firstPrizeOdds);
+  const numericFirstPrizeCapYen = parseOptionalNumberInput(firstPrizeCapYen);
+
+  const calculation = useMemo(
+    () =>
+      calculateBigCarryover({
+        carryoverYen: numericCarryoverYen,
+        currentSalesYen: numericCurrentSalesYen,
+        firstPrizeCapYen: numericFirstPrizeCapYen,
+        firstPrizeOdds: numericFirstPrizeOdds,
+        productType,
+        projectedFinalSalesYen: numericProjectedFinalSalesYen,
+        returnRate: numericReturnRate,
+        ticketPriceYen: numericTicketPriceYen,
+      }),
+    [
+      numericCarryoverYen,
+      numericCurrentSalesYen,
+      numericFirstPrizeCapYen,
+      numericFirstPrizeOdds,
+      numericProjectedFinalSalesYen,
+      numericReturnRate,
+      numericTicketPriceYen,
+      productType,
+    ],
+  );
+
+  const scenarioRows = useMemo(
+    () =>
+      buildBigCarryoverSalesScenarios({
+        carryoverYen: numericCarryoverYen,
+        currentSalesYen: numericCurrentSalesYen,
+        firstPrizeCapYen: numericFirstPrizeCapYen,
+        firstPrizeOdds: numericFirstPrizeOdds,
+        productType,
+        projectedFinalSalesYen: numericProjectedFinalSalesYen,
+        returnRate: numericReturnRate,
+        ticketPriceYen: numericTicketPriceYen,
+      }),
+    [
+      numericCarryoverYen,
+      numericCurrentSalesYen,
+      numericFirstPrizeCapYen,
+      numericFirstPrizeOdds,
+      numericProjectedFinalSalesYen,
+      numericReturnRate,
+      numericTicketPriceYen,
+      productType,
+    ],
+  );
 
   const summary = useMemo(
     () =>
       calculateBigCarryoverSummary({
         carryoverYen: numericCarryoverYen,
-        returnRate: numericReturnRate,
-        salesYen: numericSalesYen,
-        spendYen: numericSpendYen,
+        returnRate: numericReturnRate ?? 0.5,
+        salesYen: numericProjectedFinalSalesYen,
+        spendYen: null,
       }),
-    [numericCarryoverYen, numericReturnRate, numericSalesYen, numericSpendYen],
-  );
-
-  const scenarioRows = useMemo(
-    () =>
-      buildBigCarryoverScenarioRows({
-        approxEvMultiple: summary.approxEvMultiple,
-        eventType,
-      }),
-    [eventType, summary.approxEvMultiple],
+    [numericCarryoverYen, numericProjectedFinalSalesYen, numericReturnRate],
   );
   const eventSnapshot = useMemo(
     () =>
@@ -124,41 +230,34 @@ function BigCarryoverPageContent() {
       }),
     [eventLabel, eventType, summary],
   );
+  const heatBand = classifyBigHeatBand(summary);
   const detectedShockSignal = useMemo(() => detectBigShockSignal(eventNote), [eventNote]);
-  const effectiveShockSignal = shockMode === "auto" ? detectedShockSignal : normalizeBigShockSignal(shockMode);
   const shockAlert = useMemo(
     () =>
       buildBigShockAlert({
-        signal: effectiveShockSignal,
+        signal: detectedShockSignal,
         summary,
       }),
-    [effectiveShockSignal, summary],
+    [detectedShockSignal, summary],
   );
+  const positionLabel = classifyBigCarryoverPosition(calculation);
 
   const shareHref = buildHref(appRoute.bigCarryover, {
-    carryover: numericCarryoverYen || undefined,
+    carryover: numericCarryoverYen ?? undefined,
     eventType,
+    firstPrizeCap: numericFirstPrizeCapYen ?? undefined,
+    firstPrizeOdds: numericFirstPrizeOdds ?? undefined,
     label: eventLabel || undefined,
     note: eventNote || undefined,
-    returnRate: Number.isFinite(Number(returnRatePercent))
-      ? Number(returnRatePercent)
-      : undefined,
-    sales: numericSalesYen || undefined,
-    shock: shockMode !== "auto" ? shockMode : undefined,
+    productType,
+    projectedSales: numericProjectedFinalSalesYen ?? undefined,
+    returnRate: numericReturnRatePercent ?? undefined,
+    sales: numericCurrentSalesYen ?? undefined,
     snapshotDate: snapshotDate || undefined,
     sourceUrl: sourceUrl || undefined,
-    spend: numericSpendYen || undefined,
+    ticketPrice: numericTicketPriceYen ?? undefined,
   });
 
-  const statusBadge =
-    summary.approxEvMultiple === null
-      ? { label: "要入力", tone: "warning" as const }
-      : summary.approxEvMultiple >= 1
-        ? { label: "期待値プラス圏", tone: "teal" as const }
-        : summary.approxEvMultiple >= 0.9
-          ? { label: "ほぼ拮抗", tone: "info" as const }
-          : { label: "還元不足", tone: "warning" as const };
-  const heatBand = classifyBigHeatBand(summary);
   const officialSnapshots = useMemo(
     () => officialWatch.data?.snapshots ?? [],
     [officialWatch.data],
@@ -168,12 +267,20 @@ function BigCarryoverPageContent() {
     [officialSnapshots],
   );
 
+  function applyProductDefaults(nextProductType: BigCarryoverProductType) {
+    const nextDefaults = bigCarryoverProductDefaults[nextProductType];
+    setProductType(nextProductType);
+    setTicketPriceYen(String(nextDefaults.ticketPriceYen));
+    setFirstPrizeOdds(nextDefaults.firstPrizeOdds ? String(nextDefaults.firstPrizeOdds) : "");
+    setFirstPrizeCapYen(nextDefaults.firstPrizeCapYen ? String(nextDefaults.firstPrizeCapYen) : "");
+  }
+
   return (
     <div className="space-y-8">
       <PageHeader
         eyebrow="BIGウォッチ"
-        title="BIG の高還元イベントをざっくり測る"
-        description="BIG は outcome を選ぶ商品ではない前提で、売上・キャリー・還元率からどれくらいアッパーかを概説する運用ページです。的中や利益の保証ではなく、参考比較として使います。"
+        title="BIG / MEGA BIG キャリー圧ウォッチ"
+        description="売上・キャリー・払戻率から粗い上振れ指標を見ます。真EVや利益を約束するものではなく、公式ルール確認前の比較メモとして扱います。"
         actions={
           <div className="flex flex-wrap gap-3">
             <Link href={appRoute.dashboard} className={secondaryButtonClassName}>
@@ -206,6 +313,23 @@ function BigCarryoverPageContent() {
       <RouteGlossaryCard currentPath={appRoute.bigCarryover} defaultOpen />
 
       <SectionCard
+        title="最初に確認"
+        description="ここで出す大きな%はキャリー圧です。BIG/MEGA BIGの真EVとしては扱いません。"
+      >
+        <div className="grid gap-3 text-sm leading-6 text-slate-700">
+          <p>
+            この表示は、公式ルール・最終売上・当選上限・等級配分に依存します。キャリー額が大きくても、今回必ず全額払い出されるわけではありません。
+          </p>
+          <p>
+            推定EVは的中や利益を保証しません。BIG/MEGA BIGはランダム発券であり、買い目選択によるエッジはありません。
+          </p>
+          <p>
+            ほとんどの購入結果は外れになります。購入する場合は娯楽予算の範囲で行ってください。
+          </p>
+        </div>
+      </SectionCard>
+
+      <SectionCard
         title="公式同期一覧"
         description="スポーツくじオフィシャルの BIG 情報ページから、現在の BIG / MEGA BIG / 100円BIG / BIG1000 / mini BIG を半自動で読みます。"
       >
@@ -220,11 +344,8 @@ function BigCarryoverPageContent() {
             </Badge>
           ) : null}
         </div>
-        <p className="mt-4 text-sm leading-6 text-slate-600">
-          公式同期 snapshot を優先表示しつつ、必要なときだけ下の固定テンプレへ切り替えて比較できます。
-        </p>
-        <p className="mt-2 text-xs leading-5 text-slate-500">
-          いまの自動判定は `売上 + キャリー` ベースです。台風などで成立条件が変わる上振れは、別シグナルとして後段で足します。
+        <p className="mt-3 text-sm leading-6 text-slate-600">
+          同期 snapshot のキャリー圧は現在売上ベースです。販売終了までに売上が増えると低下します。
         </p>
         {officialWatch.error ? (
           <p className="mt-3 text-sm text-rose-700">BIG公式同期: {officialWatch.error}</p>
@@ -248,10 +369,23 @@ function BigCarryoverPageContent() {
         <div className="mt-5 grid gap-4 xl:grid-cols-2">
           {officialSnapshots.map((snapshot) => {
             const watch = buildBigOfficialWatch(snapshot);
+            const snapshotProductType = bigCarryoverProductTypeFromOfficialKey(snapshot.productKey);
+            const snapshotDefaults = bigCarryoverProductDefaults[snapshotProductType];
+            const snapshotCalculation = calculateBigCarryover({
+              carryoverYen: snapshot.carryoverYen,
+              currentSalesYen: snapshot.totalSalesYen,
+              firstPrizeCapYen: snapshotDefaults.firstPrizeCapYen,
+              firstPrizeOdds: snapshotDefaults.firstPrizeOdds,
+              productType: snapshotProductType,
+              projectedFinalSalesYen: snapshot.totalSalesYen,
+              returnRate: snapshot.returnRate,
+              ticketPriceYen: snapshot.stakeYen || snapshotDefaults.ticketPriceYen,
+            });
             const prefilledHref = buildHref(
               appRoute.bigCarryover,
               buildBigCarryoverQueryFromOfficialSnapshot(snapshot),
             );
+
             return (
               <div
                 key={`${snapshot.productKey}-${snapshot.officialRoundNumber ?? "na"}`}
@@ -260,11 +394,9 @@ function BigCarryoverPageContent() {
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge tone={watch.heatBand.badgeTone}>{watch.heatBand.label}</Badge>
                   <Badge tone="slate">{snapshot.productLabel}</Badge>
-                  {detectBigShockSignal(snapshot.sourceText) !== "none" ? (
-                    <Badge tone="warning">成立条件メモあり</Badge>
-                  ) : null}
+                  <Badge tone="warning">{bigTrueEvStatusLabel[snapshotCalculation.trueEvStatus]}</Badge>
                 </div>
-                <h3 className="mt-3 font-display text-[1.15rem] font-semibold tracking-[-0.04em] text-slate-950">
+                <h3 className="mt-3 font-display text-[1.15rem] font-semibold text-slate-950">
                   {snapshot.officialRoundName ?? snapshot.productLabel}
                 </h3>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
@@ -283,9 +415,21 @@ function BigCarryoverPageContent() {
                       {formatBigCarryoverDisplay(snapshot.carryoverYen)}
                     </p>
                   </div>
+                  <div className="rounded-[18px] border border-slate-200 bg-white/80 px-4 py-3 text-sm">
+                    <p className="text-slate-500">キャリー圧</p>
+                    <p className="mt-1 font-semibold text-slate-950">
+                      {formatProxyPercent(snapshotCalculation.naiveCarryPressure)}
+                    </p>
+                  </div>
+                  <div className="rounded-[18px] border border-slate-200 bg-white/80 px-4 py-3 text-sm">
+                    <p className="text-slate-500">1等発生確率</p>
+                    <p className="mt-1 font-semibold text-slate-950">
+                      {formatPercent(snapshotCalculation.probAtLeastOneFirstPrize, 2)}
+                    </p>
+                  </div>
                 </div>
                 <div className="mt-4 flex flex-wrap gap-3 text-xs text-slate-500">
-                  <span>概算 {formatPercent(watch.summary.approxEvMultiple)}</span>
+                  <span>払戻率 {formatPercent(snapshot.returnRate)}</span>
                   <span>取得 {formatDateTime(snapshot.snapshotAt)}</span>
                 </div>
                 <div className="mt-4 flex flex-wrap gap-2">
@@ -293,15 +437,18 @@ function BigCarryoverPageContent() {
                     type="button"
                     onClick={() => {
                       setEventType(watch.eventType);
-                      setEventLabel(snapshot.officialRoundName ?? `${snapshot.productLabel} 高還元イベント`);
+                      setEventLabel(snapshot.officialRoundName ?? `${snapshot.productLabel} キャリー圧ウォッチ`);
                       setSnapshotDate((snapshot.snapshotAt ?? snapshot.salesStartAt ?? "").slice(0, 10));
-                      setSalesYen(String(snapshot.totalSalesYen ?? 0));
+                      setProductType(snapshotProductType);
+                      setCurrentSalesYen(String(snapshot.totalSalesYen ?? 0));
+                      setProjectedFinalSalesYen(String(snapshot.totalSalesYen ?? 0));
                       setCarryoverYen(String(snapshot.carryoverYen));
                       setReturnRatePercent(String(Math.round(snapshot.returnRate * 100)));
-                      setSpendYen("10000");
+                      setTicketPriceYen(String(snapshot.stakeYen || snapshotDefaults.ticketPriceYen));
+                      setFirstPrizeOdds(snapshotDefaults.firstPrizeOdds ? String(snapshotDefaults.firstPrizeOdds) : "");
+                      setFirstPrizeCapYen(snapshotDefaults.firstPrizeCapYen ? String(snapshotDefaults.firstPrizeCapYen) : "");
                       setSourceUrl(snapshot.sourceUrl);
                       setEventNote(snapshot.sourceText);
-                      setShockMode("auto");
                     }}
                     className={buttonClassName}
                   >
@@ -319,57 +466,68 @@ function BigCarryoverPageContent() {
 
       <SectionCard
         title="このページの前提"
-        description="当たりやすさではなく、還元率ベースで見て『今はどれくらいアッパーか』を素早く見る用途です。"
+        description="キャリー圧・1等発生確率・上限proxy・真EV未計算を分けて表示します。"
       >
         <div className="flex flex-wrap gap-2">
           <Badge tone="slate">運用ページ</Badge>
           <Badge tone="sky">{bigEventTypeLabel[eventType]}</Badge>
-          <Badge tone={statusBadge.tone}>{statusBadge.label}</Badge>
-          <Badge tone="info">分析・記録用</Badge>
-          <Badge tone="warning">購入代行や精算はしません</Badge>
+          <Badge tone={heatBand.badgeTone}>{heatBand.label}</Badge>
+          <Badge tone="warning">{bigTrueEvStatusLabel[calculation.trueEvStatus]}</Badge>
+          <Badge tone="info">購入代行や精算はしません</Badge>
         </div>
-
         <div className="mt-4 grid gap-4 lg:grid-cols-2">
           <div className="space-y-3 text-sm leading-6 text-slate-600">
             <p>
-              `BIG` はどの目を選ぶかではなく、`キャリー / 売上 / 還元率` から
-              「理論上どれくらい上振れしているか」を見る方が自然です。
+              キャリー圧は `(carryover + projectedFinalSalesYen * returnRate) / projectedFinalSalesYen` です。
+              これは粗い上振れ指標であり、1等が出る確率や上限、複数当選時の分配、等級配分、繰越ルールを含みません。
             </p>
             <p>
-              ここでは簡易式として `EV倍率 ≈ returnRate + carryover / totalSales` を使います。
-              等級別配分や上限の完全再現ではなく、まずイベントの熱さをざっくり把握するための近似です。
+              {productDefaults.note}
             </p>
           </div>
-          <div className="rounded-[24px] border border-slate-200 bg-slate-50/90 p-4 text-sm leading-7 text-slate-700">
-            <p className="font-semibold text-slate-950">使いどころ</p>
-            <p className="mt-2">
-              `造船太郎イベント` のような「高還元かもしれない回」が話題になったとき、
-              売上とキャリーを入れて、平時の 50% 還元からどれだけ上に乗っているかをすぐ確認できます。
-            </p>
+          <div className="rounded-[24px] border border-amber-200 bg-amber-50/80 p-4 text-sm leading-7 text-amber-950">
+            <p className="font-semibold">現在の判定</p>
+            <p className="mt-2">{eventSnapshot.headline}</p>
+            <p className="mt-2">{eventSnapshot.nextAction}</p>
           </div>
         </div>
       </SectionCard>
 
       <SectionCard
-        title="まずはここから"
-        description="よく見る温度感をテンプレ化しました。売上・キャリーの感覚がまだ曖昧でも、1タップで比較を始められます。"
+        title="テンプレ条件"
+        description="固定条件はキャリー圧比較の出発点です。真EVとしては表示しません。"
       >
         <div className="grid gap-4 xl:grid-cols-3">
           {bigCarryoverPresets.map((preset) => {
+            const presetDefaults = bigCarryoverProductDefaults.BIG;
+            const presetCalculation = calculateBigCarryover({
+              carryoverYen: preset.carryoverYen,
+              currentSalesYen: preset.salesYen,
+              firstPrizeCapYen: presetDefaults.firstPrizeCapYen,
+              firstPrizeOdds: presetDefaults.firstPrizeOdds,
+              productType: "BIG",
+              projectedFinalSalesYen: preset.salesYen,
+              returnRate: preset.returnRatePercent / 100,
+              ticketPriceYen: presetDefaults.ticketPriceYen,
+            });
             const presetSummary = calculateBigCarryoverSummary({
               carryoverYen: preset.carryoverYen,
               returnRate: preset.returnRatePercent / 100,
               salesYen: preset.salesYen,
-              spendYen: preset.spendYen,
+              spendYen: null,
             });
             const presetBand = classifyBigHeatBand(presetSummary);
             const presetHref = buildHref(appRoute.bigCarryover, {
               carryover: preset.carryoverYen,
               eventType: preset.eventType,
+              firstPrizeCap: presetDefaults.firstPrizeCapYen ?? undefined,
+              firstPrizeOdds: presetDefaults.firstPrizeOdds ?? undefined,
               label: preset.eventLabel,
+              productType: "BIG",
+              projectedSales: preset.salesYen,
               returnRate: preset.returnRatePercent,
               sales: preset.salesYen,
-              spend: preset.spendYen,
+              ticketPrice: presetDefaults.ticketPriceYen,
             });
 
             return (
@@ -381,13 +539,13 @@ function BigCarryoverPageContent() {
                   <Badge tone={presetBand.badgeTone}>{presetBand.label}</Badge>
                   <Badge tone="slate">{bigEventTypeLabel[preset.eventType]}</Badge>
                 </div>
-                <h3 className="mt-3 font-display text-[1.25rem] font-semibold tracking-[-0.05em] text-slate-950">
+                <h3 className="mt-3 font-display text-[1.25rem] font-semibold text-slate-950">
                   {preset.eventLabel}
                 </h3>
                 <p className="mt-3 text-sm leading-6 text-slate-600">{preset.description}</p>
                 <div className="mt-4 flex flex-wrap gap-3 text-xs text-slate-500">
-                  <span>概算 {formatPercent(presetSummary.approxEvMultiple)}</span>
-                  <span>売上 {formatCurrency(preset.salesYen)}</span>
+                  <span>キャリー圧 {formatProxyPercent(presetCalculation.naiveCarryPressure)}</span>
+                  <span>1等発生確率 {formatPercent(presetCalculation.probAtLeastOneFirstPrize, 2)}</span>
                   <span>キャリー {formatBigCarryoverDisplay(preset.carryoverYen)}</span>
                 </div>
                 <p className="mt-3 text-xs leading-5 text-slate-500">{presetBand.hint}</p>
@@ -403,78 +561,8 @@ function BigCarryoverPageContent() {
       </SectionCard>
 
       <SectionCard
-        title="イベント管理"
-        description="BIG を Round import に混ぜず、話題回やキャリー回を独立した event snapshot として管理します。"
-      >
-        <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
-          <div className="grid gap-4 md:grid-cols-2">
-            <label className="space-y-2 text-sm">
-              <span className="font-medium text-slate-700">イベント種別</span>
-              <select
-                value={eventType}
-                onChange={(event) =>
-                  setEventType(normalizeBigEventType(event.currentTarget.value))
-                }
-                className={fieldClassName}
-              >
-                {Object.entries(bigEventTypeLabel).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="space-y-2 text-sm">
-              <span className="font-medium text-slate-700">snapshot 日付</span>
-              <input
-                type="date"
-                value={snapshotDate}
-                onChange={(event) => setSnapshotDate(event.currentTarget.value)}
-                className={fieldClassName}
-              />
-            </label>
-            <div className="md:col-span-2 flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setEventType("carryover_event");
-                  setEventLabel("BIG キャリーイベント");
-                }}
-                className={secondaryButtonClassName}
-              >
-                キャリー監視
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setEventType("high_return_watch");
-                  setEventLabel("BIG 高還元ウォッチ");
-                }}
-                className={secondaryButtonClassName}
-              >
-                高還元ウォッチ
-              </button>
-            </div>
-          </div>
-
-          <div className="rounded-[24px] border border-slate-200 bg-slate-50/90 p-5">
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge tone="sky">{bigEventTypeLabel[eventType]}</Badge>
-              <Badge tone={eventSnapshot.tone}>{eventSnapshot.statusLabel}</Badge>
-              {snapshotDate ? <Badge tone="slate">{snapshotDate}</Badge> : null}
-            </div>
-            <div className="mt-4 space-y-3 text-sm leading-6 text-slate-700">
-              <p>{bigEventTypeDescription[eventType]}</p>
-              <p className="font-semibold text-slate-950">{eventSnapshot.headline}</p>
-              <p>{eventSnapshot.nextAction}</p>
-            </div>
-          </div>
-        </div>
-      </SectionCard>
-
-      <SectionCard
         title="入力"
-        description="公式発表や話題回のメモをそのまま入れて、ざっくり利回りを見ます。"
+        description="現在売上とユーザー入力の最終売上を分けます。旧URLの spend は表示計算に使いません。"
       >
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <label className="space-y-2 text-sm">
@@ -483,17 +571,59 @@ function BigCarryoverPageContent() {
               value={eventLabel}
               onChange={(event) => setEventLabel(event.currentTarget.value)}
               className={fieldClassName}
-              placeholder="第xxxx回 BIG 高還元イベント"
+              placeholder="第xxxx回 MEGA BIG キャリー圧ウォッチ"
             />
           </label>
           <label className="space-y-2 text-sm">
-            <span className="font-medium text-slate-700">売上想定 (円)</span>
+            <span className="font-medium text-slate-700">商品タイプ</span>
+            <select
+              value={productType}
+              onChange={(event) =>
+                applyProductDefaults(normalizeBigCarryoverProductType(event.currentTarget.value))
+              }
+              className={fieldClassName}
+            >
+              {productTypeOptions.map((option) => (
+                <option key={option} value={option}>
+                  {bigCarryoverProductDefaults[option].label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="space-y-2 text-sm">
+            <span className="font-medium text-slate-700">イベント種別</span>
+            <select
+              value={eventType}
+              onChange={(event) =>
+                setEventType(normalizeBigEventType(event.currentTarget.value))
+              }
+              className={fieldClassName}
+            >
+              {Object.entries(bigEventTypeLabel).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="space-y-2 text-sm">
+            <span className="font-medium text-slate-700">現在売上 (円)</span>
             <input
-              value={salesYen}
-              onChange={(event) => setSalesYen(event.currentTarget.value)}
+              value={currentSalesYen}
+              onChange={(event) => setCurrentSalesYen(event.currentTarget.value)}
               className={fieldClassName}
               inputMode="numeric"
-              placeholder="8000000000"
+              placeholder="191591400"
+            />
+          </label>
+          <label className="space-y-2 text-sm">
+            <span className="font-medium text-slate-700">ユーザー入力の最終売上 (円)</span>
+            <input
+              value={projectedFinalSalesYen}
+              onChange={(event) => setProjectedFinalSalesYen(event.currentTarget.value)}
+              className={fieldClassName}
+              inputMode="numeric"
+              placeholder="3000000000"
             />
           </label>
           <label className="space-y-2 text-sm">
@@ -503,11 +633,11 @@ function BigCarryoverPageContent() {
               onChange={(event) => setCarryoverYen(event.currentTarget.value)}
               className={fieldClassName}
               inputMode="numeric"
-              placeholder="3000000000"
+              placeholder="6299582550"
             />
           </label>
           <label className="space-y-2 text-sm">
-            <span className="font-medium text-slate-700">還元率 (%)</span>
+            <span className="font-medium text-slate-700">払戻率 (%)</span>
             <input
               value={returnRatePercent}
               onChange={(event) => setReturnRatePercent(event.currentTarget.value)}
@@ -517,16 +647,45 @@ function BigCarryoverPageContent() {
             />
           </label>
           <label className="space-y-2 text-sm">
-            <span className="font-medium text-slate-700">投下額 (円)</span>
+            <span className="font-medium text-slate-700">1口価格 (円)</span>
             <input
-              value={spendYen}
-              onChange={(event) => setSpendYen(event.currentTarget.value)}
+              value={ticketPriceYen}
+              onChange={(event) => setTicketPriceYen(event.currentTarget.value)}
               className={fieldClassName}
               inputMode="numeric"
-              placeholder="10000"
+              placeholder="300"
             />
           </label>
-          <label className="space-y-2 text-sm md:col-span-2 xl:col-span-1">
+          <label className="space-y-2 text-sm">
+            <span className="font-medium text-slate-700">1等オッズ</span>
+            <input
+              value={firstPrizeOdds}
+              onChange={(event) => setFirstPrizeOdds(event.currentTarget.value)}
+              className={fieldClassName}
+              inputMode="numeric"
+              placeholder="16777216"
+            />
+          </label>
+          <label className="space-y-2 text-sm">
+            <span className="font-medium text-slate-700">1等上限 (円)</span>
+            <input
+              value={firstPrizeCapYen}
+              onChange={(event) => setFirstPrizeCapYen(event.currentTarget.value)}
+              className={fieldClassName}
+              inputMode="numeric"
+              placeholder="1200000000"
+            />
+          </label>
+          <label className="space-y-2 text-sm">
+            <span className="font-medium text-slate-700">snapshot 日付</span>
+            <input
+              type="date"
+              value={snapshotDate}
+              onChange={(event) => setSnapshotDate(event.currentTarget.value)}
+              className={fieldClassName}
+            />
+          </label>
+          <label className="space-y-2 text-sm">
             <span className="font-medium text-slate-700">元ソースURL</span>
             <input
               value={sourceUrl}
@@ -535,29 +694,14 @@ function BigCarryoverPageContent() {
               placeholder="https://..."
             />
           </label>
-          <label className="space-y-2 text-sm">
-            <span className="font-medium text-slate-700">成立条件ショック</span>
-            <select
-              value={shockMode}
-              onChange={(event) =>
-                setShockMode(event.currentTarget.value as "auto" | "none" | "possible" | "strong")
-              }
-              className={fieldClassName}
-            >
-              <option value="auto">自動判定</option>
-              <option value="none">平時ロジック</option>
-              <option value="possible">特記事項あり</option>
-              <option value="strong">強いショック候補</option>
-            </select>
-          </label>
-          <label className="space-y-2 text-sm md:col-span-2 xl:col-span-2">
+          <label className="space-y-2 text-sm md:col-span-2 xl:col-span-3">
             <span className="font-medium text-slate-700">特記事項メモ</span>
             <textarea
               value={eventNote}
               onChange={(event) => setEventNote(event.currentTarget.value)}
               className={textAreaClassName}
               rows={4}
-              placeholder="例: 台風接近で中止試合が増えそう / 成立条件や返還の公式告知を確認中"
+              placeholder="例: 公式ルール確認前 / キャリー繰越条件を確認中 / 成立条件や返還の公式告知を確認中"
             />
           </label>
         </div>
@@ -565,152 +709,124 @@ function BigCarryoverPageContent() {
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         <StatCard
-          label="熱量判定"
-          value={heatBand.label}
-          hint={heatBand.hint}
-          tone={heatBand.badgeTone === "positive" ? "positive" : heatBand.badgeTone === "warning" ? "warning" : "default"}
+          label="キャリー圧"
+          value={formatProxyPercent(calculation.naiveCarryPressure)}
+          hint="粗い上振れ指標。真EVではありません。"
+          tone={calculation.naiveCarryPressure !== null && calculation.naiveCarryPressure >= 1 ? "positive" : "warning"}
         />
         <StatCard
-          label="ショック判定"
-          value={shockAlert.label}
-          hint={
-            shockMode === "auto"
-              ? `${shockAlert.hint} 自動判定: ${detectedShockSignal === "none" ? "平時" : detectedShockSignal === "possible" ? "特記事項あり" : "強いショック候補"}`
-              : shockAlert.hint
-          }
-          tone={shockAlert.badgeTone === "positive" ? "positive" : shockAlert.badgeTone === "warning" ? "warning" : "default"}
-        />
-        <StatCard
-          label="概算EV"
-          value={summary.approxEvMultiple !== null ? formatPercent(summary.approxEvMultiple) : "—"}
-          hint="returnRate + carryover / totalSales"
-          tone={summary.approxEvMultiple !== null && summary.approxEvMultiple >= 1 ? "positive" : "warning"}
-        />
-        <StatCard
-          label="還元率からの上振れ"
-          value={formatSignedPercent(summary.overReturnRate)}
-          hint="キャリーがどれだけベース還元率を押し上げているか"
+          label="1等発生確率"
+          value={formatPercent(calculation.probAtLeastOneFirstPrize, 2)}
+          hint={`1等オッズ ${formatOdds(numericFirstPrizeOdds)} / 口数 ${formatCount(calculation.ticketCountEstimate, 0)}`}
           tone="draw"
         />
         <StatCard
-          label="損益分岐との差"
-          value={
-            summary.overBreakEven !== null ? formatSignedPercent(summary.overBreakEven) : "—"
-          }
-          hint="100% をどれだけ上回るか"
-          tone={summary.overBreakEven !== null && summary.overBreakEven >= 0 ? "positive" : "warning"}
+          label="上限調整後proxy"
+          value={formatProxyPercent(calculation.capAdjustedNaiveCarryPressure)}
+          hint="1等上限だけを入れた概算。真EVではありません。"
+          tone="warning"
         />
         <StatCard
-          label="投下額の期待損益"
-          value={formatCurrency(summary.expectedProfitYen)}
-          hint={`${formatCurrency(numericSpendYen)} を入れたときの概算`}
-          tone="default"
+          label="真EV"
+          value={bigTrueEvStatusLabel[calculation.trueEvStatus]}
+          hint="等級配分・上限・キャリー反映ルールが揃うまで表示しません。"
+          tone="warning"
+        />
+        <StatCard
+          label="ポジション"
+          value={positionLabel}
+          hint="購入判断ではなく、確認状態のラベルです。"
+          tone={positionLabel === "見送り" ? "warning" : positionLabel === "要公式確認" ? "warning" : "draw"}
         />
       </section>
 
       <SectionCard
-        title="激アツ判定の見方"
-        description="BIG 側でまず見たいのは、分岐越え・分岐付近・監視中のどこにいるかです。"
+        title="最終売上シナリオ"
+        description="現在売上ベースだけで大きな%が出ても、最終売上が増えるとキャリー圧は下がります。"
       >
-        <div className="grid gap-4 lg:grid-cols-3">
-          <div className="rounded-[24px] border border-teal-200 bg-teal-50/80 p-5">
-            <div className="flex items-center gap-2">
-              <Badge tone="teal">期待値大</Badge>
-              <h3 className="font-semibold text-slate-950">概算 EV が 100% 以上</h3>
+        <div className="grid gap-4 xl:grid-cols-3">
+          {scenarioRows.map((row) => (
+            <div
+              key={row.key}
+              className="rounded-[24px] border border-slate-200 bg-slate-50/90 p-5"
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge tone={row.key === "current" ? "warning" : row.key === "custom" ? "sky" : "slate"}>
+                  {row.label}
+                </Badge>
+                <Badge tone="warning">{bigTrueEvStatusLabel[row.calculation.trueEvStatus]}</Badge>
+              </div>
+              <div className="mt-4 space-y-3 text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-slate-500">売上</span>
+                  <span className="font-semibold text-slate-950">
+                    {formatCurrency(row.projectedFinalSalesYen)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-slate-500">キャリー圧</span>
+                  <span className="font-semibold text-slate-950">
+                    {formatProxyPercent(row.calculation.naiveCarryPressure)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-slate-500">期待1等本数</span>
+                  <span className="font-semibold text-slate-950">
+                    {formatCount(row.calculation.expectedFirstPrizeWinners, 4)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-slate-500">1等発生確率</span>
+                  <span className="font-semibold text-slate-950">
+                    {formatPercent(row.calculation.probAtLeastOneFirstPrize, 2)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-slate-500">上限proxy</span>
+                  <span className="font-semibold text-slate-950">
+                    {formatProxyPercent(row.calculation.capAdjustedNaiveCarryPressure)}
+                  </span>
+                </div>
+              </div>
+              <p className="mt-4 text-xs leading-5 text-slate-500">{row.note}</p>
             </div>
-            <p className="mt-3 text-sm leading-6 text-slate-700">
-              `returnRate + carryover / sales` が 1.00 を超える状態です。売上急増で薄まる前に、次の更新だけは追います。
-            </p>
-          </div>
-          <div className="rounded-[24px] border border-amber-200 bg-amber-50/80 p-5">
-            <div className="flex items-center gap-2">
-              <Badge tone="warning">分岐付近</Badge>
-              <h3 className="font-semibold text-slate-950">あと一押しで届く</h3>
-            </div>
-            <p className="mt-3 text-sm leading-6 text-slate-700">
-              損益分岐との差が小さい回です。キャリーがもう少し乗るか、売上見込みが鈍ると一気に見え方が変わります。
-            </p>
-          </div>
-          <div className="rounded-[24px] border border-slate-200 bg-slate-50/90 p-5">
-            <div className="flex items-center gap-2">
-              <Badge tone="info">監視中</Badge>
-              <h3 className="font-semibold text-slate-950">まだ平時寄り</h3>
-            </div>
-            <p className="mt-3 text-sm leading-6 text-slate-700">
-              すぐ投下判断というより、話題回の比較メモとして残す段階です。次に同系統イベントが来たときの基準値に使えます。
-            </p>
-          </div>
+          ))}
         </div>
       </SectionCard>
 
       <SectionCard
-        title="判断メモ"
-        description="ベース還元率との差と、損益分岐まで届いているかを分けて見ます。"
+        title="警告と未確認事項"
+        description="大きなキャリー圧を購入煽りに変換しないための確認リストです。"
       >
-        <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-          <div className="rounded-[24px] border border-teal-200 bg-teal-50/80 p-5">
-            <div className="flex items-center gap-2">
-              <Badge tone="teal">ざっくり判定</Badge>
-              <h3 className="font-display text-lg font-semibold tracking-[-0.04em] text-slate-950">
-                {eventLabel || "BIG イベント"}
-              </h3>
-            </div>
-            <div className="mt-4 space-y-3 text-sm leading-6 text-slate-700">
-              <p>
-                売上 {formatCurrency(numericSalesYen)} に対して、キャリー {formatCurrency(numericCarryoverYen)}
-                は {formatPercent(summary.carryoverUplift)} の上乗せです。
-              </p>
-              <p>
-                還元率 {formatPercent(numericReturnRate)} ベースだと、概算 EV は{" "}
-                <span className="font-semibold text-slate-950">
-                  {formatPercent(summary.approxEvMultiple)}
-                </span>
-                。損益分岐を超えるには、キャリー {formatCurrency(summary.breakEvenCarryoverYen)} が目安です。
-              </p>
-              <p>
-                いまの差分は {formatCurrency(summary.breakEvenGapYen)} で、
-                `平時の50%` に対しては {formatSignedPercent(summary.overReturnRate)}、
-                `損益分岐100%` に対しては {formatSignedPercent(summary.overBreakEven)} です。
-              </p>
-            </div>
-          </div>
-
-          <div className="rounded-[24px] border border-slate-200 bg-slate-50/90 p-5">
-            <div className="flex items-center gap-2">
-              <Badge tone="sky">シナリオ</Badge>
-              <h3 className="font-display text-lg font-semibold tracking-[-0.04em] text-slate-950">
-                投下額ごとの概算
-              </h3>
-            </div>
-            <div className="mt-4 space-y-3">
-              {scenarioRows.map((row) => (
-                <div
-                  key={`scenario-${row.spendYen}`}
-                  className="rounded-[18px] border border-white/80 bg-white/88 px-4 py-3 text-sm"
-                >
-                  <div className="font-semibold text-slate-900">{formatCurrency(row.spendYen)}</div>
-                  <div className="mt-1 text-slate-600">
-                    期待損益 {formatCurrency(row.expectedProfitYen)}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+        <div className="flex flex-wrap gap-2">
+          <Badge tone={shockAlert.badgeTone}>{shockAlert.label}</Badge>
+          <Badge tone="slate">{bigEventTypeLabel[eventType]}</Badge>
+          {snapshotDate ? <Badge tone="slate">{snapshotDate}</Badge> : null}
+        </div>
+        <div className="mt-4 grid gap-3 text-sm leading-6 text-slate-700">
+          <p>{bigEventTypeDescription[eventType]}</p>
+          <p>{shockAlert.hint}</p>
+          {calculation.warnings.map((warning) => (
+            <p key={warning}>・{warning}</p>
+          ))}
+          <p>
+            True EVは、等級配分・上限・キャリー反映ルールが揃っている場合のみ扱います。現状は {bigTrueEvStatusLabel[calculation.trueEvStatus]} です。
+          </p>
         </div>
       </SectionCard>
 
       <SectionCard
         title="計算式"
-        description="このページでは、まず簡易式でイベントの熱さを掴みます。"
+        description="表示上の大きな%はキャリー圧です。真EVとは別の値として扱います。"
       >
         <div className="rounded-[24px] border border-slate-200 bg-slate-950 px-5 py-5 text-sm leading-7 text-slate-100">
-          <p>EV倍率 ≈ returnRate + carryover / totalSales</p>
-          <p>期待損益 ≈ 投下額 × (EV倍率 - 1)</p>
-          <p>損益分岐キャリー ≈ totalSales × (1 - returnRate)</p>
+          <p>ticketCount = projectedFinalSalesYen / ticketPriceYen</p>
+          <p>expectedFirstPrizeWinners = ticketCount / firstPrizeOdds</p>
+          <p>probAtLeastOneFirstPrize = 1 - (1 - 1 / firstPrizeOdds) ^ ticketCount</p>
+          <p>carryPressure = (carryoverYen + projectedFinalSalesYen * returnRate) / projectedFinalSalesYen</p>
         </div>
         <p className="mt-4 text-sm leading-6 text-slate-600">
-          このページは、等級別配分や上限まで完全再現する厳密計算ではありません。まず
-          `高還元イベントかどうか` を見極める一次判断用です。
+          上限調整後proxyは1等上限だけを機械的に反映した目安です。複数当選時の分配、下位等級、繰越継続、公式ルールの詳細は含みません。
         </p>
       </SectionCard>
     </div>
