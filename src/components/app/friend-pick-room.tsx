@@ -73,7 +73,7 @@ const candidateOriginCue: Record<CandidateStrategyType, string> = {
 };
 
 const candidateDataQualityLabel: Record<CandidateDataQuality, string> = {
-  complete: "実EV",
+  complete: "EV参考",
   missing_official_vote: "公式不足",
   missing_model_prob: "AI不足",
   proxy_only: "Proxy",
@@ -167,7 +167,7 @@ export function DataQualityCard(props: {
       <EditingStatusNotice
         className="mt-4"
         tone={props.summary.strictEvReady ? "teal" : "amber"}
-        title={props.summary.strictEvReady ? "実EVベース" : "Proxy / 要確認"}
+        title={props.summary.strictEvReady ? "EV参考を表示" : "Proxy / 要確認"}
         description={
           <div className="space-y-2">
             <p>{props.summary.message}</p>
@@ -240,7 +240,7 @@ export function CandidateCard(props: {
       <div className="grid grid-cols-2 gap-3 text-sm">
         <div className="rounded-[20px] border border-emerald-100 bg-emerald-50/80 px-3 py-3">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700/70">
-            推定EV / Proxy
+            参考EV / Proxy
           </p>
           <p className="mt-2 text-lg font-semibold text-slate-950">
             {props.candidate.evPercent !== null

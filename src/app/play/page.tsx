@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
@@ -422,34 +423,54 @@ function PlayPageContent() {
         title="候補カード"
         description="王道、公式人気、人力推し、EV狙いをここだけ見れば十分です。"
       >
-        <div className="-mx-2 flex snap-x gap-4 overflow-x-auto px-2 pb-2">
-          {candidateTickets.map((candidate) => {
-            const existingVote = data.round.candidateVotes.find(
-              (entry) =>
-                entry.candidateTicketId === candidate.id && entry.userId === activeUser.id,
-            );
+        {candidateTickets.length === 0 ? (
+          <div className="rounded-[24px] border border-dashed border-slate-300 bg-slate-50/90 px-5 py-5">
+            <div className="flex flex-wrap gap-2">
+              <Badge tone="amber">候補なし</Badge>
+              <Badge tone="sky">Proxy準備中</Badge>
+            </div>
+            <p className="mt-3 text-sm leading-6 text-slate-600">
+              まだ候補カードがありません。候補カード画面を開くと、入力済みの試合・人力予想・公式人気から候補を更新できます。
+            </p>
+            <div className="mt-4">
+              <Link
+                href={buildRoundHref(appRoute.pickRoom, data.round.id, { user: activeUser.id })}
+                className={buttonClassName}
+              >
+                候補カードを開く
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <div className="-mx-2 flex snap-x gap-4 overflow-x-auto px-2 pb-2">
+            {candidateTickets.map((candidate) => {
+              const existingVote = data.round.candidateVotes.find(
+                (entry) =>
+                  entry.candidateTicketId === candidate.id && entry.userId === activeUser.id,
+              );
 
-            return (
-              <CandidateCard
-                key={candidate.id}
-                activeVote={existingVote?.vote ?? null}
-                busyVote={busyKey?.startsWith(candidate.id) ? (busyKey.split(":")[1] as CandidateVoteValue | "comment") : null}
-                candidate={candidate}
-                onComment={() => void handleComment(candidate.id)}
-                onVote={(vote) => void handleVote(candidate.id, vote)}
-                voteSummary={
-                  candidateVoteSummary.get(candidate.id) ?? {
-                    boughtMyself: 0,
-                    comments: 0,
-                    like: 0,
-                    maybe: 0,
-                    pass: 0,
+              return (
+                <CandidateCard
+                  key={candidate.id}
+                  activeVote={existingVote?.vote ?? null}
+                  busyVote={busyKey?.startsWith(candidate.id) ? (busyKey.split(":")[1] as CandidateVoteValue | "comment") : null}
+                  candidate={candidate}
+                  onComment={() => void handleComment(candidate.id)}
+                  onVote={(vote) => void handleVote(candidate.id, vote)}
+                  voteSummary={
+                    candidateVoteSummary.get(candidate.id) ?? {
+                      boughtMyself: 0,
+                      comments: 0,
+                      like: 0,
+                      maybe: 0,
+                      pass: 0,
+                    }
                   }
-                }
-              />
-            );
-          })}
-        </div>
+                />
+              );
+            })}
+          </div>
+        )}
       </SectionCard>
 
       <form onSubmit={handleSavePicks} className="space-y-6">

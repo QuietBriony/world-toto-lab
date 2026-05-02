@@ -1,6 +1,50 @@
 # Final Verification Log
 
-更新日: 2026-04-21
+更新日: 2026-05-02
+
+## 2026-05-02 運用完成版仕上げ
+
+### 対象環境
+
+- Branch: `codex/operational-finish-implementation`
+- 目的: 友人10人前後で実回を迷わず回せる運用完成版へ寄せる
+- 方針: static export / query param routing / Supabase anon共有MVPを維持し、schema変更なし
+
+### 実装確認
+
+- PR用 CI を追加し、pull request で `lint` / `test` / `audit:schema` / `build` を確認するようにした
+- `check:supabase` の未設定時メッセージを改善し、`.env.local` と GitHub Actions secrets の必要値を明示した
+- `check:pages` に `WORLD_TOTO_LAB_REQUIRE_ROUND=1` を追加し、実Round smokeと軽量route確認を分けられるようにした
+- `RoundRequiredNotice` / `ConfigurationNotice` / `ErrorNotice` に次の行き先を追加した
+- `Simple View` / `Play` / `Pick Room` の候補0件時の説明と導線を補強した
+- `Review` に候補カードの結果比較を追加した
+- `Match Editor` に確率合計ズレの目立つ警告を追加した
+- 候補カードの missing model / missing official / EV前提不足 / 確率合計ズレ / 1試合商品 のテストを追加した
+
+### 自動検証
+
+以下を実行し、成功を確認しました。
+
+- `npm run lint`
+- `npm run test`
+  - 17 files passed
+  - 100 tests passed
+- `npm run audit:schema`
+  - repository tables and `supabase/schema.sql` are consistent
+- `npm run build`
+  - Next.js 16 static export succeeded
+  - 23 static pages generated
+- `npm run check:pages`
+  - lightweight live Pages route check succeeded
+  - failures: 0
+
+### 未完了 / 残リスク
+
+- `npm run check:supabase` はこのローカル環境に `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` が無く、実DB疎通は未実施。
+  - 改善後のエラーメッセージで `.env.local` と GitHub Actions secrets の設定手順が出ることは確認済み。
+- 実 Round ID / User ID 付きの live Pages smoke は未実施。
+  - 実運用前に `WORLD_TOTO_LAB_REQUIRE_ROUND=1` と `WORLD_TOTO_LAB_ROUND_ID=<id>` を付けて再確認する。
+- iPhone実機Safariの手動タップ確認は未実施。
 
 ## 対象環境
 

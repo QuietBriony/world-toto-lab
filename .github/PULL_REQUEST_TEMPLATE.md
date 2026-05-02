@@ -34,6 +34,8 @@
 
 ## Validation
 
+- CI:
+  - [ ] Pull request CI passed (`lint` / `test` / `audit:schema` / `build`)
 - [ ] Docs only
 - [ ] `npm run lint`
 - [ ] `npm run test`
@@ -42,6 +44,16 @@
 - [ ] `npm run check:pages`
 - [ ] `npm run check:supabase`
 - [ ] 未実施または N/A の項目は下に理由を書いた
+
+Operational smoke, when applicable:
+
+```bash
+WORLD_TOTO_LAB_BASE_URL=https://quietbriony.github.io/world-toto-lab
+WORLD_TOTO_LAB_ROUND_ID=<round-id>
+WORLD_TOTO_LAB_USER_ID=<optional-user-id>
+WORLD_TOTO_LAB_REQUIRE_ROUND=1
+npm run check:pages
+```
 
 Validation notes:
 

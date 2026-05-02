@@ -15,11 +15,33 @@ export function ConfigurationNotice() {
     <SectionCard
       title="Supabase 設定が必要です"
       description="GitHub Pages から共有利用するため、データ保存先は Supabase を前提にしています。"
+      actions={
+        <div className="flex flex-wrap gap-2">
+          <Link href={appRoute.dashboard} className={secondaryButtonClassName}>
+            ダッシュボードへ
+          </Link>
+          <a
+            href="https://github.com/QuietBriony/world-toto-lab/blob/main/docs/DEVELOPMENT.md"
+            target="_blank"
+            rel="noreferrer"
+            className={buttonClassName}
+          >
+            設定手順を見る
+          </a>
+        </div>
+      }
     >
       <div className="space-y-3 text-sm leading-7 text-slate-700">
         <p>
           `.env.local` に `NEXT_PUBLIC_SUPABASE_URL` と
           `NEXT_PUBLIC_SUPABASE_ANON_KEY` を設定してください。
+        </p>
+        <p>
+          ローカル確認では `npm run check:supabase` が `.env.local` を読みます。
+          GitHub Pages の build では同じ値を Actions secrets に入れてください。
+        </p>
+        <p>
+          `NEXT_PUBLIC_*` は public client 用です。`service_role` や secret key は入れないでください。
         </p>
         <p>
           初回セットアップ用 SQL は
@@ -70,14 +92,25 @@ export function ErrorNotice({
       title="読み込みに失敗しました"
       description="接続情報や Supabase 側のテーブル構成を確認してください。"
       actions={
-        onRetry ? (
-          <button type="button" className={buttonClassName} onClick={onRetry}>
-            再読み込み
-          </button>
-        ) : null
+        <div className="flex flex-wrap gap-2">
+          <Link href={appRoute.dashboard} className={secondaryButtonClassName}>
+            ダッシュボードへ
+          </Link>
+          {onRetry ? (
+            <button type="button" className={buttonClassName} onClick={onRetry}>
+              再読み込み
+            </button>
+          ) : null}
+        </div>
       }
     >
-      <p className="text-sm text-rose-700">{error}</p>
+      <div className="space-y-3">
+        <p className="text-sm text-rose-700">{error}</p>
+        <p className="text-sm leading-6 text-slate-600">
+          実運用前の切り分けは `npm run check:supabase` と、実 Round ID 付きの
+          `npm run check:pages` から見ると早いです。
+        </p>
+      </div>
     </SectionCard>
   );
 }
@@ -128,19 +161,45 @@ export function RoundMissingNotice({
 }
 
 export function RoundRequiredNotice() {
+  const { data } = useDashboardData();
+  const latestRound = data?.rounds[0] ?? null;
+
   return (
     <SectionCard
       title="先にラウンドを開いてください"
       description="この画面は単独では使えません。ダッシュボードから対象ラウンドを開くと、そのまま続きに進めます。"
       actions={
-        <Link href={appRoute.dashboard} className={secondaryButtonClassName}>
-          ダッシュボードへ
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link href={appRoute.dashboard} className={secondaryButtonClassName}>
+            ダッシュボードへ
+          </Link>
+          {latestRound ? (
+            <Link
+              href={buildRoundHref(appRoute.workspace, latestRound.id)}
+              className={buttonClassName}
+            >
+              直近の回を開く
+            </Link>
+          ) : (
+            <Link href={`${appRoute.dashboard}#create-round`} className={buttonClassName}>
+              回を作る
+            </Link>
+          )}
+        </div>
       }
     >
       <p className="text-sm text-slate-600">
         まずダッシュボードでラウンドを作成するか、既存ラウンドの「ラウンド詳細」を開いてください。
       </p>
+      {latestRound ? (
+        <p className="mt-2 text-sm text-slate-500">
+          直近の本番回: {latestRound.title}
+        </p>
+      ) : (
+        <p className="mt-2 text-sm text-slate-500">
+          Round ID は URL の `?round=&lt;id&gt;` で引き継ぎます。手で path を足す必要はありません。
+        </p>
+      )}
     </SectionCard>
   );
 }
