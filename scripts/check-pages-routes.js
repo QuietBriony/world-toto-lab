@@ -36,6 +36,7 @@ async function main() {
   );
   const roundId = process.env.WORLD_TOTO_LAB_ROUND_ID || "";
   const userId = process.env.WORLD_TOTO_LAB_USER_ID || "";
+  const requireRound = process.env.WORLD_TOTO_LAB_REQUIRE_ROUND === "1";
 
   const routes = [
     buildUrl(baseUrl, "/", {}),
@@ -83,6 +84,14 @@ async function main() {
     );
   }
 
+  if (requireRound && !roundId) {
+    console.error("[world-toto-lab] pages route check");
+    console.error(`baseUrl=${baseUrl}`);
+    console.error("ERROR: WORLD_TOTO_LAB_REQUIRE_ROUND=1 but WORLD_TOTO_LAB_ROUND_ID is not set.");
+    console.error("Set WORLD_TOTO_LAB_ROUND_ID to a real production round id before running a full operational smoke.");
+    process.exit(2);
+  }
+
   console.log("[world-toto-lab] pages route check");
   console.log(`baseUrl=${baseUrl}`);
   if (roundId) {
@@ -93,7 +102,11 @@ async function main() {
   }
   if (userId) {
     console.log(`userId=${userId}`);
+  } else if (roundId) {
+    console.log("userId=<not set>");
+    console.log("note=user が必要な画面は user query なしでも 200 を確認します。実運用前は WORLD_TOTO_LAB_USER_ID 付きでも確認してください");
   }
+  console.log(`strictRound=${requireRound ? "on" : "off"}`);
   console.log("");
 
   const results = [];

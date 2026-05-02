@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 
@@ -227,7 +228,7 @@ function PickRoomPageContent() {
     ? `${data.round.matches.length}/${data.round.matches.length}`
     : `${dataQualitySummary.metrics.find((metric) => metric.label === "モデル確率")?.filled ?? 0}/${data.round.matches.length}`;
   const evModeLabel = dataQualitySummary.strictEvReady
-    ? "実EV"
+    ? "EV参考"
     : data.round.evAssumption?.totalSalesYen
       ? "Proxy"
       : "未計算";
@@ -301,6 +302,22 @@ function PickRoomPageContent() {
       });
       await refresh();
       setActionMessage("コメントを保存しました。");
+    } catch (nextError) {
+      setActionError(errorMessage(nextError));
+    } finally {
+      setBusyKey(null);
+    }
+  };
+
+  const handleRefreshCandidates = async () => {
+    setBusyKey("refresh");
+    setActionError(null);
+    setActionMessage(null);
+
+    try {
+      await refreshCandidateTicketsForRound({ roundId: data.round.id });
+      await refresh();
+      setActionMessage("候補カードを最新データから更新しました。");
     } catch (nextError) {
       setActionError(errorMessage(nextError));
     } finally {
@@ -391,9 +408,36 @@ function PickRoomPageContent() {
         }
       >
         {candidateTickets.length === 0 ? (
-          <p className="text-sm leading-6 text-slate-600">
-            まだ候補カードがありません。試合データやモデル確率をそろえてから再読み込みしてください。
-          </p>
+          <div className="rounded-[24px] border border-dashed border-slate-300 bg-slate-50/90 px-5 py-5">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge tone="amber">候補なし</Badge>
+              <Badge tone={dataQualitySummary.strictEvReady ? "teal" : "sky"}>
+                {evModeLabel}
+              </Badge>
+            </div>
+            <p className="mt-3 text-sm leading-6 text-slate-600">
+              まだ候補カードがありません。試合データが入っていれば、この場で王道・公式人気・人力推し・Proxy候補を再生成できます。
+              モデル確率や公式人気が足りない場合は、Data Quality Card の不足を見てから試合編集へ進んでください。
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => void handleRefreshCandidates()}
+                disabled={busyKey === "refresh"}
+                className={buttonClassName}
+              >
+                {busyKey === "refresh" ? "更新中..." : "候補を更新"}
+              </button>
+              <Link
+                href={buildRoundHref(appRoute.matchEditor, data.round.id, {
+                  match: data.round.matches[0]?.id,
+                })}
+                className={secondaryButtonClassName}
+              >
+                試合編集へ
+              </Link>
+            </div>
+          </div>
         ) : (
           <div className="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory">
             {candidateTickets.map((candidate) => {

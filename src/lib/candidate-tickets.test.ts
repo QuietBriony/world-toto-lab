@@ -253,4 +253,85 @@ describe("candidate tickets", () => {
     expect(summary.allModelProbabilitiesReady).toBe(false);
     expect(summary.message).toContain("モデル確率");
   });
+
+  it("falls back to proxy-only candidate values when EV assumptions are missing", () => {
+    const result = generateCandidateTickets({
+      evAssumption: null,
+      matches: [buildMatch(1), buildMatch(2)],
+      picks: [],
+      roundTitle: "round",
+      scoutReports: [],
+      users: [buildUser()],
+    });
+
+    expect(result.dataQualitySummary.strictEvReady).toBe(false);
+    expect(result.dataQualitySummary.assumptionReady).toBe(false);
+    expect(result.dataQualitySummary.message).toContain("Proxy");
+    expect(result.tickets.length).toBeGreaterThan(0);
+    expect(result.tickets.every((ticket) => ticket.evPercent === null)).toBe(true);
+    expect(result.tickets.every((ticket) => typeof ticket.proxyScore === "number")).toBe(true);
+    expect(result.tickets.every((ticket) => ticket.dataQuality === "proxy_only")).toBe(true);
+  });
+
+  it("marks generated candidates as missing official vote instead of strict EV", () => {
+    const result = generateCandidateTickets({
+      evAssumption: buildAssumption(),
+      matches: [
+        buildMatch(1, { officialVote1: null, officialVote0: null, officialVote2: null }),
+        buildMatch(2),
+      ],
+      picks: [],
+      roundTitle: "round",
+      scoutReports: [],
+      users: [buildUser()],
+    });
+
+    expect(result.dataQualitySummary.strictEvReady).toBe(false);
+    expect(result.dataQualitySummary.allOfficialVotesReady).toBe(false);
+    expect(result.tickets.length).toBeGreaterThan(0);
+    expect(result.tickets.some((ticket) => ticket.dataQuality === "missing_official_vote")).toBe(true);
+    expect(result.tickets.every((ticket) => ticket.evPercent === null)).toBe(true);
+  });
+
+  it("treats invalid probability sums as not ready for strict EV", () => {
+    const summary = buildRoundDataQualitySummary({
+      evAssumption: buildAssumption(),
+      matches: [
+        buildMatch(1, {
+          modelProb1: 0.8,
+          modelProb0: 0.8,
+          modelProb2: 0.8,
+          officialVote1: 0.4,
+          officialVote0: 0.35,
+          officialVote2: 0.25,
+        }),
+      ],
+      picks: [],
+      roundTitle: "round",
+      scoutReports: [],
+      users: [buildUser()],
+    });
+
+    expect(summary.allModelProbabilitiesReady).toBe(true);
+    expect(summary.modelProbabilitySumsValid).toBe(false);
+    expect(summary.strictEvReady).toBe(false);
+    expect(summary.message).toContain("合計");
+  });
+
+  it("supports one-match products without assuming 13 matches", () => {
+    const result = generateCandidateTickets({
+      evAssumption: buildAssumption(),
+      matches: [buildMatch(1, { modelProb2: 0.65, modelProb1: 0.2, modelProb0: 0.15 })],
+      picks: [],
+      roundTitle: "WINNER round",
+      scoutReports: [],
+      users: [buildUser()],
+    });
+
+    expect(result.tickets.length).toBeGreaterThan(0);
+    expect(result.tickets.every((ticket) => ticket.picks.length === 1)).toBe(true);
+    expect(result.tickets.find((ticket) => ticket.label === "王道モデル")?.picks).toEqual([
+      { matchNo: 1, pick: "2" },
+    ]);
+  });
 });

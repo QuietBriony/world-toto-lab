@@ -53,10 +53,13 @@ npm ci
 
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-public-anon-key
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-public-anon-or-publishable-key
 NEXT_PUBLIC_TOTO_OFFICIAL_ROUND_SYNC_FUNCTION_NAME=sync-toto-official-round-list
 NEXT_PUBLIC_BIG_OFFICIAL_WATCH_FUNCTION_NAME=sync-big-official-watch
 ```
+
+`NEXT_PUBLIC_*` はブラウザへ配信される public client 用の値です。  
+`service_role` や secret key は `.env.local`、GitHub Pages build secret、PR ログに入れないでください。
 
 3. 新規 Supabase プロジェクトを使う場合は `supabase/schema.sql` を適用する
 4. 開発サーバーを起動する
@@ -83,6 +86,19 @@ npm run check:pages
 - `check:supabase`: 接続先 Supabase の主要 relation / column を確認
 - `check:pages`: 公開中 GitHub Pages の主要 route を確認
 
+本番運用前の Pages smoke は、実際に使う Round / User を指定して実行します。
+
+```bash
+WORLD_TOTO_LAB_BASE_URL=https://quietbriony.github.io/world-toto-lab
+WORLD_TOTO_LAB_ROUND_ID=<production-round-id>
+WORLD_TOTO_LAB_USER_ID=<optional-user-id>
+WORLD_TOTO_LAB_REQUIRE_ROUND=1
+npm run check:pages
+```
+
+`check:supabase` は `.env.local` と `.env` を読んだあと、process env を確認します。  
+ローカルで失敗する場合は、まず `.env.local` に `NEXT_PUBLIC_SUPABASE_URL` と `NEXT_PUBLIC_SUPABASE_ANON_KEY` があるか確認してください。
+
 ## Verification By Change Type
 
 | 変更内容 | 最低限やること |
@@ -104,6 +120,9 @@ npm run check:pages
 5. 必要な確認を回す
 6. 変更理由、影響範囲、未実施確認を添えて PR を出す
 7. merge で `main` に入れて deploy する
+
+PR では `.github/workflows/ci.yml` が `lint` / `test` / `audit:schema` / `build` を実行します。  
+Supabase 本番疎通と live Pages の実 Round クリック確認は、secret と対象 Round が必要なので、PR本文または検証ログに実施結果を残してください。
 
 ブランチ名の目安:
 

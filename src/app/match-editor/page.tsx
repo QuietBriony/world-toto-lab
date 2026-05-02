@@ -23,6 +23,7 @@ import {
   buttonClassName,
   CollapsibleSectionCard,
   fieldClassName,
+  InfoBanner,
   PageHeader,
   secondaryButtonClassName,
   SectionCard,
@@ -196,6 +197,11 @@ function MatchEditorPageContent() {
   const officialSummary = summarizePercentGroup(probabilityDraft.official);
   const marketSummary = summarizePercentGroup(probabilityDraft.market);
   const modelSummary = summarizePercentGroup(probabilityDraft.model);
+  const probabilityWarnings = [
+    { label: "公式人気", summary: officialSummary },
+    { label: "市場", summary: marketSummary },
+    { label: "AI", summary: modelSummary },
+  ].filter((entry) => entry.summary.allFilled && !entry.summary.closeToHundred);
   const currentFormScope = match?.id ?? "none";
   const hasVisibleUnsavedChanges = dirtyScope === currentFormScope;
   const visibleSubmitError =
@@ -706,6 +712,24 @@ function MatchEditorPageContent() {
                 badge={<Badge tone="sky">詳細</Badge>}
                 defaultOpen={!hasOfficialInputs && !hasMarketInputs && !hasAiInputs}
               >
+                {probabilityWarnings.length > 0 ? (
+                  <InfoBanner
+                    tone="amber"
+                    title="確率合計を確認してください"
+                    body={
+                      <div className="space-y-2">
+                        <p>
+                          {probabilityWarnings
+                            .map((entry) => `${entry.label} ${entry.summary.total.toFixed(1)}%`)
+                            .join(" / ")}
+                          {" "}です。保存はできますが、候補カードとEV/Proxyの参考値がぶれやすくなります。
+                        </p>
+                        <p>3項目を入力する場合は、合計がほぼ100%になるように調整してください。</p>
+                      </div>
+                    }
+                  />
+                ) : null}
+
                 <div className="grid gap-4 md:grid-cols-3">
                   {[
                     {

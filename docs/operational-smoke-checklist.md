@@ -10,8 +10,9 @@
 ## 事前確認
 
 1. GitHub Pages 最新 deploy が success
-2. `npm run check:supabase` で `critical failures: 0`
-3. 対象 Round ID を 1 本決める
+2. `.env.local` または GitHub Actions secrets に `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` が入っている
+3. `npm run check:supabase` で `critical failures: 0`
+4. 対象 Round ID と、可能なら User ID を 1 本決める
 
 ## 自動スモーク
 
@@ -25,8 +26,20 @@ npm run check:pages
 WORLD_TOTO_LAB_BASE_URL=https://quietbriony.github.io/world-toto-lab
 WORLD_TOTO_LAB_ROUND_ID=<いま使う roundId>
 WORLD_TOTO_LAB_USER_ID=<optional-user-id>
+WORLD_TOTO_LAB_REQUIRE_ROUND=1
 npm run check:pages
 ```
+
+`WORLD_TOTO_LAB_REQUIRE_ROUND=1` を付けると、Round ID 未指定の軽量 route check ではなく、実 Round 導線の確認として扱います。  
+User ID は未指定でも 200 確認はできますが、実運用前は友人 1 人分の ID を入れて `Simple View` / `Friend Pick Room` の URL 復元も確認してください。
+
+Supabase 側は次で確認します。
+
+```bash
+npm run check:supabase
+```
+
+ローカルで `Supabase public client environment is not configured` が出た場合は、`.env.example` を `.env.local` にコピーし、public client 用の URL と anon/publishable key を入れてから再実行します。`service_role` は入れません。
 
 ## 手動クリック確認
 
@@ -56,6 +69,7 @@ npm run check:pages
 - `Simple View`
 - `Friend Pick Room`
 - 上記導線が反応し、URL に `round=<roundId>` が残る
+- 結果入力済みの回なら `振り返りへ` が見え、`review?round=<roundId>` へ進める
 
 ### 3. W杯日程から準備する
 
@@ -89,10 +103,12 @@ npm run check:pages
 ### 6. Simple View
 
 - 画面が真っ白にならない
+- メンバー切り替え後も URL に `round=<roundId>&user=<userId>` が残る
 - `Friend Pick Room` に行ける
 - `Advanced View` に戻れる
 - `WINNER` / 1試合回なら `WINNER Value` が見える
 - 1 / 0 / 2 ボタンが押せる
+- 保存後に保存メッセージまたは入力済み数の更新が見える
 
 ### 7. Friend Pick Room
 
@@ -101,6 +117,7 @@ npm run check:pages
 - `WINNER` / 1試合回なら `WINNER Value` に行ける
 - メンバー切り替えボタンが押せる
 - `Data Quality Card` が見える
+- 候補カードの `これ推し / 迷う / パス / 自分はこれで買った / コメント` が保存できる
 
 ### 8. WINNER Value Board
 
@@ -131,6 +148,8 @@ npm run check:pages
   - その後 `npm run check:supabase` を再実行
 - route は 200 だが中身が変
   - `workspace?round=<id>&debug=1` で Debug Panel を見る
+- `check:pages` が軽量確認だけで終わる
+  - `WORLD_TOTO_LAB_REQUIRE_ROUND=1` と `WORLD_TOTO_LAB_ROUND_ID=<id>` を付けて再実行する
 
 ## まだ手動で見るべき項目
 

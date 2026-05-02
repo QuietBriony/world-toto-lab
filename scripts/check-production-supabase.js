@@ -390,6 +390,10 @@ const ENV_FILES = [
   path.join(process.cwd(), ".env.local"),
   path.join(process.cwd(), ".env"),
 ];
+const REQUIRED_ENV_KEYS = [
+  "NEXT_PUBLIC_SUPABASE_URL",
+  "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+];
 
 function loadDotEnv(pathName) {
   if (!fs.existsSync(pathName)) {
@@ -427,7 +431,25 @@ function loadConfig() {
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!url || !anon) {
-    console.error("ERROR: NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY must be set.");
+    console.error("ERROR: Supabase public client environment is not configured.");
+    console.error("");
+    console.error("Required variables:");
+    REQUIRED_ENV_KEYS.forEach((key) => {
+      console.error(`- ${key}`);
+    });
+    console.error("");
+    console.error("The script checks these local files before reading process.env:");
+    ENV_FILES.forEach((filePath) => {
+      console.error(`- ${path.relative(process.cwd(), filePath)}${fs.existsSync(filePath) ? " (found)" : " (missing)"}`);
+    });
+    console.error("");
+    console.error("Local setup:");
+    console.error("1. Copy .env.example to .env.local.");
+    console.error("2. Fill NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY with the same public values used by GitHub Pages.");
+    console.error("3. Run npm run check:supabase again.");
+    console.error("");
+    console.error("GitHub Actions setup:");
+    console.error("- Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY as repository Actions secrets.");
     process.exit(2);
   }
 

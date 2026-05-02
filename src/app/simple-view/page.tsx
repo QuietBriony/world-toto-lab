@@ -507,7 +507,7 @@ function SimpleViewPageContent() {
                 <div className="flex flex-wrap gap-2">
                   <Badge tone="slate">{ticket.label}</Badge>
                   <Badge tone={ticket.evPercent !== null ? "teal" : "sky"}>
-                    {ticket.evPercent !== null ? `推定EV ${ticket.evPercent.toFixed(0)}%` : `Proxy ${ticket.proxyScore?.toFixed(2) ?? "—"}`}
+                    {ticket.evPercent !== null ? `参考EV ${ticket.evPercent.toFixed(0)}%` : `Proxy ${ticket.proxyScore?.toFixed(2) ?? "—"}`}
                   </Badge>
                 </div>
                 <p className="mt-3 font-mono text-sm tracking-[0.24em] text-slate-900">

@@ -1,8 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState, type FormEvent } from "react";
 
+import {
+  CandidateComparisonTable,
+  buildCandidateVoteSummaryMap,
+} from "@/components/app/friend-pick-room";
 import {
   RouteGlossaryCard,
   RoundProgressCallout,
@@ -24,6 +29,7 @@ import {
   StatCard,
   textAreaClassName,
 } from "@/components/ui";
+import { sortCandidateTickets } from "@/lib/candidate-tickets";
 import {
   actualIncludesOutcome,
   advantageBucketLabel,
@@ -34,7 +40,7 @@ import {
   roundStatusOptions,
 } from "@/lib/domain";
 import { nullableString, parseOutcome, parseRoundStatus, stringValue } from "@/lib/forms";
-import { appRoute, getSingleSearchParam } from "@/lib/round-links";
+import { appRoute, buildRoundHref, getSingleSearchParam } from "@/lib/round-links";
 import { addReviewNote, saveResults } from "@/lib/repository";
 import { buildReviewSummary } from "@/lib/review";
 import { isSupabaseConfigured } from "@/lib/supabase";
@@ -110,6 +116,31 @@ function ReviewPageContent() {
         };
       })()
     : null;
+  const candidateTickets = data ? sortCandidateTickets(data.round.candidateTickets) : [];
+  const candidateVoteSummary = buildCandidateVoteSummaryMap(data?.round.candidateVotes ?? []);
+  const candidateReviewRows = data
+    ? candidateTickets
+        .map((ticket) => {
+          const hits = data.round.matches.reduce((count, match) => {
+            const pick = ticket.picks.find((entry) => entry.matchNo === match.matchNo)?.pick;
+            return pick && actualIncludesOutcome(match, [pick]) ? count + 1 : count;
+          }, 0);
+          const resolved = data.round.matches.filter((match) => match.actualResult !== null).length;
+
+          return {
+            hits,
+            resolved,
+            ticket,
+          };
+        })
+        .sort((left, right) => {
+          if (right.hits !== left.hits) {
+            return right.hits - left.hits;
+          }
+
+          return (right.ticket.humanAlignmentScore ?? 0) - (left.ticket.humanAlignmentScore ?? 0);
+        })
+    : [];
 
   const handleSaveResults = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -244,6 +275,50 @@ function ReviewPageContent() {
               />
             </section>
           ) : null}
+
+          <SectionCard
+            title="候補カードの振り返り"
+            description="共有した王道・人力・EV/Proxy候補が、結果入力後にどれだけ拾えていたかを確認します。"
+            actions={
+              <Link
+                href={buildRoundHref(appRoute.pickRoom, data.round.id, { user: data.users[0]?.id })}
+                className={buttonClassName}
+              >
+                候補カードへ
+              </Link>
+            }
+          >
+            {candidateReviewRows.length === 0 ? (
+              <div className="rounded-[24px] border border-dashed border-slate-300 bg-slate-50/90 px-5 py-5">
+                <div className="flex flex-wrap gap-2">
+                  <Badge tone="amber">候補なし</Badge>
+                  <Badge tone="slate">先に候補生成</Badge>
+                </div>
+                <p className="mt-3 text-sm leading-6 text-slate-600">
+                  候補カードがまだないため、結果との比較はできません。候補カード画面を開くと、入力済みデータから候補を更新できます。
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="grid gap-4 md:grid-cols-3">
+                  {candidateReviewRows.slice(0, 3).map(({ hits, resolved, ticket }) => (
+                    <StatCard
+                      key={ticket.id}
+                      label={ticket.label}
+                      value={`${hits}/${resolved}`}
+                      compact
+                      hint={ticket.warning ?? "候補カードと実結果の一致数"}
+                      tone={ticket.dataQuality === "complete" ? "positive" : "draw"}
+                    />
+                  ))}
+                </div>
+                <CandidateComparisonTable
+                  tickets={candidateTickets}
+                  summaries={candidateVoteSummary}
+                />
+              </div>
+            )}
+          </SectionCard>
 
           <SectionCard
             title="まず見るところ"
