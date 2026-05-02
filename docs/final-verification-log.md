@@ -37,11 +37,14 @@
 - `npm run check:pages`
   - lightweight live Pages route check succeeded
   - failures: 0
+- `npm run check:supabase`
+  - production Supabase public client check succeeded
+  - critical failures: 0
+  - optional failures: 0
+  - checked tables: `users`, `rounds`, `matches`, `picks`, `human_scout_reports`, `round_ev_assumptions`, `fixture_master`, `research_memos`, and optional candidate / official / review tables
 
 ### 未完了 / 残リスク
 
-- `npm run check:supabase` はこのローカル環境に `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` が無く、実DB疎通は未実施。
-  - 改善後のエラーメッセージで `.env.local` と GitHub Actions secrets の設定手順が出ることは確認済み。
 - 実 Round ID / User ID 付きの live Pages smoke は未実施。
   - 実運用前に `WORLD_TOTO_LAB_REQUIRE_ROUND=1` と `WORLD_TOTO_LAB_ROUND_ID=<id>` を付けて再確認する。
 - iPhone実機Safariの手動タップ確認は未実施。
