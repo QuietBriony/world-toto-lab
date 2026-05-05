@@ -112,6 +112,7 @@ describe("candidate tickets", () => {
 
     expect(result.tickets.find((ticket) => ticket.label === "王道モデル")?.picks.map((pick) => pick.pick)).toEqual(["1", "0"]);
     expect(result.tickets.find((ticket) => ticket.label === "公式人気")?.picks.map((pick) => pick.pick)).toEqual(["2", "1"]);
+    expect(result.tickets.some((ticket) => ticket.label === "人気差スポット")).toBe(true);
   });
 
   it("builds human consensus candidate from avgF / avgD rules", () => {

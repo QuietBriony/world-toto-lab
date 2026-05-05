@@ -33,7 +33,7 @@ const CANDIDATE_PRIORITY_ORDER = [
   "EVハンターC",
   "EVハンターD",
   "EVハンターE",
-  "眠ってる期待値",
+  "人気差スポット",
   "引き分け警報",
   "荒れ狙い",
 ] as const;
@@ -738,7 +738,7 @@ function buildEvHunterCandidates(input: {
         picks: state.picks,
         predictorSummaries: input.predictorSummaries,
         rationale:
-          "公式人気と被りにくさ、モデル確率、人力一致を見ながら候補を絞ったEV狙いです。",
+          "公式人気と被りにくさ、モデル確率、人力一致を見ながら候補を絞った人気差ねらいです。",
         strategyType: "ev_hunter",
       }),
     )
@@ -881,7 +881,7 @@ export function generateCandidateTickets(input: {
         buildCandidateTicket({
           dataQualitySummary,
           evAssumption: input.evAssumption,
-          label: "眠ってる期待値",
+          label: "人気差スポット",
           matches: input.matches,
           picks: input.matches.map((match) => {
             const override = sleepingValueOverrideByMatchNo.get(match.matchNo);
