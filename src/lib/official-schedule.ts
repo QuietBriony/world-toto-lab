@@ -415,6 +415,11 @@ function fixtureKey(entry: Pick<OfficialScheduleDraft, "awayTeam" | "homeTeam" |
 
 function parseDateHeader(line: string) {
   const normalized = line.replace(/,/g, "").trim();
+  const isoMatch = normalized.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+  if (isoMatch) {
+    return `${isoMatch[1]}-${isoMatch[2].padStart(2, "0")}-${isoMatch[3].padStart(2, "0")}`;
+  }
+
   const match = normalized.match(
     /^(?:[A-Za-z]+\s+)?(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})$/,
   );
