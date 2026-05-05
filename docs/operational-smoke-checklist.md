@@ -117,7 +117,7 @@ npm run check:supabase
 - `WINNER` / 1試合回なら `WINNER Value` に行ける
 - メンバー切り替えボタンが押せる
 - `Data Quality Card` が見える
-- 候補カードの `これ推し / 迷う / パス / 自分はこれで買った / コメント` が保存できる
+- 候補カードの `これ推し / 迷う / パス / 自分はこれ / コメント` が保存できる
 
 ### 8. WINNER Value Board
 
