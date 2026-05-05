@@ -48,6 +48,25 @@ describe("toto official import parser", () => {
     expect(result.rows[0]?.officialVote2).toBeCloseTo(0.2);
   });
 
+  it("parses quoted comma cells without shifting official vote columns", () => {
+    const result = parseTotoOfficialRoundCsv({
+      sourceText: [
+        "official_match_no,home_team,away_team,kickoff_time,venue,stage,official_vote_1,official_vote_0,official_vote_2",
+        '1,Mexico,South Africa,2026-06-11 19:00,"Mexico City, Stadium","Group A, opener",52,28,20',
+      ].join("\n"),
+    });
+
+    expect(result.warnings).toEqual([]);
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0]).toMatchObject({
+      officialVote1: 0.52,
+      officialVote0: 0.28,
+      officialVote2: 0.2,
+      stage: "Group A, opener",
+      venue: "Mexico City, Stadium",
+    });
+  });
+
   it("warns when official vote totals are far from 1", () => {
     const result = parseTotoOfficialRoundCsv({
       sourceText: [
@@ -109,5 +128,30 @@ describe("toto official import parser", () => {
     expect(normalizeVote("52").normalized).toBeCloseTo(0.52);
     expect(normalizeVote("52%").normalized).toBeCloseTo(0.52);
     expect(normalizeVote("0.52").normalized).toBeCloseTo(0.52);
+  });
+
+  it("normalizes full-width vote rate text", () => {
+    expect(normalizeVote("５２％").normalized).toBeCloseTo(0.52);
+    expect(normalizeVote("０．５２").normalized).toBeCloseTo(0.52);
+  });
+
+  it("rejects out-of-range vote rates instead of keeping invalid probabilities", () => {
+    expect(normalizeVote("-1%")).toMatchObject({
+      normalized: null,
+      warning: "投票率「-1%」は0から100%の範囲で入れてください。",
+    });
+    expect(normalizeVote("1.2").normalized).toBeCloseTo(0.012);
+    expect(normalizeVote("101")).toMatchObject({
+      normalized: null,
+      warning: "投票率「101」は0から100%の範囲で入れてください。",
+    });
+    expect(normalizeVote("120")).toMatchObject({
+      normalized: null,
+      warning: "投票率「120」は0から100%の範囲で入れてください。",
+    });
+    expect(normalizeVote("120%")).toMatchObject({
+      normalized: null,
+      warning: "投票率「120%」は0から100%の範囲で入れてください。",
+    });
   });
 });

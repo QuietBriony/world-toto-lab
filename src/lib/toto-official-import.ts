@@ -2,6 +2,7 @@ import type {
   FixtureMaster,
   TotoOfficialMatchStatus,
 } from "@/lib/types";
+import { splitDelimitedLine } from "@/lib/delimited-text";
 
 export type TotoOfficialImportRow = {
   actualResult: "ONE" | "DRAW" | "TWO" | null;
@@ -37,16 +38,17 @@ function normalizeSearch(value: string | null | undefined) {
     .trim();
 }
 
-function splitLine(line: string) {
-  if (line.includes("\t")) {
-    return line.split("\t").map((part) => part.trim());
-  }
-
-  return line.split(",").map((part) => part.trim());
+function normalizeVoteText(value: string) {
+  return value
+    .replace(/[０-９]/g, (digit) => String.fromCharCode(digit.charCodeAt(0) - 0xfee0))
+    .replace(/[．]/g, ".")
+    .replace(/[％]/g, "%")
+    .trim();
 }
 
 export function normalizeVote(raw: string) {
-  const value = raw.trim();
+  const value = normalizeVoteText(raw);
+  const outOfRangeWarning = `投票率「${raw}」は0から100%の範囲で入れてください。`;
   if (!value) {
     return {
       normalized: null,
@@ -57,8 +59,16 @@ export function normalizeVote(raw: string) {
   if (value.endsWith("%")) {
     const parsed = Number(value.slice(0, -1));
     if (Number.isFinite(parsed)) {
+      const normalized = parsed / 100;
+      if (normalized < 0 || normalized > 1) {
+        return {
+          normalized: null,
+          warning: outOfRangeWarning,
+        };
+      }
+
       return {
-        normalized: parsed / 100,
+        normalized,
         warning: null,
       };
     }
@@ -76,6 +86,13 @@ export function normalizeVote(raw: string) {
     return {
       normalized: parsed / 100,
       warning: `${raw} は百分率とみなして ${parsed / 100} に変換しました。`,
+    };
+  }
+
+  if (parsed < 0 || parsed > 1) {
+    return {
+      normalized: null,
+      warning: outOfRangeWarning,
     };
   }
 
@@ -205,7 +222,7 @@ export function parseTotoOfficialRoundCsv(input: {
   const rows: TotoOfficialImportRow[] = [];
 
   lines.forEach((line, index) => {
-    const cells = splitLine(line);
+    const cells = splitDelimitedLine(line);
     if (index === 0 && cells.join(",").toLowerCase().includes("official_match_no")) {
       return;
     }
