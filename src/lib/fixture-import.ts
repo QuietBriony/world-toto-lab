@@ -1,3 +1,5 @@
+import { splitDelimitedLine } from "@/lib/delimited-text";
+
 export type FixtureImportRow = {
   adminNote: string | null;
   awayTeam: string;
@@ -24,6 +26,7 @@ const headerNames = new Set([
   "time",
   "日時",
   "開始",
+  "開始日時",
   "ホーム",
   "home",
   "アウェイ",
@@ -35,18 +38,6 @@ const headerNames = new Set([
   "メモ",
   "note",
 ]);
-
-function splitLine(line: string) {
-  if (line.includes("\t")) {
-    return line.split("\t").map((part) => part.trim());
-  }
-
-  if (line.includes("|")) {
-    return line.split("|").map((part) => part.trim());
-  }
-
-  return line.split(",").map((part) => part.trim());
-}
 
 function looksLikeHeader(cells: string[]) {
   return cells.every((cell) => headerNames.has(cell.toLowerCase().replace(/\s+/g, "")));
@@ -104,7 +95,7 @@ export function parseFixtureImportText(input: string): ParseFixtureImportResult 
   let sequenceMatchNo = 1;
 
   lines.forEach((line, index) => {
-    const cells = splitLine(line);
+    const cells = splitDelimitedLine(line);
 
     if (index === 0 && looksLikeHeader(cells)) {
       return;

@@ -2,6 +2,7 @@ import type {
   FixtureMaster,
   TotoOfficialMatchStatus,
 } from "@/lib/types";
+import { splitDelimitedLine } from "@/lib/delimited-text";
 
 export type TotoOfficialImportRow = {
   actualResult: "ONE" | "DRAW" | "TWO" | null;
@@ -35,14 +36,6 @@ function normalizeSearch(value: string | null | undefined) {
     .replace(/\s+/g, " ")
     .replace(/[‐‑‒–—―-]/g, "-")
     .trim();
-}
-
-function splitLine(line: string) {
-  if (line.includes("\t")) {
-    return line.split("\t").map((part) => part.trim());
-  }
-
-  return line.split(",").map((part) => part.trim());
 }
 
 export function normalizeVote(raw: string) {
@@ -205,7 +198,7 @@ export function parseTotoOfficialRoundCsv(input: {
   const rows: TotoOfficialImportRow[] = [];
 
   lines.forEach((line, index) => {
-    const cells = splitLine(line);
+    const cells = splitDelimitedLine(line);
     if (index === 0 && cells.join(",").toLowerCase().includes("official_match_no")) {
       return;
     }

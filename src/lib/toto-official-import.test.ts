@@ -48,6 +48,25 @@ describe("toto official import parser", () => {
     expect(result.rows[0]?.officialVote2).toBeCloseTo(0.2);
   });
 
+  it("parses quoted comma cells without shifting official vote columns", () => {
+    const result = parseTotoOfficialRoundCsv({
+      sourceText: [
+        "official_match_no,home_team,away_team,kickoff_time,venue,stage,official_vote_1,official_vote_0,official_vote_2",
+        '1,Mexico,South Africa,2026-06-11 19:00,"Mexico City, Stadium","Group A, opener",52,28,20',
+      ].join("\n"),
+    });
+
+    expect(result.warnings).toEqual([]);
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0]).toMatchObject({
+      officialVote1: 0.52,
+      officialVote0: 0.28,
+      officialVote2: 0.2,
+      stage: "Group A, opener",
+      venue: "Mexico City, Stadium",
+    });
+  });
+
   it("warns when official vote totals are far from 1", () => {
     const result = parseTotoOfficialRoundCsv({
       sourceText: [
