@@ -36,7 +36,7 @@ const voteLabel: Record<CandidateVoteValue, string> = {
   like: "これ推し",
   maybe: "迷う",
   pass: "パス",
-  bought_myself: "自分はこれで買った",
+  bought_myself: "自分はこれ",
 };
 
 const candidateStrategyLabel: Record<CandidateStrategyType, string> = {
@@ -285,7 +285,7 @@ export function CandidateCard(props: {
         <Badge tone="slate">推し {props.voteSummary.like}</Badge>
         <Badge tone="slate">迷い {props.voteSummary.maybe}</Badge>
         <Badge tone="slate">パス {props.voteSummary.pass}</Badge>
-        <Badge tone="slate">購入済 {props.voteSummary.boughtMyself}</Badge>
+        <Badge tone="slate">自分票 {props.voteSummary.boughtMyself}</Badge>
         <Badge tone="slate">コメント {props.voteSummary.comments}</Badge>
       </div>
 
