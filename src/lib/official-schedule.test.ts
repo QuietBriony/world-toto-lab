@@ -26,6 +26,51 @@ describe("official schedule parser", () => {
     expect(result.fixtures[0]?.venue).toBe("Mexico City Stadium");
   });
 
+  it("accepts abbreviated weekday and month date headers", () => {
+    const result = parseOfficialScheduleText({
+      sourceText: [
+        "Thu, 11 Jun 2026",
+        "Mexico v South Africa - Group A – Mexico City Stadium",
+        "Fri, 12 Sept 2026",
+        "Canada v Bosnia and Herzegovina - Group B – Toronto Stadium",
+      ].join("\n"),
+    });
+
+    expect(result.fixtures).toHaveLength(2);
+    expect(result.fixtures[0]?.matchDate).toBe("2026-06-11");
+    expect(result.fixtures[1]?.matchDate).toBe("2026-09-12");
+  });
+
+  it("accepts unambiguous iso-like date headers", () => {
+    const result = parseOfficialScheduleText({
+      sourceText: [
+        "2026/06/11",
+        "Mexico v South Africa - Group A – Mexico City Stadium",
+        "2026-06-12",
+        "Canada v Bosnia and Herzegovina - Group B – Toronto Stadium",
+      ].join("\n"),
+    });
+
+    expect(result.fixtures).toHaveLength(2);
+    expect(result.fixtures[0]?.matchDate).toBe("2026-06-11");
+    expect(result.fixtures[1]?.matchDate).toBe("2026-06-12");
+  });
+
+  it("accepts unambiguous Japanese date headers", () => {
+    const result = parseOfficialScheduleText({
+      sourceText: [
+        "2026年6月11日",
+        "Mexico v South Africa - Group A – Mexico City Stadium",
+        "2026年06月12日",
+        "Canada v Bosnia and Herzegovina - Group B – Toronto Stadium",
+      ].join("\n"),
+    });
+
+    expect(result.fixtures).toHaveLength(2);
+    expect(result.fixtures[0]?.matchDate).toBe("2026-06-11");
+    expect(result.fixtures[1]?.matchDate).toBe("2026-06-12");
+  });
+
   it("supports v, vs, and 対 separators", () => {
     const result = parseOfficialScheduleText({
       sourceText: [

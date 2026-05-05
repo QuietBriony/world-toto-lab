@@ -415,6 +415,16 @@ function fixtureKey(entry: Pick<OfficialScheduleDraft, "awayTeam" | "homeTeam" |
 
 function parseDateHeader(line: string) {
   const normalized = line.replace(/,/g, "").trim();
+  const isoMatch = normalized.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+  if (isoMatch) {
+    return `${isoMatch[1]}-${isoMatch[2].padStart(2, "0")}-${isoMatch[3].padStart(2, "0")}`;
+  }
+
+  const japaneseDateMatch = normalized.match(/^(\d{4})年\s*(\d{1,2})月\s*(\d{1,2})日$/);
+  if (japaneseDateMatch) {
+    return `${japaneseDateMatch[1]}-${japaneseDateMatch[2].padStart(2, "0")}-${japaneseDateMatch[3].padStart(2, "0")}`;
+  }
+
   const match = normalized.match(
     /^(?:[A-Za-z]+\s+)?(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})$/,
   );
@@ -424,17 +434,29 @@ function parseDateHeader(line: string) {
   }
 
   const monthMap: Record<string, string> = {
+    jan: "01",
     january: "01",
+    feb: "02",
     february: "02",
+    mar: "03",
     march: "03",
+    apr: "04",
     april: "04",
     may: "05",
+    jun: "06",
     june: "06",
+    jul: "07",
     july: "07",
+    aug: "08",
     august: "08",
+    sep: "09",
+    sept: "09",
     september: "09",
+    oct: "10",
     october: "10",
+    nov: "11",
     november: "11",
+    dec: "12",
     december: "12",
   };
   const month = monthMap[match[2].toLowerCase()];
