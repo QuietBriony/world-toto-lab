@@ -515,7 +515,6 @@ export default function DashboardPage() {
     carryoverYen: featuredBigPreset.carryoverYen,
     returnRate: featuredBigPreset.returnRatePercent / 100,
     salesYen: featuredBigPreset.salesYen,
-    spendYen: null,
   });
   const featuredBigHeat = classifyBigHeatBand(featuredBigSummary);
   const featuredBigHref = buildHref(appRoute.bigCarryover, {

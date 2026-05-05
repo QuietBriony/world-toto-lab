@@ -27,7 +27,6 @@ export type BigCarryoverSummary = {
   breakEvenCarryoverYen: number | null;
   breakEvenGapYen: number | null;
   carryoverUplift: number | null;
-  expectedProfitYen: number | null;
   naiveCarryPressure: number | null;
   overBreakEven: number | null;
   overReturnRate: number | null;
@@ -71,11 +70,9 @@ function calculateBigCarryoverSummary(input: {
   carryoverYen: number | null;
   returnRate: number;
   salesYen: number | null;
-  spendYen: number | null;
 }): BigCarryoverSummary {
   const salesYen = isKnownPositiveNumber(input.salesYen) ? input.salesYen : null;
   const carryoverYen = isKnownNumber(input.carryoverYen) ? input.carryoverYen : null;
-  const spendYen = isKnownNumber(input.spendYen) ? input.spendYen : null;
   const returnRate = isKnownNumber(input.returnRate) ? input.returnRate : 0.5;
 
   if (salesYen === null || carryoverYen === null) {
@@ -84,7 +81,6 @@ function calculateBigCarryoverSummary(input: {
       breakEvenCarryoverYen: salesYen !== null ? salesYen * (1 - returnRate) : null,
       breakEvenGapYen: null,
       carryoverUplift: null,
-      expectedProfitYen: null,
       naiveCarryPressure: null,
       overBreakEven: null,
       overReturnRate: null,
@@ -97,15 +93,12 @@ function calculateBigCarryoverSummary(input: {
   const breakEvenGapYen = carryoverYen - breakEvenCarryoverYen;
   const overBreakEven = approxEvMultiple - 1;
   const overReturnRate = approxEvMultiple - returnRate;
-  const expectedProfitYen =
-    spendYen !== null ? spendYen * (approxEvMultiple - 1) : null;
 
   return {
     approxEvMultiple,
     breakEvenCarryoverYen,
     breakEvenGapYen,
     carryoverUplift,
-    expectedProfitYen,
     naiveCarryPressure: approxEvMultiple,
     overBreakEven,
     overReturnRate,
@@ -518,9 +511,6 @@ export function parseBigOfficialWatchHtml(input: {
 
 export function buildBigOfficialWatch(
   snapshot: BigOfficialSnapshot,
-  options: {
-    spendYen?: number;
-  } = {},
 ) {
   const eventType: BigEventType =
     snapshot.carryoverYen > 0 ? "carryover_event" : "high_return_watch";
@@ -529,7 +519,6 @@ export function buildBigOfficialWatch(
     carryoverYen: snapshot.carryoverYen,
     returnRate: snapshot.returnRate,
     salesYen: snapshot.totalSalesYen,
-    spendYen: options.spendYen ?? 10_000,
   });
   const heatBand = classifyBigHeatBand(summary);
   const eventSnapshot = buildBigCarryoverEventSnapshot({
@@ -598,11 +587,8 @@ export function pickFeaturedBigOfficialSnapshot(snapshots: BigOfficialSnapshot[]
 
 export function buildBigCarryoverQueryFromOfficialSnapshot(
   snapshot: BigOfficialSnapshot,
-  options: {
-    spendYen?: number;
-  } = {},
 ) {
-  const watch = buildBigOfficialWatch(snapshot, options);
+  const watch = buildBigOfficialWatch(snapshot);
   const productDefaults = bigOfficialCarryoverQueryDefaults[snapshot.productKey];
 
   return {
