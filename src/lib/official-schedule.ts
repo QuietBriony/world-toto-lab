@@ -420,6 +420,11 @@ function parseDateHeader(line: string) {
     return `${isoMatch[1]}-${isoMatch[2].padStart(2, "0")}-${isoMatch[3].padStart(2, "0")}`;
   }
 
+  const japaneseDateMatch = normalized.match(/^(\d{4})年\s*(\d{1,2})月\s*(\d{1,2})日$/);
+  if (japaneseDateMatch) {
+    return `${japaneseDateMatch[1]}-${japaneseDateMatch[2].padStart(2, "0")}-${japaneseDateMatch[3].padStart(2, "0")}`;
+  }
+
   const match = normalized.match(
     /^(?:[A-Za-z]+\s+)?(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})$/,
   );
