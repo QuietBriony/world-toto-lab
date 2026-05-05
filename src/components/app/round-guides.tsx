@@ -184,8 +184,8 @@ const pageGlossaryEntries: Partial<Record<GuideRoute, GlossaryEntry[]>> = {
   ],
   [appRoute.goal3Value]: [
     {
-      term: "イベント期待値",
-      body: "売上とキャリーから見た、その回全体のざっくり上振れです。選択肢ごとの厳密EVではありません。",
+      term: "イベント上振れ指標",
+      body: "売上とキャリーから見た、その回全体の粗いproxyです。選択肢ごとの厳密EVではありません。",
       tone: "teal",
     },
     {
@@ -194,8 +194,8 @@ const pageGlossaryEntries: Partial<Record<GuideRoute, GlossaryEntry[]>> = {
       tone: "sky",
     },
     {
-      term: "配当 proxy",
-      body: "イベント期待値を公式投票率で割った参考値です。人気薄ほど大きく出ますが、的中確率モデルは別です。",
+      term: "人気補正 proxy",
+      body: "イベント上振れ指標を公式投票率で割った参考値です。人気薄ほど大きく出ますが、的中確率モデルは別です。",
       tone: "amber",
     },
     {

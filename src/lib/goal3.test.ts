@@ -90,7 +90,7 @@ describe("goal3 helpers", () => {
     expect(deriveGoal3VoteRateUrl(baseEntry.sourceUrl)).toContain("commodityId=02");
   });
 
-  it("builds watch snapshot using event-level EV", () => {
+  it("builds watch snapshot using event-level uplift proxy", () => {
     const watch = buildGoal3EventWatch(baseEntry);
     expect(watch.summary.approxEvMultiple).toBeCloseTo(1.0714, 3);
     expect(watch.requiresAttention).toBe(true);
