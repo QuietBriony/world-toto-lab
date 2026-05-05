@@ -2084,7 +2084,7 @@ export default function DashboardPage() {
           <FeedbackBoard />
 
           <CollapsibleSectionCard
-            title="期待値ウォッチ"
+            title="キャリー圧ウォッチ"
             description="GOAL3 / BIG / WINNER の別商品で、いま見ておきたい回だけをまとめています。ふだんは閉じたままで大丈夫です。"
             badge={
               <Badge
@@ -2105,7 +2105,7 @@ export default function DashboardPage() {
               <div className="rounded-[24px] border border-slate-200 bg-slate-50/90 p-5">
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge tone={featuredGoal3Watch?.requiresAttention ? "teal" : "sky"}>
-                    {featuredGoal3Watch?.requiresAttention ? "期待値大" : "GOAL3 ウォッチ"}
+                    {featuredGoal3Watch?.requiresAttention ? "キャリー圧高め" : "GOAL3 ウォッチ"}
                   </Badge>
                   <Badge tone="slate">{goal3Entries.length}回</Badge>
                 </div>
@@ -2119,7 +2119,7 @@ export default function DashboardPage() {
                 </p>
                 <div className="mt-4 flex flex-wrap gap-3 text-xs text-slate-500">
                   <span>要確認 {goal3AttentionCount}</span>
-                  <span>概算倍率 {formatPercent(featuredGoal3Watch?.summary.approxEvMultiple)}</span>
+                  <span>上振れ指標 {formatPercent(featuredGoal3Watch?.summary.approxEvMultiple)}</span>
                   <span>売上 {formatCurrency(featuredGoal3Entry?.totalSalesYen ?? null)}</span>
                 </div>
                 {goal3Library.error ? (

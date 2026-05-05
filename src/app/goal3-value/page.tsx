@@ -256,19 +256,19 @@ export default function Goal3ValuePage() {
           tone="draw"
         />
         <StatCard
-          label="イベント期待値"
+          label="イベント上振れ指標"
           value={
             featuredEntry
               ? formatPercent(buildGoal3EventWatch(featuredEntry).summary.approxEvMultiple)
               : "—"
           }
-          hint="売上とキャリーから見たざっくり倍率"
+          hint="売上とキャリーから見た粗いproxy"
           tone={featuredEntry && buildGoal3EventWatch(featuredEntry).requiresAttention ? "positive" : "default"}
         />
       </section>
 
       <SectionCard
-        title="期待値ウォッチ"
+        title="キャリー圧ウォッチ"
         description="キャリーが大きい回を先に拾い、GOAL3 専用ページで見ます。選んだ回は URL に残るので、そのまま共有や再訪にも使えます。"
       >
         <div className="grid gap-4 xl:grid-cols-3">
@@ -276,7 +276,7 @@ export default function Goal3ValuePage() {
             <div className="flex flex-wrap items-center gap-2">
               <Badge tone={featuredEntry && buildGoal3EventWatch(featuredEntry).requiresAttention ? "teal" : "sky"}>
                 {featuredEntry && buildGoal3EventWatch(featuredEntry).requiresAttention
-                  ? "期待値大"
+                  ? "キャリー圧高め"
                   : "GOAL3 ウォッチ"}
               </Badge>
               {featuredEntry ? <Badge tone="slate">第{featuredEntry.officialRoundNumber}回</Badge> : null}
@@ -412,7 +412,7 @@ export default function Goal3ValuePage() {
                     </h3>
                     <p className="mt-3 text-sm leading-6 text-slate-600">{watch.snapshot.headline}</p>
                     <div className="mt-4 flex flex-wrap gap-3 text-xs text-slate-500">
-                      <span>概算倍率 {formatPercent(watch.summary.approxEvMultiple)}</span>
+                      <span>上振れ指標 {formatPercent(watch.summary.approxEvMultiple)}</span>
                       <span>売上 {formatCurrency(entry.totalSalesYen)}</span>
                       <span>キャリー {formatCurrency(entry.carryoverYen)}</span>
                     </div>
@@ -426,9 +426,9 @@ export default function Goal3ValuePage() {
             <>
               <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                 <StatCard
-                  label="イベント期待値"
+                  label="イベント上振れ指標"
                   value={formatPercent(selectedWatch?.summary.approxEvMultiple)}
-                  hint="売上とキャリーから見たざっくり倍率"
+                  hint="売上とキャリーから見た粗いproxy"
                   tone={selectedWatch?.requiresAttention ? "positive" : "default"}
                 />
                 <StatCard
@@ -518,7 +518,7 @@ export default function Goal3ValuePage() {
 
                 {voteRows.length === 0 ? (
                   <div className="mt-4 rounded-[24px] border border-slate-200 bg-slate-50/90 px-4 py-4 text-sm text-slate-600">
-                    投票状況を取ると、6チーム x 0/1/2/3+ の人気分布と配当 proxy をここに表示します。
+                    投票状況を取ると、6チーム x 0/1/2/3+ の人気分布と人気補正 proxy をここに表示します。
                   </div>
                 ) : (
                   <>
@@ -543,7 +543,7 @@ export default function Goal3ValuePage() {
                               <div key={`${row.officialMatchNo}-${outcome}`} className="rounded-[18px] border border-white/80 bg-white/92 px-3 py-3 text-sm">
                                 <div className="font-semibold text-slate-900">{outcome}</div>
                                 <div className="mt-1 text-slate-600">人気 {formatPercent(row.votes[outcome], 1)}</div>
-                                <div className="text-slate-500">proxy {formatPercent(row.payoutProxy[outcome], 0)}</div>
+                                <div className="text-slate-500">補正 {formatPercent(row.payoutProxy[outcome], 0)}</div>
                               </div>
                             ))}
                           </div>
@@ -588,7 +588,7 @@ export default function Goal3ValuePage() {
                                 {(["0", "1", "2", "3+"] as Goal3OutcomeValue[]).map((outcome) => (
                                   <td key={`${row.officialMatchNo}-${outcome}`} className="px-3 py-3">
                                     <div className="font-medium text-slate-900">{formatPercent(row.votes[outcome], 1)}</div>
-                                    <div className="text-xs text-slate-500">proxy {formatPercent(row.payoutProxy[outcome], 0)}</div>
+                                    <div className="text-xs text-slate-500">補正 {formatPercent(row.payoutProxy[outcome], 0)}</div>
                                   </td>
                                 ))}
                                 <td className="px-3 py-3">

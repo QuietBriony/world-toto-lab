@@ -176,7 +176,7 @@ export function buildGoal3VoteRows(input: {
     returnRate: input.entry.returnRate,
     salesYen: input.entry.totalSalesYen,
   });
-  const eventEvMultiple = summary.approxEvMultiple;
+  const eventUpliftMultiple = summary.approxEvMultiple;
   const sourceRows = (input.liveEntry?.matches.length ? input.liveEntry.matches : input.entry.matches) as Goal3LikeMatch[];
 
   const teamRows = sourceRows.filter((row) => {
@@ -210,20 +210,20 @@ export function buildGoal3VoteRows(input: {
       opponentTeam,
       payoutProxy: {
         "0":
-          eventEvMultiple !== null && votes["0"] && votes["0"] > 0
-            ? eventEvMultiple / votes["0"]
+          eventUpliftMultiple !== null && votes["0"] && votes["0"] > 0
+            ? eventUpliftMultiple / votes["0"]
             : null,
         "1":
-          eventEvMultiple !== null && votes["1"] && votes["1"] > 0
-            ? eventEvMultiple / votes["1"]
+          eventUpliftMultiple !== null && votes["1"] && votes["1"] > 0
+            ? eventUpliftMultiple / votes["1"]
             : null,
         "2":
-          eventEvMultiple !== null && votes["2"] && votes["2"] > 0
-            ? eventEvMultiple / votes["2"]
+          eventUpliftMultiple !== null && votes["2"] && votes["2"] > 0
+            ? eventUpliftMultiple / votes["2"]
             : null,
         "3+":
-          eventEvMultiple !== null && votes["3+"] && votes["3+"] > 0
-            ? eventEvMultiple / votes["3+"]
+          eventUpliftMultiple !== null && votes["3+"] && votes["3+"] > 0
+            ? eventUpliftMultiple / votes["3+"]
             : null,
       } satisfies Record<Goal3OutcomeValue, number | null>,
       teamName: row.homeTeam,
