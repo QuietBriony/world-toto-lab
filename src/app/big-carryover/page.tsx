@@ -217,7 +217,6 @@ function BigCarryoverPageContent() {
         carryoverYen: numericCarryoverYen,
         returnRate: numericReturnRate ?? 0.5,
         salesYen: numericProjectedFinalSalesYen,
-        spendYen: null,
       }),
     [numericCarryoverYen, numericProjectedFinalSalesYen, numericReturnRate],
   );
@@ -514,7 +513,6 @@ function BigCarryoverPageContent() {
               carryoverYen: preset.carryoverYen,
               returnRate: preset.returnRatePercent / 100,
               salesYen: preset.salesYen,
-              spendYen: null,
             });
             const presetBand = classifyBigHeatBand(presetSummary);
             const presetHref = buildHref(appRoute.bigCarryover, {

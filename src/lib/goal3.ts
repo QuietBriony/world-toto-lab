@@ -99,7 +99,6 @@ export function buildGoal3EventWatch(entry: Goal3LikeEntry) {
     carryoverYen: entry.carryoverYen,
     returnRate: entry.returnRate,
     salesYen: entry.totalSalesYen,
-    spendYen: null,
   });
   const snapshot = buildBigCarryoverEventSnapshot({
     eventLabel: entry.title || "totoGOAL3",
@@ -176,7 +175,6 @@ export function buildGoal3VoteRows(input: {
     carryoverYen: input.entry.carryoverYen,
     returnRate: input.entry.returnRate,
     salesYen: input.entry.totalSalesYen,
-    spendYen: null,
   });
   const eventEvMultiple = summary.approxEvMultiple;
   const sourceRows = (input.liveEntry?.matches.length ? input.liveEntry.matches : input.entry.matches) as Goal3LikeMatch[];

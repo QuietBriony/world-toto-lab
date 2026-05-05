@@ -4,7 +4,6 @@ export type BigCarryoverInput = {
   carryoverYen: number | null;
   returnRate: number;
   salesYen: number | null;
-  spendYen: number | null;
 };
 
 export type BigCarryoverSummary = {
@@ -12,7 +11,6 @@ export type BigCarryoverSummary = {
   breakEvenCarryoverYen: number | null;
   breakEvenGapYen: number | null;
   carryoverUplift: number | null;
-  expectedProfitYen: number | null;
   naiveCarryPressure: number | null;
   overBreakEven: number | null;
   overReturnRate: number | null;
@@ -44,7 +42,6 @@ export type BigCarryoverPreset = {
   id: string;
   returnRatePercent: number;
   salesYen: number;
-  spendYen: number;
 };
 
 export type BigHeatBand = {
@@ -70,7 +67,6 @@ export const bigCarryoverPresets: BigCarryoverPreset[] = [
     id: "break-even-check",
     returnRatePercent: 50,
     salesYen: 8_000_000_000,
-    spendYen: 10_000,
   },
   {
     carryoverYen: 6_000_000_000,
@@ -80,7 +76,6 @@ export const bigCarryoverPresets: BigCarryoverPreset[] = [
     id: "hot-event",
     returnRatePercent: 50,
     salesYen: 8_000_000_000,
-    spendYen: 10_000,
   },
   {
     carryoverYen: 3_200_000_000,
@@ -90,7 +85,6 @@ export const bigCarryoverPresets: BigCarryoverPreset[] = [
     id: "high-return-watch",
     returnRatePercent: 50,
     salesYen: 7_000_000_000,
-    spendYen: 10_000,
   },
 ];
 
@@ -135,7 +129,6 @@ export function calculateBigCarryoverSummary(
 ): BigCarryoverSummary {
   const salesYen = isKnownPositiveNumber(input.salesYen) ? input.salesYen : null;
   const carryoverYen = isKnownNumber(input.carryoverYen) ? input.carryoverYen : null;
-  const spendYen = isKnownNumber(input.spendYen) ? input.spendYen : null;
   const returnRate = isKnownNumber(input.returnRate) ? input.returnRate : 0.5;
 
   if (salesYen === null || carryoverYen === null) {
@@ -144,7 +137,6 @@ export function calculateBigCarryoverSummary(
       breakEvenCarryoverYen: salesYen !== null ? salesYen * (1 - returnRate) : null,
       breakEvenGapYen: null,
       carryoverUplift: null,
-      expectedProfitYen: null,
       naiveCarryPressure: null,
       overBreakEven: null,
       overReturnRate: null,
@@ -157,39 +149,16 @@ export function calculateBigCarryoverSummary(
   const breakEvenGapYen = carryoverYen - breakEvenCarryoverYen;
   const overBreakEven = approxEvMultiple - 1;
   const overReturnRate = approxEvMultiple - returnRate;
-  const expectedProfitYen =
-    spendYen !== null ? spendYen * (approxEvMultiple - 1) : null;
 
   return {
     approxEvMultiple,
     breakEvenCarryoverYen,
     breakEvenGapYen,
     carryoverUplift,
-    expectedProfitYen,
     naiveCarryPressure: approxEvMultiple,
     overBreakEven,
     overReturnRate,
   };
-}
-
-export function buildBigCarryoverScenarioRows(input: {
-  approxEvMultiple: number | null;
-  eventType?: BigEventType;
-  spendOptionsYen?: number[];
-}) {
-  const spendOptions =
-    input.spendOptionsYen ??
-    (input.eventType === "high_return_watch"
-      ? [1_000, 5_000, 10_000, 30_000]
-      : [1_000, 10_000, 50_000, 100_000]);
-
-  return spendOptions.map((spendYen) => ({
-    expectedProfitYen:
-      input.approxEvMultiple !== null
-        ? Math.round(spendYen * (input.approxEvMultiple - 1))
-        : null,
-    spendYen,
-  }));
 }
 
 export function normalizeBigEventType(value: string | null | undefined): BigEventType {
