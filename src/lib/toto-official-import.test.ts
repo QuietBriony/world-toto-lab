@@ -129,4 +129,24 @@ describe("toto official import parser", () => {
     expect(normalizeVote("52%").normalized).toBeCloseTo(0.52);
     expect(normalizeVote("0.52").normalized).toBeCloseTo(0.52);
   });
+
+  it("rejects out-of-range vote rates instead of keeping invalid probabilities", () => {
+    expect(normalizeVote("-1%")).toMatchObject({
+      normalized: null,
+      warning: "投票率「-1%」は0から100%の範囲で入れてください。",
+    });
+    expect(normalizeVote("1.2").normalized).toBeCloseTo(0.012);
+    expect(normalizeVote("101")).toMatchObject({
+      normalized: null,
+      warning: "投票率「101」は0から100%の範囲で入れてください。",
+    });
+    expect(normalizeVote("120")).toMatchObject({
+      normalized: null,
+      warning: "投票率「120」は0から100%の範囲で入れてください。",
+    });
+    expect(normalizeVote("120%")).toMatchObject({
+      normalized: null,
+      warning: "投票率「120%」は0から100%の範囲で入れてください。",
+    });
+  });
 });

@@ -40,6 +40,7 @@ function normalizeSearch(value: string | null | undefined) {
 
 export function normalizeVote(raw: string) {
   const value = raw.trim();
+  const outOfRangeWarning = `投票率「${raw}」は0から100%の範囲で入れてください。`;
   if (!value) {
     return {
       normalized: null,
@@ -50,8 +51,16 @@ export function normalizeVote(raw: string) {
   if (value.endsWith("%")) {
     const parsed = Number(value.slice(0, -1));
     if (Number.isFinite(parsed)) {
+      const normalized = parsed / 100;
+      if (normalized < 0 || normalized > 1) {
+        return {
+          normalized: null,
+          warning: outOfRangeWarning,
+        };
+      }
+
       return {
-        normalized: parsed / 100,
+        normalized,
         warning: null,
       };
     }
@@ -69,6 +78,13 @@ export function normalizeVote(raw: string) {
     return {
       normalized: parsed / 100,
       warning: `${raw} は百分率とみなして ${parsed / 100} に変換しました。`,
+    };
+  }
+
+  if (parsed < 0 || parsed > 1) {
+    return {
+      normalized: null,
+      warning: outOfRangeWarning,
     };
   }
 
