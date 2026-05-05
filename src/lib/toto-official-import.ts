@@ -38,8 +38,16 @@ function normalizeSearch(value: string | null | undefined) {
     .trim();
 }
 
+function normalizeVoteText(value: string) {
+  return value
+    .replace(/[０-９]/g, (digit) => String.fromCharCode(digit.charCodeAt(0) - 0xfee0))
+    .replace(/[．]/g, ".")
+    .replace(/[％]/g, "%")
+    .trim();
+}
+
 export function normalizeVote(raw: string) {
-  const value = raw.trim();
+  const value = normalizeVoteText(raw);
   const outOfRangeWarning = `投票率「${raw}」は0から100%の範囲で入れてください。`;
   if (!value) {
     return {

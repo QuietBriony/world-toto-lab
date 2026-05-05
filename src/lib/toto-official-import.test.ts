@@ -130,6 +130,11 @@ describe("toto official import parser", () => {
     expect(normalizeVote("0.52").normalized).toBeCloseTo(0.52);
   });
 
+  it("normalizes full-width vote rate text", () => {
+    expect(normalizeVote("５２％").normalized).toBeCloseTo(0.52);
+    expect(normalizeVote("０．５２").normalized).toBeCloseTo(0.52);
+  });
+
   it("rejects out-of-range vote rates instead of keeping invalid probabilities", () => {
     expect(normalizeVote("-1%")).toMatchObject({
       normalized: null,
