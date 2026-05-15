@@ -10,6 +10,7 @@ import {
   ErrorNotice,
   LoadingNotice,
 } from "@/components/app/states";
+import { useDataMode } from "@/components/app/data-mode-provider";
 import { FeedbackBoard } from "@/components/feedback-board";
 import {
   ArtBannerPanel,
@@ -128,6 +129,7 @@ type MemberRoundActivity = {
 export default function DashboardPage() {
   const pathname = usePathname();
   const router = useRouter();
+  const dataMode = useDataMode();
   const { data, error, loading, refresh } = useDashboardData();
   const goal3Library = useTotoOfficialRoundLibrary({ productType: "custom" });
   const bigOfficialWatch = useBigOfficialWatch();
@@ -143,6 +145,7 @@ export default function DashboardPage() {
   const [createMatchCount, setCreateMatchCount] = useState(13);
   const requiredMatchCountHint =
     defaultRequiredMatchCount(createProductType) ?? createMatchCount;
+  const sharedCreateEnabled = dataMode.health?.status === "ok";
 
   const handleCreateInitialUsers = async () => {
     setBusy("members");
@@ -165,6 +168,7 @@ export default function DashboardPage() {
 
     try {
       const formData = new FormData(event.currentTarget);
+      const storageMode = stringValue(formData, "storageMode") === "shared" ? "shared" : "local";
       const candidateLimit = parseIntOrNull(stringValue(formData, "candidateLimit"));
       const matchCount = parseIntOrNull(stringValue(formData, "matchCount")) ?? 13;
       const productType = parseProductType(stringValue(formData, "productType"));
@@ -174,6 +178,15 @@ export default function DashboardPage() {
 
       if ((data?.users.length ?? 0) > 0 && participantIds.length === 0) {
         throw new Error("この回で使うメンバーを1人以上選んでください。");
+      }
+
+      if (storageMode === "shared") {
+        if (dataMode.health?.status !== "ok") {
+          throw new Error("Supabaseに接続できないため、共有保存では作成できません。ローカル保存を選んでください。");
+        }
+        dataMode.setMode("shared");
+      } else {
+        dataMode.setMode("local");
       }
 
       if (shouldBootstrapMembers) {
@@ -1823,13 +1836,38 @@ export default function DashboardPage() {
                   />
                 </label>
 
-                <div className="md:col-span-2 flex justify-end">
+                <div className="md:col-span-2 rounded-3xl border border-slate-200 bg-slate-50/88 p-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge tone={sharedCreateEnabled ? "teal" : "amber"}>
+                      {sharedCreateEnabled ? "共有Roundとして作成できます" : "ローカルRoundとして作成"}
+                    </Badge>
+                    <Badge tone={dataMode.mode === "shared" ? "teal" : "sky"}>
+                      現在 {dataMode.mode === "shared" ? "共有保存モード" : dataMode.mode === "demo" ? "デモモード" : "ローカル保存モード"}
+                    </Badge>
+                  </div>
+                  <p className="mt-3 text-sm leading-6 text-slate-600">
+                    Supabaseに接続できる場合は共有保存、接続できない場合や個人作業ではローカル保存で作れます。
+                  </p>
+                </div>
+
+                <div className="md:col-span-2 flex flex-wrap justify-end gap-3">
                   <button
                     type="submit"
+                    name="storageMode"
+                    value="shared"
+                    className={secondaryButtonClassName}
+                    disabled={busy === "round" || !sharedCreateEnabled}
+                  >
+                    {busy === "round" ? "作成中..." : "共有保存で作る"}
+                  </button>
+                  <button
+                    type="submit"
+                    name="storageMode"
+                    value="local"
                     className={buttonClassName}
                     disabled={busy === "round"}
                   >
-                    {busy === "round" ? "作成中..." : "ラウンドを作成"}
+                    {busy === "round" ? "作成中..." : "ローカル保存で作る"}
                   </button>
                 </div>
               </form>

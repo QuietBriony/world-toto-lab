@@ -29,6 +29,8 @@ import {
   buildSupabaseFunctionHeaders,
   requireSupabaseClient,
 } from "@/lib/supabase";
+import { getRuntimeDataMode, shouldUseLocalRepository } from "@/lib/data-mode";
+import * as localRepository from "@/lib/local-repository";
 import { generateAllModeTickets } from "@/lib/tickets";
 import { filterPredictors, isPredictorRole } from "@/lib/users";
 import type { BigOfficialSyncPayload } from "@/lib/big-official";
@@ -1891,6 +1893,10 @@ async function deleteRoundCascade(roundId: string) {
 }
 
 export async function deleteRound(roundId: string) {
+  if (shouldUseLocalRepository()) {
+    return localRepository.localDeleteRound(roundId);
+  }
+
   await deleteRoundCascade(roundId);
 }
 
@@ -1925,6 +1931,10 @@ async function replaceDemoUsers() {
 }
 
 export async function listDashboardData(): Promise<DashboardData> {
+  if (shouldUseLocalRepository()) {
+    return localRepository.localListDashboardData();
+  }
+
   const supabase = requireSupabaseClient();
   const [usersResult, roundsResult, matchesResult, picksResult, reportsResult, notesResult, candidateTicketsResult] =
     await Promise.all([
@@ -2036,6 +2046,10 @@ export async function listDashboardData(): Promise<DashboardData> {
 }
 
 export async function getRoundWorkspace(roundId: string): Promise<RoundWorkspace | null> {
+  if (shouldUseLocalRepository()) {
+    return localRepository.localGetRoundWorkspace(roundId);
+  }
+
   const supabase = requireSupabaseClient();
   const [
     usersResult,
@@ -2214,6 +2228,10 @@ export async function getRoundWorkspace(roundId: string): Promise<RoundWorkspace
 }
 
 export async function createInitialUsers() {
+  if (shouldUseLocalRepository()) {
+    return localRepository.localCreateInitialUsers();
+  }
+
   const supabase = requireSupabaseClient();
   const existingResult = await supabase.from("users").select("*").order("role").order("name");
   throwIfError("Failed to check existing users", existingResult);
@@ -2234,6 +2252,10 @@ export async function createInitialUsers() {
 }
 
 export async function createUser(input: { name: string; role?: UserRole }) {
+  if (shouldUseLocalRepository()) {
+    return localRepository.localCreateUser(input);
+  }
+
   const supabase = requireSupabaseClient();
   const name = input.name.trim();
 
@@ -2254,6 +2276,10 @@ export async function updateUserProfile(input: {
   name: string;
   role: UserRole;
 }) {
+  if (shouldUseLocalRepository()) {
+    return localRepository.localUpdateUserProfile(input);
+  }
+
   const supabase = requireSupabaseClient();
   const name = input.name.trim();
 
@@ -2273,6 +2299,10 @@ export async function updateUserProfile(input: {
 }
 
 export async function deleteUserIfInactive(userId: string) {
+  if (shouldUseLocalRepository()) {
+    return localRepository.localDeleteUserIfInactive(userId);
+  }
+
   const supabase = requireSupabaseClient();
   const [picksResult, reportsResult, notesResult, supportRefsResult] = await Promise.all([
     supabase.from("picks").select("id", { count: "exact", head: true }).eq("user_id", userId),
@@ -2335,6 +2365,10 @@ export async function createRound(input: {
   title: string;
   voidHandling?: VoidHandling;
 }) {
+  if (shouldUseLocalRepository()) {
+    return localRepository.localCreateRound(input);
+  }
+
   const supabase = requireSupabaseClient();
   const defaults = resolveRoundProductDefaults(input);
   const roundResult = await supabase
@@ -2376,6 +2410,10 @@ export async function createRound(input: {
 }
 
 export async function createDemoRound() {
+  if (shouldUseLocalRepository()) {
+    return localRepository.localCreateDemoRound();
+  }
+
   const supabase = requireSupabaseClient();
   const existingResult = await supabase
     .from("rounds")
@@ -2601,6 +2639,10 @@ export async function updateRound(input: {
   title: string;
   voidHandling?: VoidHandling;
 }) {
+  if (shouldUseLocalRepository()) {
+    return localRepository.localUpdateRound(input);
+  }
+
   const supabase = requireSupabaseClient();
   const currentRoundResult = await supabase
     .from("rounds")
@@ -2723,6 +2765,10 @@ export async function updateMatch(input: {
   confidence: number | null;
   recommendedOutcomes: string | null;
 }) {
+  if (shouldUseLocalRepository()) {
+    return localRepository.localUpdateMatch(input);
+  }
+
   const supabase = requireSupabaseClient();
   const result = await supabase
     .from("matches")
@@ -2791,6 +2837,10 @@ export async function bulkUpdateRoundMatches(input: {
     venue: string | null;
   }>;
 }) {
+  if (shouldUseLocalRepository()) {
+    return localRepository.localBulkUpdateRoundMatches(input);
+  }
+
   const supabase = requireSupabaseClient();
   const matchesResult = await supabase
     .from("matches")
@@ -2842,6 +2892,10 @@ export async function estimateRoundAiModel(input: {
   overwriteExisting?: boolean;
   roundId: string;
 }) {
+  if (shouldUseLocalRepository()) {
+    return localRepository.localEstimateRoundAiModel(input);
+  }
+
   const supabase = requireSupabaseClient();
   const [matchesResult, roundResult] = await Promise.all([
     supabase.from("matches").select("*").eq("round_id", input.roundId),
@@ -2916,6 +2970,10 @@ export async function replacePicks(input: {
     support?: PickSupport;
   }>;
 }) {
+  if (shouldUseLocalRepository()) {
+    return localRepository.localReplacePicks(input);
+  }
+
   const supabase = requireSupabaseClient();
   const deleteResult = await supabase
     .from("picks")
@@ -2968,6 +3026,10 @@ export async function replaceScoutReports(input: {
     exceptionNote: string | null;
   }>;
 }) {
+  if (shouldUseLocalRepository()) {
+    return localRepository.localReplaceScoutReports(input);
+  }
+
   const supabase = requireSupabaseClient();
   const deleteResult = await supabase
     .from("human_scout_reports")
@@ -3067,6 +3129,10 @@ export async function replaceGeneratedTickets(input: {
     contrarianScore: number;
   }>;
 }) {
+  if (shouldUseLocalRepository()) {
+    return localRepository.localReplaceGeneratedTickets(input);
+  }
+
   const supabase = requireSupabaseClient();
   const [roundResult, deleteResult] = await Promise.all([
     supabase
@@ -3239,6 +3305,22 @@ async function syncRoundMatches(input: {
   throwIfError("Failed to update active match count", roundResult);
 }
 
+async function sharedRoundExists(roundId: string | null | undefined) {
+  if (!roundId) {
+    return false;
+  }
+
+  const supabase = requireSupabaseClient();
+  const result = await supabase
+    .from("rounds")
+    .select("id")
+    .eq("id", roundId)
+    .limit(1);
+  throwIfError("Failed to verify target round", result);
+
+  return ((result.data as Array<{ id: string }> | null) ?? []).length > 0;
+}
+
 export async function listFixtureMaster(input?: {
   competition?: string | null;
   dataConfidence?: FixtureDataConfidence | null;
@@ -3250,6 +3332,10 @@ export async function listFixtureMaster(input?: {
   teamQuery?: string | null;
   venueQuery?: string | null;
 }) {
+  if (shouldUseLocalRepository()) {
+    return localRepository.localListFixtureMaster(input);
+  }
+
   const supabase = requireSupabaseClient();
   let query = supabase
     .from("fixture_master")
@@ -3304,6 +3390,10 @@ export async function listFixtureMaster(input?: {
 export async function saveFixtureMasterEntries(input: {
   entries: FixtureMasterWriteInput[];
 }) {
+  if (shouldUseLocalRepository()) {
+    return localRepository.localSaveFixtureMasterEntries(input);
+  }
+
   const supabase = requireSupabaseClient();
   if (input.entries.length === 0) {
     return {
@@ -3422,6 +3512,10 @@ export async function createRoundFromFixtures(input: {
   title: string;
   voidHandling?: VoidHandling;
 }) {
+  if (shouldUseLocalRepository()) {
+    return localRepository.localCreateRoundFromFixtures(input);
+  }
+
   const supabase = requireSupabaseClient();
   const fixtureResult = await supabase
     .from("fixture_master")
@@ -3444,8 +3538,9 @@ export async function createRoundFromFixtures(input: {
     throw new Error("Round に使う試合を1つ以上選んでください。");
   }
 
+  const existingRoundId = input.roundId && (await sharedRoundExists(input.roundId)) ? input.roundId : null;
   const roundId =
-    input.roundId ??
+    existingRoundId ??
     (await createRound({
       title: input.title,
       status: input.status,
@@ -3546,6 +3641,16 @@ function buildTotoOfficialRoundLibraryPayload(
 }
 
 export async function syncTotoOfficialRoundListFromOfficial(input: SyncTotoOfficialRoundApiInput) {
+  if (shouldUseLocalRepository()) {
+    return {
+      fetchedAt: new Date().toISOString(),
+      rounds: [],
+      sourceText: null,
+      sourceUrl: input.sourceUrl ?? "https://toto.yahoo.co.jp/schedule/toto",
+      warnings: ["ローカル保存モードでは公式回リスト同期を行いません。JSON取り込みまたは手入力で続行できます。"],
+    } satisfies SyncTotoOfficialRoundListResponse;
+  }
+
   const sourceUrl =
     normalizeSyncRoundValue(input.sourceUrl) || "https://toto.yahoo.co.jp/schedule/toto";
   const functionName =
@@ -3593,6 +3698,10 @@ export async function syncTotoOfficialRoundListFromOfficial(input: SyncTotoOffic
 export async function syncBigOfficialWatchFromOfficial(
   input: SyncBigOfficialWatchApiInput = {},
 ) {
+  if (shouldUseLocalRepository()) {
+    return localRepository.localSyncBigOfficialWatchFromOfficial();
+  }
+
   const sourceUrl =
     normalizeSyncRoundValue(input.sourceUrl) ||
     "https://store.toto-dream.com/dcs/subos/screen/pi02/spin005/PGSPIN00501InitBIGLotInfo.form";
@@ -3794,6 +3903,10 @@ export async function upsertTotoOfficialRoundLibraryFromSync(input: {
   entries: SyncedTotoOfficialRoundEntry[];
   sourceUrl: string | null;
 }) {
+  if (shouldUseLocalRepository()) {
+    return localRepository.localUpsertTotoOfficialRoundLibraryFromSync(input);
+  }
+
   const supabase = requireSupabaseClient();
   const sourceUrl = normalizeSyncRoundValue(input.sourceUrl) || null;
   const warnings: string[] = [];
@@ -3962,6 +4075,10 @@ export async function upsertTotoOfficialRoundLibraryFromSync(input: {
 }
 
 async function getTotoOfficialRoundLibraryEntry(entryId: string) {
+  if (shouldUseLocalRepository()) {
+    return localRepository.localGetTotoOfficialRoundLibraryEntry(entryId);
+  }
+
   const supabase = requireSupabaseClient();
   const result = await supabase
     .from("toto_official_round_library")
@@ -3983,6 +4100,10 @@ export async function listTotoOfficialRoundLibrary(input?: {
   resultStatus?: TotoOfficialResultStatus | null;
   searchQuery?: string | null;
 }) {
+  if (shouldUseLocalRepository()) {
+    return localRepository.localListTotoOfficialRoundLibrary(input);
+  }
+
   const supabase = requireSupabaseClient();
   let query = supabase
     .from("toto_official_round_library")
@@ -4034,6 +4155,10 @@ export async function saveTotoOfficialRoundLibraryEntry(
     id?: string | null;
   },
 ) {
+  if (shouldUseLocalRepository()) {
+    return localRepository.localSaveTotoOfficialRoundLibraryEntry(input);
+  }
+
   const supabase = requireSupabaseClient();
   if (input.rows.length === 0) {
     throw new Error("公式対象試合を1件以上取り込んでください。");
@@ -4063,6 +4188,10 @@ export async function instantiateTotoOfficialRoundLibraryEntry(input: {
   status?: RoundStatus;
   title?: string | null;
 }) {
+  if (shouldUseLocalRepository()) {
+    return localRepository.localInstantiateTotoOfficialRoundLibraryEntry(input);
+  }
+
   const entry = await getTotoOfficialRoundLibraryEntry(input.entryId);
   if (!entry) {
     throw new Error("指定した公式対象回ライブラリが見つかりません。");
@@ -4097,13 +4226,18 @@ export async function instantiateTotoOfficialRoundLibraryEntry(input: {
 }
 
 export async function saveTotoOfficialRoundImport(input: TotoOfficialRoundImportInput) {
+  if (shouldUseLocalRepository()) {
+    return localRepository.localSaveTotoOfficialRoundImport(input);
+  }
+
   const supabase = requireSupabaseClient();
   if (input.rows.length === 0) {
     throw new Error("公式対象試合を1件以上取り込んでください。");
   }
 
+  const existingRoundId = input.roundId && (await sharedRoundExists(input.roundId)) ? input.roundId : null;
   const roundId =
-    input.roundId ??
+    existingRoundId ??
     (await createRound({
       title: input.title ?? input.officialRoundName ?? "公式対象回",
       status: input.status ?? "analyzing",
@@ -4288,6 +4422,10 @@ export async function saveRoundEvAssumption(input: {
   payoutCapYen: number | null;
   note: string | null;
 }) {
+  if (shouldUseLocalRepository()) {
+    return localRepository.localSaveRoundEvAssumption(input);
+  }
+
   const supabase = requireSupabaseClient();
   const result = await supabase.from("round_ev_assumptions").upsert(
     {
@@ -4331,6 +4469,10 @@ export async function replaceCandidateTickets(input: {
     warning: string | null;
   }>;
 }) {
+  if (shouldUseLocalRepository()) {
+    return localRepository.localReplaceCandidateTickets(input);
+  }
+
   const supabase = requireSupabaseClient();
   const existingResult = await supabase
     .from("candidate_tickets")
@@ -4401,6 +4543,10 @@ export async function upsertCandidateVote(input: {
   vote: CandidateVoteValue;
   comment: string | null;
 }) {
+  if (shouldUseLocalRepository()) {
+    return localRepository.localUpsertCandidateVote(input);
+  }
+
   const supabase = requireSupabaseClient();
   const result = await supabase.from("candidate_votes").upsert(
     {
@@ -4430,6 +4576,10 @@ export async function saveResults(input: {
     matchId: string;
   }>;
 }) {
+  if (shouldUseLocalRepository()) {
+    return localRepository.localSaveResults(input);
+  }
+
   const supabase = requireSupabaseClient();
   const updatePromises = input.results.map((entry) =>
     supabase
@@ -4460,6 +4610,10 @@ export async function addReviewNote(input: {
   userId: string | null;
   note: string;
 }) {
+  if (shouldUseLocalRepository()) {
+    return localRepository.localAddReviewNote(input);
+  }
+
   const supabase = requireSupabaseClient();
   const result = await supabase.from("review_notes").insert({
     round_id: input.roundId,
@@ -4485,6 +4639,10 @@ export async function saveResearchMemo(input: {
   team: string | null;
   title: string;
 }) {
+  if (shouldUseLocalRepository()) {
+    return localRepository.localSaveResearchMemo(input);
+  }
+
   const supabase = requireSupabaseClient();
   const payload = {
     confidence: input.confidence,
@@ -4507,7 +4665,453 @@ export async function saveResearchMemo(input: {
 }
 
 export async function deleteResearchMemo(memoId: string) {
+  if (shouldUseLocalRepository()) {
+    return localRepository.localDeleteResearchMemo(memoId);
+  }
+
   const supabase = requireSupabaseClient();
   const result = await supabase.from("research_memos").delete().eq("id", memoId);
   throwIfError("Failed to delete research memo", result);
+}
+
+export async function exportRoundJson(roundId: string) {
+  const workspace = await getRoundWorkspace(roundId);
+  if (!workspace) {
+    throw new Error("JSON export 対象のラウンドが見つかりません。");
+  }
+
+  return localRepository.buildLocalRoundBundle(workspace, getRuntimeDataMode());
+}
+
+async function clearSharedRoundImportChildren(roundId: string) {
+  const supabase = requireSupabaseClient();
+  const tables = [
+    "candidate_votes",
+    "generated_tickets",
+    "research_memos",
+    "review_notes",
+    "toto_official_matches",
+    "toto_official_rounds",
+  ];
+
+  for (const table of tables) {
+    const result = await supabase.from(table).delete().eq("round_id", roundId);
+    if (isMissingRelationError(result.error, table)) {
+      continue;
+    }
+
+    throwIfError(`Failed to clear ${table} for JSON overwrite`, result);
+  }
+}
+
+async function saveSharedRoundBundleExtras(
+  roundId: string,
+  bundle: localRepository.LocalRoundBundle,
+  matchIdMap: Map<string, string>,
+) {
+  const supabase = requireSupabaseClient();
+
+  const clearGenerated = await supabase.from("generated_tickets").delete().eq("round_id", roundId);
+  if (!isMissingRelationError(clearGenerated.error, "generated_tickets")) {
+    throwIfError("Failed to clear generated tickets for JSON import", clearGenerated);
+  }
+
+  if (bundle.generatedTickets.length > 0) {
+    const generatedResult = await supabase.from("generated_tickets").insert(
+      bundle.generatedTickets.map((ticket) => ({
+        contrarian_score: ticket.contrarianScore,
+        estimated_hit_prob: ticket.estimatedHitProb,
+        mode: ticket.mode,
+        round_id: roundId,
+        ticket_json: ticket.ticketJson,
+        ticket_score: ticket.ticketScore,
+      })),
+    );
+    if (!isMissingRelationError(generatedResult.error, "generated_tickets")) {
+      throwIfError("Failed to import generated tickets", generatedResult);
+    }
+  }
+
+  const clearOfficialMatches = await supabase.from("toto_official_matches").delete().eq("round_id", roundId);
+  if (!isMissingRelationError(clearOfficialMatches.error, "toto_official_matches")) {
+    throwIfError("Failed to clear toto official matches for JSON import", clearOfficialMatches);
+  }
+
+  const clearOfficialRound = await supabase.from("toto_official_rounds").delete().eq("round_id", roundId);
+  if (!isMissingRelationError(clearOfficialRound.error, "toto_official_rounds")) {
+    throwIfError("Failed to clear toto official round for JSON import", clearOfficialRound);
+  }
+
+  if (bundle.totoOfficialRound) {
+    const officialRoundResult = await supabase.from("toto_official_rounds").insert({
+      carryover_yen: bundle.totoOfficialRound.carryoverYen,
+      first_prize_share: bundle.totoOfficialRound.firstPrizeShare,
+      official_round_name: bundle.totoOfficialRound.officialRoundName,
+      official_round_number: bundle.totoOfficialRound.officialRoundNumber,
+      payout_cap_yen: bundle.totoOfficialRound.payoutCapYen,
+      product_type: bundle.totoOfficialRound.productType,
+      result_status: bundle.totoOfficialRound.resultStatus,
+      return_rate: bundle.totoOfficialRound.returnRate,
+      round_id: roundId,
+      sales_end_at: bundle.totoOfficialRound.salesEndAt,
+      sales_start_at: bundle.totoOfficialRound.salesStartAt,
+      source_text: bundle.totoOfficialRound.sourceText,
+      source_url: bundle.totoOfficialRound.sourceUrl,
+      stake_yen: bundle.totoOfficialRound.stakeYen,
+      total_sales_yen: bundle.totoOfficialRound.totalSalesYen,
+    });
+    if (!isMissingRelationError(officialRoundResult.error, "toto_official_rounds")) {
+      throwIfError("Failed to import toto official round", officialRoundResult);
+    }
+  }
+
+  if (bundle.totoOfficialMatches.length > 0) {
+    const officialMatchResult = await supabase.from("toto_official_matches").insert(
+      bundle.totoOfficialMatches.map((match) => ({
+        actual_result: match.actualResult,
+        away_team: match.awayTeam,
+        fixture_master_id: match.fixtureMasterId,
+        home_team: match.homeTeam,
+        kickoff_time: match.kickoffTime,
+        match_id: match.matchId ? matchIdMap.get(match.matchId) ?? null : null,
+        match_status: match.matchStatus,
+        official_match_no: match.officialMatchNo,
+        official_vote_0: match.officialVote0,
+        official_vote_1: match.officialVote1,
+        official_vote_2: match.officialVote2,
+        round_id: roundId,
+        source_text: match.sourceText,
+        stage: match.stage,
+        venue: match.venue,
+      })),
+    );
+    if (!isMissingRelationError(officialMatchResult.error, "toto_official_matches")) {
+      throwIfError("Failed to import toto official matches", officialMatchResult);
+    }
+  }
+}
+
+export async function importRoundJson(
+  bundle: localRepository.LocalRoundBundle,
+  strategy: "copy" | "overwrite",
+) {
+  if (shouldUseLocalRepository()) {
+    return localRepository.localImportRoundBundle(bundle, strategy);
+  }
+
+  const dashboard = await listDashboardData();
+  const userMap = new Map<string, string>();
+
+  for (const bundledUser of bundle.users) {
+    const existing = dashboard.users.find(
+      (user) => user.name === bundledUser.name && user.role === bundledUser.role,
+    );
+    if (existing) {
+      userMap.set(bundledUser.id, existing.id);
+      continue;
+    }
+
+    await createUser({ name: bundledUser.name, role: bundledUser.role });
+  }
+
+  const refreshedDashboard = await listDashboardData();
+  bundle.users.forEach((bundledUser) => {
+    const existing = refreshedDashboard.users.find(
+      (user) => user.name === bundledUser.name && user.role === bundledUser.role,
+    );
+    if (existing) {
+      userMap.set(bundledUser.id, existing.id);
+    }
+  });
+
+  const participantIds = bundle.round.participantIds
+    .map((id) => userMap.get(id))
+    .filter((id): id is string => Boolean(id));
+  const existingRound =
+    strategy === "overwrite"
+      ? await getRoundWorkspace(bundle.round.id).catch(() => null)
+      : null;
+  const roundId = existingRound
+    ? bundle.round.id
+    : await createRound({
+        budgetYen: bundle.round.budgetYen,
+        competitionType: bundle.round.competitionType,
+        dataProfile: bundle.round.dataProfile,
+        matchCount: bundle.matches.length,
+        notes: bundle.round.notes,
+        outcomeSetJson: bundle.round.outcomeSetJson,
+        participantIds,
+        primaryUse: bundle.round.primaryUse,
+        probabilityReadiness: bundle.round.probabilityReadiness,
+        productType: bundle.round.productType,
+        requiredMatchCount: bundle.round.requiredMatchCount,
+        roundSource: bundle.round.roundSource,
+        sourceNote: bundle.round.sourceNote,
+        sportContext: bundle.round.sportContext,
+        status: bundle.round.status,
+        title: strategy === "copy" ? `${bundle.round.title} (import)` : bundle.round.title,
+        voidHandling: bundle.round.voidHandling,
+      });
+
+  if (existingRound) {
+    await updateRound({
+      budgetYen: bundle.round.budgetYen,
+      competitionType: bundle.round.competitionType,
+      dataProfile: bundle.round.dataProfile,
+      notes: bundle.round.notes,
+      outcomeSetJson: bundle.round.outcomeSetJson,
+      participantIds,
+      primaryUse: bundle.round.primaryUse,
+      probabilityReadiness: bundle.round.probabilityReadiness,
+      productType: bundle.round.productType,
+      requiredMatchCount: bundle.round.requiredMatchCount,
+      roundId,
+      roundSource: bundle.round.roundSource,
+      sourceNote: bundle.round.sourceNote,
+      sportContext: bundle.round.sportContext,
+      status: bundle.round.status,
+      title: bundle.round.title,
+      voidHandling: bundle.round.voidHandling,
+    });
+  }
+
+  const targetWorkspace = await getRoundWorkspace(roundId);
+  if (!targetWorkspace) {
+    throw new Error("JSON import 先のラウンドを作成できませんでした。");
+  }
+
+  const targetMatches = targetWorkspace.round.matches
+    .slice()
+    .sort((left, right) => left.matchNo - right.matchNo);
+  const matchIdMap = new Map<string, string>();
+
+  for (const [index, sourceMatch] of bundle.matches
+    .slice()
+    .sort((left, right) => left.matchNo - right.matchNo)
+    .entries()) {
+    const targetMatch = targetMatches[index];
+    if (!targetMatch) {
+      continue;
+    }
+
+    matchIdMap.set(sourceMatch.id, targetMatch.id);
+    await updateMatch({
+      adminAdjust0: sourceMatch.adminAdjust0,
+      adminAdjust1: sourceMatch.adminAdjust1,
+      adminAdjust2: sourceMatch.adminAdjust2,
+      adminNote: sourceMatch.adminNote,
+      altitudeHumidityAdjust: sourceMatch.altitudeHumidityAdjust,
+      availabilityAdjust: sourceMatch.availabilityAdjust,
+      availabilityInfo: sourceMatch.availabilityInfo,
+      awayStrengthAdjust: sourceMatch.awayStrengthAdjust,
+      awayTeam: sourceMatch.awayTeam,
+      category: sourceMatch.category,
+      confidence: sourceMatch.confidence,
+      conditionsAdjust: sourceMatch.conditionsAdjust,
+      conditionsInfo: sourceMatch.conditionsInfo,
+      groupStandingMotivationAdjust: sourceMatch.groupStandingMotivationAdjust,
+      homeAdvantageAdjust: sourceMatch.homeAdvantageAdjust,
+      homeStrengthAdjust: sourceMatch.homeStrengthAdjust,
+      homeTeam: sourceMatch.homeTeam,
+      injuryNote: sourceMatch.injuryNote,
+      injurySuspensionAdjust: sourceMatch.injurySuspensionAdjust,
+      kickoffTime: sourceMatch.kickoffTime,
+      leagueTableMotivationAdjust: sourceMatch.leagueTableMotivationAdjust,
+      marketProb0: sourceMatch.marketProb0,
+      marketProb1: sourceMatch.marketProb1,
+      marketProb2: sourceMatch.marketProb2,
+      matchId: targetMatch.id,
+      modelProb0: sourceMatch.modelProb0,
+      modelProb1: sourceMatch.modelProb1,
+      modelProb2: sourceMatch.modelProb2,
+      motivationAdjust: sourceMatch.motivationAdjust,
+      motivationNote: sourceMatch.motivationNote,
+      officialVote0: sourceMatch.officialVote0,
+      officialVote1: sourceMatch.officialVote1,
+      officialVote2: sourceMatch.officialVote2,
+      recentFormNote: sourceMatch.recentFormNote,
+      recommendedOutcomes: sourceMatch.recommendedOutcomes,
+      restDaysAdjust: sourceMatch.restDaysAdjust,
+      rotationRiskAdjust: sourceMatch.rotationRiskAdjust,
+      roundId,
+      squadDepthAdjust: sourceMatch.squadDepthAdjust,
+      stage: sourceMatch.stage,
+      tacticalAdjust: sourceMatch.tacticalAdjust,
+      tacticalNote: sourceMatch.tacticalNote,
+      tournamentPressureAdjust: sourceMatch.tournamentPressureAdjust,
+      travelAdjust: sourceMatch.travelAdjust,
+      travelClimateAdjust: sourceMatch.travelClimateAdjust,
+      venue: sourceMatch.venue,
+    });
+  }
+
+  if (strategy === "overwrite") {
+    await clearSharedRoundImportChildren(roundId);
+  }
+
+  await saveResults({
+    roundId,
+    status: bundle.round.status,
+    results: bundle.matches.map((match) => ({
+      actualResult: match.actualResult,
+      matchId: matchIdMap.get(match.id) ?? match.id,
+    })),
+  });
+
+  const picksByUser = new Map<string, typeof bundle.picks>();
+  bundle.picks.forEach((pick) => {
+    const mappedUserId = userMap.get(pick.userId);
+    if (!mappedUserId) {
+      return;
+    }
+
+    const current = picksByUser.get(mappedUserId) ?? [];
+    current.push(pick);
+    picksByUser.set(mappedUserId, current);
+  });
+
+  for (const [userId, picks] of picksByUser) {
+    await replacePicks({
+      picks: picks.map((pick) => ({
+        matchId: matchIdMap.get(pick.matchId) ?? pick.matchId,
+        note: pick.note,
+        pick: pick.pick,
+        support: pick.support,
+      })),
+      roundId,
+      userId,
+    });
+  }
+
+  const scoutByUser = new Map<string, typeof bundle.scoutReports>();
+  bundle.scoutReports.forEach((report) => {
+    const mappedUserId = userMap.get(report.userId);
+    if (!mappedUserId) {
+      return;
+    }
+
+    const current = scoutByUser.get(mappedUserId) ?? [];
+    current.push(report);
+    scoutByUser.set(mappedUserId, current);
+  });
+
+  for (const [userId, reports] of scoutByUser) {
+    await replaceScoutReports({
+      reports: reports.map((report) => ({
+        directionScoreF: report.directionScoreF,
+        drawAlert: report.drawAlert,
+        exceptionFlag: report.exceptionFlag,
+        exceptionNote: report.exceptionNote,
+        matchId: matchIdMap.get(report.matchId) ?? report.matchId,
+        noteAvailability: report.noteAvailability,
+        noteConditions: report.noteConditions,
+        noteDrawAlert: report.noteDrawAlert,
+        noteMicro: report.noteMicro,
+        noteStrengthForm: report.noteStrengthForm,
+        noteTacticalMatchup: report.noteTacticalMatchup,
+        provisionalCall: report.provisionalCall,
+        scoreAvailability: report.scoreAvailability,
+        scoreConditions: report.scoreConditions,
+        scoreMicro: report.scoreMicro,
+        scoreStrengthForm: report.scoreStrengthForm,
+        scoreTacticalMatchup: report.scoreTacticalMatchup,
+      })),
+      roundId,
+      userId,
+    });
+  }
+
+  if (bundle.roundEvAssumption) {
+    await saveRoundEvAssumption({
+      carryoverYen: bundle.roundEvAssumption.carryoverYen,
+      firstPrizeShare: bundle.roundEvAssumption.firstPrizeShare,
+      note: bundle.roundEvAssumption.note,
+      payoutCapYen: bundle.roundEvAssumption.payoutCapYen,
+      returnRate: bundle.roundEvAssumption.returnRate,
+      roundId,
+      stakeYen: bundle.roundEvAssumption.stakeYen,
+      totalSalesYen: bundle.roundEvAssumption.totalSalesYen,
+    });
+  }
+
+  await saveSharedRoundBundleExtras(roundId, bundle, matchIdMap);
+
+  await replaceCandidateTickets({
+    roundId,
+    tickets: bundle.candidateTickets.map((ticket) => ({
+      contrarianCount: ticket.contrarianCount,
+      dataQuality: ticket.dataQuality,
+      drawCount: ticket.drawCount,
+      estimatedPayoutYen: ticket.estimatedPayoutYen,
+      evMultiple: ticket.evMultiple,
+      evPercent: ticket.evPercent,
+      grossEvYen: ticket.grossEvYen,
+      hitProbability: ticket.hitProbability,
+      humanAlignmentScore: ticket.humanAlignmentScore,
+      label: ticket.label,
+      pModelCombo: ticket.pModelCombo,
+      pPublicCombo: ticket.pPublicCombo,
+      picks: ticket.picks,
+      proxyScore: ticket.proxyScore,
+      publicOverlapScore: ticket.publicOverlapScore,
+      rationale: ticket.rationale,
+      strategyType: ticket.strategyType,
+      warning: ticket.warning,
+    })),
+  });
+
+  const refreshedWorkspace = await getRoundWorkspace(roundId);
+  const candidateIdByLabel = new Map(
+    (refreshedWorkspace?.round.candidateTickets ?? []).map((ticket) => [ticket.label, ticket.id]),
+  );
+  const sourceCandidateLabelById = new Map(bundle.candidateTickets.map((ticket) => [ticket.id, ticket.label]));
+
+  for (const vote of bundle.candidateVotes) {
+    const label = sourceCandidateLabelById.get(vote.candidateTicketId);
+    const candidateTicketId = label ? candidateIdByLabel.get(label) : null;
+    const userId = userMap.get(vote.userId);
+    if (!candidateTicketId || !userId) {
+      continue;
+    }
+
+    await upsertCandidateVote({
+      candidateTicketId,
+      comment: vote.comment,
+      roundId,
+      userId,
+      vote: vote.vote,
+    });
+  }
+
+  for (const note of bundle.reviewNotes) {
+    await addReviewNote({
+      matchId: note.matchId ? matchIdMap.get(note.matchId) ?? null : null,
+      note: note.note,
+      roundId,
+      userId: note.userId ? userMap.get(note.userId) ?? null : null,
+    });
+  }
+
+  for (const memo of bundle.researchMemos) {
+    const createdBy = userMap.get(memo.createdBy);
+    if (!createdBy) {
+      continue;
+    }
+
+    await saveResearchMemo({
+      confidence: memo.confidence,
+      createdBy,
+      matchId: memo.matchId ? matchIdMap.get(memo.matchId) ?? null : null,
+      memoType: memo.memoType,
+      roundId,
+      sourceDate: memo.sourceDate,
+      sourceName: memo.sourceName,
+      sourceUrl: memo.sourceUrl,
+      summary: memo.summary,
+      team: memo.team,
+      title: memo.title,
+    });
+  }
+
+  return roundId;
 }

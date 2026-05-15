@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { JetBrains_Mono, Space_Grotesk } from "next/font/google";
+import { DataModeBadge, DataModeProvider } from "@/components/app/data-mode-provider";
 import { Badge, cx, secondaryButtonClassName } from "@/components/ui";
 import { appRoute } from "@/lib/round-links";
 import "./globals.css";
@@ -36,6 +37,7 @@ export default function RootLayout({
       className={cx("h-full antialiased", displayFont.variable, monoFont.variable)}
     >
       <body className="min-h-full bg-[#081810]">
+        <DataModeProvider>
         <div className="relative isolate flex min-h-screen flex-col overflow-hidden">
           <div className="pointer-events-none absolute inset-0 -z-30 bg-[linear-gradient(180deg,#07130d_0%,#0a2116_18%,#0d321f_45%,#0b261a_100%)]" />
           <div className="pointer-events-none absolute inset-0 -z-20 bg-[repeating-linear-gradient(180deg,rgba(255,255,255,0.02)_0px,rgba(255,255,255,0.02)_38px,rgba(3,53,34,0.18)_38px,rgba(3,53,34,0.18)_76px)]" />
@@ -68,6 +70,7 @@ export default function RootLayout({
                   </div>
                 </Link>
                 <div className="flex flex-wrap gap-2 lg:justify-end">
+                  <DataModeBadge />
                   <Link href={`${appRoute.dashboard}#create-round`} className={secondaryButtonClassName}>
                     新規ラウンド
                   </Link>
@@ -98,6 +101,7 @@ export default function RootLayout({
             </div>
           </footer>
         </div>
+        </DataModeProvider>
       </body>
     </html>
   );

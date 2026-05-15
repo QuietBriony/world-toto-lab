@@ -2,8 +2,9 @@
 
 友人 10 人前後で使う、W杯toto / WINNER 向けの予想・分析・記録・振り返りダッシュボードです。
 
-このリポジトリは **GitHub Pages で配信できる静的フロントエンド** として再構成しています。  
-データ保存先は Supabase を使い、GitHub Pages から直接アクセスして共有利用する MVP です。
+このリポジトリは **GitHub Pages で配信できる静的フロントエンド** として再構成しています。<br />
+データ保存先は Supabase を使い、GitHub Pages から直接アクセスして共有利用する MVP です。<br />
+Supabase が paused / 未設定 / 一時到達不能になった場合でも、GitHub Pages の静的アプリ自体は起動し、ローカル保存や JSON export/import で最低限の予想・候補表示を継続できます。
 
 ## このアプリが扱わないもの
 
@@ -366,6 +367,61 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-public-anon-key
 NEXT_PUBLIC_TOTO_OFFICIAL_ROUND_SYNC_FUNCTION_NAME=sync-toto-official-round-list
 NEXT_PUBLIC_BIG_OFFICIAL_WATCH_FUNCTION_NAME=sync-big-official-watch
 ```
+
+## Supabase が paused になったとき
+
+Free project は activity が少ないと pause 対象になる可能性があります。Supabase 停止時も GitHub Pages の静的ファイル配信は生きるため、このアプリは起動時の health check で接続状態を確認し、失敗した場合はローカル保存モードへ fallback します。過度な keep-alive や規約回避目的のアクセスは実装していません。
+
+表示されるモード:
+
+- `共有保存`: Supabase が使える状態。Round、友人予想、コメント、候補 vote を共有保存します。
+- `ローカル保存`: Supabase が使えない、または使わない状態。自分のブラウザの `localStorage` に保存します。
+- `デモ`: サンプルデータだけで UI や試算を確認します。保存しません。
+
+Supabase に接続できない場合は画面上部に「Supabaseに接続できません。プロジェクトがpaused、ネットワークエラー、接続設定不足、または必要テーブル不足の可能性があります。」を表示し、次の操作を選べます。
+
+- `ローカル保存で続ける`
+- `JSONを読み込む`
+- `Supabase設定を確認`
+- `再接続する`
+
+ローカル保存では、次の namespace 付き key に Round / Matches / Human Picks / Scout Reports / Research Memos / Candidate Tickets / Candidate Votes / Review Notes / Official Round snapshot / BIG Carryover assumptions などを保存します。
+
+```text
+world-toto-lab:v1:rounds
+world-toto-lab:v1:currentRound
+world-toto-lab:v1:picks
+```
+
+ローカル保存は同じブラウザ・同じ端末だけで有効です。友人と共有する場合は、画面共有、スクリーンショット、または Round 単位の JSON export/import を使ってください。
+
+### paused project の unpause
+
+Supabase から pause 通知が来た場合、pause 後 90 日以内なら Supabase Dashboard から対象 project を開き、案内に従って unpause できます。復帰後はアプリ右上の `再接続` を押すと、health check が成功した場合に共有保存モードへ戻ります。
+
+本番大会期間など安定運用が必要な時期は、Free project の inactive pause を避けるために Pro plan、または別 backend への切り替えも検討してください。
+
+### JSON export/import
+
+各 Round のナビゲーションにある `JSON export` で、Round 単位のバックアップを保存できます。export には次が含まれます。
+
+- round
+- matches
+- picks
+- scoutReports
+- candidateTickets
+- candidateVotes
+- reviewNotes
+- researchMemos
+- roundEvAssumption
+- users
+- totoOfficialRound
+- totoOfficialMatches
+- metadata (`exportedAt`, `appVersion`, `dataMode`)
+
+読み込みは画面上部の `JSON` ボタン、または Supabase 接続失敗パネルの `JSONを読み込む` から行います。import 前に preview が出るので、`別Roundとして取り込み` または `上書きで取り込み` を選んでください。共有保存モードで Supabase に接続できる場合は共有保存へ、ローカル保存モード中または Supabase に接続できない場合は localStorage へ保存します。
+
+Supabase を使わない運用にする場合は、環境変数を未設定のまま起動し、ローカル保存モードで Round を作成してください。公式同期など Edge Function 前提の共有機能は使えませんが、URL query ベースの計算、サンプルデータ、localStorage 保存、JSON バックアップは使えます。
 
 ### 公式一覧の一発同期（推奨導線）
 

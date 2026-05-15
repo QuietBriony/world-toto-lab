@@ -4,7 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { appRoute, buildRoundHref } from "@/lib/round-links";
-import { Badge, cx } from "@/components/ui";
+import { exportRoundJson } from "@/lib/repository";
+import { Badge, cx, secondaryButtonClassName } from "@/components/ui";
 
 export type RoundNavItem = {
   badge?: number | string;
@@ -46,6 +47,24 @@ export function RoundNav({
   userId,
 }: RoundNavProps) {
   const pathname = usePathname();
+  const handleExportJson = async () => {
+    if (!roundId) {
+      return;
+    }
+
+    const bundle = await exportRoundJson(roundId);
+    const blob = new Blob([JSON.stringify(bundle, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `${bundle.round.title || "world-toto-round"}.json`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  };
   const resolvedItems =
     items ??
     (roundId
@@ -201,6 +220,15 @@ export function RoundNav({
               >
                 ダッシュボード
               </Link>
+              {roundId ? (
+                <button
+                  type="button"
+                  onClick={() => void handleExportJson()}
+                  className={secondaryButtonClassName}
+                >
+                  JSON export
+                </button>
+              ) : null}
 
               {resolvedItems.map((item) => {
                 const active = isActivePath(activePathname, item.href);
@@ -314,6 +342,15 @@ export function RoundNav({
                   >
                     次へ
                   </Link>
+                ) : null}
+                {roundId ? (
+                  <button
+                    type="button"
+                    onClick={() => void handleExportJson()}
+                    className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+                  >
+                    JSON export
+                  </button>
                 ) : null}
               </div>
             </div>
