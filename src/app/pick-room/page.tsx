@@ -17,6 +17,7 @@ import {
   RoundMissingNotice,
   RoundRequiredNotice,
 } from "@/components/app/states";
+import { useDataMode } from "@/components/app/data-mode-provider";
 import { RoundNav } from "@/components/round-nav";
 import {
   Badge,
@@ -88,6 +89,7 @@ function roundSourceHint(source: RoundSource) {
 function PickRoomPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const dataMode = useDataMode();
   const roundId = getSingleSearchParam(searchParams.get("round"));
   const requestedUserId = getSingleSearchParam(searchParams.get("user"));
   const { data, error, loading, refresh } = useRoundWorkspace(roundId);
@@ -352,6 +354,20 @@ function PickRoomPageContent() {
           { href: buildRoundHref(appRoute.picks, data.round.id, { user: activeUser?.id }), label: "詳細入力" },
           { href: buildRoundHref(appRoute.workspace, data.round.id), label: "ラウンド詳細" },
         ]}
+      />
+
+      <InfoBanner
+        title={
+          dataMode.mode === "shared"
+            ? "共有保存モードです。友人の投票が保存されます。"
+            : "この画面はローカル保存モードです。"
+        }
+        body={
+          dataMode.mode === "shared"
+            ? "Supabaseに保存されるため、同じRound URLを開いた友人の投票やコメントを共有できます。"
+            : "他の人の投票はリアルタイム共有されません。JSONまたはスクショで共有してください。"
+        }
+        tone={dataMode.mode === "shared" ? "teal" : "amber"}
       />
 
       {estimateStatus ? (

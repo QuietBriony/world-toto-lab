@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 
+import { useDataMode } from "@/components/app/data-mode-provider";
 import { RoundContextCard } from "@/components/app/round-context-card";
 import {
   ConfigurationNotice,
@@ -50,6 +51,8 @@ import {
 import { useFixtureMaster, useTotoOfficialRoundLibrary } from "@/lib/use-app-data";
 import { isLikelyWorldTotoLibraryEntry, looksLikeWorldTotoText } from "@/lib/world-toto";
 import type { ProductType, TotoOfficialRoundLibraryEntry } from "@/lib/types";
+
+type RoundCreateStorageMode = "local" | "shared";
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "不明なエラーです。";
@@ -189,6 +192,37 @@ function libraryEntryProductDisplay(entry: TotoOfficialRoundLibraryEntry) {
   };
 }
 
+function buildImportPayloadFromLibraryEntry(
+  entry: TotoOfficialRoundLibraryEntry,
+  roundId: string | null,
+) {
+  return {
+    carryoverYen: entry.carryoverYen,
+    firstPrizeShare: entry.firstPrizeShare,
+    notes: entry.notes,
+    officialRoundName: entry.officialRoundName,
+    officialRoundNumber: entry.officialRoundNumber,
+    outcomeSetJson: entry.outcomeSetJson,
+    payoutCapYen: entry.payoutCapYen,
+    productType: entry.productType,
+    requiredMatchCount: entry.requiredMatchCount ?? entry.matches.length,
+    resultStatus: entry.resultStatus,
+    returnRate: entry.returnRate,
+    roundId,
+    rows: entry.matches,
+    salesEndAt: entry.salesEndAt,
+    salesStartAt: entry.salesStartAt,
+    sourceNote: entry.sourceNote,
+    sourceText: entry.sourceText,
+    sourceUrl: entry.sourceUrl,
+    stakeYen: entry.stakeYen,
+    status: "analyzing" as const,
+    title: entry.title,
+    totalSalesYen: entry.totalSalesYen,
+    voidHandling: entry.voidHandling,
+  };
+}
+
 function buildSourceText(rows: Array<{
   awayTeam: string;
   homeTeam: string;
@@ -235,6 +269,7 @@ function hydrateRowsFromLibraryEntry(
 function TotoOfficialRoundImportPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const dataMode = useDataMode();
   const roundId = getSingleSearchParam(searchParams.get("round"));
   const autoApplyRequested = getSingleSearchParam(searchParams.get("autoApply")) === "1";
   const sourcePresetId = getSingleSearchParam(searchParams.get("sourcePreset"));
@@ -316,6 +351,26 @@ function TotoOfficialRoundImportPageContent() {
     !includeMatchesInSync ||
     autoApplyAfterSync ||
     activeSyncPreset === null;
+  const sharedCreateEnabled = dataMode.health?.status === "ok";
+  const currentModeLabel =
+    dataMode.mode === "shared"
+      ? "共有保存モード"
+      : dataMode.mode === "demo"
+        ? "デモモード"
+        : "ローカル保存モード";
+
+  const prepareStorageMode = (storageMode: RoundCreateStorageMode) => {
+    if (storageMode === "shared") {
+      if (!sharedCreateEnabled) {
+        throw new Error("Supabaseに接続できないため、共有保存では作成できません。ローカル保存を選んでください。");
+      }
+
+      dataMode.setMode("shared");
+      return;
+    }
+
+    dataMode.setMode("local");
+  };
 
   const parsedPreview = useMemo(
     () =>
@@ -381,23 +436,28 @@ function TotoOfficialRoundImportPageContent() {
   const handleUseLibraryEntry = async (
     entry: TotoOfficialRoundLibraryEntry,
     mode: "apply" | "load",
+    storageMode: RoundCreateStorageMode = sharedCreateEnabled ? "shared" : "local",
   ) => {
     if (mode === "load") {
       hydrateFromLibraryEntry(entry);
       return;
     }
 
-    setLibraryBusyId(entry.id);
+    setLibraryBusyId(`${entry.id}:${storageMode}`);
     setActionError(null);
     setActionMessage(null);
 
     try {
-      const nextRoundId = await instantiateTotoOfficialRoundLibraryEntry({
-        entryId: entry.id,
-        roundId,
-        status: "analyzing",
-        title: entry.title,
-      });
+      prepareStorageMode(storageMode);
+      const nextRoundId =
+        storageMode === "local"
+          ? await saveTotoOfficialRoundImport(buildImportPayloadFromLibraryEntry(entry, roundId))
+          : await instantiateTotoOfficialRoundLibraryEntry({
+              entryId: entry.id,
+              roundId,
+              status: "analyzing",
+              title: entry.title,
+            });
       await estimateRoundAiModel({
         overwriteExisting: false,
         roundId: nextRoundId,
@@ -425,6 +485,11 @@ function TotoOfficialRoundImportPageContent() {
     setSyncSummary(null);
 
     try {
+      if (!sharedCreateEnabled) {
+        throw new Error("公式一覧の同期にはSupabase接続が必要です。Supabase NG時はCSV / 手入力、またはJSON importを使ってください。");
+      }
+      dataMode.setMode("shared");
+
       if (
         productType === "winner" &&
         syncSourceUrl.trim() === defaultOfficialDetailSourceUrl
@@ -467,7 +532,7 @@ function TotoOfficialRoundImportPageContent() {
         setActionMessage(
           `公式一覧を同期しました。最新の「${latestEntry.title}」でRoundを作ります。`,
         );
-        await handleUseLibraryEntry(latestEntry, "apply");
+        await handleUseLibraryEntry(latestEntry, "apply", "shared");
         return;
       }
       setActionMessage(
@@ -504,12 +569,13 @@ function TotoOfficialRoundImportPageContent() {
     return <ErrorNotice error={fixtures.error} onRetry={() => void fixtures.refresh()} />;
   }
 
-  const handleSave = async () => {
+  const handleSave = async (storageMode: RoundCreateStorageMode) => {
     setSaving(true);
     setActionError(null);
     setActionMessage(null);
 
     try {
+      prepareStorageMode(storageMode);
       const payload = {
         carryoverYen: Number(carryoverYen || 0),
         firstPrizeShare: 0.7,
@@ -561,7 +627,11 @@ function TotoOfficialRoundImportPageContent() {
       await library.refresh();
       setEditingLibraryEntryId(savedLibraryEntry.id);
       setSavedRoundId(nextRoundId);
-      setActionMessage("公式回ライブラリとこの回を更新しました。");
+      setActionMessage(
+        storageMode === "shared"
+          ? "公式回ライブラリとこの回を共有保存で更新しました。"
+          : "公式回ライブラリとこの回をローカル保存で更新しました。",
+      );
     } catch (nextError) {
       setActionError(errorMessage(nextError));
     } finally {
@@ -599,6 +669,29 @@ function TotoOfficialRoundImportPageContent() {
         backHref={roundDetailHref}
         description="この取り込みが、どのRoundに入るかを先に確認できます。Round未指定なら新しく作成します。"
       />
+
+      <SectionCard
+        title={sharedCreateEnabled ? "共有Roundとして作成できます" : "ローカルRoundとして作成"}
+        description={
+          sharedCreateEnabled
+            ? "Supabaseに接続できます。共有保存で作るか、個人作業用にローカル保存で作るかを選べます。"
+            : "Supabaseに接続できないため、この作成画面はローカル保存へ切り替えます。"
+        }
+      >
+        <div className="flex flex-wrap gap-2">
+          <Badge tone={sharedCreateEnabled ? "teal" : "amber"}>
+            {sharedCreateEnabled ? "共有保存で作る" : "共有保存は未接続"}
+          </Badge>
+          <Badge tone={dataMode.mode === "shared" ? "teal" : dataMode.mode === "demo" ? "warning" : "sky"}>
+            現在 {currentModeLabel}
+          </Badge>
+        </div>
+        {!sharedCreateEnabled ? (
+          <p className="mt-3 text-sm leading-6 text-slate-600">
+            公式同期はSupabase接続が必要です。接続できない時は CSV / 手入力、JSON import、またはローカルの既存データから続けてください。
+          </p>
+        ) : null}
+      </SectionCard>
 
       <SectionCard
         title="作り方を選ぶ"
@@ -767,9 +860,9 @@ function TotoOfficialRoundImportPageContent() {
                       void handleSyncOfficialRounds();
                     }}
                     className={buttonClassName}
-                    disabled={syncing}
+                    disabled={syncing || !sharedCreateEnabled}
                   >
-                    {syncing && isActive ? "同期中..." : "このソースで同期"}
+                    {syncing && isActive ? "同期中..." : sharedCreateEnabled ? "このソースで同期" : "Supabase接続後に同期"}
                   </button>
                 </div>
               </div>
@@ -790,17 +883,17 @@ function TotoOfficialRoundImportPageContent() {
             type="button"
             onClick={() => void handleSyncOfficialRounds()}
             className={buttonClassName}
-            disabled={syncing}
+            disabled={syncing || !sharedCreateEnabled}
           >
-            {syncing ? "同期中..." : "いまの設定で同期"}
+            {syncing ? "同期中..." : sharedCreateEnabled ? "いまの設定で同期" : "Supabase接続後に同期"}
           </button>
           <button
             type="button"
             onClick={() => void handleSyncOfficialRounds({ autoApplyToPickRoom: true })}
             className={secondaryButtonClassName}
-            disabled={syncing}
+            disabled={syncing || !sharedCreateEnabled}
           >
-            {syncing ? "同期しつつ作成中..." : "公式一覧を同期してこの回で作る"}
+            {syncing ? "同期しつつ作成中..." : sharedCreateEnabled ? "公式一覧を同期してこの回で作る" : "Supabase接続後に作成"}
           </button>
         </div>
 
@@ -930,7 +1023,8 @@ function TotoOfficialRoundImportPageContent() {
         ) : (
           <div className="grid gap-4 xl:grid-cols-2">
             {library.data?.map((entry) => {
-              const isBusy = libraryBusyId === entry.id;
+              const localBusy = libraryBusyId === `${entry.id}:local`;
+              const sharedBusy = libraryBusyId === `${entry.id}:shared`;
               const kickoff = entry.matches.find((match) => match.kickoffTime)?.kickoffTime ?? null;
               const productDisplay = libraryEntryProductDisplay(entry);
 
@@ -968,15 +1062,19 @@ function TotoOfficialRoundImportPageContent() {
                   <div className="mt-4 flex flex-wrap gap-2">
                     <button
                       type="button"
-                      onClick={() => void handleUseLibraryEntry(entry, "apply")}
+                      onClick={() => void handleUseLibraryEntry(entry, "apply", "shared")}
                       className={buttonClassName}
+                      disabled={Boolean(libraryBusyId) || !sharedCreateEnabled}
+                    >
+                      {sharedBusy ? "共有反映中..." : roundId ? "共有保存で反映" : "共有保存で作る"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleUseLibraryEntry(entry, "apply", "local")}
+                      className={secondaryButtonClassName}
                       disabled={Boolean(libraryBusyId)}
                     >
-                      {isBusy
-                        ? "反映中..."
-                        : roundId
-                          ? "この回に反映する"
-                          : "この回で作る"}
+                      {localBusy ? "ローカル反映中..." : roundId ? "ローカル保存で反映" : "ローカル保存で作る"}
                     </button>
                     <button
                       type="button"
@@ -984,7 +1082,7 @@ function TotoOfficialRoundImportPageContent() {
                       className={secondaryButtonClassName}
                       disabled={Boolean(libraryBusyId)}
                     >
-                      {isBusy ? "読込中..." : "下書きにする"}
+                      {libraryBusyId ? "読込中..." : "下書きにする"}
                     </button>
                     {entry.sourceUrl ? (
                       <a
@@ -1176,15 +1274,27 @@ function TotoOfficialRoundImportPageContent() {
               </button>
               <button
                 type="button"
-                onClick={() => void handleSave()}
+                onClick={() => void handleSave("shared")}
                 className={buttonClassName}
+                disabled={saving || rows.length === 0 || !sharedCreateEnabled}
+              >
+                {saving
+                  ? "保存中..."
+                  : editingLibraryEntryId
+                    ? "共有保存で一覧更新"
+                    : "共有保存で回へ反映"}
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleSave("local")}
+                className={secondaryButtonClassName}
                 disabled={saving || rows.length === 0}
               >
                 {saving
                   ? "保存中..."
                   : editingLibraryEntryId
-                    ? "一覧を更新して回へ反映"
-                    : "一覧に保存して回へ反映"}
+                    ? "ローカル保存で一覧更新"
+                    : "ローカル保存で回へ反映"}
               </button>
             </div>
           }
@@ -1193,6 +1303,9 @@ function TotoOfficialRoundImportPageContent() {
             <Badge tone="slate">行数 {rows.length}</Badge>
             {roundId ? <Badge tone="warning">既存の回を上書き</Badge> : <Badge tone="teal">新しい回を作成</Badge>}
             {editingLibraryEntryId ? <Badge tone="info">既存ライブラリを更新</Badge> : <Badge tone="sky">新規ライブラリ追加</Badge>}
+            <Badge tone={sharedCreateEnabled ? "teal" : "amber"}>
+              {sharedCreateEnabled ? "共有/ローカルを選択可" : "ローカル保存で続行"}
+            </Badge>
           </div>
 
           <p className="mt-3 text-xs leading-6 text-slate-500">

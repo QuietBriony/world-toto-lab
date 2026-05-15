@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useMemo, useState, type FormEvent } from "react";
 
+import { useDataMode } from "@/components/app/data-mode-provider";
 import { RoundContextCard } from "@/components/app/round-context-card";
 import {
   ConfigurationNotice,
@@ -38,6 +39,7 @@ function errorMessage(error: unknown) {
 
 function FixtureSelectorPageContent() {
   const searchParams = useSearchParams();
+  const dataMode = useDataMode();
   const existingRoundId = getSingleSearchParam(searchParams.get("round"));
   const [competition, setCompetition] = useState("fifa_world_cup_2026");
   const [teamQuery, setTeamQuery] = useState("");
@@ -117,6 +119,13 @@ function FixtureSelectorPageContent() {
           ? "winner"
           : "custom";
   const selectedProductType = productTypeOverride ?? recommendedProductType;
+  const sharedCreateEnabled = dataMode.health?.status === "ok";
+  const currentModeLabel =
+    dataMode.mode === "shared"
+      ? "共有保存モード"
+      : dataMode.mode === "demo"
+        ? "デモモード"
+        : "ローカル保存モード";
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -129,6 +138,18 @@ function FixtureSelectorPageContent() {
     setActionError(null);
 
     try {
+      const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
+      const storageMode = submitter?.value === "shared" ? "shared" : "local";
+      if (storageMode === "shared") {
+        if (!sharedCreateEnabled) {
+          throw new Error("Supabaseに接続できないため、共有保存では作成できません。ローカル保存を選んでください。");
+        }
+
+        dataMode.setMode("shared");
+      } else {
+        dataMode.setMode("local");
+      }
+
       const roundId = await createRoundFromFixtures({
         budgetYen: null,
         fixtureIds: selectedIds,
@@ -182,6 +203,24 @@ function FixtureSelectorPageContent() {
         backHref={roundDetailHref}
         description="既存の回を置き換えるのか、新しく作るのかをこのカードで見分けられるようにしています。"
       />
+
+      <SectionCard
+        title={sharedCreateEnabled ? "共有Roundとして作成できます" : "ローカルRoundとして作成"}
+        description={
+          sharedCreateEnabled
+            ? "Supabaseに接続できます。共有保存で作るか、個人作業用にローカル保存で作るかを選べます。"
+            : "Supabaseに接続できないため、この作成画面はローカル保存へ切り替えます。"
+        }
+      >
+        <div className="flex flex-wrap gap-2">
+          <Badge tone={sharedCreateEnabled ? "teal" : "amber"}>
+            {sharedCreateEnabled ? "共有保存で作る" : "共有保存は未接続"}
+          </Badge>
+          <Badge tone={dataMode.mode === "shared" ? "teal" : dataMode.mode === "demo" ? "warning" : "sky"}>
+            現在 {currentModeLabel}
+          </Badge>
+        </div>
+      </SectionCard>
 
       <SectionCard
         title="この画面の役割"
@@ -325,9 +364,26 @@ function FixtureSelectorPageContent() {
 
           {actionError ? <p className="text-sm text-rose-700">{actionError}</p> : null}
 
-          <button type="submit" className={buttonClassName} disabled={saving || selectedIds.length === 0}>
-            {saving ? "保存中..." : existingRoundId ? "このラウンドに反映" : "ラウンドを作成"}
-          </button>
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="submit"
+              name="storageMode"
+              value="shared"
+              className={buttonClassName}
+              disabled={saving || selectedIds.length === 0 || !sharedCreateEnabled}
+            >
+              {saving ? "保存中..." : existingRoundId ? "共有保存で反映" : "共有保存で作る"}
+            </button>
+            <button
+              type="submit"
+              name="storageMode"
+              value="local"
+              className={secondaryButtonClassName}
+              disabled={saving || selectedIds.length === 0}
+            >
+              {saving ? "保存中..." : existingRoundId ? "ローカル保存で反映" : "ローカル保存で作る"}
+            </button>
+          </div>
         </form>
       </SectionCard>
 

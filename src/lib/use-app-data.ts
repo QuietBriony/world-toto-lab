@@ -9,7 +9,7 @@ import {
   listTotoOfficialRoundLibrary,
   syncBigOfficialWatchFromOfficial,
 } from "@/lib/repository";
-import { isSupabaseConfigured } from "@/lib/supabase";
+import { useDataMode } from "@/components/app/data-mode-provider";
 import type { BigOfficialSyncPayload } from "@/lib/big-official";
 import type {
   DashboardData,
@@ -105,14 +105,22 @@ function useAsyncResource<T>(
 }
 
 export function useDashboardData() {
-  return useAsyncResource<DashboardData>(
+  const { isChecking, mode } = useDataMode();
+  const resource = useAsyncResource<DashboardData>(
     listDashboardData,
-    isSupabaseConfigured(),
-    [],
+    !isChecking,
+    [mode],
   );
+
+  if (isChecking) {
+    return { ...resource, loading: true };
+  }
+
+  return resource;
 }
 
 export function useRoundWorkspace(roundId: string | null) {
+  const { isChecking, mode } = useDataMode();
   const loader = useCallback(async () => {
     if (!roundId) {
       throw new Error("ラウンドが選択されていません。");
@@ -127,44 +135,71 @@ export function useRoundWorkspace(roundId: string | null) {
     return workspace;
   }, [roundId]);
 
-  return useAsyncResource<RoundWorkspace>(
+  const resource = useAsyncResource<RoundWorkspace>(
     loader,
-    isSupabaseConfigured() && Boolean(roundId),
-    [roundId],
+    !isChecking && Boolean(roundId),
+    [mode, roundId],
   );
+
+  if (isChecking) {
+    return { ...resource, loading: true };
+  }
+
+  return resource;
 }
 
 export function useFixtureMaster(filters?: Parameters<typeof listFixtureMaster>[0]) {
+  const { isChecking, mode } = useDataMode();
   const loader = useCallback(async () => listFixtureMaster(filters), [filters]);
 
-  return useAsyncResource<FixtureMaster[]>(
+  const resource = useAsyncResource<FixtureMaster[]>(
     loader,
-    isSupabaseConfigured(),
-    [filters],
+    !isChecking,
+    [mode, filters],
   );
+
+  if (isChecking) {
+    return { ...resource, loading: true };
+  }
+
+  return resource;
 }
 
 export function useTotoOfficialRoundLibrary(
   filters?: Parameters<typeof listTotoOfficialRoundLibrary>[0],
 ) {
+  const { isChecking, mode } = useDataMode();
   const loader = useCallback(async () => listTotoOfficialRoundLibrary(filters), [filters]);
 
-  return useAsyncResource<TotoOfficialRoundLibraryEntry[]>(
+  const resource = useAsyncResource<TotoOfficialRoundLibraryEntry[]>(
     loader,
-    isSupabaseConfigured(),
-    [filters],
+    !isChecking,
+    [mode, filters],
   );
+
+  if (isChecking) {
+    return { ...resource, loading: true };
+  }
+
+  return resource;
 }
 
 export function useBigOfficialWatch(sourceUrl?: string | null) {
+  const { isChecking, mode } = useDataMode();
   const loader = useCallback(
     async () => syncBigOfficialWatchFromOfficial({ sourceUrl: sourceUrl ?? undefined }),
     [sourceUrl],
   );
 
-  return useAsyncResource<BigOfficialSyncPayload>(
+  const resource = useAsyncResource<BigOfficialSyncPayload>(
     loader,
-    isSupabaseConfigured(),
-    [sourceUrl],
+    !isChecking,
+    [mode, sourceUrl],
   );
+
+  if (isChecking) {
+    return { ...resource, loading: true };
+  }
+
+  return resource;
 }
