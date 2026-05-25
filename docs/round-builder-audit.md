@@ -5,7 +5,7 @@
 ## 結論
 
 - Round Builder の 5 導線のうち、実害があったのは `公式日程を取り込む` の `round` 引き継ぎ漏れでした。
-- GitHub Pages の `/world-toto-lab/` base path 自体は、[next.config.ts](/C:/workspace/world-toto-lab/next.config.ts) の `basePath` / `assetPrefix` で既に吸収されていました。
+- GitHub Pages の `/world-toto-lab/` base path 自体は、[next.config.ts](../next.config.ts) の `basePath` / `assetPrefix` で既に吸収されていました。
 - 以前の要件メモにあった `/workspace/import-schedule` 形式のネストルートは現行実装では古く、実際の route は top-level の static path です。
 - 2026-04-24 時点では、入口を `回を作る` に寄せ、詳細な分岐は `/toto-official-round-import` 内の `作り方を選ぶ` に集約しています。
 
@@ -17,11 +17,11 @@
 
 ## 実際に修正したファイル
 
-- [src/app/workspace/page.tsx](/C:/workspace/world-toto-lab/src/app/workspace/page.tsx)
-- [src/app/official-schedule-import/page.tsx](/C:/workspace/world-toto-lab/src/app/official-schedule-import/page.tsx)
-- [src/app/fixture-selector/page.tsx](/C:/workspace/world-toto-lab/src/app/fixture-selector/page.tsx)
-- [src/app/toto-official-round-import/page.tsx](/C:/workspace/world-toto-lab/src/app/toto-official-round-import/page.tsx)
-- [src/components/app/round-context-card.tsx](/C:/workspace/world-toto-lab/src/components/app/round-context-card.tsx)
+- [src/app/workspace/page.tsx](../src/app/workspace/page.tsx)
+- [src/app/official-schedule-import/page.tsx](../src/app/official-schedule-import/page.tsx)
+- [src/app/fixture-selector/page.tsx](../src/app/fixture-selector/page.tsx)
+- [src/app/toto-official-round-import/page.tsx](../src/app/toto-official-round-import/page.tsx)
+- [src/components/app/round-context-card.tsx](../src/components/app/round-context-card.tsx)
 
 ## 各ボタンの遷移先
 

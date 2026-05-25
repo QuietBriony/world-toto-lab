@@ -464,7 +464,7 @@ GitHub Pages 側はこのFunction名を `NEXT_PUBLIC_TOTO_OFFICIAL_ROUND_SYNC_FU
 
 ### 3. Supabase にテーブルを作る
 
-Supabase SQL Editor で [supabase/schema.sql](/C:/workspace/world-toto-lab/supabase/schema.sql) を実行してください。
+Supabase SQL Editor で [supabase/schema.sql](supabase/schema.sql) を実行してください。
 
 ### 3.1 コードとスキーマの整合監査
 
@@ -756,5 +756,5 @@ F = ① + ② + ③ + ④ + M
 - Dashboard からサンプル 10 人を投入できます
 - Match Editor は静的 route の都合で `/match-editor?round=...&match=...` です
 - GitHub Pages 対応を優先するため、動的 route より query param 方式を採用しています
-- 実運用前の確認順は [docs/operational-smoke-checklist.md](/C:/workspace/world-toto-lab/docs/operational-smoke-checklist.md) にまとめています
-- 画像アセットの差し替え方と `GPT Image 2` 向け prompt 方針は [docs/IMAGE_ART_DIRECTION.md](/C:/workspace/world-toto-lab/docs/IMAGE_ART_DIRECTION.md) にまとめています
+- 実運用前の確認順は [docs/operational-smoke-checklist.md](docs/operational-smoke-checklist.md) にまとめています
+- 画像アセットの差し替え方と `GPT Image 2` 向け prompt 方針は [docs/IMAGE_ART_DIRECTION.md](docs/IMAGE_ART_DIRECTION.md) にまとめています

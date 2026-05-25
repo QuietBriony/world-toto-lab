@@ -28,7 +28,7 @@ GitHub のこの repo に、Actions secret `SUPABASE_ACCESS_TOKEN` を 1 個だ�
 
 対象 workflow:
 
-- [deploy-supabase-functions.yml](/C:/workspace/world-toto-lab/.github/workflows/deploy-supabase-functions.yml)
+- [deploy-supabase-functions.yml](../.github/workflows/deploy-supabase-functions.yml)
 
 ## 3. いまの用途
 
