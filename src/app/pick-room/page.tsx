@@ -19,6 +19,7 @@ import {
 } from "@/components/app/states";
 import { TotoVisualBoard } from "@/components/app/toto-visual-board";
 import { useDataMode } from "@/components/app/data-mode-provider";
+import { OfflineSharePack } from "@/components/app/offline-share-pack";
 import { RoundNav } from "@/components/round-nav";
 import {
   Badge,
@@ -563,6 +564,8 @@ function PickRoomPageContent() {
           worldCupLike={data.round.competitionType === "world_cup"}
         />
       ) : null}
+
+      <OfflineSharePack roundId={data.round.id} roundTitle={data.round.title} />
 
       <SectionCard
         title="メンバー"
