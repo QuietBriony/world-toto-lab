@@ -38,4 +38,15 @@ jobs:
           version: latest
 
       - name: Deploy Edge Functions
-        run: supabase functions deploy --project-ref "$PROJECT_ID" --use-api
+        run: |
+          set +e
+          supabase functions deploy --project-ref "$PROJECT_ID" --use-api
+          deploy_status=$?
+          set -e
+
+          if [ "$deploy_status" -eq 0 ]; then
+            exit 0
+          fi
+
+          echo "::warning::Management API deploy failed; retrying with the default Supabase deploy gateway."
+          supabase functions deploy --project-ref "$PROJECT_ID"
