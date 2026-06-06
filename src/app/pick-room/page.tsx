@@ -17,6 +17,7 @@ import {
   RoundMissingNotice,
   RoundRequiredNotice,
 } from "@/components/app/states";
+import { TotoVisualBoard } from "@/components/app/toto-visual-board";
 import { useDataMode } from "@/components/app/data-mode-provider";
 import { RoundNav } from "@/components/round-nav";
 import {
@@ -170,6 +171,27 @@ function GroupPlaySection(props: {
           </p>
         </div>
       </div>
+
+      <TotoVisualBoard
+        description="候補カード全体の割れ方を13マスで確認します。大きい数字が候補の主張、下のバーが 1 / 0 / 2 の配分です。"
+        metricLabel="一致"
+        rows={props.plan.rows.map((row) => ({
+          call: row.call,
+          confidence: row.agreement,
+          fixture: row.fixture,
+          matchNo: row.matchNo,
+          primaryOutcome: row.topOutcome,
+          secondaryLabel: `AI ${row.aiOutcome ?? "-"} / 候補 ${row.topOutcome ?? "-"}`,
+          selectedOutcomes:
+            row.outcomes.length > 0
+              ? row.outcomes
+              : row.topOutcome
+                ? [row.topOutcome]
+                : [],
+          shares: row.share,
+        }))}
+        title="13試合の割れ方"
+      />
 
       <div className="rounded-[22px] border border-slate-200 bg-slate-50/90 px-4 py-4 text-sm leading-6 text-slate-600">
         この部屋は予想・投票・コメントの記録だけを扱います。購入代行、資金プール、配当分配は扱わず、

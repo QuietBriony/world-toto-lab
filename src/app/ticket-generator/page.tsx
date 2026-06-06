@@ -14,6 +14,7 @@ import {
   LoadingNotice,
   RoundRequiredNotice,
 } from "@/components/app/states";
+import { TotoVisualBoard } from "@/components/app/toto-visual-board";
 import { useDataMode } from "@/components/app/data-mode-provider";
 import { RoundNav } from "@/components/round-nav";
 import {
@@ -653,8 +654,28 @@ function TicketGeneratorPageContent() {
                           </div>
                         ) : null}
                       </div>
-                    ))}
+                  ))}
                 </div>
+              </div>
+
+              <div className="mt-4">
+                <TotoVisualBoard
+                  description="上位候補の重なりを13マスで見ます。大きい数字が主候補、横バーが候補券内の 1 / 0 / 2 配分です。"
+                  rows={selectedTargetingPlan.rows.map((row) => ({
+                    call: row.call,
+                    confidence: row.confidence,
+                    fixture: row.fixture,
+                    matchNo: row.matchNo,
+                    primaryOutcome: row.primaryOutcome,
+                    secondaryLabel:
+                      row.reasonLabels.length > 0
+                        ? row.reasonLabels.join(" / ")
+                        : "候補券の配分から算出",
+                    selectedOutcomes: row.selectedOutcomes,
+                    shares: row.shares,
+                  }))}
+                  title="ロジック盤面"
+                />
               </div>
 
               <div className="mt-4 flex flex-wrap gap-2">
