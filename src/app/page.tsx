@@ -580,7 +580,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      {!isSupabaseConfigured() ? (
+      {dataMode.mode === "shared" && !isSupabaseConfigured() ? (
         <ConfigurationNotice />
       ) : loading && !data ? (
         <LoadingNotice title="ダッシュボードを読み込み中" />

@@ -18,6 +18,7 @@ import {
   LoadingNotice,
   RoundRequiredNotice,
 } from "@/components/app/states";
+import { useDataMode } from "@/components/app/data-mode-provider";
 import { RoundNav } from "@/components/round-nav";
 import {
   Badge,
@@ -52,6 +53,7 @@ function errorMessage(error: unknown) {
 
 function ReviewPageContent() {
   const searchParams = useSearchParams();
+  const dataMode = useDataMode();
   const roundId = getSingleSearchParam(searchParams.get("round"));
   const { data, error, loading, refresh } = useRoundWorkspace(roundId);
   const [savingResults, setSavingResults] = useState(false);
@@ -212,7 +214,7 @@ function ReviewPageContent() {
           description="賞金や配当は扱わず、予想精度・方向性・一致 / 対立パターンを振り返る画面です。"
       />
 
-      {!isSupabaseConfigured() ? (
+      {dataMode.mode === "shared" && !isSupabaseConfigured() ? (
         <ConfigurationNotice />
       ) : !roundId ? (
         <RoundRequiredNotice />

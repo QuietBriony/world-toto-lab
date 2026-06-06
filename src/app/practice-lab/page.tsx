@@ -15,6 +15,7 @@ import {
   LoadingNotice,
   RoundRequiredNotice,
 } from "@/components/app/states";
+import { useDataMode } from "@/components/app/data-mode-provider";
 import { RoundNav } from "@/components/round-nav";
 import {
   PageHeader,
@@ -40,6 +41,7 @@ import { resolveWorldTotoProductLabel } from "@/lib/world-toto";
 
 function PracticeLabPageContent() {
   const searchParams = useSearchParams();
+  const dataMode = useDataMode();
   const roundId = getSingleSearchParam(searchParams.get("round"));
   const { data, error, loading, refresh } = useRoundWorkspace(roundId);
 
@@ -87,7 +89,7 @@ function PracticeLabPageContent() {
       )
     : null;
 
-  if (!isSupabaseConfigured()) {
+  if (dataMode.mode === "shared" && !isSupabaseConfigured()) {
     return <ConfigurationNotice />;
   }
 

@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 
 import { RoundContextCard } from "@/components/app/round-context-card";
+import { useDataMode } from "@/components/app/data-mode-provider";
 import {
   ConfigurationNotice,
   ErrorNotice,
@@ -76,6 +77,7 @@ function buildPreviewWarnings(preview: ReturnType<typeof parseOfficialScheduleTe
 
 function OfficialScheduleImportPageContent() {
   const searchParams = useSearchParams();
+  const dataMode = useDataMode();
   const roundId = getSingleSearchParam(searchParams.get("round"));
   const defaultCompetition = "fifa_world_cup_2026";
   const transferredSchedule = useMemo(() => {
@@ -167,7 +169,7 @@ function OfficialScheduleImportPageContent() {
     }
   }, [transferredSchedule]);
 
-  if (!isSupabaseConfigured()) {
+  if (dataMode.mode === "shared" && !isSupabaseConfigured()) {
     return <ConfigurationNotice />;
   }
 

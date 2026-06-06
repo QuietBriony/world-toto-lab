@@ -98,7 +98,7 @@ function FixtureSelectorPageContent() {
     setSelectedIds((current) => current.filter((id) => visibleIdSet.has(id)));
   };
 
-  if (!isSupabaseConfigured()) {
+  if (dataMode.mode === "shared" && !isSupabaseConfigured()) {
     return <ConfigurationNotice />;
   }
 

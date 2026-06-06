@@ -52,15 +52,8 @@ type DataModeContextValue = {
 const DataModeContext = createContext<DataModeContextValue | null>(null);
 
 function initialMode(): DataMode {
-  if (typeof window === "undefined") {
-    return "local";
-  }
-
-  const preference = getStoredDataModePreference();
-  if (preference === "demo" || preference === "local" || preference === "shared") {
-    return preference;
-  }
-
+  // Keep the first client render identical to the static HTML. The stored
+  // preference is applied by runHealthCheck immediately after hydration.
   return hasSupabaseEnv() ? "shared" : "local";
 }
 

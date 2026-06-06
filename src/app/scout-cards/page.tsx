@@ -17,6 +17,7 @@ import {
   LoadingNotice,
   RoundRequiredNotice,
 } from "@/components/app/states";
+import { useDataMode } from "@/components/app/data-mode-provider";
 import { RoundNav } from "@/components/round-nav";
 import {
   Badge,
@@ -111,6 +112,7 @@ function reportHasMeaningfulInput(
 function ScoutCardsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const dataMode = useDataMode();
   const roundId = getSingleSearchParam(searchParams.get("round"));
   const requestedUserId = getSingleSearchParam(searchParams.get("user"));
   const { data, error, loading, refresh } = useRoundWorkspace(roundId);
@@ -333,7 +335,7 @@ function ScoutCardsPageContent() {
         description="AIと比較したい予想者だけが、試合ごとの根拠を点数化して残します。方向スコア F は保存時に自動計算されます。"
       />
 
-      {!isSupabaseConfigured() ? (
+      {dataMode.mode === "shared" && !isSupabaseConfigured() ? (
         <ConfigurationNotice />
       ) : !roundId ? (
         <RoundRequiredNotice />

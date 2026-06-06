@@ -11,6 +11,7 @@ import {
   LoadingNotice,
   RoundRequiredNotice,
 } from "@/components/app/states";
+import { useDataMode } from "@/components/app/data-mode-provider";
 import { RoundNav } from "@/components/round-nav";
 import {
   Badge,
@@ -40,6 +41,7 @@ import { Suspense } from "react";
 
 function ConsensusPageContent() {
   const searchParams = useSearchParams();
+  const dataMode = useDataMode();
   const roundId = getSingleSearchParam(searchParams.get("round"));
   const { data, error, loading, refresh } = useRoundWorkspace(roundId);
   const consensusRows =
@@ -117,7 +119,7 @@ function ConsensusPageContent() {
         description="モデル試算に対して、予想者ラインがどこをそのまま採用し、どこに別筋を重ねたかを一覧できます。"
       />
 
-      {!isSupabaseConfigured() ? (
+      {dataMode.mode === "shared" && !isSupabaseConfigured() ? (
         <ConfigurationNotice />
       ) : !roundId ? (
         <RoundRequiredNotice />

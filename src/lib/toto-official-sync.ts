@@ -191,6 +191,94 @@ function extractHoldCountId(value: string | null | undefined) {
   }
 }
 
+function normalizeReadableOfficialText(value: string) {
+  return value
+    .replace(/[０-９]/g, (digit) => String.fromCharCode(digit.charCodeAt(0) - 0xfee0))
+    .replace(/[．]/g, ".")
+    .replace(/[，]/g, ",")
+    .replace(/[％]/g, "%")
+    .replace(/[：]/g, ":")
+    .replace(/[（]/g, "(")
+    .replace(/[）]/g, ")")
+    .replace(/[－ー]/g, "-")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function parseOfficialYen(value: string) {
+  const match = normalizeReadableOfficialText(value).match(/([\d,]+)\s*円?/);
+  if (!match) {
+    return null;
+  }
+
+  const parsed = Number.parseInt((match[1] ?? "0").replaceAll(",", ""), 10);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function parseOfficialVotePercent(value: string) {
+  const match = normalizeReadableOfficialText(value).match(/([\d.]+)\s*%/);
+  if (!match) {
+    return null;
+  }
+
+  const parsed = Number.parseFloat(match[1] ?? "0") / 100;
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function extractOfficialRoundNumber(rawHtml: string, sourceUrl: string) {
+  const holdCntId = extractHoldCountId(sourceUrl);
+  if (holdCntId && /^\d+$/.test(holdCntId)) {
+    return Number.parseInt(holdCntId, 10);
+  }
+
+  const titleMatch = normalizeText(rawHtml).match(/第\s*(\d+)\s*回/);
+  if (!titleMatch) {
+    return null;
+  }
+
+  const parsed = Number.parseInt(titleMatch[1] ?? "0", 10);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function extractTabBlock(rawHtml: string, tabId: string) {
+  const startMatch = new RegExp(`<div\\s+id=["']${tabId}["'][^>]*>`, "i").exec(rawHtml);
+  if (startMatch?.index === undefined) {
+    return null;
+  }
+
+  const start = startMatch.index;
+  const remaining = rawHtml.slice(start + startMatch[0].length);
+  const nextMatch = /<div\s+id=["']tabCont\d+["'][^>]*class=["']tab["'][^>]*>/i.exec(remaining);
+
+  return nextMatch ? rawHtml.slice(start, start + startMatch[0].length + nextMatch.index) : rawHtml.slice(start);
+}
+
+function buildSpTotoVoteUrl(rawHtml: string, sourceUrl: string) {
+  if (/PGSSIN02501ForwardVotetotoSP\.form/i.test(sourceUrl)) {
+    return sourceUrl;
+  }
+
+  const explicitMatch = rawHtml.match(
+    /https:\/\/sp\.toto-dream\.com\/dcs\/subos\/screen\/si01\/ssin025\/PGSSIN02501ForwardVotetotoSP\.form\?[^"'\s<]+|(?:\.\/)?PGSSIN02501ForwardVotetotoSP\.form\?[^"'\s<]+/i,
+  );
+
+  if (explicitMatch?.[0]) {
+    const rawPath = explicitMatch[0].replace(/&amp;/gi, "&");
+    if (rawPath.startsWith("http")) {
+      return rawPath;
+    }
+
+    return new URL(rawPath.replace(/^\.\//, ""), sourceUrl).toString();
+  }
+
+  const holdCntId = extractHoldCountId(sourceUrl);
+  if (!holdCntId) {
+    return null;
+  }
+
+  return `https://sp.toto-dream.com/dcs/subos/screen/si01/ssin025/PGSSIN02501ForwardVotetotoSP.form?holdCntId=${holdCntId}&commodityId=01&gameAssortment=A&fromId=SSIN026`;
+}
+
 function buildGoal3VoteRateUrl(rawHtml: string, sourceUrl: string) {
   const explicitMatch = rawHtml.match(
     /https:\/\/store\.toto-dream\.com\/dcs\/subos\/screen\/pi09\/spin003\/PGSPIN00301InitVoteRate\.form\?holdCntId=\d+&commodityId=02|(?:\.\/)?PGSPIN00301InitVoteRate\.form\?holdCntId=\d+&commodityId=02/i,
@@ -656,6 +744,272 @@ function mergeGoal3FixtureContext(
   } satisfies ParsedTotoOfficialRoundEntry;
 }
 
+function isSpTotoSalesTermHtml(rawHtml: string, sourceUrl: string) {
+  return (
+    /PGSSIN02501ForwardSalesTermtotoSP\.form/i.test(sourceUrl) ||
+    (/toto_detail/i.test(rawHtml) &&
+      /tabCont01/i.test(rawHtml) &&
+      /PGSSIN02501ForwardVotetotoSP\.form/i.test(rawHtml))
+  );
+}
+
+function isSpTotoVoteHtml(rawHtml: string, sourceUrl: string) {
+  return (
+    /PGSSIN02501ForwardVotetotoSP\.form/i.test(sourceUrl) ||
+    (/tohyo_/i.test(rawHtml) && /ホーム90分勝ち/.test(rawHtml) && /<1>/.test(rawHtml))
+  );
+}
+
+function createSpToto13Round(input: {
+  roundNumber: number;
+  resultStatus: ParsedTotoOfficialRoundEntry["resultStatus"];
+  sourceNote: string;
+  sourceText: string | null;
+  sourceUrl: string;
+}): ParsedTotoOfficialRoundEntry {
+  return {
+    title: `第${input.roundNumber}回 toto`,
+    notes: null,
+    officialRoundName: `第${input.roundNumber}回 toto`,
+    officialRoundNumber: input.roundNumber,
+    productType: "toto13",
+    requiredMatchCount: 13,
+    outcomeSetJson: ["1", "0", "2"],
+    sourceNote: input.sourceNote,
+    voidHandling: "manual",
+    resultStatus: input.resultStatus,
+    salesStartAt: null,
+    salesEndAt: null,
+    stakeYen: 100,
+    totalSalesYen: null,
+    returnRate: 0.5,
+    firstPrizeShare: 0.7,
+    carryoverYen: 0,
+    payoutCapYen: null,
+    sourceUrl: input.sourceUrl,
+    sourceText: input.sourceText,
+    matches: [],
+  } satisfies ParsedTotoOfficialRoundEntry;
+}
+
+function splitHomeAwayFromCells(cells: string[]) {
+  const normalizedCells = cells.map((cell) => normalizeText(cell)).filter(Boolean);
+  const vsIndex = normalizedCells.findIndex((cell) => /^(?:VS|vs|v)$/.test(cell));
+  if (vsIndex > 0 && vsIndex < normalizedCells.length - 1) {
+    return {
+      awayTeam: normalizedCells.slice(vsIndex + 1).join(" "),
+      homeTeam: normalizedCells.slice(0, vsIndex).join(" "),
+    };
+  }
+
+  const teamText = normalizedCells.join(" ");
+  const match = teamText.match(/^(.+?)\s+(?:VS|vs|v)\s+(.+?)$/);
+  if (!match) {
+    return null;
+  }
+
+  return {
+    awayTeam: normalizeText(match[2] ?? ""),
+    homeTeam: normalizeText(match[1] ?? ""),
+  };
+}
+
+function parseSpTotoSalesRows(rawHtml: string, sourceUrl: string) {
+  if (!isSpTotoSalesTermHtml(rawHtml, sourceUrl)) {
+    return null;
+  }
+
+  const roundNumber = extractOfficialRoundNumber(rawHtml, sourceUrl);
+  if (!roundNumber) {
+    return null;
+  }
+
+  const tabBlock = extractTabBlock(rawHtml, "tabCont01") ?? rawHtml;
+  const sourceLines = htmlToLines(tabBlock);
+  const round = createSpToto13Round({
+    resultStatus: /PGSSIN02501ForwardBuytotoSP\.form|今すぐ購入する/.test(tabBlock)
+      ? "selling"
+      : "unknown",
+    roundNumber,
+    sourceNote: "スポーツくじオフィシャル（スマホ）くじ情報",
+    sourceText: sourceLines.join("\n").slice(0, 4000) || null,
+    sourceUrl,
+  });
+  const warnings: string[] = [];
+
+  for (const row of htmlToTableRows(tabBlock)) {
+    const rowText = row.join(" ");
+    const label = row[0] ?? "";
+
+    if (/販売開始日/.test(label) && row[1]) {
+      round.salesStartAt = parseJapaneseDateTime(row.slice(1).join(" "), "00:00");
+      continue;
+    }
+
+    if (/販売終了日/.test(label) && row[1]) {
+      round.salesEndAt = parseJapaneseDateTime(row.slice(1).join(" "), "23:59");
+      continue;
+    }
+
+    if (/売上金額/.test(label) && row[1] && round.totalSalesYen === null) {
+      round.totalSalesYen = parseOfficialYen(row[1]);
+      continue;
+    }
+
+    if (row.length < 4 || !/^\d+$/.test(label)) {
+      continue;
+    }
+
+    const kickoffYear = inferKickoffYear(round);
+    const scheduleFirstCell = normalizeReadableOfficialText(row[1] ?? "");
+    const scheduleSecondCell = normalizeReadableOfficialText(row[2] ?? "");
+    const splitScheduleCells =
+      /^\d{2}\/\d{2}$/.test(scheduleFirstCell) && /^[0-2]?\d:[0-5]\d$/.test(scheduleSecondCell);
+    const kickoffMatch = splitScheduleCells
+      ? `${scheduleFirstCell} ${scheduleSecondCell}`.match(/(\d{2}\/\d{2})\s+([0-2]?\d:[0-5]\d)/)
+      : scheduleFirstCell.match(/(\d{2}\/\d{2})(?:\s+([0-2]?\d:[0-5]\d))?/);
+    const venueIndex = splitScheduleCells ? 3 : 2;
+    const teams = splitHomeAwayFromCells(row.slice(venueIndex + 1));
+
+    if (!teams) {
+      warnings.push(`第${roundNumber}回 toto No.${label} の対戦カードを読めませんでした。`);
+      continue;
+    }
+
+    round.matches.push({
+      awayTeam: teams.awayTeam || "未設定",
+      homeTeam: teams.homeTeam || "未設定",
+      kickoffTime: kickoffMatch
+        ? parseMatchKickoff(kickoffYear, kickoffMatch[1] ?? "", kickoffMatch[2] ?? "00:00")
+        : null,
+      matchStatus: "scheduled",
+      officialMatchNo: Number.parseInt(label, 10),
+      officialVote0: null,
+      officialVote1: null,
+      officialVote2: null,
+      sourceText: rowText,
+      stage: null,
+      venue: row[venueIndex] && row[venueIndex] !== "-" ? row[venueIndex] : null,
+    });
+  }
+
+  if (round.matches.length !== 13) {
+    warnings.push(`第${roundNumber}回 toto の対象試合が ${round.matches.length} 件でした。公式ページの構造変更を確認してください。`);
+  }
+
+  return {
+    rounds: [round],
+    warnings,
+  };
+}
+
+function parseSpTotoVoteRows(rawHtml: string, sourceUrl: string) {
+  if (!isSpTotoVoteHtml(rawHtml, sourceUrl)) {
+    return null;
+  }
+
+  const roundNumber = extractOfficialRoundNumber(rawHtml, sourceUrl);
+  if (!roundNumber) {
+    return null;
+  }
+
+  const sourceLines = htmlToLines(rawHtml);
+  const round = createSpToto13Round({
+    resultStatus: "selling",
+    roundNumber,
+    sourceNote: "スポーツくじオフィシャル（スマホ）投票状況",
+    sourceText: sourceLines.join("\n").slice(0, 4000) || null,
+    sourceUrl,
+  });
+  const warnings: string[] = [];
+  let pendingMatch: ParsedTotoOfficialMatch | null = null;
+
+  for (const row of htmlToTableRows(rawHtml)) {
+    const rowText = row.join(" ");
+    const label = row[0] ?? "";
+
+    if (/売上金額/.test(label) && row[1] && round.totalSalesYen === null) {
+      round.totalSalesYen = parseOfficialYen(row[1]);
+      continue;
+    }
+
+    if (row.length >= 6 && /^\d+$/.test(label) && row.some((cell) => /^(?:VS|vs|v)$/.test(cell))) {
+      const teams = splitHomeAwayFromCells(row.slice(3));
+      if (!teams) {
+        warnings.push(`第${roundNumber}回 toto No.${label} の投票状況カードを読めませんでした。`);
+        pendingMatch = null;
+        continue;
+      }
+
+      pendingMatch = {
+        awayTeam: teams.awayTeam || "未設定",
+        homeTeam: teams.homeTeam || "未設定",
+        kickoffTime: null,
+        matchStatus: "scheduled",
+        officialMatchNo: Number.parseInt(label, 10),
+        officialVote0: null,
+        officialVote1: null,
+        officialVote2: null,
+        sourceText: rowText,
+        stage: null,
+        venue: row[2] && row[2] !== "-" ? row[2] : null,
+      };
+      continue;
+    }
+
+    const percents = row.map(parseOfficialVotePercent).filter((value): value is number => value !== null);
+    if (pendingMatch && percents.length >= 3) {
+      round.matches.push({
+        ...pendingMatch,
+        officialVote1: percents[0] ?? null,
+        officialVote0: percents[1] ?? null,
+        officialVote2: percents[2] ?? null,
+        sourceText: `${pendingMatch.sourceText ?? ""}\n${rowText}`.trim(),
+      });
+      pendingMatch = null;
+    }
+  }
+
+  if (round.matches.length !== 13) {
+    warnings.push(`第${roundNumber}回 toto の投票状況が ${round.matches.length} 件でした。公式ページの構造変更を確認してください。`);
+  }
+
+  return {
+    rounds: [round],
+    warnings,
+  };
+}
+
+function mergeSpTotoVoteRows(
+  salesRound: ParsedTotoOfficialRoundEntry,
+  voteRound: ParsedTotoOfficialRoundEntry,
+) {
+  const votesByMatchNo = new Map(
+    voteRound.matches.map((match) => [match.officialMatchNo, match] as const),
+  );
+
+  return {
+    ...salesRound,
+    matches: salesRound.matches.map((match) => {
+      const vote = votesByMatchNo.get(match.officialMatchNo);
+      if (!vote) {
+        return match;
+      }
+
+      return {
+        ...match,
+        officialVote0: vote.officialVote0,
+        officialVote1: vote.officialVote1,
+        officialVote2: vote.officialVote2,
+        sourceText: [match.sourceText, vote.sourceText].filter(Boolean).join("\n"),
+      };
+    }),
+    sourceNote: "スポーツくじオフィシャル（スマホ）くじ情報 + 投票状況",
+    sourceText: [salesRound.sourceText, voteRound.sourceText].filter(Boolean).join("\n").slice(0, 4000) || null,
+    totalSalesYen: voteRound.totalSalesYen ?? salesRound.totalSalesYen,
+  } satisfies ParsedTotoOfficialRoundEntry;
+}
+
 export function parseYahooTotoScheduleHtml(rawHtml: string) {
   const summaries: ScheduleSummary[] = [];
   const itemRegex = /<li class="scheduleResultItem">([\s\S]*?)<\/li>/gi;
@@ -906,6 +1260,46 @@ export function parseOfficialTotoLotInfoHtml(
 }
 
 export async function parseTotoOfficialHtmlSource(input: ParseHtmlInput) {
+  const spSalesRows = parseSpTotoSalesRows(input.rawText, input.sourceUrl);
+  if (spSalesRows) {
+    const warnings = [...spSalesRows.warnings];
+    const baseRound = spSalesRows.rounds[0] ?? null;
+
+    if (baseRound && input.includeMatches && input.fetchText) {
+      const voteUrl = buildSpTotoVoteUrl(input.rawText, input.sourceUrl);
+      if (voteUrl) {
+        try {
+          const voteHtml = await input.fetchText(voteUrl);
+          const voteRows = parseSpTotoVoteRows(voteHtml, voteUrl);
+          if (voteRows?.rounds[0] && voteRows.rounds[0].matches.length > 0) {
+            return {
+              rounds: [mergeSpTotoVoteRows(baseRound, voteRows.rounds[0])],
+              warnings: [...warnings, ...voteRows.warnings],
+            };
+          }
+
+          warnings.push(`第${baseRound.officialRoundNumber ?? ""}回 toto の投票状況ページを解析できませんでした。`);
+        } catch (error) {
+          warnings.push(
+            `第${baseRound.officialRoundNumber ?? ""}回 toto の投票状況取得に失敗しました: ${(error as Error).message}`,
+          );
+        }
+      } else {
+        warnings.push(`第${baseRound.officialRoundNumber ?? ""}回 toto の投票状況URLを見つけられませんでした。`);
+      }
+    }
+
+    return {
+      rounds: spSalesRows.rounds,
+      warnings,
+    };
+  }
+
+  const spVoteRows = parseSpTotoVoteRows(input.rawText, input.sourceUrl);
+  if (spVoteRows) {
+    return spVoteRows;
+  }
+
   const goal3VoteRate = parseGoal3VoteRateHtml(input.rawText, input.sourceUrl);
   if (goal3VoteRate) {
     return goal3VoteRate;
@@ -994,5 +1388,5 @@ export async function parseTotoOfficialHtmlSource(input: ParseHtmlInput) {
 }
 
 export function looksLikeTotoOfficialHtml(rawText: string) {
-  return /scheduleResultList|scheduleResultItem|指定試合（ホームvsアウェイ）|くじ情報|投票状況|0点[\s\S]*3点以上/.test(rawText);
+  return /scheduleResultList|scheduleResultItem|指定試合（ホームvsアウェイ）|くじ情報|投票状況|0点[\s\S]*3点以上|PGSSIN02501ForwardSalesTermtotoSP|PGSSIN02501ForwardVotetotoSP|toto_detail|tohyo_/.test(rawText);
 }

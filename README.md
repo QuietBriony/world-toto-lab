@@ -435,6 +435,8 @@ Supabase を使わない運用にする場合は、環境変数を未設定の�
   - Edge Function はこの一覧から販売中 / これからの回を拾い、公式詳細ページを追加取得して `toto / mini toto-A / mini toto-B` をライブラリ化します
 - `store.toto-dream.com` の個別 `くじ情報` URL
   - 1回分だけ直接読みたいときの補助用です
+- `sp.toto-dream.com` の個別 `くじ情報` URL
+  - スマホ公式の `SalesTermtotoSP` ページから 13 試合を読み、同じ回の `VotetotoSP` 投票状況ページを追加取得して公式人気 `1 / 0 / 2` も埋めます
 
 `回を作る` で `公式一覧を同期` すると
 `Supabase Edge Function` (`sync-toto-official-round-list`) を経由して取り込みます。
@@ -444,13 +446,14 @@ Edge Function は次を行います。
 - 公開URLからHTML/JSON/CSVを取得
 - Yahoo! toto 販売スケジュールなら、開催回一覧を抽出し、必要な回だけ公式 `くじ情報` ページも追って詳細を埋める
 - `store.toto-dream.com` の `くじ情報` ページなら、`toto / mini toto-A / mini toto-B / totoGOAL3` の対象情報・販売終了・売上速報を抽出する
+- `sp.toto-dream.com` のスマホ版 `toto` ページなら、販売期間・13 試合・売上速報・投票状況の `1 / 0 / 2` 割合を結合する
 - 取り得る形式を順に試行して回情報を正規化
 - 取り込めない場合は警告を返して、手入力フローへフォールバック
 
 注意:
 
 - `totoGOAL3` は公式同期対象に含めますが、通常の回作成ではなく `GOAL3 Value Board` へ分けて表示します
-- 公式人気 (`official_vote_1 / 0 / 2`) は一覧ページや `くじ情報` ページだけでは揃わない場合があるため、必要なら CSV / TSV で補完します
+- 公式人気 (`official_vote_1 / 0 / 2`) はスマホ版 `VotetotoSP` が取得できる toto 回では自動補完します。取れない回だけ CSV / TSV で補完します
 
 GitHub Pages 側はこのFunction名を `NEXT_PUBLIC_TOTO_OFFICIAL_ROUND_SYNC_FUNCTION_NAME` から参照します。  
 未設定でも既定名 `sync-toto-official-round-list` を使います。

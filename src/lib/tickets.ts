@@ -4,6 +4,7 @@ import {
   clamp,
   favoriteOutcomeForBucket,
   humanConsensusOutcomes,
+  OUTCOME_VALUES,
   type AdvantageBucket,
   type AdvantageRow,
   type DrawPolicy,
@@ -64,6 +65,30 @@ export type TicketPayload = {
   comment: string;
 };
 
+export type TargetingCall = "axis" | "cover" | "spread";
+
+export type TargetingPlanRow = {
+  call: TargetingCall;
+  confidence: number;
+  fixture: string;
+  matchNo: number;
+  primaryOutcome: OutcomeValue;
+  reasonLabels: string[];
+  selectedOutcomes: OutcomeValue[];
+  shares: Record<OutcomeValue, number>;
+};
+
+export type TargetingPlan = {
+  axisCount: number;
+  averageConfidence: number;
+  coverCount: number;
+  coverageCount: number;
+  label: string;
+  rows: TargetingPlanRow[];
+  spreadCount: number;
+  summary: string;
+};
+
 type PartialTicket = {
   contrarianCount: number;
   partialScore: number;
@@ -119,6 +144,12 @@ const COMPATIBILITY_BUDGET_STEP_YEN = 100;
 const DEFAULT_CANDIDATE_LIMIT = 5;
 const DEFAULT_MAX_CONTRARIAN_MATCHES = 3;
 const MAX_CANDIDATE_LIMIT = 8;
+
+const outcomeSortOrder: Record<OutcomeValue, number> = {
+  "1": 0,
+  "0": 1,
+  "2": 2,
+};
 
 function normalizeMatchCount(value?: number | null) {
   if (value === null || value === undefined || Number.isNaN(value)) {
@@ -194,6 +225,166 @@ export function resolveCandidateLimit(
   }
 
   return candidateLimitFromBudget(settings.budgetYen, matchCount);
+}
+
+function normalizedTicketWeights(tickets: TicketPayload[]) {
+  const rawWeights = tickets.map((ticket) =>
+    Number.isFinite(ticket.attentionShare) && ticket.attentionShare > 0
+      ? ticket.attentionShare
+      : 1,
+  );
+  const total = rawWeights.reduce((sum, value) => sum + value, 0);
+
+  return rawWeights.map((value) => (total > 0 ? value / total : 1 / tickets.length));
+}
+
+function targetingLabel(input: {
+  axisCount: number;
+  averageConfidence: number;
+  coverageCount: number;
+  spreadCount: number;
+}) {
+  if (input.spreadCount >= 4 || input.coverageCount > 128) {
+    return "絞る前に追加確認";
+  }
+
+  if (input.coverageCount <= 8 && input.averageConfidence >= 0.68) {
+    return "少点数で狙える";
+  }
+
+  if (input.axisCount >= 3 && input.coverageCount <= 32) {
+    return "軸を決めて狙える";
+  }
+
+  return "押さえを混ぜて狙う";
+}
+
+export function buildTicketTargetingPlan(tickets: TicketPayload[]): TargetingPlan | null {
+  if (tickets.length === 0) {
+    return null;
+  }
+
+  const weights = normalizedTicketWeights(tickets);
+  const byMatch = new Map<
+    number,
+    {
+      fixture: string;
+      reasons: Record<OutcomeValue, Map<string, number>>;
+      shares: Record<OutcomeValue, number>;
+    }
+  >();
+
+  tickets.forEach((ticket, ticketIndex) => {
+    const weight = weights[ticketIndex] ?? 0;
+
+    ticket.selections.forEach((selection) => {
+      const current = byMatch.get(selection.matchNo) ?? {
+        fixture: selection.fixture,
+        reasons: {
+          "1": new Map<string, number>(),
+          "0": new Map<string, number>(),
+          "2": new Map<string, number>(),
+        },
+        shares: {
+          "1": 0,
+          "0": 0,
+          "2": 0,
+        },
+      };
+
+      current.fixture = selection.fixture || current.fixture;
+      current.shares[selection.outcome] += weight;
+
+      selection.reasons.forEach((reason) => {
+        const currentReasonWeight = current.reasons[selection.outcome].get(reason) ?? 0;
+        current.reasons[selection.outcome].set(reason, currentReasonWeight + weight);
+      });
+
+      byMatch.set(selection.matchNo, current);
+    });
+  });
+
+  const rows = Array.from(byMatch.entries())
+    .map(([matchNo, entry]) => {
+      const ranked = OUTCOME_VALUES.map((outcome) => ({
+        outcome,
+        share: entry.shares[outcome],
+      })).sort(
+        (left, right) =>
+          right.share - left.share ||
+          outcomeSortOrder[left.outcome] - outcomeSortOrder[right.outcome],
+      );
+      const primary = ranked[0] ?? { outcome: "1" as const, share: 0 };
+      const second = ranked[1] ?? { outcome: "0" as const, share: 0 };
+      const third = ranked[2] ?? { outcome: "2" as const, share: 0 };
+      const selectedOutcomes: OutcomeValue[] = [primary.outcome];
+
+      if (primary.share < 0.68 || second.share >= 0.22) {
+        selectedOutcomes.push(second.outcome);
+      }
+
+      if (primary.share < 0.45 || third.share >= 0.18) {
+        selectedOutcomes.push(third.outcome);
+      }
+
+      const uniqueSelectedOutcomes = Array.from(new Set(selectedOutcomes)).sort(
+        (left, right) => outcomeSortOrder[left] - outcomeSortOrder[right],
+      );
+      const reasonLabels = uniqueSelectedOutcomes
+        .flatMap((outcome) => Array.from(entry.reasons[outcome].entries()))
+        .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0], "ja"))
+        .map(([reason]) => reason)
+        .filter((reason, index, values) => values.indexOf(reason) === index)
+        .slice(0, 3);
+
+      return {
+        call:
+          uniqueSelectedOutcomes.length >= 3
+            ? "spread"
+            : uniqueSelectedOutcomes.length === 2
+              ? "cover"
+              : "axis",
+        confidence: clamp(primary.share - second.share * 0.45, 0, 1),
+        fixture: entry.fixture,
+        matchNo,
+        primaryOutcome: primary.outcome,
+        reasonLabels,
+        selectedOutcomes: uniqueSelectedOutcomes,
+        shares: entry.shares,
+      } satisfies TargetingPlanRow;
+    })
+    .sort((left, right) => left.matchNo - right.matchNo);
+
+  if (rows.length === 0) {
+    return null;
+  }
+
+  const axisCount = rows.filter((row) => row.call === "axis").length;
+  const coverCount = rows.filter((row) => row.call === "cover").length;
+  const spreadCount = rows.filter((row) => row.call === "spread").length;
+  const coverageCount = rows.reduce(
+    (product, row) => product * Math.max(row.selectedOutcomes.length, 1),
+    1,
+  );
+  const averageConfidence =
+    rows.reduce((sum, row) => sum + row.confidence, 0) / rows.length;
+  const label = targetingLabel({
+    axisCount,
+    averageConfidence,
+    coverageCount,
+    spreadCount,
+  });
+
+  return {
+    axisCount,
+    averageConfidence,
+    coverCount,
+    coverageCount,
+    label,
+    rows,
+    spreadCount,
+    summary: `軸 ${axisCount} / 押さえ ${coverCount} / 広げる ${spreadCount}。候補の分岐幅は ${coverageCount.toLocaleString("ja-JP")} 通りです。`,
+  } satisfies TargetingPlan;
 }
 
 function resolveMaxContrarianMatches(

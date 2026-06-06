@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { RouteGlossaryCard } from "@/components/app/round-guides";
 import { ConfigurationNotice, ErrorNotice, LoadingNotice } from "@/components/app/states";
+import { useDataMode } from "@/components/app/data-mode-provider";
 import {
   ArtBannerPanel,
   Badge,
@@ -45,6 +46,7 @@ function proxyOutcomeLabel(outcome: Goal3OutcomeValue | null) {
 
 export default function Goal3ValuePage() {
   const pathname = usePathname();
+  const dataMode = useDataMode();
   const library = useTotoOfficialRoundLibrary({ productType: "custom" });
   const bigOfficialWatch = useBigOfficialWatch();
   const [syncing, setSyncing] = useState(false);
@@ -167,7 +169,7 @@ export default function Goal3ValuePage() {
     };
   }, [attemptedSnapshotEntryIds, loadingSnapshot, selectedEntry, selectedVoteRateUrl, voteRows.length]);
 
-  if (!isSupabaseConfigured()) {
+  if (dataMode.mode === "shared" && !isSupabaseConfigured()) {
     return <ConfigurationNotice />;
   }
 

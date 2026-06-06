@@ -66,6 +66,7 @@ type SyncRequestBody = {
 
 const defaultSourceUrl = "https://toto.yahoo.co.jp/schedule/toto";
 const allowedOfficialHosts = new Set([
+  "sp.toto-dream.com",
   "store.toto-dream.com",
   "toto.yahoo.co.jp",
   "www.toto-dream.com",

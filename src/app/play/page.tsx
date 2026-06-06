@@ -16,6 +16,7 @@ import {
   RoundMissingNotice,
   RoundRequiredNotice,
 } from "@/components/app/states";
+import { useDataMode } from "@/components/app/data-mode-provider";
 import { RoundNav } from "@/components/round-nav";
 import {
   Badge,
@@ -85,6 +86,7 @@ function QuickPickButton(props: {
 
 function PlayPageContent() {
   const searchParams = useSearchParams();
+  const dataMode = useDataMode();
   const roundId = getSingleSearchParam(searchParams.get("round"));
   const requestedUserId = getSingleSearchParam(searchParams.get("user"));
   const { data, error, loading, refresh } = useRoundWorkspace(roundId);
@@ -232,7 +234,7 @@ function PlayPageContent() {
     };
   }, [data, draftValues]);
 
-  if (!isSupabaseConfigured()) {
+  if (dataMode.mode === "shared" && !isSupabaseConfigured()) {
     return <ConfigurationNotice />;
   }
 

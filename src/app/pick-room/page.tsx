@@ -30,6 +30,7 @@ import {
   secondaryButtonClassName,
 } from "@/components/ui";
 import {
+  formatPercent,
   productTypeBadgeTone,
   productTypeLabel,
   roundSourceLabel,
@@ -40,6 +41,11 @@ import {
   isCandidateTicketSetStale,
   sortCandidateTickets,
 } from "@/lib/candidate-tickets";
+import {
+  buildGroupPlayPlan,
+  type GroupPlayCall,
+  type GroupPlayPlan,
+} from "@/lib/group-play";
 import { appRoute, buildRoundHref, getSingleSearchParam } from "@/lib/round-links";
 import {
   refreshCandidateTicketsForRound,
@@ -66,6 +72,20 @@ const roundSourceTone: Record<
   demo_sample: "warning",
 };
 
+const groupPlayCallLabel: Record<GroupPlayCall, string> = {
+  axis: "AI軸",
+  human_decision: "人間決め",
+  spread: "3面ケア",
+};
+
+const groupPlayCallTone: Record<GroupPlayCall, "amber" | "rose" | "teal"> = {
+  axis: "teal",
+  human_decision: "amber",
+  spread: "rose",
+};
+
+const groupPlayOutcomeOrder = ["1", "0", "2"] as const;
+
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "不明なエラーです。";
 }
@@ -84,6 +104,129 @@ function roundSourceHint(source: RoundSource) {
   }
 
   return "手入力ベースのラウンドです。元データの出どころは取り込みメモや管理メモも確認してください。";
+}
+
+function GroupPlaySection(props: {
+  plan: GroupPlayPlan;
+  ticketGeneratorHref: string;
+  worldCupLike: boolean;
+}) {
+  const aiTargetRange =
+    props.plan.matchCount >= 13
+      ? "10〜11"
+      : `${Math.max(1, Math.floor(props.plan.matchCount * 0.75))}〜${Math.max(
+          1,
+          Math.ceil(props.plan.matchCount * 0.85),
+        )}`;
+  const setLabel =
+    props.worldCupLike && props.plan.matchCount === 13
+      ? "13試合 x 4セット運用"
+      : `${props.plan.matchCount}試合 1セット`;
+
+  return (
+    <SectionCard
+      title="AI越えプレイブック"
+      description={`AIが拾う ${aiTargetRange} 試合を軸にして、残りの迷いどころを人間の投票で決めます。`}
+      actions={
+        <div className="flex flex-wrap gap-2">
+          <Badge tone="info">{setLabel}</Badge>
+          <Link href={props.ticketGeneratorHref} className={secondaryButtonClassName}>
+            ロジック狙い筋
+          </Link>
+        </div>
+      }
+    >
+      <div className="grid gap-3 md:grid-cols-4">
+        <div className="rounded-[22px] border border-emerald-100 bg-emerald-50/80 px-4 py-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700/70">
+            AI軸
+          </p>
+          <p className="mt-2 text-2xl font-semibold text-slate-950">
+            {props.plan.axisCount}
+          </p>
+        </div>
+        <div className="rounded-[22px] border border-amber-100 bg-amber-50/80 px-4 py-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700/70">
+            人間決め
+          </p>
+          <p className="mt-2 text-2xl font-semibold text-slate-950">
+            {props.plan.humanDecisionCount}
+          </p>
+        </div>
+        <div className="rounded-[22px] border border-rose-100 bg-rose-50/80 px-4 py-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-rose-700/70">
+            3面ケア
+          </p>
+          <p className="mt-2 text-2xl font-semibold text-slate-950">
+            {props.plan.spreadCount}
+          </p>
+        </div>
+        <div className="rounded-[22px] border border-slate-200 bg-slate-50/90 px-4 py-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+            各自購入
+          </p>
+          <p className="mt-2 text-2xl font-semibold text-slate-950">
+            {props.plan.boughtMyselfCount}/{props.plan.voteCount}
+          </p>
+        </div>
+      </div>
+
+      <div className="rounded-[22px] border border-slate-200 bg-slate-50/90 px-4 py-4 text-sm leading-6 text-slate-600">
+        この部屋は予想・投票・コメントの記録だけを扱います。購入代行、資金プール、配当分配は扱わず、
+        最終判断は各自で行う前提です。
+      </div>
+
+      {props.plan.focusRows.length > 0 ? (
+        <div className="grid gap-3 lg:grid-cols-2">
+          {props.plan.focusRows.map((row) => (
+            <div
+              key={row.matchId}
+              className="rounded-[22px] border border-slate-200 bg-white/88 px-4 py-4 shadow-[0_18px_36px_-30px_rgba(15,23,42,0.32)]"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                    Match {row.matchNo}
+                  </p>
+                  <h3 className="mt-1 text-base font-semibold text-slate-950">
+                    {row.fixture}
+                  </h3>
+                </div>
+                <Badge tone={groupPlayCallTone[row.call]}>
+                  {groupPlayCallLabel[row.call]}
+                </Badge>
+              </div>
+
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Badge tone={row.humanOverride ? "amber" : "slate"}>
+                  AI {row.aiOutcome ?? "—"} / 候補 {row.topOutcome ?? "—"}
+                </Badge>
+                <Badge tone="slate">一致 {formatPercent(row.agreement, 0)}</Badge>
+              </div>
+
+              <div className="mt-4 grid grid-cols-3 gap-2">
+                {groupPlayOutcomeOrder.map((outcome) => (
+                  <div
+                    key={`${row.matchId}-${outcome}`}
+                    className="rounded-2xl border border-slate-200 bg-slate-50/90 px-3 py-2"
+                  >
+                    <p className="text-xs font-semibold text-slate-500">{outcome}</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-950">
+                      {formatPercent(row.share[outcome], 0)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-[22px] border border-emerald-100 bg-emerald-50/80 px-4 py-4 text-sm leading-6 text-emerald-950">
+          候補カードの割れが小さい状態です。軸を崩すより、資金配分と購入有無を各自で決める段階です。
+        </div>
+      )}
+    </SectionCard>
+  );
 }
 
 function PickRoomPageContent() {
@@ -122,6 +265,17 @@ function PickRoomPageContent() {
   const candidateVoteSummary = useMemo(
     () => buildCandidateVoteSummaryMap(data?.round.candidateVotes ?? []),
     [data],
+  );
+  const groupPlayPlan = useMemo(
+    () =>
+      data
+        ? buildGroupPlayPlan({
+            candidateTickets,
+            candidateVotes: data.round.candidateVotes,
+            matches: data.round.matches,
+          })
+        : null,
+    [candidateTickets, data],
   );
   const dataQualitySummary = useMemo(
     () =>
@@ -193,7 +347,7 @@ function PickRoomPageContent() {
     })();
   }, [candidateIdentity, data, dataQualitySummary, refresh, roundId]);
 
-  if (!isSupabaseConfigured()) {
+  if (dataMode.mode === "shared" && !isSupabaseConfigured()) {
     return <ConfigurationNotice />;
   }
 
@@ -375,6 +529,16 @@ function PickRoomPageContent() {
           title={estimateStatus.title}
           body={estimateStatus.body}
           tone={estimateStatus.tone}
+        />
+      ) : null}
+
+      {groupPlayPlan ? (
+        <GroupPlaySection
+          plan={groupPlayPlan}
+          ticketGeneratorHref={buildRoundHref(appRoute.ticketGenerator, data.round.id, {
+            user: activeUser?.id,
+          })}
+          worldCupLike={data.round.competitionType === "world_cup"}
         />
       ) : null}
 

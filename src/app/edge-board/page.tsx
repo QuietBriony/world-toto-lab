@@ -14,6 +14,7 @@ import {
   LoadingNotice,
   RoundRequiredNotice,
 } from "@/components/app/states";
+import { useDataMode } from "@/components/app/data-mode-provider";
 import { RoundNav } from "@/components/round-nav";
 import {
   Badge,
@@ -75,6 +76,7 @@ function probabilityWithCount(
 
 function EdgeBoardPageContent() {
   const searchParams = useSearchParams();
+  const dataMode = useDataMode();
   const roundId = getSingleSearchParam(searchParams.get("round"));
   const { data, error, loading, refresh } = useRoundWorkspace(roundId);
   const advantageRows = data
@@ -104,7 +106,7 @@ function EdgeBoardPageContent() {
         description="一般人気を基準に、AI、予想者ライン、ウォッチ支持を合成して注目候補を並べます。ここでの注目配分は、どこから見るかの目安です。"
       />
 
-      {!isSupabaseConfigured() ? (
+      {dataMode.mode === "shared" && !isSupabaseConfigured() ? (
         <ConfigurationNotice />
       ) : !roundId ? (
         <RoundRequiredNotice />

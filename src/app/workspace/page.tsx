@@ -18,6 +18,7 @@ import {
   RoundMissingNotice,
   RoundRequiredNotice,
 } from "@/components/app/states";
+import { useDataMode } from "@/components/app/data-mode-provider";
 import { RoundNav } from "@/components/round-nav";
 import {
   Badge,
@@ -171,6 +172,7 @@ type ScopedMessage = {
 function WorkspacePageContent() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const dataMode = useDataMode();
   const roundId = getSingleSearchParam(searchParams.get("round"));
   const debugMode = getSingleSearchParam(searchParams.get("debug")) === "1";
   const focus = getSingleSearchParam(searchParams.get("focus"));
@@ -678,7 +680,7 @@ function WorkspacePageContent() {
         }
       />
 
-      {!isSupabaseConfigured() ? (
+      {dataMode.mode === "shared" && !isSupabaseConfigured() ? (
         <ConfigurationNotice />
       ) : !roundId ? (
         <RoundRequiredNotice />

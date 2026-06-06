@@ -881,6 +881,7 @@ function isSyncedOfficialRoundLibraryRow(row: TotoOfficialRoundLibraryRow) {
 
   return (
     sourceUrl.includes("toto.yahoo.co.jp") ||
+    sourceUrl.includes("sp.toto-dream.com") ||
     sourceUrl.includes("store.toto-dream.com") ||
     sourceNote.includes("オフィシャル") ||
     sourceNote.includes("yahoo! toto")

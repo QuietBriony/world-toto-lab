@@ -14,6 +14,7 @@ import {
   LoadingNotice,
   RoundRequiredNotice,
 } from "@/components/app/states";
+import { useDataMode } from "@/components/app/data-mode-provider";
 import { RoundNav } from "@/components/round-nav";
 import {
   Badge,
@@ -52,8 +53,10 @@ import {
   defaultCandidateLimit,
   defaultMaxContrarianMatches,
   generateAllModeTickets,
+  buildTicketTargetingPlan,
   resolveCandidateLimit,
   type GeneratorSettings,
+  type TargetingCall,
   type TicketPayload,
 } from "@/lib/tickets";
 import type { RoundWorkspace, TicketMode } from "@/lib/types";
@@ -99,6 +102,18 @@ const modeGuide: Record<TicketMode, ModeGuide> = {
     caution: "平均リスクは上がりやすいです。",
     tone: "amber",
   },
+};
+
+const targetingCallLabel: Record<TargetingCall, string> = {
+  axis: "軸",
+  cover: "押さえ",
+  spread: "広げる",
+};
+
+const targetingCallTone: Record<TargetingCall, "amber" | "rose" | "teal"> = {
+  axis: "teal",
+  cover: "amber",
+  spread: "rose",
 };
 
 function parseStoredTicket(raw: string): StoredTicket | null {
@@ -206,6 +221,7 @@ function selectionReasonTone(selection: StoredTicket["selections"][number]) {
 function TicketGeneratorPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const dataMode = useDataMode();
   const roundId = getSingleSearchParam(searchParams.get("round"));
   const selectedMode = parseTicketMode(
     getSingleSearchParam(searchParams.get("mode")) ?? "balanced",
@@ -311,6 +327,9 @@ function TicketGeneratorPageContent() {
   const selectedHero = selectedModeTickets[0] ?? null;
   const selectedModeReasons = summarizeModeReasons(selectedModeTickets);
   const selectedHeroReasons = selectedHero ? summarizeTicketReasons(selectedHero.parsed) : [];
+  const selectedTargetingPlan = buildTicketTargetingPlan(
+    selectedModeTickets.map((ticket) => ticket.parsed),
+  );
   const recommendedStartMode: TicketMode = "balanced";
 
   const handleGenerate = async (event: FormEvent<HTMLFormElement>) => {
@@ -417,7 +436,7 @@ function TicketGeneratorPageContent() {
         }
       />
 
-      {!isSupabaseConfigured() ? (
+      {dataMode.mode === "shared" && !isSupabaseConfigured() ? (
         <ConfigurationNotice />
       ) : !roundId ? (
         <RoundRequiredNotice />
@@ -576,6 +595,81 @@ function TicketGeneratorPageContent() {
               </div>
             ) : null}
           </SectionCard>
+
+          {selectedTargetingPlan ? (
+            <SectionCard
+              title="ロジック狙い筋"
+              description={`${ticketModeLabel[selectedMode]}モードの上位候補が、どこで一致してどこで割れているかを軸・押さえ・広げるに分けます。`}
+              actions={
+                <div className="flex flex-wrap gap-2">
+                  <Badge tone="teal">{selectedTargetingPlan.label}</Badge>
+                  <Badge tone="slate">{selectedTargetingPlan.coverageCount.toLocaleString("ja-JP")} 通り</Badge>
+                </div>
+              }
+            >
+              <div className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
+                <div className="rounded-[24px] border border-slate-200 bg-slate-50/90 p-4">
+                  <div className="flex flex-wrap gap-2">
+                    <Badge tone="teal">軸 {selectedTargetingPlan.axisCount}</Badge>
+                    <Badge tone="amber">押さえ {selectedTargetingPlan.coverCount}</Badge>
+                    <Badge tone="rose">広げる {selectedTargetingPlan.spreadCount}</Badge>
+                  </div>
+                  <h3 className="mt-3 font-display text-lg font-semibold tracking-[-0.05em] text-slate-950">
+                    {selectedTargetingPlan.label}
+                  </h3>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                    {selectedTargetingPlan.summary}
+                    平均安定度は {formatPercent(selectedTargetingPlan.averageConfidence, 0)} です。
+                  </p>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  {selectedTargetingPlan.rows
+                    .filter((row) => row.call !== "axis")
+                    .slice(0, 6)
+                    .map((row) => (
+                      <div
+                        key={`target-${row.matchNo}`}
+                        className="rounded-[22px] border border-slate-200 bg-white/92 p-4 shadow-sm"
+                      >
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge tone={targetingCallTone[row.call]}>
+                            {targetingCallLabel[row.call]}
+                          </Badge>
+                          <Badge tone="slate">#{row.matchNo}</Badge>
+                          <Badge tone="sky">{row.selectedOutcomes.join("/")}</Badge>
+                        </div>
+                        <p className="mt-2 text-sm font-semibold text-slate-900">{row.fixture}</p>
+                        <p className="mt-2 text-xs leading-5 text-slate-600">
+                          主候補 {row.primaryOutcome} / 安定度 {formatPercent(row.confidence, 0)}
+                        </p>
+                        {row.reasonLabels.length > 0 ? (
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {row.reasonLabels.map((reason) => (
+                              <Badge key={`target-${row.matchNo}-${reason}`} tone="slate">
+                                {reason}
+                              </Badge>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                    ))}
+                </div>
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                {selectedTargetingPlan.rows.map((row) => (
+                  <div
+                    key={`target-pill-${row.matchNo}`}
+                    className="rounded-2xl border border-slate-200 bg-slate-50/90 px-3 py-2 text-sm text-slate-700"
+                  >
+                    #{row.matchNo} {row.selectedOutcomes.join("/")}{" "}
+                    <span className="text-slate-500">({targetingCallLabel[row.call]})</span>
+                  </div>
+                ))}
+              </div>
+            </SectionCard>
+          ) : null}
 
           <SectionCard
             title="生成設定"

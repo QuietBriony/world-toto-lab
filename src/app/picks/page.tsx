@@ -17,6 +17,7 @@ import {
   LoadingNotice,
   RoundRequiredNotice,
 } from "@/components/app/states";
+import { useDataMode } from "@/components/app/data-mode-provider";
 import { RoundNav } from "@/components/round-nav";
 import {
   Badge,
@@ -210,6 +211,7 @@ function sourceButtonClassName(input: { active: boolean; disabled?: boolean }) {
 function PicksPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const dataMode = useDataMode();
   const roundId = getSingleSearchParam(searchParams.get("round"));
   const requestedUserId = getSingleSearchParam(searchParams.get("user"));
   const { data, error, loading, refresh } = useRoundWorkspace(roundId);
@@ -551,7 +553,7 @@ function PicksPageContent() {
         description="予想者は 1 / 0 / 2 を直接入れ、ウォッチ担当は AI か予想者のどちらに乗るかを選ぶ入力画面です。"
       />
 
-      {!isSupabaseConfigured() ? (
+      {dataMode.mode === "shared" && !isSupabaseConfigured() ? (
         <ConfigurationNotice />
       ) : !roundId ? (
         <RoundRequiredNotice />

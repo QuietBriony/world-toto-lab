@@ -111,6 +111,14 @@ const officialSourcePresets = [
     sourceUrl:
       "https://store.toto-dream.com/dcs/subos/screen/pi01/spin000/PGSPIN00001DisptotoLotInfo.form?holdCntId=1624",
   },
+  {
+    blurb:
+      "第1634回 toto のスマホ公式ページです。13試合と投票状況ページを結合して、公式人気込みで同期します。",
+    id: "sp_toto_1634",
+    label: "第1634回 toto（スマホ公式）",
+    sourceUrl:
+      "https://sp.toto-dream.com/dcs/subos/screen/si01/ssin025/PGSSIN02501ForwardSalesTermtotoSP.form?holdCntId=1634",
+  },
 ] as const;
 
 const defaultOfficialDetailSourceUrl =
@@ -128,6 +136,7 @@ const officialProductFocusCards: Array<{
     badgeTone: "teal",
     body: "13試合の本命導線です。公式回を選んで、そのままRoundを作る流れに向いています。",
     productType: "toto13",
+    recommendedSourcePresetId: "sp_toto_1634",
     title: "toto を選ぶ",
   },
   {
@@ -561,7 +570,7 @@ function TotoOfficialRoundImportPageContent() {
     runAutoSync();
   }, [autoSyncRequested, syncing]);
 
-  if (!isSupabaseConfigured()) {
+  if (dataMode.mode === "shared" && !isSupabaseConfigured()) {
     return <ConfigurationNotice />;
   }
 
