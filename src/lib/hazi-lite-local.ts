@@ -39,6 +39,12 @@ const localKeys = {
 const haziLiteAiVersion = "team-strength-v5";
 const valueLineSpotCount = 4;
 
+const totoPrizeTiers = [
+  { key: "first", label: "1等", missCount: 0, share: 0.7 },
+  { key: "second", label: "2等", missCount: 1, share: 0.15 },
+  { key: "third", label: "3等", missCount: 2, share: 0.15 },
+] as const;
+
 type OutcomeValue = "1" | "0" | "2";
 const outcomeValues = ["1", "0", "2"] as const;
 
@@ -95,6 +101,19 @@ export type HaziLitePortfolioLine = {
   label: string;
   pPublicCombo: number | null;
   picks: Array<{ matchNo: number; pick: OutcomeValue }>;
+  prizeTiers: HaziLitePrizeTier[];
+  strictEvReady: boolean;
+  totalEvMultiple: number | null;
+  totalExpectedReturnYen: number | null;
+};
+
+export type HaziLitePrizeTier = {
+  estimatedPayoutYen: number | null;
+  expectedReturnYen: number | null;
+  hitCondition: string;
+  hitProbability: number | null;
+  label: string;
+  poolShare: number;
   strictEvReady: boolean;
 };
 
@@ -480,6 +499,104 @@ function sumKnown(values: Array<number | null>) {
   return values.reduce((sum, value) => sum + value, 0);
 }
 
+function tierProbability(probabilities: Array<number | null | undefined>, missCount: number) {
+  if (!probabilities.every((value): value is number => isKnownNumber(value))) {
+    return null;
+  }
+
+  const hitProbabilityAt = (index: number) => probabilities[index];
+  const missProbabilityAt = (index: number) => 1 - probabilities[index];
+
+  if (missCount === 0) {
+    return probabilities.reduce((product, value) => product * value, 1);
+  }
+
+  if (missCount === 1) {
+    return probabilities.reduce((sum, _value, missIndex) => {
+      const probability = probabilities.reduce((product, _candidate, index) => {
+        return product * (index === missIndex ? missProbabilityAt(index) : hitProbabilityAt(index));
+      }, 1);
+      return sum + probability;
+    }, 0);
+  }
+
+  if (missCount === 2) {
+    let probability = 0;
+    for (let first = 0; first < probabilities.length - 1; first += 1) {
+      for (let second = first + 1; second < probabilities.length; second += 1) {
+        probability += probabilities.reduce((product, _candidate, index) => {
+          return product * (index === first || index === second ? missProbabilityAt(index) : hitProbabilityAt(index));
+        }, 1);
+      }
+    }
+    return probability;
+  }
+
+  return null;
+}
+
+function calculateTierPayout(input: {
+  assumption: RoundEvAssumption | null;
+  pPublicTier: number | null;
+  share: number;
+  useCarryover: boolean;
+}) {
+  if (
+    !input.assumption ||
+    !isKnownNumber(input.assumption.totalSalesYen) ||
+    !isKnownNumber(input.pPublicTier) ||
+    input.assumption.stakeYen <= 0
+  ) {
+    return null;
+  }
+
+  const totalTicketsEstimate = input.assumption.totalSalesYen / input.assumption.stakeYen;
+  const expectedOtherWinners = Math.max(0, (totalTicketsEstimate - 1) * input.pPublicTier);
+  const prizePool =
+    input.assumption.totalSalesYen * input.assumption.returnRate * input.share +
+    (input.useCarryover ? input.assumption.carryoverYen : 0);
+  const estimatedPayout = prizePool / (1 + expectedOtherWinners);
+
+  return isKnownNumber(input.assumption.payoutCapYen)
+    ? Math.min(estimatedPayout, input.assumption.payoutCapYen)
+    : estimatedPayout;
+}
+
+function buildPrizeTiers(input: {
+  assumption: RoundEvAssumption | null;
+  modelProbabilities: Array<number | null>;
+  officialProbabilities: Array<number | null>;
+}) {
+  return totoPrizeTiers.map((tier) => {
+    const hitProbability = tierProbability(input.modelProbabilities, tier.missCount);
+    const pPublicTier = tierProbability(input.officialProbabilities, tier.missCount);
+    const estimatedPayoutYen = calculateTierPayout({
+      assumption: input.assumption,
+      pPublicTier,
+      share: tier.share,
+      useCarryover: tier.key === "first",
+    });
+
+    return {
+      estimatedPayoutYen,
+      expectedReturnYen:
+        isKnownNumber(hitProbability) && isKnownNumber(estimatedPayoutYen)
+          ? hitProbability * estimatedPayoutYen
+          : null,
+      hitCondition:
+        tier.missCount === 0
+          ? "13/13"
+          : tier.missCount === 1
+            ? "12/13"
+            : "11/13",
+      hitProbability,
+      label: tier.label,
+      poolShare: tier.share,
+      strictEvReady: isKnownNumber(hitProbability) && isKnownNumber(estimatedPayoutYen),
+    } satisfies HaziLitePrizeTier;
+  });
+}
+
 function buildPortfolioLine(input: {
   evAssumption: RoundEvAssumption | null;
   key: HaziLitePortfolioLine["key"];
@@ -495,6 +612,16 @@ function buildPortfolioLine(input: {
     selectedModelProbabilities: modelProbabilities,
     selectedOfficialProbabilities: officialProbabilities,
   });
+  const prizeTiers = buildPrizeTiers({
+    assumption: input.evAssumption,
+    modelProbabilities,
+    officialProbabilities,
+  });
+  const totalExpectedReturnYen = sumKnown(prizeTiers.map((tier) => tier.expectedReturnYen));
+  const totalEvMultiple =
+    totalExpectedReturnYen !== null && input.evAssumption && input.evAssumption.stakeYen > 0
+      ? totalExpectedReturnYen / input.evAssumption.stakeYen
+      : null;
   const orthodoxByMatchNo = new Map(input.orthodoxPicks.map((pick) => [pick.matchNo, pick.pick]));
 
   return {
@@ -508,7 +635,10 @@ function buildPortfolioLine(input: {
     label: input.label,
     pPublicCombo: ev.pPublicCombo,
     picks: input.picks,
+    prizeTiers,
     strictEvReady: ev.strictAvailable,
+    totalEvMultiple,
+    totalExpectedReturnYen,
   } satisfies HaziLitePortfolioLine;
 }
 
@@ -544,7 +674,9 @@ function buildPortfolioPlan(input: {
     .filter((line): line is HaziLitePortfolioLine => Boolean(line));
   const uniqueSelected = selected.filter((line) => !line.duplicateOf);
   const hitProbability = sumKnown(uniqueSelected.map((line) => line.hitProbability));
-  const expectedReturnYen = sumKnown(uniqueSelected.map((line) => line.grossEvYen));
+  const expectedReturnYen = sumKnown(
+    uniqueSelected.map((line) => line.totalExpectedReturnYen ?? line.grossEvYen),
+  );
   const costYen = uniqueSelected.length * input.stakeYen;
 
   return {
@@ -556,7 +688,9 @@ function buildPortfolioPlan(input: {
     label: input.label,
     lineCount: uniqueSelected.length,
     lineLabels: uniqueSelected.map((line) => line.label),
-    strictEvReady: uniqueSelected.length > 0 && uniqueSelected.every((line) => line.strictEvReady),
+    strictEvReady:
+      uniqueSelected.length > 0 &&
+      uniqueSelected.every((line) => line.prizeTiers.every((tier) => tier.strictEvReady)),
     tone: input.tone,
   } satisfies HaziLitePortfolioPlan;
 }

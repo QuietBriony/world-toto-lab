@@ -435,11 +435,11 @@ export default function HaziLitePage() {
           <p className="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-600">
             {activeRound.portfolio.summary}
           </p>
-          <div className="mt-3 grid gap-2 text-xs leading-5 text-slate-600 sm:grid-cols-3">
+          <div className="mt-3 grid gap-2 text-xs leading-5 text-slate-600 sm:grid-cols-4">
             <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
               <span className="font-bold text-slate-900">公式人気</span>
               <br />
-              王道の本命と、他の当選者数・払戻推定の分母に使います。
+              王道の本命と、各等級の他当せん者数・払戻推定の分母に使います。
             </div>
             <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
               <span className="font-bold text-slate-900">モデル確率</span>
@@ -449,7 +449,12 @@ export default function HaziLitePage() {
             <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
               <span className="font-bold text-slate-900">期待値</span>
               <br />
-              EV = モデル的中率 x 推定払戻 ÷ 1口。未公表回はProxyです。
+              EV = モデル的中率 x 推定払戻 ÷ 1口。1〜3等込みで見ます。
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
+              <span className="font-bold text-slate-900">等級</span>
+              <br />
+              1等は13/13、2等は12/13、3等は11/13。前後賞はありません。
             </div>
           </div>
           <div className="mt-3 grid gap-2 sm:grid-cols-3">
@@ -467,11 +472,11 @@ export default function HaziLitePage() {
                   {plan.lineCount}口
                 </div>
                 <div className="mt-1 text-xs font-semibold text-slate-700">
-                  {formatYen(plan.costYen)} / 的中カバー {formatSmallPercent(plan.hitProbability)}
+                  {formatYen(plan.costYen)} / 1等カバー {formatSmallPercent(plan.hitProbability)}
                 </div>
                 <div className="mt-1 text-xs font-semibold text-slate-700">
                   {plan.strictEvReady
-                    ? `期待値 ${formatYen(plan.expectedReturnYen)} / ${formatMultiple(plan.evMultiple)}`
+                    ? `1〜3等EV ${formatYen(plan.expectedReturnYen)} / ${formatMultiple(plan.evMultiple)}`
                     : `期待値 ${formatMultiple(plan.evMultiple)}`}
                 </div>
                 <p className="mt-2 text-xs leading-5 text-slate-600">{plan.description}</p>
@@ -497,13 +502,18 @@ export default function HaziLitePage() {
                     ) : null}
                   </div>
                   <div className="mt-0.5 text-slate-500">
-                    王道外し {line.deviationCount} / 的中 {formatSmallPercent(line.hitProbability)}
+                    王道外し {line.deviationCount} / 1等 {formatSmallPercent(line.hitProbability)}
+                  </div>
+                  <div className="mt-0.5 text-[11px] text-slate-500">
+                    {line.prizeTiers
+                      .map((tier) => `${tier.label} ${formatSmallPercent(tier.hitProbability)}`)
+                      .join(" / ")}
                   </div>
                 </div>
                 <div className="shrink-0 text-right font-semibold text-slate-700">
-                  <div>{line.strictEvReady ? formatMultiple(line.evMultiple) : "Proxy"}</div>
+                  <div>{line.totalEvMultiple !== null ? formatMultiple(line.totalEvMultiple) : "Proxy"}</div>
                   <div className="mt-0.5 text-slate-500">
-                    払戻 {line.estimatedPayoutYen ? formatYen(line.estimatedPayoutYen) : "--"}
+                    1等払戻 {line.estimatedPayoutYen ? formatYen(line.estimatedPayoutYen) : "--"}
                   </div>
                 </div>
               </div>
