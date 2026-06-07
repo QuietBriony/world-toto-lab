@@ -207,13 +207,153 @@ export const featuredWorldTotoMatches: TotoOfficialRoundLibraryMatch[] = [
   },
 ];
 
-export function buildFeaturedWorldTotoSourceText() {
+function scheduledMatch(
+  officialMatchNo: number,
+  homeTeam: string,
+  awayTeam: string,
+  kickoffTime: string,
+  stage: string,
+): TotoOfficialRoundLibraryMatch {
+  return {
+    actualResult: null,
+    awayTeam,
+    fixtureMasterId: null,
+    homeTeam,
+    kickoffTime,
+    matchStatus: "scheduled",
+    officialMatchNo,
+    officialVote0: null,
+    officialVote1: null,
+    officialVote2: null,
+    sourceText: null,
+    stage,
+    venue: null,
+  };
+}
+
+const featuredWorldToto1635Matches: TotoOfficialRoundLibraryMatch[] = [
+  scheduledMatch(1, "フランス", "セネガル", "2026-06-17T04:00:00+09:00", "第1635回 toto"),
+  scheduledMatch(2, "アルゼンチン", "アルジェリア", "2026-06-17T10:00:00+09:00", "第1635回 toto"),
+  scheduledMatch(3, "イングランド", "クロアチア", "2026-06-18T05:00:00+09:00", "第1635回 toto"),
+  scheduledMatch(4, "メキシコ", "韓国", "2026-06-19T10:00:00+09:00", "第1635回 toto"),
+  scheduledMatch(5, "スコットランド", "モロッコ", "2026-06-20T07:00:00+09:00", "第1635回 toto"),
+  scheduledMatch(6, "オーストリア", "ヨルダン", "2026-06-17T13:00:00+09:00", "第1635回 toto"),
+  scheduledMatch(7, "ウズベキスタン", "コロンビア", "2026-06-18T11:00:00+09:00", "第1635回 toto"),
+  scheduledMatch(8, "チェコ", "南アフリカ", "2026-06-19T01:00:00+09:00", "第1635回 toto"),
+  scheduledMatch(9, "カナダ", "カタール", "2026-06-19T07:00:00+09:00", "第1635回 toto"),
+  scheduledMatch(10, "ブラジル", "ハイチ", "2026-06-20T09:30:00+09:00", "第1635回 toto"),
+  scheduledMatch(11, "ポルトガル", "コンゴ民主共和国", "2026-06-18T02:00:00+09:00", "第1635回 toto"),
+  scheduledMatch(12, "ガーナ", "パナマ", "2026-06-18T08:00:00+09:00", "第1635回 toto"),
+  scheduledMatch(13, "スイス", "ボスニア・ヘルツェゴビナ", "2026-06-19T04:00:00+09:00", "第1635回 toto"),
+];
+
+const featuredWorldToto1636Matches: TotoOfficialRoundLibraryMatch[] = [
+  scheduledMatch(1, "ドイツ", "コートジボワール", "2026-06-21T05:00:00+09:00", "第1636回 toto"),
+  scheduledMatch(2, "チュニジア", "日本", "2026-06-21T13:00:00+09:00", "第1636回 toto"),
+  scheduledMatch(3, "アルゼンチン", "オーストリア", "2026-06-23T02:00:00+09:00", "第1636回 toto"),
+  scheduledMatch(4, "パナマ", "クロアチア", "2026-06-24T08:00:00+09:00", "第1636回 toto"),
+  scheduledMatch(5, "コロンビア", "コンゴ民主共和国", "2026-06-24T11:00:00+09:00", "第1636回 toto"),
+  scheduledMatch(6, "オランダ", "スウェーデン", "2026-06-21T02:00:00+09:00", "第1636回 toto"),
+  scheduledMatch(7, "ウルグアイ", "カーボベルデ", "2026-06-22T07:00:00+09:00", "第1636回 toto"),
+  scheduledMatch(8, "ノルウェー", "セネガル", "2026-06-23T09:00:00+09:00", "第1636回 toto"),
+  scheduledMatch(9, "ポルトガル", "ウズベキスタン", "2026-06-24T02:00:00+09:00", "第1636回 toto"),
+  scheduledMatch(10, "ヨルダン", "アルジェリア", "2026-06-23T12:00:00+09:00", "第1636回 toto"),
+  scheduledMatch(11, "スペイン", "サウジアラビア", "2026-06-22T01:00:00+09:00", "第1636回 toto"),
+  scheduledMatch(12, "イングランド", "ガーナ", "2026-06-24T05:00:00+09:00", "第1636回 toto"),
+  scheduledMatch(13, "エクアドル", "キュラソー", "2026-06-21T09:00:00+09:00", "第1636回 toto"),
+];
+
+const featuredWorldToto1637Matches: TotoOfficialRoundLibraryMatch[] = [
+  scheduledMatch(1, "エクアドル", "ドイツ", "2026-06-26T05:00:00+09:00", "第1637回 toto"),
+  scheduledMatch(2, "日本", "スウェーデン", "2026-06-26T08:00:00+09:00", "第1637回 toto"),
+  scheduledMatch(3, "ウルグアイ", "スペイン", "2026-06-27T09:00:00+09:00", "第1637回 toto"),
+  scheduledMatch(4, "コロンビア", "ポルトガル", "2026-06-28T08:30:00+09:00", "第1637回 toto"),
+  scheduledMatch(5, "アルジェリア", "オーストリア", "2026-06-28T11:00:00+09:00", "第1637回 toto"),
+  scheduledMatch(6, "チュニジア", "オランダ", "2026-06-26T08:00:00+09:00", "第1637回 toto"),
+  scheduledMatch(7, "パラグアイ", "オーストラリア", "2026-06-26T11:00:00+09:00", "第1637回 toto"),
+  scheduledMatch(8, "ノルウェー", "フランス", "2026-06-27T04:00:00+09:00", "第1637回 toto"),
+  scheduledMatch(9, "パナマ", "イングランド", "2026-06-28T06:00:00+09:00", "第1637回 toto"),
+  scheduledMatch(10, "コンゴ民主共和国", "ウズベキスタン", "2026-06-28T08:30:00+09:00", "第1637回 toto"),
+  scheduledMatch(11, "ヨルダン", "アルゼンチン", "2026-06-28T11:00:00+09:00", "第1637回 toto"),
+  scheduledMatch(12, "ニュージーランド", "ベルギー", "2026-06-27T12:00:00+09:00", "第1637回 toto"),
+  scheduledMatch(13, "クロアチア", "ガーナ", "2026-06-28T06:00:00+09:00", "第1637回 toto"),
+];
+
+type FeaturedWorldTotoRound = {
+  resultStatus: "draft" | "selling";
+  roundNumber: number;
+  salesEndAt: string;
+  salesStartAt: string;
+  sourceUrl: string;
+  title: string;
+  totalSalesYen: number | null;
+  matches: TotoOfficialRoundLibraryMatch[];
+};
+
+export const featuredWorldTotoRoundNumbers = [1634, 1635, 1636, 1637] as const;
+
+export const featuredWorldTotoRounds: FeaturedWorldTotoRound[] = [
+  {
+    matches: featuredWorldTotoMatches,
+    resultStatus: "selling",
+    roundNumber: 1634,
+    salesEndAt: "2026-06-12T19:00:00+09:00",
+    salesStartAt: "2026-06-06T08:00:00+09:00",
+    sourceUrl: featuredWorldTotoSourceUrl,
+    title: featuredWorldTotoTitle,
+    totalSalesYen: 13958700,
+  },
+  {
+    matches: featuredWorldToto1635Matches,
+    resultStatus: "draft",
+    roundNumber: 1635,
+    salesEndAt: "2026-06-16T19:00:00+09:00",
+    salesStartAt: "2026-06-09T08:00:00+09:00",
+    sourceUrl:
+      "https://store.toto-dream.com/dcs/subos/screen/pi01/spin000/PGSPIN00001DisptotoLotInfo.form?holdCntId=1635",
+    title: "第1635回 toto W杯本番",
+    totalSalesYen: null,
+  },
+  {
+    matches: featuredWorldToto1636Matches,
+    resultStatus: "draft",
+    roundNumber: 1636,
+    salesEndAt: "2026-06-20T19:00:00+09:00",
+    salesStartAt: "2026-06-12T08:00:00+09:00",
+    sourceUrl:
+      "https://store.toto-dream.com/dcs/subos/screen/pi01/spin000/PGSPIN00001DisptotoLotInfo.form?holdCntId=1636",
+    title: "第1636回 toto W杯本番",
+    totalSalesYen: null,
+  },
+  {
+    matches: featuredWorldToto1637Matches,
+    resultStatus: "draft",
+    roundNumber: 1637,
+    salesEndAt: "2026-06-25T19:00:00+09:00",
+    salesStartAt: "2026-06-20T08:00:00+09:00",
+    sourceUrl:
+      "https://store.toto-dream.com/dcs/subos/screen/pi01/spin000/PGSPIN00001DisptotoLotInfo.form?holdCntId=1637",
+    title: "第1637回 toto W杯本番",
+    totalSalesYen: null,
+  },
+];
+
+function resolveFeaturedWorldTotoRound(roundNumber: number) {
+  const round = featuredWorldTotoRounds.find((entry) => entry.roundNumber === roundNumber);
+  if (!round) {
+    throw new Error(`第${roundNumber}回 toto のプリセットが見つかりません。`);
+  }
+
+  return round;
+}
+
+function buildSourceText(round: FeaturedWorldTotoRound) {
   return [
-    `source,${featuredWorldTotoSourceUrl}`,
-    `vote_source,${featuredWorldTotoVoteUrl}`,
+    `source,${round.sourceUrl}`,
+    round.roundNumber === 1634 ? `vote_source,${featuredWorldTotoVoteUrl}` : null,
     `snapshot,${featuredWorldTotoSnapshotLabel}`,
     "official_match_no,home_team,away_team,kickoff_time,official_vote_1,official_vote_0,official_vote_2",
-    ...featuredWorldTotoMatches.map((match) =>
+    ...round.matches.map((match) =>
       [
         match.officialMatchNo,
         match.homeTeam,
@@ -224,31 +364,45 @@ export function buildFeaturedWorldTotoSourceText() {
         match.officialVote2 ?? "",
       ].join(","),
     ),
-  ].join("\n");
+  ]
+    .filter((line): line is string => Boolean(line))
+    .join("\n");
 }
 
-export function buildFeaturedWorldTotoImportPayload() {
+export function buildFeaturedWorldTotoSourceText(roundNumber = 1634) {
+  return buildSourceText(resolveFeaturedWorldTotoRound(roundNumber));
+}
+
+export function buildFeaturedWorldTotoImportPayload(roundNumber = 1634) {
+  const round = resolveFeaturedWorldTotoRound(roundNumber);
+
   return {
     carryoverYen: 0,
     firstPrizeShare: 0.7,
     notes:
-      "Hazi予想をすぐ入れるための第1634回toto公式スナップショットです。購入や精算は扱いません。",
-    officialRoundName: "第1634回 toto",
-    officialRoundNumber: 1634,
+      `Hazi予想をすぐ入れるための第${round.roundNumber}回toto公式スナップショットです。購入や精算は扱いません。`,
+    officialRoundName: `第${round.roundNumber}回 toto`,
+    officialRoundNumber: round.roundNumber,
     payoutCapYen: null,
     productType: "toto13" as const,
     requiredMatchCount: 13,
-    resultStatus: "selling" as const,
+    resultStatus: round.resultStatus,
     returnRate: 0.5,
-    rows: featuredWorldTotoMatches,
-    salesEndAt: "2026-06-12T19:00:00+09:00",
-    salesStartAt: "2026-06-06T08:00:00+09:00",
-    sourceNote: `toto公式スマホ 第1634回 / 投票状況 ${featuredWorldTotoSnapshotLabel}`,
-    sourceText: buildFeaturedWorldTotoSourceText(),
-    sourceUrl: featuredWorldTotoSourceUrl,
+    rows: round.matches,
+    salesEndAt: round.salesEndAt,
+    salesStartAt: round.salesStartAt,
+    sourceNote: `toto公式 第${round.roundNumber}回 / 指定公示済み / ${featuredWorldTotoSnapshotLabel}`,
+    sourceText: buildSourceText(round),
+    sourceUrl: round.sourceUrl,
     stakeYen: 100,
     status: "analyzing" as const,
-    title: featuredWorldTotoTitle,
-    totalSalesYen: 13958700,
+    title: round.title,
+    totalSalesYen: round.totalSalesYen,
   };
+}
+
+export function buildFeaturedWorldTotoImportPayloads() {
+  return featuredWorldTotoRoundNumbers.map((roundNumber) =>
+    buildFeaturedWorldTotoImportPayload(roundNumber),
+  );
 }

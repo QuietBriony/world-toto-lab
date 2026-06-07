@@ -46,10 +46,12 @@ import {
   advantageBucketLabel,
   competitionTypeLabel,
   dataProfileLabel,
+  favoriteOutcomeForBucket,
   formatDateTime,
   formatCurrency,
   formatPercent,
   formatSignedPercent,
+  outcomeToEnum,
   primaryUseLabel,
   productTypeLabel,
   roundSourceLabel,
@@ -85,16 +87,18 @@ import {
   createUser,
   deleteUserIfInactive,
   estimateRoundAiModel,
+  getRoundWorkspace,
   refreshCandidateTicketsForRound,
+  replacePicks,
   saveTotoOfficialRoundImport,
   updateUserProfile,
 } from "@/lib/repository";
 import { budgetFromCandidateLimit, candidateLimitFromBudget } from "@/lib/tickets";
 import type { ProductType } from "@/lib/types";
 import {
-  buildFeaturedWorldTotoImportPayload,
+  buildFeaturedWorldTotoImportPayloads,
+  featuredWorldTotoRoundNumbers,
   featuredWorldTotoSnapshotLabel,
-  featuredWorldTotoTitle,
 } from "@/lib/featured-world-toto";
 import {
   filterPredictors,
@@ -120,6 +124,14 @@ function errorMessage(error: unknown) {
 
 function progressValue(done: number, total: number) {
   return total > 0 ? `${done}/${total}` : "未設定";
+}
+
+function featuredWorldTotoRoundNumber(input: { sourceNote: string | null; title: string }) {
+  const matched = `${input.title} ${input.sourceNote ?? ""}`.match(/第(163[4-7])回/);
+  const roundNumber = matched ? Number(matched[1]) : null;
+  return featuredWorldTotoRoundNumbers.includes(roundNumber as (typeof featuredWorldTotoRoundNumbers)[number])
+    ? roundNumber
+    : null;
 }
 
 function hasAiInputs(model: { modelProb0: number | null; modelProb1: number | null; modelProb2: number | null }) {
@@ -331,6 +343,42 @@ export default function DashboardPage() {
     }
   };
 
+  const saveHaziInitialPicks = async (roundId: string) => {
+    const workspace = await getRoundWorkspace(roundId);
+    if (!workspace) {
+      return null;
+    }
+
+    const haziUser =
+      workspace.users.find((user) => user.name.trim().toLowerCase() === "hazi") ??
+      workspace.users.find((user) => isPredictorRole(user.role)) ??
+      workspace.users[0];
+
+    if (!haziUser) {
+      return null;
+    }
+
+    await replacePicks({
+      roundId,
+      userId: haziUser.id,
+      picks: workspace.round.matches.map((match) => {
+        const pick =
+          favoriteOutcomeForBucket(match, "model") ??
+          favoriteOutcomeForBucket(match, "market") ??
+          "1";
+
+        return {
+          matchId: match.id,
+          note: "Hazi初期予想: AI初期線から自動入力。あとで手動調整してください。",
+          pick: outcomeToEnum(pick),
+          support: { kind: "manual" as const },
+        };
+      }),
+    });
+
+    return haziUser.id;
+  };
+
   const handleCreateHaziWorldToto = async () => {
     setBusy("hazi");
     setActionError(null);
@@ -341,19 +389,43 @@ export default function DashboardPage() {
         await createInitialUsers();
       }
 
-      const roundId = await saveTotoOfficialRoundImport(
-        buildFeaturedWorldTotoImportPayload(),
+      const currentInventoryRounds = data?.rounds.filter((round) => !isDemoRoundTitle(round.title)) ?? [];
+      const existingRoundsByNumber = new Map(
+        currentInventoryRounds.flatMap((round) => {
+          const roundNumber = featuredWorldTotoRoundNumber(round);
+          return roundNumber ? [[roundNumber, round.id] as const] : [];
+        }),
       );
-      await estimateRoundAiModel({
-        overwriteExisting: false,
-        roundId,
-      });
-      await refreshCandidateTicketsForRound({
-        force: true,
-        roundId,
-      });
+      const roundRefs: Array<{ haziUserId: string | null; roundId: string }> = [];
+
+      for (const payload of buildFeaturedWorldTotoImportPayloads()) {
+        const existingRoundId =
+          payload.officialRoundNumber !== null
+            ? existingRoundsByNumber.get(payload.officialRoundNumber)
+            : null;
+        const roundId =
+          existingRoundId ??
+          (await saveTotoOfficialRoundImport(payload));
+
+        await estimateRoundAiModel({
+          overwriteExisting: false,
+          roundId,
+        });
+        const haziUserId = await saveHaziInitialPicks(roundId);
+        await refreshCandidateTicketsForRound({
+          force: true,
+          roundId,
+        });
+        roundRefs.push({ haziUserId, roundId });
+      }
+
       await refresh();
-      router.push(buildRoundHref(appRoute.picks, roundId));
+      const firstRound = roundRefs[0];
+      router.push(
+        buildRoundHref(appRoute.review, firstRound?.roundId, {
+          user: firstRound?.haziUserId,
+        }),
+      );
     } catch (nextError) {
       setActionError(errorMessage(nextError));
     } finally {
@@ -405,12 +477,16 @@ export default function DashboardPage() {
   const latestRoundUsers =
     data && latestRound ? resolveRoundParticipantUsers(data.users, latestRound.participantIds) : [];
   const latestPrimaryUserId = latestRoundUsers[0]?.id;
-  const haziWorldTotoRound =
-    inventoryRounds.find(
-      (round) =>
-        round.title.includes("第1634回") ||
-        round.sourceNote?.includes("第1634回"),
-    ) ?? null;
+  const haziWorldTotoSlots = featuredWorldTotoRoundNumbers.map((roundNumber) => ({
+    round:
+      inventoryRounds.find(
+        (round) => featuredWorldTotoRoundNumber(round) === roundNumber,
+      ) ?? null,
+    roundNumber,
+  }));
+  const haziWorldTotoReadyCount = haziWorldTotoSlots.filter((slot) => slot.round).length;
+  const haziWorldTotoComplete = haziWorldTotoReadyCount === featuredWorldTotoRoundNumbers.length;
+  const haziWorldTotoRound = haziWorldTotoSlots.find((slot) => slot.round)?.round ?? null;
   const haziWorldTotoUsers =
     data && haziWorldTotoRound
       ? resolveRoundParticipantUsers(data.users, haziWorldTotoRound.participantIds)
@@ -421,6 +497,11 @@ export default function DashboardPage() {
     haziWorldTotoUsers[0];
   const haziWorldTotoPicksHref = haziWorldTotoRound
     ? buildRoundHref(appRoute.picks, haziWorldTotoRound.id, {
+        user: haziWorldTotoUser?.id,
+      })
+    : null;
+  const haziWorldTotoReviewHref = haziWorldTotoRound
+    ? buildRoundHref(appRoute.review, haziWorldTotoRound.id, {
         user: haziWorldTotoUser?.id,
       })
     : null;
@@ -653,10 +734,13 @@ export default function DashboardPage() {
         <>
           <SectionCard
             title="Haziの予想を入れる"
-            description="ここが最初に押す入口です。第1634回totoのW杯対象13試合を作り、Haziが1 / 0 / 2を入れて保存します。"
+            description="ここが最初に押す入口です。第1634〜1637回totoのW杯対象52試合を作り、Haziの初期予想を入れてレビューへ進みます。"
             actions={
               <div className="flex flex-wrap gap-2">
                 <Badge tone="teal">最短導線</Badge>
+                <Badge tone={haziWorldTotoComplete ? "teal" : "amber"}>
+                  {haziWorldTotoReadyCount}/4回作成済み
+                </Badge>
                 <Badge tone="slate">{featuredWorldTotoSnapshotLabel}</Badge>
               </div>
             }
@@ -664,22 +748,24 @@ export default function DashboardPage() {
             <div className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr] xl:items-center">
               <div className="rounded-[24px] border border-emerald-200 bg-emerald-50/85 px-5 py-5">
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge tone="teal">{haziWorldTotoRound ? "作成済み" : "未作成"}</Badge>
-                  <Badge tone="info">{featuredWorldTotoTitle}</Badge>
+                  <Badge tone="teal">{haziWorldTotoComplete ? "4回作成済み" : "未完了"}</Badge>
+                  <Badge tone="info">第1634〜1637回 toto</Badge>
                   <Badge tone="amber">ローカル保存</Badge>
                 </div>
                 <h3 className="mt-4 text-xl font-semibold tracking-tight text-slate-950">
-                  {haziWorldTotoRound ? "第1634回でHazi予想を続ける" : "第1634回を作ってHazi予想へ"}
+                  {haziWorldTotoComplete
+                    ? "Haziレビューを各回で並走する"
+                    : "4回分を作ってHaziレビューへ"}
                 </h3>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
-                  {haziWorldTotoRound
-                    ? "第1634回は作成済みです。Haziの入力画面を開いて、未入力の試合から1 / 0 / 2を押して保存します。"
-                    : "公式公開中の第1634回totoを、このブラウザのローカル保存に作ります。Supabaseなしで始められます。"}
+                  {haziWorldTotoComplete
+                    ? "4回分は作成済みです。各回のレビュー画面でHaziの初期予想を確認し、必要な試合だけ手動で直せます。"
+                    : "公式で公開されている第1634〜1637回totoを、このブラウザのローカル保存に作ります。Supabaseなしで始められます。"}
                 </p>
                 <div className="mt-5 flex flex-wrap gap-2">
-                  {haziWorldTotoPicksHref ? (
-                    <Link href={haziWorldTotoPicksHref} className={buttonClassName}>
-                      Hazi予想を入力
+                  {haziWorldTotoComplete && haziWorldTotoReviewHref ? (
+                    <Link href={haziWorldTotoReviewHref} className={buttonClassName}>
+                      Haziレビューを開く
                     </Link>
                   ) : (
                     <button
@@ -688,10 +774,14 @@ export default function DashboardPage() {
                       disabled={busy === "hazi"}
                       className={buttonClassName}
                     >
-                      {busy === "hazi" ? "作成中..." : "第1634回を作って入力"}
+                      {busy === "hazi" ? "4回分を作成中..." : "4回分を作ってHaziレビューへ"}
                     </button>
                   )}
-                  {haziWorldTotoPickRoomHref ? (
+                  {haziWorldTotoComplete && haziWorldTotoPicksHref ? (
+                    <Link href={haziWorldTotoPicksHref} className={secondaryButtonClassName}>
+                      Hazi予想を調整
+                    </Link>
+                  ) : haziWorldTotoPickRoomHref ? (
                     <Link href={haziWorldTotoPickRoomHref} className={secondaryButtonClassName}>
                       みんな用の候補を見る
                     </Link>
@@ -707,14 +797,64 @@ export default function DashboardPage() {
                     </Link>
                   )}
                 </div>
+                <div className="mt-5 divide-y divide-emerald-100 rounded-2xl border border-emerald-100 bg-white/68">
+                  {haziWorldTotoSlots.map((slot) => {
+                    const slotUsers =
+                      data && slot.round
+                        ? resolveRoundParticipantUsers(data.users, slot.round.participantIds)
+                        : [];
+                    const slotUser =
+                      slotUsers.find((user) => user.name.trim().toLowerCase() === "hazi") ??
+                      slotUsers.find((user) => isPredictorRole(user.role)) ??
+                      slotUsers[0];
+                    const slotPicksHref = slot.round
+                      ? buildRoundHref(appRoute.picks, slot.round.id, {
+                          user: slotUser?.id,
+                        })
+                      : null;
+                    const slotReviewHref = slot.round
+                      ? buildRoundHref(appRoute.review, slot.round.id, {
+                          user: slotUser?.id,
+                        })
+                      : null;
+
+                    return (
+                      <div
+                        key={slot.roundNumber}
+                        className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Badge tone="info">第{slot.roundNumber}回</Badge>
+                          <span className="text-sm font-medium text-slate-800">
+                            {slot.round ? "13試合入り" : "未作成"}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm font-semibold">
+                          {slotPicksHref ? (
+                            <Link href={slotPicksHref} className="text-teal-700 hover:text-teal-900">
+                              予想
+                            </Link>
+                          ) : null}
+                          {slotReviewHref ? (
+                            <Link href={slotReviewHref} className="text-slate-700 hover:text-slate-950">
+                              レビュー
+                            </Link>
+                          ) : (
+                            <span className="text-slate-400">作成待ち</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
                 {actionError ? <p className="mt-3 text-sm text-rose-700">{actionError}</p> : null}
               </div>
 
               <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
                 {[
-                  ["1", "作る", "第1634回の13試合と公式人気を入れる"],
-                  ["2", "入れる", "Haziが各試合で1 / 0 / 2を押す"],
-                  ["3", "保存", "候補カードと共有JSONに反映する"],
+                  ["1", "4回作成", "第1634〜1637回の指定13試合をそれぞれ入れる"],
+                  ["2", "52試合予想済み", "AI初期線でHaziの1 / 0 / 2を保存する"],
+                  ["3", "レビュー並走", "各回のレビュー画面で確認して手動調整する"],
                 ].map(([step, title, body]) => (
                   <div key={step} className="rounded-[22px] border border-slate-200 bg-white/88 px-4 py-4">
                     <p className="text-xs font-semibold uppercase tracking-[0.2em] text-teal-700/70">

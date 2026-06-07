@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildFeaturedWorldTotoImportPayload,
+  buildFeaturedWorldTotoImportPayloads,
   featuredWorldTotoMatches,
+  featuredWorldTotoRoundNumbers,
 } from "@/lib/featured-world-toto";
 
 describe("featured world toto preset", () => {
@@ -21,6 +23,19 @@ describe("featured world toto preset", () => {
         (match.officialVote2 ?? 0);
 
       expect(total).toBeCloseTo(1, 4);
+    });
+  });
+
+  it("contains four published World Toto rounds", () => {
+    const payloads = buildFeaturedWorldTotoImportPayloads();
+
+    expect(featuredWorldTotoRoundNumbers).toEqual([1634, 1635, 1636, 1637]);
+    expect(payloads).toHaveLength(4);
+    expect(payloads.flatMap((payload) => payload.rows)).toHaveLength(52);
+    payloads.forEach((payload) => {
+      expect(payload.rows).toHaveLength(13);
+      expect(payload.officialRoundNumber).toBeGreaterThanOrEqual(1634);
+      expect(payload.officialRoundNumber).toBeLessThanOrEqual(1637);
     });
   });
 
