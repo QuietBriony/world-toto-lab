@@ -84,12 +84,21 @@ import {
   deleteRound,
   createUser,
   deleteUserIfInactive,
+  estimateRoundAiModel,
+  refreshCandidateTicketsForRound,
+  saveTotoOfficialRoundImport,
   updateUserProfile,
 } from "@/lib/repository";
 import { budgetFromCandidateLimit, candidateLimitFromBudget } from "@/lib/tickets";
 import type { ProductType } from "@/lib/types";
 import {
+  buildFeaturedWorldTotoImportPayload,
+  featuredWorldTotoSnapshotLabel,
+  featuredWorldTotoTitle,
+} from "@/lib/featured-world-toto";
+import {
   filterPredictors,
+  isPredictorRole,
   nextPredictorLineName,
   parseUserRole,
   userRoleDescription,
@@ -133,7 +142,7 @@ export default function DashboardPage() {
   const { data, error, loading, refresh } = useDashboardData();
   const goal3Library = useTotoOfficialRoundLibrary({ productType: "custom" });
   const bigOfficialWatch = useBigOfficialWatch();
-  const [busy, setBusy] = useState<"demo" | "members" | "round" | null>(null);
+  const [busy, setBusy] = useState<"demo" | "hazi" | "members" | "round" | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [addingMember, setAddingMember] = useState(false);
   const [savingMemberId, setSavingMemberId] = useState<string | null>(null);
@@ -322,6 +331,36 @@ export default function DashboardPage() {
     }
   };
 
+  const handleCreateHaziWorldToto = async () => {
+    setBusy("hazi");
+    setActionError(null);
+
+    try {
+      dataMode.setMode("local");
+      if ((data?.users.length ?? 0) === 0) {
+        await createInitialUsers();
+      }
+
+      const roundId = await saveTotoOfficialRoundImport(
+        buildFeaturedWorldTotoImportPayload(),
+      );
+      await estimateRoundAiModel({
+        overwriteExisting: false,
+        roundId,
+      });
+      await refreshCandidateTicketsForRound({
+        force: true,
+        roundId,
+      });
+      await refresh();
+      router.push(buildRoundHref(appRoute.picks, roundId));
+    } catch (nextError) {
+      setActionError(errorMessage(nextError));
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const handleDeleteRound = async (roundId: string, title: string) => {
     if (!window.confirm(`「${title}」を削除します。関連する試合・支持・予想・候補カードも一緒に消えます。続けますか？`)) {
       return;
@@ -366,6 +405,30 @@ export default function DashboardPage() {
   const latestRoundUsers =
     data && latestRound ? resolveRoundParticipantUsers(data.users, latestRound.participantIds) : [];
   const latestPrimaryUserId = latestRoundUsers[0]?.id;
+  const haziWorldTotoRound =
+    inventoryRounds.find(
+      (round) =>
+        round.title.includes("第1634回") ||
+        round.sourceNote?.includes("第1634回"),
+    ) ?? null;
+  const haziWorldTotoUsers =
+    data && haziWorldTotoRound
+      ? resolveRoundParticipantUsers(data.users, haziWorldTotoRound.participantIds)
+      : [];
+  const haziWorldTotoUser =
+    haziWorldTotoUsers.find((user) => user.name.trim().toLowerCase() === "hazi") ??
+    haziWorldTotoUsers.find((user) => isPredictorRole(user.role)) ??
+    haziWorldTotoUsers[0];
+  const haziWorldTotoPicksHref = haziWorldTotoRound
+    ? buildRoundHref(appRoute.picks, haziWorldTotoRound.id, {
+        user: haziWorldTotoUser?.id,
+      })
+    : null;
+  const haziWorldTotoPickRoomHref = haziWorldTotoRound
+    ? buildRoundHref(appRoute.pickRoom, haziWorldTotoRound.id, {
+        user: haziWorldTotoUser?.id,
+      })
+    : null;
   const latestPlayHref = latestRound
     ? buildRoundHref(appRoute.play, latestRound.id, {
         user: latestPrimaryUserId,
@@ -588,6 +651,83 @@ export default function DashboardPage() {
         <ErrorNotice error={error} onRetry={() => void refresh()} />
       ) : data ? (
         <>
+          <SectionCard
+            title="Haziの予想を入れる"
+            description="ここが最初に押す入口です。第1634回totoのW杯対象13試合を作り、Haziが1 / 0 / 2を入れて保存します。"
+            actions={
+              <div className="flex flex-wrap gap-2">
+                <Badge tone="teal">最短導線</Badge>
+                <Badge tone="slate">{featuredWorldTotoSnapshotLabel}</Badge>
+              </div>
+            }
+          >
+            <div className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr] xl:items-center">
+              <div className="rounded-[24px] border border-emerald-200 bg-emerald-50/85 px-5 py-5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge tone="teal">{haziWorldTotoRound ? "作成済み" : "未作成"}</Badge>
+                  <Badge tone="info">{featuredWorldTotoTitle}</Badge>
+                  <Badge tone="amber">ローカル保存</Badge>
+                </div>
+                <h3 className="mt-4 text-xl font-semibold tracking-tight text-slate-950">
+                  {haziWorldTotoRound ? "第1634回でHazi予想を続ける" : "第1634回を作ってHazi予想へ"}
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  {haziWorldTotoRound
+                    ? "第1634回は作成済みです。Haziの入力画面を開いて、未入力の試合から1 / 0 / 2を押して保存します。"
+                    : "公式公開中の第1634回totoを、このブラウザのローカル保存に作ります。Supabaseなしで始められます。"}
+                </p>
+                <div className="mt-5 flex flex-wrap gap-2">
+                  {haziWorldTotoPicksHref ? (
+                    <Link href={haziWorldTotoPicksHref} className={buttonClassName}>
+                      Hazi予想を入力
+                    </Link>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => void handleCreateHaziWorldToto()}
+                      disabled={busy === "hazi"}
+                      className={buttonClassName}
+                    >
+                      {busy === "hazi" ? "作成中..." : "第1634回を作って入力"}
+                    </button>
+                  )}
+                  {haziWorldTotoPickRoomHref ? (
+                    <Link href={haziWorldTotoPickRoomHref} className={secondaryButtonClassName}>
+                      みんな用の候補を見る
+                    </Link>
+                  ) : (
+                    <Link
+                      href={buildOfficialRoundImportHref(null, {
+                        productType: "toto13",
+                        sourcePreset: "sp_toto_1634",
+                      })}
+                      className={secondaryButtonClassName}
+                    >
+                      詳細作成へ
+                    </Link>
+                  )}
+                </div>
+                {actionError ? <p className="mt-3 text-sm text-rose-700">{actionError}</p> : null}
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
+                {[
+                  ["1", "作る", "第1634回の13試合と公式人気を入れる"],
+                  ["2", "入れる", "Haziが各試合で1 / 0 / 2を押す"],
+                  ["3", "保存", "候補カードと共有JSONに反映する"],
+                ].map(([step, title, body]) => (
+                  <div key={step} className="rounded-[22px] border border-slate-200 bg-white/88 px-4 py-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-teal-700/70">
+                      Step {step}
+                    </p>
+                    <h3 className="mt-2 text-sm font-semibold text-slate-950">{title}</h3>
+                    <p className="mt-1 text-sm leading-6 text-slate-600">{body}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </SectionCard>
+
           <SectionCard
             title="本番ラウンド"
             description="まずは直近の本番回を開くか、新しく1回作るだけで十分です。補助機能は下にまとめています。"
