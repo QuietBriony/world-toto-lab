@@ -160,6 +160,17 @@ export function DataModeProvider({ children }: { children: ReactNode }) {
 
   const runHealthCheck = useCallback(async () => {
     setIsChecking(true);
+    if (typeof window !== "undefined" && /\/hazi\/?$/.test(window.location.pathname)) {
+      setRuntimeDataMode("local");
+      setStoredDataModePreference("local");
+      setPreference("local");
+      setModeState("local");
+      setRuntimeSupabaseHealth(null);
+      setHealth(null);
+      setIsChecking(false);
+      return;
+    }
+
     const storedPreference = getStoredDataModePreference();
     setPreference(storedPreference);
 

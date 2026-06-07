@@ -41,6 +41,7 @@ async function main() {
   const routes = [
     buildUrl(baseUrl, "/", {}),
     buildUrl(baseUrl, "/dev-playbook/", {}),
+    buildUrl(baseUrl, "/hazi/", {}),
     buildUrl(baseUrl, "/big-carryover/", {}),
     buildUrl(baseUrl, "/goal3-value/", {}),
     buildUrl(baseUrl, "/big-carryover/", {

@@ -71,6 +71,9 @@ export default function RootLayout({
                 </Link>
                 <div className="flex flex-wrap gap-2 lg:justify-end">
                   <DataModeBadge />
+                  <Link href="/hazi" className={secondaryButtonClassName}>
+                    Hazi軽量
+                  </Link>
                   <Link href={`${appRoute.dashboard}#create-round`} className={secondaryButtonClassName}>
                     新規ラウンド
                   </Link>
