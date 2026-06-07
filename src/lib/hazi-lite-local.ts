@@ -6,7 +6,7 @@ import { calculateModelProbabilities } from "@/lib/probability/engine";
 import type {
   Match,
   Outcome,
-  Pick,
+  Pick as TotoPick,
   ProductType,
   Round,
   RoundEvAssumption,
@@ -35,16 +35,27 @@ const localKeys = {
   users: `${namespace}:users`,
 } as const;
 
-const haziLiteAiVersion = "team-strength-v2";
+const haziLiteAiVersion = "team-strength-v4";
+const valueLineSpotCount = 4;
 
 type OutcomeValue = "1" | "0" | "2";
+const outcomeValues = ["1", "0", "2"] as const;
+
+export type HaziLiteStrategyKind = "orthodox" | "value";
+
+export type HaziLiteStrategy = {
+  badge: string;
+  pick: OutcomeValue;
+  rationale: string;
+  score: string;
+};
 
 type HaziLiteLocalState = {
   candidateTickets: unknown[];
   candidateVotes: unknown[];
   generatedTickets: unknown[];
   matches: Match[];
-  picks: Pick[];
+  picks: TotoPick[];
   roundEvAssumptions: RoundEvAssumption[];
   rounds: Round[];
   scoutReports: unknown[];
@@ -67,7 +78,9 @@ export type HaziLiteMatch = {
   modelRationale: string;
   modelSource: "official_vote" | "team_strength";
   officialMatchNo: number | null;
+  orthodox: HaziLiteStrategy;
   reviewChange: boolean;
+  value: HaziLiteStrategy;
 };
 
 export type HaziLiteRound = {
@@ -134,7 +147,7 @@ function readState(): HaziLiteLocalState {
     candidateVotes: readArray(localKeys.candidateVotes),
     generatedTickets: readArray(localKeys.generatedTickets),
     matches: readArray<Match>(localKeys.matches),
-    picks: readArray<Pick>(localKeys.picks),
+    picks: readArray<TotoPick>(localKeys.picks),
     roundEvAssumptions: readArray<RoundEvAssumption>(localKeys.roundEvAssumptions),
     rounds: readArray<Round>(localKeys.rounds),
     scoutReports: readArray(localKeys.scoutReports),
@@ -190,6 +203,215 @@ function topOutcome(input: { modelProb0: number; modelProb1: number; modelProb2:
     { outcome: "0" as const, value: input.modelProb0 },
     { outcome: "2" as const, value: input.modelProb2 },
   ].sort((left, right) => right.value - left.value)[0].outcome;
+}
+
+function isKnownNumber(value: number | null | undefined): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function litePercent(value: number) {
+  return `${Math.round(value * 100)}%`;
+}
+
+function signedLitePercent(value: number) {
+  const rounded = Math.round(value * 100);
+  return `${rounded >= 0 ? "+" : ""}${rounded}%`;
+}
+
+function outcomeProbability(
+  match: Pick<
+    Match,
+    | "marketProb0"
+    | "marketProb1"
+    | "marketProb2"
+    | "modelProb0"
+    | "modelProb1"
+    | "modelProb2"
+    | "officialVote0"
+    | "officialVote1"
+    | "officialVote2"
+  >,
+  bucket: "market" | "model" | "official",
+  outcome: OutcomeValue,
+) {
+  if (bucket === "model") {
+    return outcome === "1" ? match.modelProb1 : outcome === "0" ? match.modelProb0 : match.modelProb2;
+  }
+
+  if (bucket === "official") {
+    return outcome === "1" ? match.officialVote1 : outcome === "0" ? match.officialVote0 : match.officialVote2;
+  }
+
+  return outcome === "1" ? match.marketProb1 : outcome === "0" ? match.marketProb0 : match.marketProb2;
+}
+
+function hasCompleteOfficialVote(match: Match) {
+  return outcomeValues.every((outcome) => isKnownNumber(outcomeProbability(match, "official", outcome)));
+}
+
+function rankedOutcomeProbabilities(match: Match, bucket: "market" | "model" | "official") {
+  return outcomeValues
+    .map((outcome) => ({
+      outcome,
+      value: outcomeProbability(match, bucket, outcome) ?? 0,
+    }))
+    .sort((left, right) => right.value - left.value);
+}
+
+function buildOrthodoxStrategy(match: Match): HaziLiteStrategy {
+  const officialReady = hasCompleteOfficialVote(match);
+  const ranked = rankedOutcomeProbabilities(match, officialReady ? "official" : "model");
+  const favorite = ranked[0];
+
+  if (officialReady) {
+    return {
+      badge: "公式本命",
+      pick: favorite.outcome,
+      rationale: "公式人気が最も高い、いちばん市場に沿った王道ライン。",
+      score: `人気 ${litePercent(favorite.value)}`,
+    };
+  }
+
+  return {
+    badge: "強度本命",
+    pick: favorite.outcome,
+    rationale: "公式人気未公表のため、国別強度モデルの最上位を王道扱い。",
+    score: `AI ${litePercent(favorite.value)}`,
+  };
+}
+
+function buildValueStrategy(match: Match): HaziLiteStrategy {
+  if (hasCompleteOfficialVote(match)) {
+    const ranked = outcomeValues
+      .map((outcome) => {
+        const modelProb = outcomeProbability(match, "model", outcome) ?? 0;
+        const officialVote = outcomeProbability(match, "official", outcome) ?? 0;
+        const edge = modelProb - officialVote;
+        const valueRatio = officialVote > 0 ? modelProb / officialVote : 0;
+        return {
+          edge,
+          modelProb,
+          officialVote,
+          outcome,
+          score: edge * 10 + valueRatio + (outcome === "0" ? 0.1 : 0),
+          valueRatio,
+        };
+      })
+      .filter((entry) => entry.modelProb >= 0.1 && entry.officialVote > 0)
+      .sort((left, right) => right.score - left.score);
+    const selected = ranked[0] ?? {
+      edge: 0,
+      modelProb: rankedOutcomeProbabilities(match, "model")[0].value,
+      officialVote: 0,
+      outcome: rankedOutcomeProbabilities(match, "model")[0].outcome,
+      score: 0,
+      valueRatio: 1,
+    };
+
+    return {
+      badge: selected.valueRatio >= 1.35 ? "期待値" : selected.edge > 0 ? "ズレ狙い" : "妙味薄め",
+      pick: selected.outcome,
+      rationale: `AI ${litePercent(selected.modelProb)} / 人気 ${litePercent(selected.officialVote)} / 差 ${signedLitePercent(selected.edge)}。`,
+      score: `${selected.valueRatio.toFixed(2)}x`,
+    };
+  }
+
+  const ranked = rankedOutcomeProbabilities(match, "model");
+  const favorite = ranked[0];
+  const second = ranked[1] ?? favorite;
+  const draw = ranked.find((entry) => entry.outcome === "0");
+
+  if (draw && favorite.outcome !== "0" && draw.value >= 0.27 && favorite.value - draw.value <= 0.18) {
+    return {
+      badge: "Proxy",
+      pick: "0",
+      rationale: "公式人気未公表。国別強度が接近しているため、引き分けを妙味候補として監視。",
+      score: `AI ${litePercent(draw.value)}`,
+    };
+  }
+
+  if (second.value >= 0.24 || favorite.value - second.value <= 0.14) {
+    return {
+      badge: "Proxy",
+      pick: second.outcome,
+      rationale: "公式人気未公表。大差ではないカードなので、2番手を妙味候補として監視。",
+      score: `AI ${litePercent(second.value)}`,
+    };
+  }
+
+  return {
+    badge: "Proxy",
+    pick: favorite.outcome,
+    rationale: "公式人気未公表。強弱差が大きく、期待値Proxyも本命寄り。",
+    score: `AI ${litePercent(favorite.value)}`,
+  };
+}
+
+function valueLineSpotScore(match: Match, orthodox: HaziLiteStrategy, value: HaziLiteStrategy) {
+  if (value.pick === orthodox.pick) {
+    return 0;
+  }
+
+  const candidateProb = outcomeProbability(match, "model", value.pick) ?? 0;
+  const favoriteProb = outcomeProbability(match, "model", orthodox.pick) ?? 0;
+
+  if (hasCompleteOfficialVote(match)) {
+    const officialVote = outcomeProbability(match, "official", value.pick) ?? 0;
+    if (officialVote <= 0) {
+      return 0;
+    }
+
+    const edge = candidateProb - officialVote;
+    const valueRatio = candidateProb / officialVote;
+    return edge * 10 + (valueRatio - 1) + (value.pick === "0" ? 0.1 : 0);
+  }
+
+  return candidateProb - Math.max(0, favoriteProb - candidateProb) + (value.pick === "0" ? 0.04 : 0);
+}
+
+function holdOrthodoxForValueLine(orthodox: HaziLiteStrategy, value: HaziLiteStrategy): HaziLiteStrategy {
+  if (value.pick === orthodox.pick) {
+    return {
+      ...orthodox,
+      badge: value.badge === "Proxy" ? "王道寄せ" : value.badge,
+      rationale: `${value.rationale} ライン全体では王道のまま保持。`,
+    };
+  }
+
+  return {
+    ...orthodox,
+    badge: "王道保持",
+    rationale: `${value.rationale} ライン全体ではここは王道で保持。`,
+  };
+}
+
+function buildValueLineStrategies(matches: Match[]) {
+  const rows = matches.map((match) => {
+    const orthodox = buildOrthodoxStrategy(match);
+    const value = buildValueStrategy(match);
+    return {
+      match,
+      orthodox,
+      score: valueLineSpotScore(match, orthodox, value),
+      value,
+    };
+  });
+  const spotMatchIds = new Set(
+    rows
+      .filter((row) => row.value.pick !== row.orthodox.pick && row.score > 0.12)
+      .sort((left, right) => right.score - left.score)
+      .slice(0, valueLineSpotCount)
+      .map((row) => row.match.id),
+  );
+
+  return new Map(
+    rows.map((row) => [
+      row.match.id,
+      spotMatchIds.has(row.match.id)
+        ? row.value
+        : holdOrthodoxForValueLine(row.orthodox, row.value),
+    ]),
+  );
 }
 
 function recommendedOutcomes(input: { modelProb0: number; modelProb1: number; modelProb2: number }) {
@@ -496,6 +718,7 @@ export function readHaziLiteSummary(): HaziLiteSummary {
         (pick) => pick.roundId === round.id && pick.userId === haziUser?.id,
       );
       const picksByMatch = new Map(roundPicks.map((pick) => [pick.matchId, pick]));
+      const valueLineByMatch = buildValueLineStrategies(roundMatches);
       const matches = roundMatches.map((match) => {
         const aiPick = topOutcome({
           modelProb0: match.modelProb0 ?? 0,
@@ -503,6 +726,8 @@ export function readHaziLiteSummary(): HaziLiteSummary {
           modelProb2: match.modelProb2 ?? 0,
         });
         const haziPick = enumToOutcome(picksByMatch.get(match.id)?.pick);
+        const orthodox = buildOrthodoxStrategy(match);
+        const value = valueLineByMatch.get(match.id) ?? buildValueStrategy(match);
 
         return {
           aiPick,
@@ -518,7 +743,9 @@ export function readHaziLiteSummary(): HaziLiteSummary {
           modelRationale: match.adminNote ?? "軽量AI推定。",
           modelSource: match.tacticalNote?.includes("team_strength") ? "team_strength" : "official_vote",
           officialMatchNo: match.officialMatchNo,
+          orthodox,
           reviewChange: haziPick !== aiPick,
+          value,
         } satisfies HaziLiteMatch;
       });
 
@@ -631,7 +858,7 @@ export function setupHaziLiteState(input: { force?: boolean } = {}) {
         updatedAt: now,
         userId: haziUser.id,
       };
-    }) satisfies Pick[];
+    }) satisfies TotoPick[];
     const officialRound: TotoOfficialRound = {
       carryoverYen: payload.carryoverYen,
       createdAt:
@@ -741,7 +968,7 @@ export function updateHaziLitePick(input: {
   const existing = state.picks.find(
     (pick) => pick.roundId === input.roundId && pick.matchId === input.matchId && pick.userId === haziUser.id,
   );
-  const nextPick: Pick = {
+  const nextPick: TotoPick = {
     createdAt: existing?.createdAt ?? now,
     id: existing?.id ?? localId("pick"),
     matchId: input.matchId,
@@ -797,8 +1024,60 @@ export function applyHaziLiteAiPicks(input: { roundId?: string | null } = {}) {
         support: { kind: "manual" as const },
         updatedAt: now,
         userId: haziUser.id,
-      } satisfies Pick;
+      } satisfies TotoPick;
     });
+
+  state.picks = state.picks
+    .filter((pick) => !(targetRoundIds.has(pick.roundId) && pick.userId === haziUser.id))
+    .concat(nextPicks);
+  writeState(state);
+  return readHaziLiteSummary();
+}
+
+export function applyHaziLiteStrategyPicks(input: {
+  roundId?: string | null;
+  strategy: HaziLiteStrategyKind;
+}) {
+  const state = readState();
+  const haziUser = ensureHaziUser(state);
+  const now = nowIso();
+  const targetRounds = featuredWorldTotoRoundNumbers
+    .map((roundNumber) => findRoundByNumber(state, roundNumber))
+    .filter((round): round is Round => Boolean(round))
+    .filter((round) => !input.roundId || round.id === input.roundId);
+  const targetRoundIds = new Set(targetRounds.map((round) => round.id));
+  const existingPickByMatch = new Map(
+    state.picks
+      .filter((pick) => targetRoundIds.has(pick.roundId) && pick.userId === haziUser.id)
+      .map((pick) => [pick.matchId, pick]),
+  );
+  const strategyLabel = input.strategy === "orthodox" ? "王道" : "期待値";
+  const nextPicks = targetRounds.flatMap((round) => {
+    const roundMatches = state.matches
+      .filter((match) => match.roundId === round.id)
+      .sort((left, right) => left.matchNo - right.matchNo);
+    const valueLineByMatch = input.strategy === "value" ? buildValueLineStrategies(roundMatches) : null;
+
+    return roundMatches.map((match) => {
+      const existing = existingPickByMatch.get(match.id);
+      const strategyPick =
+        input.strategy === "value"
+          ? (valueLineByMatch?.get(match.id) ?? buildValueStrategy(match)).pick
+          : buildOrthodoxStrategy(match).pick;
+
+      return {
+        createdAt: existing?.createdAt ?? now,
+        id: existing?.id ?? localId("pick"),
+        matchId: match.id,
+        note: `Hazi軽量ページ: ${strategyLabel}ラインをレビュー後に反映。`,
+        pick: outcomeToEnum(strategyPick),
+        roundId: match.roundId,
+        support: { kind: "manual" as const },
+        updatedAt: now,
+        userId: haziUser.id,
+      } satisfies TotoPick;
+    });
+  });
 
   state.picks = state.picks
     .filter((pick) => !(targetRoundIds.has(pick.roundId) && pick.userId === haziUser.id))
