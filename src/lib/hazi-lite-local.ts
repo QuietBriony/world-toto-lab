@@ -2,6 +2,7 @@ import {
   buildFeaturedWorldTotoImportPayloads,
   featuredWorldTotoRoundNumbers,
 } from "@/lib/featured-world-toto";
+import { calculateTicketEv } from "@/lib/ev";
 import { calculateModelProbabilities } from "@/lib/probability/engine";
 import type {
   Match,
@@ -35,7 +36,7 @@ const localKeys = {
   users: `${namespace}:users`,
 } as const;
 
-const haziLiteAiVersion = "team-strength-v4";
+const haziLiteAiVersion = "team-strength-v5";
 const valueLineSpotCount = 4;
 
 type OutcomeValue = "1" | "0" | "2";
@@ -83,10 +84,47 @@ export type HaziLiteMatch = {
   value: HaziLiteStrategy;
 };
 
+export type HaziLitePortfolioLine = {
+  deviationCount: number;
+  duplicateOf: string | null;
+  estimatedPayoutYen: number | null;
+  evMultiple: number | null;
+  grossEvYen: number | null;
+  hitProbability: number | null;
+  key: "orthodox" | "value" | "hazi" | "ai";
+  label: string;
+  pPublicCombo: number | null;
+  picks: Array<{ matchNo: number; pick: OutcomeValue }>;
+  strictEvReady: boolean;
+};
+
+export type HaziLitePortfolioPlan = {
+  costYen: number;
+  description: string;
+  evMultiple: number | null;
+  expectedReturnYen: number | null;
+  hitProbability: number | null;
+  label: string;
+  lineCount: number;
+  lineLabels: string[];
+  strictEvReady: boolean;
+  tone: "balanced" | "conservative" | "upside";
+};
+
+export type HaziLitePortfolio = {
+  dataQuality: "strict" | "proxy";
+  lines: HaziLitePortfolioLine[];
+  plans: HaziLitePortfolioPlan[];
+  returnRate: number | null;
+  stakeYen: number;
+  summary: string;
+};
+
 export type HaziLiteRound = {
   matchCount: number;
   matches: HaziLiteMatch[];
   pickCount: number;
+  portfolio: HaziLitePortfolio;
   reviewChangeCount: number;
   roundId: string;
   roundNumber: number;
@@ -414,6 +452,222 @@ function buildValueLineStrategies(matches: Match[]) {
   );
 }
 
+function selectedOutcomeProbabilities(
+  matches: Match[],
+  picks: Array<{ matchNo: number; pick: OutcomeValue }>,
+  bucket: "model" | "official",
+) {
+  const pickByMatchNo = new Map(picks.map((pick) => [pick.matchNo, pick.pick]));
+  return matches.map((match) => {
+    const pick = pickByMatchNo.get(match.matchNo);
+    return pick ? outcomeProbability(match, bucket, pick) : null;
+  });
+}
+
+function lineSignature(picks: Array<{ matchNo: number; pick: OutcomeValue }>) {
+  return picks
+    .slice()
+    .sort((left, right) => left.matchNo - right.matchNo)
+    .map((pick) => `${pick.matchNo}:${pick.pick}`)
+    .join("|");
+}
+
+function sumKnown(values: Array<number | null>) {
+  if (!values.every((value): value is number => isKnownNumber(value))) {
+    return null;
+  }
+
+  return values.reduce((sum, value) => sum + value, 0);
+}
+
+function buildPortfolioLine(input: {
+  evAssumption: RoundEvAssumption | null;
+  key: HaziLitePortfolioLine["key"];
+  label: string;
+  matches: Match[];
+  orthodoxPicks: Array<{ matchNo: number; pick: OutcomeValue }>;
+  picks: Array<{ matchNo: number; pick: OutcomeValue }>;
+}) {
+  const modelProbabilities = selectedOutcomeProbabilities(input.matches, input.picks, "model");
+  const officialProbabilities = selectedOutcomeProbabilities(input.matches, input.picks, "official");
+  const ev = calculateTicketEv({
+    assumption: input.evAssumption,
+    selectedModelProbabilities: modelProbabilities,
+    selectedOfficialProbabilities: officialProbabilities,
+  });
+  const orthodoxByMatchNo = new Map(input.orthodoxPicks.map((pick) => [pick.matchNo, pick.pick]));
+
+  return {
+    deviationCount: input.picks.filter((pick) => orthodoxByMatchNo.get(pick.matchNo) !== pick.pick).length,
+    duplicateOf: null,
+    estimatedPayoutYen: ev.estimatedPayoutYen,
+    evMultiple: ev.evMultiple,
+    grossEvYen: ev.grossEvYen,
+    hitProbability: ev.pModelCombo,
+    key: input.key,
+    label: input.label,
+    pPublicCombo: ev.pPublicCombo,
+    picks: input.picks,
+    strictEvReady: ev.strictAvailable,
+  } satisfies HaziLitePortfolioLine;
+}
+
+function uniqueLines(lines: HaziLitePortfolioLine[]) {
+  const seen = new Map<string, HaziLitePortfolioLine>();
+
+  return lines.map((line) => {
+    const signature = lineSignature(line.picks);
+    const duplicateOf = seen.get(signature)?.label ?? null;
+    const nextLine = {
+      ...line,
+      duplicateOf,
+    };
+
+    if (!duplicateOf) {
+      seen.set(signature, nextLine);
+    }
+
+    return nextLine;
+  });
+}
+
+function buildPortfolioPlan(input: {
+  description: string;
+  label: string;
+  lineKeys: HaziLitePortfolioLine["key"][];
+  lines: HaziLitePortfolioLine[];
+  stakeYen: number;
+  tone: HaziLitePortfolioPlan["tone"];
+}) {
+  const selected = input.lineKeys
+    .map((key) => input.lines.find((line) => line.key === key))
+    .filter((line): line is HaziLitePortfolioLine => Boolean(line));
+  const uniqueSelected = selected.filter((line) => !line.duplicateOf);
+  const hitProbability = sumKnown(uniqueSelected.map((line) => line.hitProbability));
+  const expectedReturnYen = sumKnown(uniqueSelected.map((line) => line.grossEvYen));
+  const costYen = uniqueSelected.length * input.stakeYen;
+
+  return {
+    costYen,
+    description: input.description,
+    evMultiple: expectedReturnYen !== null && costYen > 0 ? expectedReturnYen / costYen : null,
+    expectedReturnYen,
+    hitProbability: hitProbability !== null ? Math.min(hitProbability, 1) : null,
+    label: input.label,
+    lineCount: uniqueSelected.length,
+    lineLabels: uniqueSelected.map((line) => line.label),
+    strictEvReady: uniqueSelected.length > 0 && uniqueSelected.every((line) => line.strictEvReady),
+    tone: input.tone,
+  } satisfies HaziLitePortfolioPlan;
+}
+
+function buildRoundPortfolio(input: {
+  evAssumption: RoundEvAssumption | null;
+  haziPicksByMatch: Map<string, TotoPick>;
+  matches: Match[];
+  valueLineByMatch: Map<string, HaziLiteStrategy>;
+}) {
+  const orthodoxPicks = input.matches.map((match) => ({
+    matchNo: match.matchNo,
+    pick: buildOrthodoxStrategy(match).pick,
+  }));
+  const valuePicks = input.matches.map((match) => ({
+    matchNo: match.matchNo,
+    pick: (input.valueLineByMatch.get(match.id) ?? buildValueStrategy(match)).pick,
+  }));
+  const haziPicks = input.matches.map((match) => ({
+    matchNo: match.matchNo,
+    pick:
+      enumToOutcome(input.haziPicksByMatch.get(match.id)?.pick) ??
+      topOutcome({
+        modelProb0: match.modelProb0 ?? 0,
+        modelProb1: match.modelProb1 ?? 0,
+        modelProb2: match.modelProb2 ?? 0,
+      }),
+  }));
+  const aiPicks = input.matches.map((match) => ({
+    matchNo: match.matchNo,
+    pick: topOutcome({
+      modelProb0: match.modelProb0 ?? 0,
+      modelProb1: match.modelProb1 ?? 0,
+      modelProb2: match.modelProb2 ?? 0,
+    }),
+  }));
+  const stakeYen = input.evAssumption?.stakeYen ?? 100;
+  const lines = uniqueLines([
+    buildPortfolioLine({
+      evAssumption: input.evAssumption,
+      key: "orthodox",
+      label: "王道",
+      matches: input.matches,
+      orthodoxPicks,
+      picks: orthodoxPicks,
+    }),
+    buildPortfolioLine({
+      evAssumption: input.evAssumption,
+      key: "value",
+      label: "期待値",
+      matches: input.matches,
+      orthodoxPicks,
+      picks: valuePicks,
+    }),
+    buildPortfolioLine({
+      evAssumption: input.evAssumption,
+      key: "hazi",
+      label: "Hazi",
+      matches: input.matches,
+      orthodoxPicks,
+      picks: haziPicks,
+    }),
+    buildPortfolioLine({
+      evAssumption: input.evAssumption,
+      key: "ai",
+      label: "AI",
+      matches: input.matches,
+      orthodoxPicks,
+      picks: aiPicks,
+    }),
+  ]);
+  const plans = [
+    buildPortfolioPlan({
+      description: "まず外さない比較軸。公式人気がある回は市場に沿う。",
+      label: "保守",
+      lineKeys: ["orthodox"],
+      lines,
+      stakeYen,
+      tone: "conservative",
+    }),
+    buildPortfolioPlan({
+      description: "基本形。王道を残しつつ、妙味とHaziの見立てを足す。",
+      label: "標準",
+      lineKeys: ["orthodox", "value", "hazi"],
+      lines,
+      stakeYen,
+      tone: "balanced",
+    }),
+    buildPortfolioPlan({
+      description: "AI初期線が別なら追加。重複時は自動で口数を増やさない。",
+      label: "攻め",
+      lineKeys: ["orthodox", "value", "hazi", "ai"],
+      lines,
+      stakeYen,
+      tone: "upside",
+    }),
+  ];
+  const strict = plans.some((plan) => plan.strictEvReady);
+
+  return {
+    dataQuality: strict ? "strict" : "proxy",
+    lines,
+    plans,
+    returnRate: input.evAssumption?.returnRate ?? null,
+    stakeYen,
+    summary: strict
+      ? "公式人気と売上想定があるため、払戻推定込みのEVを表示しています。"
+      : "公式人気または売上想定が未公表のため、EVはProxyです。口数とモデル的中率を主に見てください。",
+  } satisfies HaziLitePortfolio;
+}
+
 function recommendedOutcomes(input: { modelProb0: number; modelProb1: number; modelProb2: number }) {
   return [
     { outcome: "1" as const, value: input.modelProb1 },
@@ -719,6 +973,14 @@ export function readHaziLiteSummary(): HaziLiteSummary {
       );
       const picksByMatch = new Map(roundPicks.map((pick) => [pick.matchId, pick]));
       const valueLineByMatch = buildValueLineStrategies(roundMatches);
+      const evAssumption =
+        state.roundEvAssumptions.find((assumption) => assumption.roundId === round.id) ?? null;
+      const portfolio = buildRoundPortfolio({
+        evAssumption,
+        haziPicksByMatch: picksByMatch,
+        matches: roundMatches,
+        valueLineByMatch,
+      });
       const matches = roundMatches.map((match) => {
         const aiPick = topOutcome({
           modelProb0: match.modelProb0 ?? 0,
@@ -753,6 +1015,7 @@ export function readHaziLiteSummary(): HaziLiteSummary {
         matchCount: roundMatches.length,
         matches,
         pickCount: roundPicks.length,
+        portfolio,
         reviewChangeCount: matches.filter((match) => match.reviewChange).length,
         roundId: round.id,
         roundNumber,

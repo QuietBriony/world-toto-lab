@@ -38,6 +38,62 @@ function formatProb(value: number | null) {
   return `${Math.round(value * 100)}%`;
 }
 
+function formatSmallPercent(value: number | null) {
+  if (value === null) {
+    return "--";
+  }
+
+  const percent = value * 100;
+  if (percent === 0) {
+    return "0%";
+  }
+
+  if (percent < 0.001) {
+    return `${percent.toFixed(5)}%`;
+  }
+
+  if (percent < 0.1) {
+    return `${percent.toFixed(3)}%`;
+  }
+
+  if (percent < 1) {
+    return `${percent.toFixed(2)}%`;
+  }
+
+  return `${percent.toFixed(1)}%`;
+}
+
+function formatYen(value: number | null) {
+  if (value === null) {
+    return "--";
+  }
+
+  return new Intl.NumberFormat("ja-JP", {
+    currency: "JPY",
+    maximumFractionDigits: 0,
+    style: "currency",
+  }).format(value);
+}
+
+function formatMultiple(value: number | null) {
+  if (value === null) {
+    return "Proxy";
+  }
+
+  return `${value.toFixed(2)}x`;
+}
+
+function portfolioPlanClass(tone: "balanced" | "conservative" | "upside") {
+  const toneClass =
+    tone === "balanced"
+      ? "border-emerald-300 bg-emerald-50"
+      : tone === "upside"
+        ? "border-amber-300 bg-amber-50"
+        : "border-slate-200 bg-slate-50";
+
+  return ["rounded-xl border px-3 py-3", toneClass].join(" ");
+}
+
 function outcomeLabel(value: "1" | "0" | "2") {
   if (value === "1") {
     return "1";
@@ -349,6 +405,115 @@ export default function HaziLitePage() {
           </button>
         ))}
       </nav>
+
+      {activeRound ? (
+        <section className="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h3 className="text-base font-bold">買い方メモ</h3>
+              <p className="mt-1 text-xs leading-5 text-slate-500">
+                公式購入は各自。ここでは1口{formatYen(activeRound.portfolio.stakeYen)}
+                の比較メモとして、口数と期待値の見え方だけ整理します。
+              </p>
+            </div>
+            <div className="flex flex-wrap justify-end gap-2">
+              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+                払戻率 {formatProb(activeRound.portfolio.returnRate)}
+              </span>
+              <span
+                className={[
+                  "rounded-full px-3 py-1 text-xs font-semibold",
+                  activeRound.portfolio.dataQuality === "strict"
+                    ? "bg-emerald-100 text-emerald-800"
+                    : "bg-amber-100 text-amber-800",
+                ].join(" ")}
+              >
+                {activeRound.portfolio.dataQuality === "strict" ? "EV推定" : "EV Proxy"}
+              </span>
+            </div>
+          </div>
+          <p className="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-600">
+            {activeRound.portfolio.summary}
+          </p>
+          <div className="mt-3 grid gap-2 text-xs leading-5 text-slate-600 sm:grid-cols-3">
+            <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
+              <span className="font-bold text-slate-900">公式人気</span>
+              <br />
+              王道の本命と、他の当選者数・払戻推定の分母に使います。
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
+              <span className="font-bold text-slate-900">モデル確率</span>
+              <br />
+              公式人気、国別強度、軽量補正をつないだ的中側の見立てです。
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
+              <span className="font-bold text-slate-900">期待値</span>
+              <br />
+              EV = モデル的中率 x 推定払戻 ÷ 1口。未公表回はProxyです。
+            </div>
+          </div>
+          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+            {activeRound.portfolio.plans.map((plan) => (
+              <div key={plan.label} className={portfolioPlanClass(plan.tone)}>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-sm font-bold">{plan.label}</div>
+                  {plan.label === "標準" ? (
+                    <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-bold text-emerald-800">
+                      基本
+                    </span>
+                  ) : null}
+                </div>
+                <div className="mt-2 text-2xl font-black leading-none">
+                  {plan.lineCount}口
+                </div>
+                <div className="mt-1 text-xs font-semibold text-slate-700">
+                  {formatYen(plan.costYen)} / 的中カバー {formatSmallPercent(plan.hitProbability)}
+                </div>
+                <div className="mt-1 text-xs font-semibold text-slate-700">
+                  {plan.strictEvReady
+                    ? `期待値 ${formatYen(plan.expectedReturnYen)} / ${formatMultiple(plan.evMultiple)}`
+                    : `期待値 ${formatMultiple(plan.evMultiple)}`}
+                </div>
+                <p className="mt-2 text-xs leading-5 text-slate-600">{plan.description}</p>
+                <p className="mt-2 text-[11px] font-semibold leading-4 text-slate-500">
+                  {plan.lineLabels.join(" + ")}
+                </p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-3 grid gap-2">
+            {activeRound.portfolio.lines.map((line) => (
+              <div
+                key={line.key}
+                className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs"
+              >
+                <div className="min-w-0">
+                  <div className="font-bold text-slate-900">
+                    {line.label}
+                    {line.duplicateOf ? (
+                      <span className="ml-2 font-semibold text-slate-500">
+                        {line.duplicateOf}と同じ
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="mt-0.5 text-slate-500">
+                    王道外し {line.deviationCount} / 的中 {formatSmallPercent(line.hitProbability)}
+                  </div>
+                </div>
+                <div className="shrink-0 text-right font-semibold text-slate-700">
+                  <div>{line.strictEvReady ? formatMultiple(line.evMultiple) : "Proxy"}</div>
+                  <div className="mt-0.5 text-slate-500">
+                    払戻 {line.estimatedPayoutYen ? formatYen(line.estimatedPayoutYen) : "--"}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="mt-3 text-[11px] leading-5 text-slate-500">
+            期待値は的中や利益を保証しません。購入代行、資金プール、配当分配、精算はこのアプリでは扱いません。
+          </p>
+        </section>
+      ) : null}
 
       {activeRound ? (
         <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
