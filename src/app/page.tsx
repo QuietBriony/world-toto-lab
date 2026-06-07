@@ -88,7 +88,7 @@ import {
   deleteUserIfInactive,
   estimateRoundAiModel,
   getRoundWorkspace,
-  refreshCandidateTicketsForRound,
+  listDashboardData,
   replacePicks,
   saveTotoOfficialRoundImport,
   updateUserProfile,
@@ -343,13 +343,30 @@ export default function DashboardPage() {
     }
   };
 
-  const saveHaziInitialPicks = async (roundId: string) => {
+  const ensureHaziUserId = async () => {
+    const currentData = await listDashboardData();
+    const currentHaziUser = currentData.users.find((user) => user.name.trim().toLowerCase() === "hazi");
+    if (currentHaziUser) {
+      return currentHaziUser.id;
+    }
+
+    await createUser({
+      name: "Hazi",
+      role: "admin",
+    });
+    const nextData = await listDashboardData();
+    const nextHaziUser = nextData.users.find((user) => user.name.trim().toLowerCase() === "hazi");
+    return nextHaziUser?.id ?? null;
+  };
+
+  const saveHaziInitialPicks = async (roundId: string, haziUserId: string | null) => {
     const workspace = await getRoundWorkspace(roundId);
     if (!workspace) {
       return null;
     }
 
     const haziUser =
+      workspace.users.find((user) => user.id === haziUserId) ??
       workspace.users.find((user) => user.name.trim().toLowerCase() === "hazi") ??
       workspace.users.find((user) => isPredictorRole(user.role)) ??
       workspace.users[0];
@@ -385,11 +402,13 @@ export default function DashboardPage() {
 
     try {
       dataMode.setMode("local");
-      if ((data?.users.length ?? 0) === 0) {
-        await createInitialUsers();
-      }
+      const haziUserId = await ensureHaziUserId();
+      const haziParticipantIds = haziUserId ? [haziUserId] : undefined;
 
-      const currentInventoryRounds = data?.rounds.filter((round) => !isDemoRoundTitle(round.title)) ?? [];
+      const currentLocalData = await listDashboardData();
+      const currentInventoryRounds = currentLocalData.rounds.filter(
+        (round) => !isDemoRoundTitle(round.title),
+      );
       const existingRoundsByNumber = new Map(
         currentInventoryRounds.flatMap((round) => {
           const roundNumber = featuredWorldTotoRoundNumber(round);
@@ -403,20 +422,19 @@ export default function DashboardPage() {
           payload.officialRoundNumber !== null
             ? existingRoundsByNumber.get(payload.officialRoundNumber)
             : null;
-        const roundId =
-          existingRoundId ??
-          (await saveTotoOfficialRoundImport(payload));
+        const roundId = await saveTotoOfficialRoundImport({
+          ...payload,
+          notes: `${payload.notes}\nHaziレビュー待ちの軽量セットです。候補カード生成はスマホ負荷を避けるため後で必要な時だけ行います。`,
+          participantIds: haziParticipantIds,
+          roundId: existingRoundId,
+        });
 
         await estimateRoundAiModel({
           overwriteExisting: false,
           roundId,
         });
-        const haziUserId = await saveHaziInitialPicks(roundId);
-        await refreshCandidateTicketsForRound({
-          force: true,
-          roundId,
-        });
-        roundRefs.push({ haziUserId, roundId });
+        const savedHaziUserId = await saveHaziInitialPicks(roundId, haziUserId);
+        roundRefs.push({ haziUserId: savedHaziUserId, roundId });
       }
 
       await refresh();
@@ -774,7 +792,7 @@ export default function DashboardPage() {
                       disabled={busy === "hazi"}
                       className={buttonClassName}
                     >
-                      {busy === "hazi" ? "4回分を作成中..." : "4回分を作ってHaziレビューへ"}
+                      {busy === "hazi" ? "AI予想を作成中..." : "4回分を作ってHaziレビューへ"}
                     </button>
                   )}
                   {haziWorldTotoComplete && haziWorldTotoPicksHref ? (
@@ -853,8 +871,8 @@ export default function DashboardPage() {
               <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
                 {[
                   ["1", "4回作成", "第1634〜1637回の指定13試合をそれぞれ入れる"],
-                  ["2", "52試合予想済み", "AI初期線でHaziの1 / 0 / 2を保存する"],
-                  ["3", "レビュー並走", "各回のレビュー画面で確認して手動調整する"],
+                  ["2", "52試合予想済み", "AI初期線でHaziの1 / 0 / 2をブラウザ保存する"],
+                  ["3", "レビュー待ち", "候補カード生成は後回しにして軽く開く"],
                 ].map(([step, title, body]) => (
                   <div key={step} className="rounded-[22px] border border-slate-200 bg-white/88 px-4 py-4">
                     <p className="text-xs font-semibold uppercase tracking-[0.2em] text-teal-700/70">
