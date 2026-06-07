@@ -24,6 +24,7 @@ const localKeys = {
   currentRound: `${namespace}:currentRound`,
   dataMode: `${namespace}:dataMode`,
   generatedTickets: `${namespace}:generatedTickets`,
+  haziAiVersion: `${namespace}:haziLiteAiVersion`,
   matches: `${namespace}:matches`,
   picks: `${namespace}:picks`,
   roundEvAssumptions: `${namespace}:bigCarryoverAssumptions`,
@@ -33,6 +34,8 @@ const localKeys = {
   totoOfficialRounds: `${namespace}:totoOfficialRounds`,
   users: `${namespace}:users`,
 } as const;
+
+const haziLiteAiVersion = "team-strength-v2";
 
 type OutcomeValue = "1" | "0" | "2";
 
@@ -61,13 +64,17 @@ export type HaziLiteMatch = {
   modelProb0: number | null;
   modelProb1: number | null;
   modelProb2: number | null;
+  modelRationale: string;
+  modelSource: "official_vote" | "team_strength";
   officialMatchNo: number | null;
+  reviewChange: boolean;
 };
 
 export type HaziLiteRound = {
   matchCount: number;
   matches: HaziLiteMatch[];
   pickCount: number;
+  reviewChangeCount: number;
   roundId: string;
   roundNumber: number;
   title: string;
@@ -75,7 +82,9 @@ export type HaziLiteRound = {
 
 export type HaziLiteSummary = {
   haziUserId: string | null;
+  aiVersion: string;
   isLiteReady: boolean;
+  reviewChangeCount: number;
   rounds: HaziLiteRound[];
   totalMatches: number;
   totalPicks: number;
@@ -148,6 +157,7 @@ function writeState(state: HaziLiteLocalState) {
   writeArray(localKeys.totoOfficialRounds, state.totoOfficialRounds);
   writeArray(localKeys.users, state.users);
   window.localStorage.setItem(localKeys.dataMode, "local");
+  window.localStorage.setItem(localKeys.haziAiVersion, haziLiteAiVersion);
 }
 
 function outcomeToEnum(value: OutcomeValue): Outcome {
@@ -192,6 +202,102 @@ function recommendedOutcomes(input: { modelProb0: number; modelProb1: number; mo
     .slice(0, 2)
     .map((entry) => entry.outcome)
     .join(",");
+}
+
+const teamStrengthByName: Record<string, number> = {
+  "アイスランド": 74,
+  "アルジェリア": 78,
+  "アルゼンチン": 96,
+  "イングランド": 93,
+  "ウズベキスタン": 73,
+  "ウルグアイ": 87,
+  "エクアドル": 82,
+  "エジプト": 80,
+  "オーストラリア": 77,
+  "オーストリア": 83,
+  "オランダ": 91,
+  "カーボベルデ": 70,
+  "カタール": 72,
+  "カナダ": 77,
+  "ガーナ": 79,
+  "キュラソー": 67,
+  "クロアチア": 86,
+  "コロンビア": 86,
+  "コンゴ民主共和国": 72,
+  "コートジボワール": 80,
+  "サウジアラビア": 72,
+  "スイス": 84,
+  "スウェーデン": 82,
+  "スコットランド": 78,
+  "スペイン": 94,
+  "セネガル": 83,
+  "チュニジア": 76,
+  "チェコ": 79,
+  "チリ": 76,
+  "ドイツ": 90,
+  "ニュージーランド": 67,
+  "日本": 83,
+  "ノルウェー": 80,
+  "ハイチ": 66,
+  "パナマ": 70,
+  "パラグアイ": 77,
+  "ブラジル": 94,
+  "フランス": 95,
+  "ベルギー": 88,
+  "ボスニア": 75,
+  "ボスニア・ヘルツェゴビナ": 75,
+  "ポルトガル": 92,
+  "南アフリカ": 72,
+  "メキシコ": 81,
+  "モロッコ": 84,
+  "ヨルダン": 69,
+  "韓国": 80,
+};
+
+function teamStrength(teamName: string) {
+  return teamStrengthByName[teamName] ?? 75;
+}
+
+function teamStrengthPrior(input: { awayTeam: string; homeTeam: string }) {
+  const homeStrength = teamStrength(input.homeTeam);
+  const awayStrength = teamStrength(input.awayTeam);
+  const diff = homeStrength - awayStrength;
+  const draw = Math.max(0.19, Math.min(0.31, 0.29 - Math.abs(diff) * 0.003));
+  const homeShare = 1 / (1 + Math.exp(-diff / 10));
+  const winMass = 1 - draw;
+
+  return {
+    modelRationale: `${input.homeTeam} ${homeStrength} / ${input.awayTeam} ${awayStrength} の国別強度差から軽量推定。`,
+    modelSource: "team_strength" as const,
+    marketProb0: draw,
+    marketProb1: winMass * homeShare,
+    marketProb2: winMass * (1 - homeShare),
+  };
+}
+
+function modelSeed(input: {
+  awayTeam: string;
+  homeTeam: string;
+  officialVote0: number | null;
+  officialVote1: number | null;
+  officialVote2: number | null;
+}) {
+  const hasOfficialVote =
+    input.officialVote1 !== null &&
+    input.officialVote0 !== null &&
+    input.officialVote2 !== null;
+
+  if (hasOfficialVote) {
+    return {
+      modelRationale: "公式人気を市場確率として軽量推定。",
+      modelSource: "official_vote" as const,
+      marketProb0: input.officialVote0,
+      marketProb1: input.officialVote1,
+      marketProb2: input.officialVote2,
+    };
+  }
+
+  return teamStrengthPrior(input);
 }
 
 function worldRoundNumber(round: Round, officialRound?: TotoOfficialRound | null) {
@@ -308,10 +414,13 @@ function buildRoundMatch(input: {
   roundId: string;
   row: ReturnType<typeof buildFeaturedWorldTotoImportPayloads>[number]["rows"][number];
 }) {
-  const hasOfficialVote =
-    input.row.officialVote1 !== null &&
-    input.row.officialVote0 !== null &&
-    input.row.officialVote2 !== null;
+  const seed = modelSeed({
+    awayTeam: input.row.awayTeam,
+    homeTeam: input.row.homeTeam,
+    officialVote0: input.row.officialVote0,
+    officialVote1: input.row.officialVote1,
+    officialVote2: input.row.officialVote2,
+  });
   const base = {
     ...emptyMatch(input.roundId, input.matchNo, input.existing),
     actualResult: input.row.actualResult,
@@ -319,9 +428,9 @@ function buildRoundMatch(input: {
     fixtureMasterId: input.row.fixtureMasterId,
     homeTeam: input.row.homeTeam,
     kickoffTime: input.row.kickoffTime,
-    marketProb0: hasOfficialVote ? input.row.officialVote0 : null,
-    marketProb1: hasOfficialVote ? input.row.officialVote1 : null,
-    marketProb2: hasOfficialVote ? input.row.officialVote2 : null,
+    marketProb0: seed.marketProb0,
+    marketProb1: seed.marketProb1,
+    marketProb2: seed.marketProb2,
     officialMatchNo: input.row.officialMatchNo,
     officialVote0: input.row.officialVote0,
     officialVote1: input.row.officialVote1,
@@ -337,9 +446,11 @@ function buildRoundMatch(input: {
 
   return {
     ...base,
+    adminNote: seed.modelRationale,
     modelProb0: estimated.modelProb0,
     modelProb1: estimated.modelProb1,
     modelProb2: estimated.modelProb2,
+    tacticalNote: seed.modelSource === "official_vote" ? "AI source: official_vote" : "AI source: team_strength",
     recommendedOutcomes: recommendedOutcomes(estimated),
     updatedAt: nowIso(),
   } satisfies Match;
@@ -385,28 +496,37 @@ export function readHaziLiteSummary(): HaziLiteSummary {
         (pick) => pick.roundId === round.id && pick.userId === haziUser?.id,
       );
       const picksByMatch = new Map(roundPicks.map((pick) => [pick.matchId, pick]));
-      const matches = roundMatches.map((match) => ({
-        aiPick: topOutcome({
+      const matches = roundMatches.map((match) => {
+        const aiPick = topOutcome({
           modelProb0: match.modelProb0 ?? 0,
           modelProb1: match.modelProb1 ?? 0,
           modelProb2: match.modelProb2 ?? 0,
-        }),
-        awayTeam: match.awayTeam,
-        haziPick: enumToOutcome(picksByMatch.get(match.id)?.pick),
-        homeTeam: match.homeTeam,
-        kickoffTime: match.kickoffTime,
-        matchId: match.id,
-        matchNo: match.matchNo,
-        modelProb0: match.modelProb0,
-        modelProb1: match.modelProb1,
-        modelProb2: match.modelProb2,
-        officialMatchNo: match.officialMatchNo,
-      }));
+        });
+        const haziPick = enumToOutcome(picksByMatch.get(match.id)?.pick);
+
+        return {
+          aiPick,
+          awayTeam: match.awayTeam,
+          haziPick,
+          homeTeam: match.homeTeam,
+          kickoffTime: match.kickoffTime,
+          matchId: match.id,
+          matchNo: match.matchNo,
+          modelProb0: match.modelProb0,
+          modelProb1: match.modelProb1,
+          modelProb2: match.modelProb2,
+          modelRationale: match.adminNote ?? "軽量AI推定。",
+          modelSource: match.tacticalNote?.includes("team_strength") ? "team_strength" : "official_vote",
+          officialMatchNo: match.officialMatchNo,
+          reviewChange: haziPick !== aiPick,
+        } satisfies HaziLiteMatch;
+      });
 
       return {
         matchCount: roundMatches.length,
         matches,
         pickCount: roundPicks.length,
+        reviewChangeCount: matches.filter((match) => match.reviewChange).length,
         roundId: round.id,
         roundNumber,
         title: round.title,
@@ -415,8 +535,10 @@ export function readHaziLiteSummary(): HaziLiteSummary {
     .filter((round): round is HaziLiteRound => Boolean(round));
 
   return {
+    aiVersion: typeof window === "undefined" ? haziLiteAiVersion : window.localStorage.getItem(localKeys.haziAiVersion) ?? "none",
     haziUserId: haziUser?.id ?? null,
     isLiteReady: haziUser ? liteReady(state, haziUser.id) : false,
+    reviewChangeCount: rounds.reduce((sum, round) => sum + round.reviewChangeCount, 0),
     rounds,
     totalMatches: rounds.reduce((sum, round) => sum + round.matchCount, 0),
     totalPicks: rounds.reduce((sum, round) => sum + round.pickCount, 0),
@@ -430,7 +552,8 @@ export function setupHaziLiteState(input: { force?: boolean } = {}) {
 
   const state = readState();
   const haziUser = ensureHaziUser(state);
-  if (!input.force && liteReady(state, haziUser.id)) {
+  const currentVersion = window.localStorage.getItem(localKeys.haziAiVersion);
+  if (!input.force && currentVersion === haziLiteAiVersion && liteReady(state, haziUser.id)) {
     return readHaziLiteSummary();
   }
 
@@ -480,26 +603,35 @@ export function setupHaziLiteState(input: { force?: boolean } = {}) {
         row,
       }),
     );
-    const nextPicks = nextMatches.map((match) => ({
-      createdAt: now,
-      id:
-        state.picks.find(
-          (pick) => pick.roundId === roundId && pick.matchId === match.id && pick.userId === haziUser.id,
-        )?.id ?? localId("pick"),
-      matchId: match.id,
-      note: "Hazi軽量ページ: AI初期線から自動入力。必要なら1/0/2で上書き。",
-      pick: outcomeToEnum(
-        topOutcome({
-          modelProb0: match.modelProb0 ?? 0,
-          modelProb1: match.modelProb1 ?? 0,
-          modelProb2: match.modelProb2 ?? 0,
-        }),
-      ),
-      roundId,
-      support: { kind: "manual" as const },
-      updatedAt: now,
-      userId: haziUser.id,
-    })) satisfies Pick[];
+    const existingPicksByMatch = new Map(
+      state.picks
+        .filter((pick) => pick.roundId === roundId && pick.userId === haziUser.id)
+        .map((pick) => [pick.matchId, pick]),
+    );
+    const nextPicks = nextMatches.map((match) => {
+      const existingPick = existingPicksByMatch.get(match.id);
+      if (existingPick && !input.force) {
+        return existingPick;
+      }
+
+      return {
+        createdAt: existingPick?.createdAt ?? now,
+        id: existingPick?.id ?? localId("pick"),
+        matchId: match.id,
+        note: "Hazi軽量ページ: AI初期線から自動入力。必要なら1/0/2で上書き。",
+        pick: outcomeToEnum(
+          topOutcome({
+            modelProb0: match.modelProb0 ?? 0,
+            modelProb1: match.modelProb1 ?? 0,
+            modelProb2: match.modelProb2 ?? 0,
+          }),
+        ),
+        roundId,
+        support: { kind: "manual" as const },
+        updatedAt: now,
+        userId: haziUser.id,
+      };
+    }) satisfies Pick[];
     const officialRound: TotoOfficialRound = {
       carryoverYen: payload.carryoverYen,
       createdAt:
@@ -627,6 +759,50 @@ export function updateHaziLitePick(input: {
         !(pick.roundId === input.roundId && pick.matchId === input.matchId && pick.userId === haziUser.id),
     )
     .concat(nextPick);
+  writeState(state);
+  return readHaziLiteSummary();
+}
+
+export function applyHaziLiteAiPicks(input: { roundId?: string | null } = {}) {
+  const state = readState();
+  const haziUser = ensureHaziUser(state);
+  const now = nowIso();
+  const targetRounds = featuredWorldTotoRoundNumbers
+    .map((roundNumber) => findRoundByNumber(state, roundNumber))
+    .filter((round): round is Round => Boolean(round))
+    .filter((round) => !input.roundId || round.id === input.roundId);
+  const targetRoundIds = new Set(targetRounds.map((round) => round.id));
+  const existingPickByMatch = new Map(
+    state.picks
+      .filter((pick) => targetRoundIds.has(pick.roundId) && pick.userId === haziUser.id)
+      .map((pick) => [pick.matchId, pick]),
+  );
+  const nextPicks = state.matches
+    .filter((match) => targetRoundIds.has(match.roundId))
+    .map((match) => {
+      const existing = existingPickByMatch.get(match.id);
+      return {
+        createdAt: existing?.createdAt ?? now,
+        id: existing?.id ?? localId("pick"),
+        matchId: match.id,
+        note: "Hazi軽量ページ: AI修正案をレビュー後に反映。",
+        pick: outcomeToEnum(
+          topOutcome({
+            modelProb0: match.modelProb0 ?? 0,
+            modelProb1: match.modelProb1 ?? 0,
+            modelProb2: match.modelProb2 ?? 0,
+          }),
+        ),
+        roundId: match.roundId,
+        support: { kind: "manual" as const },
+        updatedAt: now,
+        userId: haziUser.id,
+      } satisfies Pick;
+    });
+
+  state.picks = state.picks
+    .filter((pick) => !(targetRoundIds.has(pick.roundId) && pick.userId === haziUser.id))
+    .concat(nextPicks);
   writeState(state);
   return readHaziLiteSummary();
 }
