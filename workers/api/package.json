@@ -1,0 +1,19 @@
+{
+  "name": "world-toto-lab-api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "World Toto Lab — Cloudflare Worker API backed by D1 (SQLite).",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "db:create": "wrangler d1 create world-toto-lab",
+    "db:migrate:local": "wrangler d1 migrations apply world-toto-lab --local",
+    "db:migrate:remote": "wrangler d1 migrations apply world-toto-lab --remote"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241106.0",
+    "typescript": "^5.6.0",
+    "wrangler": "^3.84.0"
+  }
+}
