@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { getStorageAdapter, resolveStorageMode } from "@/lib/storage";
+import {
+  getStorageAdapter,
+  getStorageModeLabel,
+  resolveStorageMode,
+} from "@/lib/storage";
 
 describe("resolveStorageMode", () => {
   it("honors an explicit mode above everything else", () => {
@@ -72,5 +76,14 @@ describe("getStorageAdapter", () => {
 
   it("serves the demo mode from the local adapter", () => {
     expect(getStorageAdapter("demo").mode).toBe("local");
+  });
+});
+
+describe("getStorageModeLabel", () => {
+  it("maps every mode to its Japanese badge label", () => {
+    expect(getStorageModeLabel("cloudflare_d1")).toBe("Cloudflare共有保存");
+    expect(getStorageModeLabel("supabase")).toBe("Supabase共有保存");
+    expect(getStorageModeLabel("local")).toBe("ローカル保存");
+    expect(getStorageModeLabel("demo")).toBe("デモ");
   });
 });

@@ -86,6 +86,21 @@ export function resolveStorageMode(input: ResolveStorageModeInput): StorageMode 
   return "local";
 }
 
+/** 保存モードの日本語ラベル（Data Mode Badge / Settings 表示用）。 */
+export function getStorageModeLabel(mode: StorageMode): string {
+  switch (mode) {
+    case "cloudflare_d1":
+      return "Cloudflare共有保存";
+    case "supabase":
+      return "Supabase共有保存";
+    case "demo":
+      return "デモ";
+    case "local":
+    default:
+      return "ローカル保存";
+  }
+}
+
 /** モードに対応する StorageAdapter を返す。demo は localStorage を使う。 */
 export function getStorageAdapter(mode: StorageMode): StorageAdapter {
   switch (mode) {
