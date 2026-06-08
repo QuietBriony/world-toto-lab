@@ -1,0 +1,21 @@
+# World Toto Lab — Cloudflare Worker API (D1 backend)
+#
+# 重要: 実 database_id や token は絶対にコミットしない。
+# database_id は `wrangler d1 create world-toto-lab` 実行後に各自が埋める（placeholder のまま）。
+
+name = "world-toto-lab-api"
+main = "src/index.ts"
+compatibility_date = "2024-11-01"
+
+# D1 binding。env.DB として参照する。
+[[d1_databases]]
+binding = "DB"
+database_name = "world-toto-lab"
+database_id = "<fill-in-after-create>"
+# マイグレーションはリポジトリ共通の cloudflare/d1/migrations を使う。
+migrations_dir = "../../cloudflare/d1/migrations"
+
+# 本番の許可 origin（カンマ区切り）。未設定なら src/cors.ts の既定値を使う。
+# ワイルドカードは使わない。
+[vars]
+# ALLOWED_ORIGINS = "https://quietbriony.github.io,https://world-toto-lab.pages.dev"
