@@ -12,9 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
-    // Cloudflare Worker / D1 は独自ツールチェーン（wrangler）で型検査するため除外。
+    // Cloudflare Worker / Pages Functions / D1 は Cloudflare 側でビルド/型検査するため除外。
     "workers/**",
     "cloudflare/**",
+    "functions/**",
   ]),
 ]);
 
