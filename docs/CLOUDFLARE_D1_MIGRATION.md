@@ -47,6 +47,35 @@ World Toto Lab の共有保存先を、Supabase に加えて **Cloudflare D1** �
 - 将来 Cloudflare Pages へ移す場合も、Worker の fetch ハンドラを
   `functions/api/[[path]].ts`（Pages Functions）へほぼそのまま移植できる構成にしてある。
 
+実装は共有化済み: ルーティング/D1/認可は [`workers/api/src/handler.ts`](../workers/api/src/handler.ts) の
+`handleApiRequest` にあり、Worker（[`workers/api/src/index.ts`](../workers/api/src/index.ts)）と
+Pages Functions（[`functions/api/[[path]].ts`](../functions/api/)）の両方が同じ実装を使う。
+
+## 4.5 推奨: Cloudflare Pages + Functions（ダッシュボード方式・ARM64 対応）
+
+> **Windows ARM64 など wrangler CLI が動かない環境ではこちら。** wrangler は `workerd` に依存し、
+> 一部プラットフォーム（win32 arm64 等）でローカル実行できない。Pages 方式なら **ビルドは Cloudflare 側**で走るので影響を受けない。tree-doctor / mogri と同じダッシュボード運用に揃う。
+
+すべて Cloudflare ダッシュボード（既存の GitHub 連携アカウントでOK）で完結する。CLI 不要。
+
+1. **D1 作成**: Storage & Databases → D1 → Create database → 名前 `world-toto-lab`。
+2. **スキーマ適用**: 作成した D1 → **Console** タブに
+   [`cloudflare/d1/migrations/0001_init.sql`](../cloudflare/d1/migrations/0001_init.sql) の中身を貼って Run（wrangler 不要）。
+3. **Pages 作成**: Workers & Pages → Create → Pages → **Connect to Git** → `world-toto-lab` を選択。
+   Build command `npm run build` / Output directory `out`（Functions は `functions/` を自動検出）。
+4. **D1 バインド**: その Pages プロジェクト → Settings → Bindings（または Functions）→ D1 database bindings →
+   Variable name **`DB`** → 作成した DB を選択（Production / Preview 両方）。
+5. **環境変数**: Settings → Variables and Secrets に
+   `NEXT_PUBLIC_STORAGE_MODE=cloudflare_d1`、`NEXT_PUBLIC_D1_API_BASE=https://<project>.pages.dev`。
+6. **デプロイ**: push で自動ビルド。完了後 `https://<project>.pages.dev/api/health` が `{"status":"ok"}` を返す。
+7. **確認**: アプリの `/settings` で「Cloudflare共有保存：接続OK」、JSON インポートで D1 へ移行可能。
+
+> GitHub Pages 版（`quietbriony.github.io/world-toto-lab`）はそのまま残る（並行運用）。
+> 同一オリジン（Pages 配信）なら CORS は不要。別オリジン運用時も `*.pages.dev` / `github.io` は
+> [`workers/api/src/cors.ts`](../workers/api/src/cors.ts) で許可済み。
+
+以降の §5〜§7 は **wrangler CLI 方式**（ARM64 以外／CLI を使いたい場合の代替）。
+
 ## 5. D1 database 作成手順
 
 ```bash
