@@ -25,6 +25,8 @@ import {
   type SupabaseHealthCheck,
 } from "@/lib/supabase";
 import { importRoundJson } from "@/lib/repository";
+import Link from "next/link";
+
 import {
   Badge,
   buttonClassName,
@@ -32,6 +34,7 @@ import {
   secondaryButtonClassName,
   SectionCard,
 } from "@/components/ui";
+import { appRoute } from "@/lib/round-links";
 import type { LocalRoundBundle } from "@/lib/local-repository";
 
 type ImportPreview = {
@@ -448,6 +451,9 @@ export function DataModeBadge() {
       <button type="button" className={secondaryButtonClassName} onClick={() => void reconnect()}>
         再接続
       </button>
+      <Link href={appRoute.settings} className={secondaryButtonClassName}>
+        設定
+      </Link>
     </div>
   );
 }
