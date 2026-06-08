@@ -13,6 +13,8 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    include: ["src/**/*.test.ts"],
+    // src のロジックに加え、Cloudflare Worker / Pages Functions 共有ロジック
+    // （workers/api/src 配下。外部型に依存しない純 TS）も実行対象にする。
+    include: ["src/**/*.test.ts", "workers/**/*.test.ts"],
   },
 });

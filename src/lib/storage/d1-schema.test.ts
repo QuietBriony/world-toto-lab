@@ -12,11 +12,9 @@ const migration = readFileSync(
   "utf8",
 ).toLowerCase();
 
-// `--` 以降のコメントを除いた DDL 本体（コメント内の語で誤検知しないため）。
-const schemaDdl = schema
-  .split("\n")
-  .map((line) => line.replace(/--.*$/, ""))
-  .join("\n");
+// `--` 以降の行コメントを除いた DDL 本体（コメント内の語で誤検知しないため）。
+// CRLF/LF どちらでも動くよう、改行以外を食う [^\n] を使う（JS の `.` は \r を含まない）。
+const schemaDdl = schema.replace(/--[^\n]*/g, "");
 
 const REQUIRED_TABLES = [
   "rounds",
