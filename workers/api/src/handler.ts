@@ -993,6 +993,18 @@ async function handleUpdateUser(
   return jsonResponse({ ok: true }, 200, cors);
 }
 
+async function handleDeleteUser(
+  env: Env,
+  userId: string,
+  cors: Record<string, string>,
+) {
+  // グローバルユーザーの削除。POST/PATCH と同じく round トークン非対象（users は
+  // round スコープ外）。存在しない id でも 0 行削除で冪等に ok を返す。
+  await ensureUsersTable(env);
+  await env.DB.prepare("DELETE FROM users WHERE id = ?").bind(userId).run();
+  return jsonResponse({ ok: true }, 200, cors);
+}
+
 // --- research memos / ev assumption -----------------------------------------
 
 async function handleSaveResearchMemo(
@@ -1149,6 +1161,9 @@ export async function handleApiRequest(
         }
         if (segments.length === 3 && segments[2] && method === "PATCH") {
           return await handleUpdateUser(request, env, segments[2], cors);
+        }
+        if (segments.length === 3 && segments[2] && method === "DELETE") {
+          return await handleDeleteUser(env, segments[2], cors);
         }
       }
 

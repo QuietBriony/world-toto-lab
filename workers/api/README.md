@@ -56,11 +56,20 @@ NEXT_PUBLIC_D1_API_BASE=https://world-toto-lab-api.<account>.workers.dev
 | GET/POST | `/api/rounds/:id/candidate-tickets` | public / edit | 候補券取得・セット置換 |
 | GET/POST | `/api/rounds/:id/candidate-votes` | public / edit | 投票取得・upsert |
 | GET/POST | `/api/rounds/:id/review-notes` | public / edit | 振り返り取得・追記 |
+| GET/POST | `/api/rounds/:id/research-memos` | public / edit | リサーチメモ取得・保存 |
+| DELETE | `/api/rounds/:id/research-memos/:memoId` | edit | リサーチメモ削除 |
+| POST | `/api/rounds/:id/ev-assumption` | edit | EV 前提保存 |
 | GET | `/api/rounds/:id/export` | public | Round バンドル JSON |
+| GET | `/api/state` | public | 全状態（D1 backed repository の読み取り用） |
+| GET | `/api/users` | public | グローバルユーザー一覧 |
+| POST | `/api/users` | public | ユーザー作成 |
+| PATCH | `/api/users/:id` | public | ユーザー更新 |
+| DELETE | `/api/users/:id` | public | ユーザー削除（冪等） |
 | POST | `/api/import` | （新規） | バンドル取り込み → token を返す |
 
-書き込みは `X-Edit-Token` か `X-Admin-Token` ヘッダが必要（フロントの `d1ApiAdapter` が自動付与）。
-**Round 削除 API は提供しない**（本番データ保護）。
+Round 配下の書き込みは `X-Edit-Token` か `X-Admin-Token` ヘッダが必要（フロントの `d1ApiAdapter` が自動付与）。
+`/api/users` のミューテーション（POST/PATCH/DELETE）は現状トークン不要（グローバルユーザーは round スコープ外。多人数運用では将来厳格化予定）。
+**Round 削除 API は提供しない**（本番データ保護）。ユーザー削除は冪等（存在しない id でも `{ ok: true }`）。
 
 ## 注意
 

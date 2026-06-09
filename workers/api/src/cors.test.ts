@@ -56,6 +56,7 @@ describe("corsHeaders", () => {
     expect(headers["Access-Control-Allow-Origin"]).not.toBe("*");
     expect(headers.Vary).toBe("Origin");
     expect(headers["Access-Control-Allow-Headers"]).toContain("X-Edit-Token");
+    expect(headers["Access-Control-Allow-Methods"]).toContain("DELETE");
   });
 
   it("omits the allow-origin header for disallowed origins", () => {

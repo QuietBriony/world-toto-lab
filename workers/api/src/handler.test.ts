@@ -104,6 +104,16 @@ describe("handleApiRequest", () => {
     expect(res.status).toBe(403);
   });
 
+  it("deletes a user via DELETE /api/users/:id", async () => {
+    const res = await handleApiRequest(
+      request("DELETE", "/api/users/u1", { origin: ALLOWED }),
+      makeEnv(),
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { ok: boolean };
+    expect(body.ok).toBe(true);
+  });
+
   it("does not expose a round delete endpoint", async () => {
     const env = makeEnv({
       first: (sql) =>
