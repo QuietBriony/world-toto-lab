@@ -1,12 +1,9 @@
-import type { SupabaseHealthCheck } from "@/lib/supabase";
-
-export type DataMode = "demo" | "local" | "shared" | "cloudflare_d1";
+export type DataMode = "demo" | "local" | "cloudflare_d1";
 export type DataModePreference = "auto" | DataMode;
 
 export const dataModePreferenceKey = "world-toto-lab:v1:dataMode";
 
 let runtimeDataMode: DataMode = "local";
-let runtimeHealth: SupabaseHealthCheck | null = null;
 
 function canUseBrowserStorage() {
   return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
@@ -18,8 +15,7 @@ export function getStoredDataModePreference(): DataModePreference {
   }
 
   const stored = window.localStorage.getItem(dataModePreferenceKey);
-  return stored === "shared" ||
-    stored === "local" ||
+  return stored === "local" ||
     stored === "demo" ||
     stored === "cloudflare_d1" ||
     stored === "auto"
@@ -43,28 +39,15 @@ export function getRuntimeDataMode() {
   return runtimeDataMode;
 }
 
-export function setRuntimeSupabaseHealth(health: SupabaseHealthCheck | null) {
-  runtimeHealth = health;
-}
-
-export function getRuntimeSupabaseHealth() {
-  return runtimeHealth;
-}
-
 export function shouldUseLocalRepository() {
-  // Supabase は廃止。共有保存は Cloudflare D1（isCloudflareD1Mode で先に短絡）。
-  // 残りの全モード（demo / local / shared / cloudflare_d1 の D1 未配線関数）は local へ落とす。
-  // これにより repository.ts の旧 Supabase 分岐には到達しない（dead code）。
-  if (
+  // Supabase は廃止。共有保存は Cloudflare D1（D1 配線済み関数は repository 内で
+  // isCloudflareD1Mode() により先に短絡）。残りの全モード（demo / local / cloudflare_d1 の
+  // D1 未配線関数）は local へ落とす。
+  return (
     runtimeDataMode === "demo" ||
     runtimeDataMode === "local" ||
-    runtimeDataMode === "shared" ||
     runtimeDataMode === "cloudflare_d1"
-  ) {
-    return true;
-  }
-
-  return runtimeHealth !== null && runtimeHealth.status !== "ok";
+  );
 }
 
 export function isDemoDataMode() {

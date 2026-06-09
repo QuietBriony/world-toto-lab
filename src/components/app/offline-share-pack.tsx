@@ -18,11 +18,7 @@ type OfflineSharePackProps = {
   roundTitle: string;
 };
 
-function modeLabel(mode: "demo" | "local" | "shared" | "cloudflare_d1") {
-  if (mode === "shared") {
-    return "共有保存";
-  }
-
+function modeLabel(mode: "demo" | "local" | "cloudflare_d1") {
   if (mode === "cloudflare_d1") {
     return "Cloudflare共有保存";
   }

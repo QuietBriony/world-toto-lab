@@ -16,10 +16,8 @@ import {
   DataModePreference,
   getStoredDataModePreference,
   setRuntimeDataMode,
-  setRuntimeSupabaseHealth,
   setStoredDataModePreference,
 } from "@/lib/data-mode";
-import { type SupabaseHealthCheck } from "@/lib/supabase";
 import { importRoundJson } from "@/lib/repository";
 import { d1ApiAdapter, storeRoundTokens } from "@/lib/storage/d1ApiAdapter";
 import { LegacyHostBanner } from "@/components/app/legacy-host-banner";
@@ -41,7 +39,6 @@ type ImportPreview = {
 };
 
 type DataModeContextValue = {
-  health: SupabaseHealthCheck | null;
   isChecking: boolean;
   mode: DataMode;
   preference: DataModePreference;
@@ -60,10 +57,6 @@ function initialMode(): DataMode {
 }
 
 function modeLabel(mode: DataMode) {
-  if (mode === "shared") {
-    return "共有保存";
-  }
-
   if (mode === "cloudflare_d1") {
     return "Cloudflare共有保存";
   }
@@ -75,44 +68,16 @@ function modeLabel(mode: DataMode) {
   return "ローカル保存";
 }
 
-function modeTone(mode: DataMode, health: SupabaseHealthCheck | null) {
+function modeTone(mode: DataMode) {
   if (mode === "demo") {
     return "warning" as const;
   }
 
   if (mode === "local") {
-    return health?.status === "paused_or_unreachable" ? "amber" as const : "sky" as const;
+    return "sky" as const;
   }
 
   return "teal" as const;
-}
-
-function healthBadgeLabel(health: SupabaseHealthCheck | null) {
-  if (!health) {
-    return null;
-  }
-
-  if (health.status === "missing_env") {
-    return "Supabase未接続";
-  }
-
-  if (health.status === "paused_or_unreachable") {
-    return "Supabase停止の可能性";
-  }
-
-  if (health.status === "schema_mismatch") {
-    return "Supabase構成差分";
-  }
-
-  if (health.status === "network_error") {
-    return "ネットワークエラー";
-  }
-
-  if (health.status === "ok") {
-    return "Supabase OK";
-  }
-
-  return "Supabase状態不明";
 }
 
 function normalizeBundle(raw: unknown): LocalRoundBundle {
@@ -151,7 +116,6 @@ export function DataModeProvider({ children }: { children: ReactNode }) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [mode, setModeState] = useState<DataMode>(initialMode);
   const [preference, setPreference] = useState<DataModePreference>("auto");
-  const [health, setHealth] = useState<SupabaseHealthCheck | null>(null);
   const [isChecking, setIsChecking] = useState(true);
   const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
   const [importing, setImporting] = useState(false);
@@ -171,8 +135,6 @@ export function DataModeProvider({ children }: { children: ReactNode }) {
       setStoredDataModePreference("local");
       setPreference("local");
       setModeState("local");
-      setRuntimeSupabaseHealth(null);
-      setHealth(null);
       setIsChecking(false);
       return;
     }
@@ -183,8 +145,6 @@ export function DataModeProvider({ children }: { children: ReactNode }) {
     if (storedPreference === "demo" || storedPreference === "local") {
       setRuntimeDataMode(storedPreference);
       setModeState(storedPreference);
-      setRuntimeSupabaseHealth(null);
-      setHealth(null);
       setIsChecking(false);
       return;
     }
@@ -198,8 +158,6 @@ export function DataModeProvider({ children }: { children: ReactNode }) {
         process.env.NEXT_PUBLIC_STORAGE_MODE === "cloudflare_d1");
     if (wantsD1 && d1Base) {
       const d1Health = await d1ApiAdapter.health();
-      setRuntimeSupabaseHealth(null);
-      setHealth(null);
       if (d1Health.status === "ok") {
         setRuntimeDataMode("cloudflare_d1");
         setModeState("cloudflare_d1");
@@ -213,8 +171,6 @@ export function DataModeProvider({ children }: { children: ReactNode }) {
 
     // Supabase は廃止。共有保存は Cloudflare D1（上の wantsD1 分岐で解決済み）。
     // ここに到達した時点で D1 ではない＝local に確定する。
-    setRuntimeSupabaseHealth(null);
-    setHealth(null);
     setRuntimeDataMode("local");
     setModeState("local");
 
@@ -304,7 +260,6 @@ export function DataModeProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<DataModeContextValue>(
     () => ({
-      health,
       isChecking,
       mode,
       preference,
@@ -312,9 +267,8 @@ export function DataModeProvider({ children }: { children: ReactNode }) {
       requestJsonImport,
       setMode,
     }),
-    [health, isChecking, mode, preference, reconnect, requestJsonImport, setMode],
+    [isChecking, mode, preference, reconnect, requestJsonImport, setMode],
   );
-  const healthLabel = healthBadgeLabel(health);
 
   return (
     <DataModeContext.Provider value={value}>
@@ -332,8 +286,7 @@ export function DataModeProvider({ children }: { children: ReactNode }) {
 
       <div className="fixed bottom-4 right-4 z-[80] flex max-w-[calc(100vw-2rem)] flex-col items-end gap-2">
         <div className="flex flex-wrap justify-end gap-2 rounded-full border border-white/20 bg-slate-950/82 px-3 py-2 shadow-[0_18px_60px_-30px_rgba(0,0,0,0.7)] backdrop-blur-xl">
-          <Badge tone={modeTone(mode, health)}>{modeLabel(mode)}</Badge>
-          {healthLabel ? <Badge tone={health?.status === "ok" ? "teal" : "amber"}>{healthLabel}</Badge> : null}
+          <Badge tone={modeTone(mode)}>{modeLabel(mode)}</Badge>
         </div>
       </div>
 
@@ -423,15 +376,13 @@ export function useDataMode() {
 }
 
 export function DataModeBadge() {
-  const { health, isChecking, mode, reconnect, requestJsonImport, setMode } = useDataMode();
-  const healthLabel = healthBadgeLabel(health);
+  const { isChecking, mode, reconnect, requestJsonImport, setMode } = useDataMode();
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <Badge tone={modeTone(mode, health)}>
+      <Badge tone={modeTone(mode)}>
         {isChecking ? "接続確認中" : modeLabel(mode)}
       </Badge>
-      {healthLabel ? <Badge tone={health?.status === "ok" ? "teal" : "amber"}>{healthLabel}</Badge> : null}
       <button type="button" className={secondaryButtonClassName} onClick={() => setMode("local")}>
         ローカル
       </button>

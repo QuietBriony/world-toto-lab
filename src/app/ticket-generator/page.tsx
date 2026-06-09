@@ -9,13 +9,11 @@ import {
   RoundProgressCallout,
 } from "@/components/app/round-guides";
 import {
-  ConfigurationNotice,
   ErrorNotice,
   LoadingNotice,
   RoundRequiredNotice,
 } from "@/components/app/states";
 import { TotoVisualBoard } from "@/components/app/toto-visual-board";
-import { useDataMode } from "@/components/app/data-mode-provider";
 import { RoundNav } from "@/components/round-nav";
 import {
   Badge,
@@ -47,7 +45,6 @@ import {
 } from "@/lib/forms";
 import { appRoute, buildRoundHref, getSingleSearchParam } from "@/lib/round-links";
 import { replaceGeneratedTickets } from "@/lib/repository";
-import { isSupabaseConfigured } from "@/lib/supabase";
 import {
   budgetFromCandidateLimit,
   candidateLimitCapForMatchCount,
@@ -222,7 +219,6 @@ function selectionReasonTone(selection: StoredTicket["selections"][number]) {
 function TicketGeneratorPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const dataMode = useDataMode();
   const roundId = getSingleSearchParam(searchParams.get("round"));
   const selectedMode = parseTicketMode(
     getSingleSearchParam(searchParams.get("mode")) ?? "balanced",
@@ -437,9 +433,7 @@ function TicketGeneratorPageContent() {
         }
       />
 
-      {dataMode.mode === "shared" && !isSupabaseConfigured() ? (
-        <ConfigurationNotice />
-      ) : !roundId ? (
+      {!roundId ? (
         <RoundRequiredNotice />
       ) : loading && !data ? (
         <LoadingNotice title="候補配分を読み込み中" />

@@ -12,13 +12,11 @@ import {
   RoundProgressCallout,
 } from "@/components/app/round-guides";
 import {
-  ConfigurationNotice,
   ErrorNotice,
   LoadingNotice,
   RoundMissingNotice,
   RoundRequiredNotice,
 } from "@/components/app/states";
-import { useDataMode } from "@/components/app/data-mode-provider";
 import { RoundNav } from "@/components/round-nav";
 import {
   Badge,
@@ -88,7 +86,6 @@ import {
   getSingleSearchParam,
 } from "@/lib/round-links";
 import { bulkUpdateRoundMatches, estimateRoundAiModel, updateRound } from "@/lib/repository";
-import { isSupabaseConfigured } from "@/lib/supabase";
 import { budgetFromCandidateLimit, candidateLimitFromBudget } from "@/lib/tickets";
 import type { Match } from "@/lib/types";
 import { useRoundWorkspace } from "@/lib/use-app-data";
@@ -172,7 +169,6 @@ type ScopedMessage = {
 function WorkspacePageContent() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const dataMode = useDataMode();
   const roundId = getSingleSearchParam(searchParams.get("round"));
   const debugMode = getSingleSearchParam(searchParams.get("debug")) === "1";
   const focus = getSingleSearchParam(searchParams.get("focus"));
@@ -680,9 +676,7 @@ function WorkspacePageContent() {
         }
       />
 
-      {dataMode.mode === "shared" && !isSupabaseConfigured() ? (
-        <ConfigurationNotice />
-      ) : !roundId ? (
+      {!roundId ? (
         <RoundRequiredNotice />
       ) : loading && !data ? (
         <LoadingNotice title="ラウンドを読み込み中" />

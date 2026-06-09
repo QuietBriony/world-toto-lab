@@ -10,13 +10,11 @@ import {
   buildCandidateVoteSummaryMap,
 } from "@/components/app/friend-pick-room";
 import {
-  ConfigurationNotice,
   ErrorNotice,
   LoadingNotice,
   RoundMissingNotice,
   RoundRequiredNotice,
 } from "@/components/app/states";
-import { useDataMode } from "@/components/app/data-mode-provider";
 import { RoundNav } from "@/components/round-nav";
 import {
   Badge,
@@ -54,7 +52,6 @@ import {
   modeMaterialsDescription,
   roundEstimateStatusBanner,
 } from "@/lib/round-mode";
-import { isSupabaseConfigured } from "@/lib/supabase";
 import { useRoundWorkspace } from "@/lib/use-app-data";
 import { resolveWorldTotoProductLabel } from "@/lib/world-toto";
 import type { CandidateVoteValue } from "@/lib/types";
@@ -86,7 +83,6 @@ function QuickPickButton(props: {
 
 function PlayPageContent() {
   const searchParams = useSearchParams();
-  const dataMode = useDataMode();
   const roundId = getSingleSearchParam(searchParams.get("round"));
   const requestedUserId = getSingleSearchParam(searchParams.get("user"));
   const { data, error, loading, refresh } = useRoundWorkspace(roundId);
@@ -233,10 +229,6 @@ function PlayPageContent() {
       humanAligned,
     };
   }, [data, draftValues]);
-
-  if (dataMode.mode === "shared" && !isSupabaseConfigured()) {
-    return <ConfigurationNotice />;
-  }
 
   if (!roundId) {
     return <RoundRequiredNotice />;

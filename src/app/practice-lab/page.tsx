@@ -10,12 +10,10 @@ import {
   buildCandidateVoteSummaryMap,
 } from "@/components/app/friend-pick-room";
 import {
-  ConfigurationNotice,
   ErrorNotice,
   LoadingNotice,
   RoundRequiredNotice,
 } from "@/components/app/states";
-import { useDataMode } from "@/components/app/data-mode-provider";
 import { RoundNav } from "@/components/round-nav";
 import {
   PageHeader,
@@ -35,13 +33,11 @@ import {
   probabilityReadinessDescription,
   probabilityReadinessStatusLabel,
 } from "@/lib/round-mode";
-import { isSupabaseConfigured } from "@/lib/supabase";
 import { useRoundWorkspace } from "@/lib/use-app-data";
 import { resolveWorldTotoProductLabel } from "@/lib/world-toto";
 
 function PracticeLabPageContent() {
   const searchParams = useSearchParams();
-  const dataMode = useDataMode();
   const roundId = getSingleSearchParam(searchParams.get("round"));
   const { data, error, loading, refresh } = useRoundWorkspace(roundId);
 
@@ -88,10 +84,6 @@ function PracticeLabPageContent() {
         productTypeLabel[data.round.productType],
       )
     : null;
-
-  if (dataMode.mode === "shared" && !isSupabaseConfigured()) {
-    return <ConfigurationNotice />;
-  }
 
   if (!roundId) {
     return <RoundRequiredNotice />;

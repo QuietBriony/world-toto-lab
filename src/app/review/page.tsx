@@ -13,12 +13,10 @@ import {
   RoundProgressCallout,
 } from "@/components/app/round-guides";
 import {
-  ConfigurationNotice,
   ErrorNotice,
   LoadingNotice,
   RoundRequiredNotice,
 } from "@/components/app/states";
-import { useDataMode } from "@/components/app/data-mode-provider";
 import { RoundNav } from "@/components/round-nav";
 import {
   Badge,
@@ -44,7 +42,6 @@ import { nullableString, parseOutcome, parseRoundStatus, stringValue } from "@/l
 import { appRoute, buildRoundHref, getSingleSearchParam } from "@/lib/round-links";
 import { addReviewNote, saveResults } from "@/lib/repository";
 import { buildReviewSummary } from "@/lib/review";
-import { isSupabaseConfigured } from "@/lib/supabase";
 import { useRoundWorkspace } from "@/lib/use-app-data";
 
 function errorMessage(error: unknown) {
@@ -53,7 +50,6 @@ function errorMessage(error: unknown) {
 
 function ReviewPageContent() {
   const searchParams = useSearchParams();
-  const dataMode = useDataMode();
   const roundId = getSingleSearchParam(searchParams.get("round"));
   const { data, error, loading, refresh } = useRoundWorkspace(roundId);
   const [savingResults, setSavingResults] = useState(false);
@@ -214,9 +210,7 @@ function ReviewPageContent() {
           description="賞金や配当は扱わず、予想精度・方向性・一致 / 対立パターンを振り返る画面です。"
       />
 
-      {dataMode.mode === "shared" && !isSupabaseConfigured() ? (
-        <ConfigurationNotice />
-      ) : !roundId ? (
+      {!roundId ? (
         <RoundRequiredNotice />
       ) : loading && !data ? (
         <LoadingNotice title="振り返りを読み込み中" />

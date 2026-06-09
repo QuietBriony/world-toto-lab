@@ -12,12 +12,10 @@ import {
   RoundProgressCallout,
 } from "@/components/app/round-guides";
 import {
-  ConfigurationNotice,
   ErrorNotice,
   LoadingNotice,
   RoundRequiredNotice,
 } from "@/components/app/states";
-import { useDataMode } from "@/components/app/data-mode-provider";
 import { RoundNav } from "@/components/round-nav";
 import {
   Badge,
@@ -58,7 +56,6 @@ import { appRoute, buildRoundHref, getSingleSearchParam } from "@/lib/round-link
 import { buildResearchMemoPayload, filterResearchMemosForMatch } from "@/lib/research-memos";
 import { competitionTypeModeLabel, probabilityReadinessStatusLabel } from "@/lib/round-mode";
 import { deleteResearchMemo, saveResearchMemo, updateMatch } from "@/lib/repository";
-import { isSupabaseConfigured } from "@/lib/supabase";
 import { useRoundWorkspace } from "@/lib/use-app-data";
 
 function errorMessage(error: unknown) {
@@ -128,7 +125,6 @@ type ScopedMessage = {
 
 function MatchEditorPageContent() {
   const searchParams = useSearchParams();
-  const dataMode = useDataMode();
   const roundId = getSingleSearchParam(searchParams.get("round"));
   const matchId = getSingleSearchParam(searchParams.get("match"));
   const { data, error, loading, refresh } = useRoundWorkspace(roundId);
@@ -436,9 +432,7 @@ function MatchEditorPageContent() {
         }
       />
 
-      {dataMode.mode === "shared" && !isSupabaseConfigured() ? (
-        <ConfigurationNotice />
-      ) : !roundId ? (
+      {!roundId ? (
         <RoundRequiredNotice />
       ) : loading && !data ? (
         <LoadingNotice title="試合編集を読み込み中" />

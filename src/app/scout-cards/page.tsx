@@ -12,12 +12,10 @@ import {
   RoundProgressCallout,
 } from "@/components/app/round-guides";
 import {
-  ConfigurationNotice,
   ErrorNotice,
   LoadingNotice,
   RoundRequiredNotice,
 } from "@/components/app/states";
-import { useDataMode } from "@/components/app/data-mode-provider";
 import { RoundNav } from "@/components/round-nav";
 import {
   Badge,
@@ -43,7 +41,6 @@ import {
 } from "@/lib/forms";
 import { appRoute, buildRoundHref, getSingleSearchParam } from "@/lib/round-links";
 import { replaceScoutReports } from "@/lib/repository";
-import { isSupabaseConfigured } from "@/lib/supabase";
 import { useRoundWorkspace } from "@/lib/use-app-data";
 import { filterPredictors, userRoleLabel } from "@/lib/users";
 
@@ -112,7 +109,6 @@ function reportHasMeaningfulInput(
 function ScoutCardsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const dataMode = useDataMode();
   const roundId = getSingleSearchParam(searchParams.get("round"));
   const requestedUserId = getSingleSearchParam(searchParams.get("user"));
   const { data, error, loading, refresh } = useRoundWorkspace(roundId);
@@ -335,9 +331,7 @@ function ScoutCardsPageContent() {
         description="AIと比較したい予想者だけが、試合ごとの根拠を点数化して残します。方向スコア F は保存時に自動計算されます。"
       />
 
-      {dataMode.mode === "shared" && !isSupabaseConfigured() ? (
-        <ConfigurationNotice />
-      ) : !roundId ? (
+      {!roundId ? (
         <RoundRequiredNotice />
       ) : loading && !data ? (
         <LoadingNotice title="根拠カードを読み込み中" />

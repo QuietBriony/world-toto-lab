@@ -5,13 +5,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState, type FormEvent } from "react";
 
 import {
-  ConfigurationNotice,
   ErrorNotice,
   LoadingNotice,
   RoundMissingNotice,
   RoundRequiredNotice,
 } from "@/components/app/states";
-import { useDataMode } from "@/components/app/data-mode-provider";
 import { RoundNav } from "@/components/round-nav";
 import {
   Badge,
@@ -39,7 +37,6 @@ import { sortCandidateTickets } from "@/lib/candidate-tickets";
 import { appRoute, buildRoundHref, getSingleSearchParam } from "@/lib/round-links";
 import { replacePicks } from "@/lib/repository";
 import { roundEstimateStatusBanner } from "@/lib/round-mode";
-import { isSupabaseConfigured } from "@/lib/supabase";
 import { useRoundWorkspace } from "@/lib/use-app-data";
 import { isWinnerLikeRound } from "@/lib/winner-value";
 import { resolveWorldTotoProductLabel } from "@/lib/world-toto";
@@ -112,7 +109,6 @@ function QuickPickButton(props: {
 function SimpleViewPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const dataMode = useDataMode();
   const roundId = getSingleSearchParam(searchParams.get("round"));
   const requestedUserId = getSingleSearchParam(searchParams.get("user"));
   const { data, error, loading, refresh } = useRoundWorkspace(roundId);
@@ -240,10 +236,6 @@ function SimpleViewPageContent() {
         roundSource: data.round.roundSource,
       })
     : null;
-
-  if (dataMode.mode === "shared" && !isSupabaseConfigured()) {
-    return <ConfigurationNotice />;
-  }
 
   if (!roundId) {
     return <RoundRequiredNotice />;
