@@ -13,6 +13,7 @@ import {
   type HaziLiteStrategyKind,
   type HaziLiteSummary,
 } from "@/lib/hazi-lite-local";
+import { HaziSharedD1View } from "@/components/app/hazi-shared-d1-view";
 
 type SetupStatus = "idle" | "ready" | "working" | "error";
 
@@ -183,7 +184,17 @@ function StrategyCard({
   );
 }
 
-export default function HaziLitePage() {
+export default function HaziPage() {
+  // 共有D1デプロイ（NEXT_PUBLIC_STORAGE_MODE=cloudflare_d1）ではみんなで見る共有版を、
+  // それ以外（localhost 等）は従来の個人ローカル軽量版を出す。env はビルド時定数なので
+  // この分岐は描画間で変わらず、フック規則にも触れない（HaziLitePage 側のフックは常に揃う）。
+  if (process.env.NEXT_PUBLIC_STORAGE_MODE === "cloudflare_d1") {
+    return <HaziSharedD1View />;
+  }
+  return <HaziLitePage />;
+}
+
+function HaziLitePage() {
   const [summary, setSummary] = useState<HaziLiteSummary | null>(null);
   const [selectedRoundNumber, setSelectedRoundNumber] = useState(1634);
   const [status, setStatus] = useState<SetupStatus>("working");
