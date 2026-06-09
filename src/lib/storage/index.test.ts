@@ -12,8 +12,8 @@ describe("resolveStorageMode", () => {
       "cloudflare_d1",
     );
     expect(
-      resolveStorageMode({ explicitMode: "supabase", d1ApiBase: "https://x" }),
-    ).toBe("supabase");
+      resolveStorageMode({ explicitMode: "demo", d1ApiBase: "https://x" }),
+    ).toBe("demo");
     expect(resolveStorageMode({ explicitMode: "nonsense" })).toBe("local");
   });
 
@@ -23,17 +23,8 @@ describe("resolveStorageMode", () => {
     ).toBe("cloudflare_d1");
   });
 
-  it("uses supabase when env is present and healthy (auto)", () => {
-    expect(
-      resolveStorageMode({ hasSupabaseEnv: true, supabaseHealthy: true }),
-    ).toBe("supabase");
-  });
-
-  it("falls back to local when nothing is configured or supabase is unhealthy", () => {
+  it("falls back to local when nothing is configured", () => {
     expect(resolveStorageMode({})).toBe("local");
-    expect(
-      resolveStorageMode({ hasSupabaseEnv: true, supabaseHealthy: false }),
-    ).toBe("local");
   });
 
   it("respects demo and local preferences", () => {
@@ -41,11 +32,7 @@ describe("resolveStorageMode", () => {
       resolveStorageMode({ preference: "demo", d1ApiBase: "https://x" }),
     ).toBe("demo");
     expect(
-      resolveStorageMode({
-        preference: "local",
-        hasSupabaseEnv: true,
-        supabaseHealthy: true,
-      }),
+      resolveStorageMode({ preference: "local", d1ApiBase: "https://x" }),
     ).toBe("local");
   });
 
@@ -55,22 +42,11 @@ describe("resolveStorageMode", () => {
       resolveStorageMode({ preference: "cloudflare_d1", d1ApiBase: "https://x" }),
     ).toBe("cloudflare_d1");
   });
-
-  it("maps the legacy 'shared' preference to supabase when healthy", () => {
-    expect(
-      resolveStorageMode({
-        preference: "shared",
-        hasSupabaseEnv: true,
-        supabaseHealthy: true,
-      }),
-    ).toBe("supabase");
-  });
 });
 
 describe("getStorageAdapter", () => {
   it("returns an adapter whose mode matches the request", () => {
     expect(getStorageAdapter("local").mode).toBe("local");
-    expect(getStorageAdapter("supabase").mode).toBe("supabase");
     expect(getStorageAdapter("cloudflare_d1").mode).toBe("cloudflare_d1");
   });
 
@@ -82,7 +58,6 @@ describe("getStorageAdapter", () => {
 describe("getStorageModeLabel", () => {
   it("maps every mode to its Japanese badge label", () => {
     expect(getStorageModeLabel("cloudflare_d1")).toBe("Cloudflare共有保存");
-    expect(getStorageModeLabel("supabase")).toBe("Supabase共有保存");
     expect(getStorageModeLabel("local")).toBe("ローカル保存");
     expect(getStorageModeLabel("demo")).toBe("デモ");
   });

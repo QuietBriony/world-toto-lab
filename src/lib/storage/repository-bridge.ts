@@ -1,7 +1,7 @@
 /**
  * 既存 repository / local-repository を `StorageAdapter` 契約へ橋渡しする内部ファクトリ。
  *
- * `supabaseAdapter` と `localStorageAdapter` は、ほぼ同じ手順で「round 単位の facade」を
+ * 各 adapter（`localStorageAdapter` など）は、ほぼ同じ手順で「round 単位の facade」を
  * 個別エンティティ API に整える。その共通部分をここに集約し、各 adapter は
  * 「どの backend 関数を使うか」だけを差し替える（追加方式・最小差分）。
  */
