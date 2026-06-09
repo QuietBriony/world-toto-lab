@@ -19,11 +19,7 @@ import {
   setRuntimeSupabaseHealth,
   setStoredDataModePreference,
 } from "@/lib/data-mode";
-import {
-  checkSupabaseHealth,
-  hasSupabaseEnv,
-  type SupabaseHealthCheck,
-} from "@/lib/supabase";
+import { type SupabaseHealthCheck } from "@/lib/supabase";
 import { importRoundJson } from "@/lib/repository";
 import { d1ApiAdapter, storeRoundTokens } from "@/lib/storage/d1ApiAdapter";
 import { LegacyHostBanner } from "@/components/app/legacy-host-banner";
@@ -59,7 +55,8 @@ const DataModeContext = createContext<DataModeContextValue | null>(null);
 function initialMode(): DataMode {
   // Keep the first client render identical to the static HTML. The stored
   // preference is applied by runHealthCheck immediately after hydration.
-  return hasSupabaseEnv() ? "shared" : "local";
+  // Supabase は廃止。共有保存は Cloudflare D1（runHealthCheck で env/preference により解決）。
+  return "local";
 }
 
 function modeLabel(mode: DataMode) {
@@ -214,23 +211,12 @@ export function DataModeProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const nextHealth = await checkSupabaseHealth();
-    setRuntimeSupabaseHealth(nextHealth);
-    setHealth(nextHealth);
-
-    if (storedPreference === "shared" && nextHealth.status === "ok") {
-      setRuntimeDataMode("shared");
-      setModeState("shared");
-    } else if (storedPreference === "shared") {
-      setRuntimeDataMode("local");
-      setModeState("local");
-    } else if (nextHealth.status === "ok") {
-      setRuntimeDataMode("shared");
-      setModeState("shared");
-    } else {
-      setRuntimeDataMode("local");
-      setModeState("local");
-    }
+    // Supabase は廃止。共有保存は Cloudflare D1（上の wantsD1 分岐で解決済み）。
+    // ここに到達した時点で D1 ではない＝local に確定する。
+    setRuntimeSupabaseHealth(null);
+    setHealth(null);
+    setRuntimeDataMode("local");
+    setModeState("local");
 
     setIsChecking(false);
   }, []);
@@ -329,14 +315,6 @@ export function DataModeProvider({ children }: { children: ReactNode }) {
     [health, isChecking, mode, preference, reconnect, requestJsonImport, setMode],
   );
   const healthLabel = healthBadgeLabel(health);
-  const shouldShowConnectionPanel =
-    !isChecking &&
-    mode !== "shared" &&
-    (health?.status === "missing_env" ||
-      health?.status === "network_error" ||
-      health?.status === "paused_or_unreachable" ||
-      health?.status === "schema_mismatch" ||
-      health?.status === "unknown");
 
   return (
     <DataModeContext.Provider value={value}>
@@ -360,39 +338,6 @@ export function DataModeProvider({ children }: { children: ReactNode }) {
       </div>
 
       <div className="fixed left-1/2 top-28 z-[70] w-full max-w-5xl -translate-x-1/2 px-4 sm:px-6 lg:px-8">
-        {shouldShowConnectionPanel ? (
-          <SectionCard
-            className="mb-4"
-            title="Supabaseに接続できません。"
-            description="プロジェクトがpaused、ネットワークエラー、接続設定不足、または必要テーブル不足の可能性があります。"
-            actions={
-              <div className="flex flex-wrap gap-2">
-                <button type="button" className={buttonClassName} onClick={() => setMode("local")}>
-                  ローカル保存で続ける
-                </button>
-                <button type="button" className={secondaryButtonClassName} onClick={requestJsonImport}>
-                  JSONを読み込む
-                </button>
-                <a
-                  href="https://github.com/QuietBriony/world-toto-lab/blob/main/docs/SUPABASE_STATUS.md"
-                  target="_blank"
-                  rel="noreferrer"
-                  className={secondaryButtonClassName}
-                >
-                  Supabase設定を確認
-                </a>
-                <button type="button" className={secondaryButtonClassName} onClick={() => void reconnect()}>
-                  再接続する
-                </button>
-              </div>
-            }
-          >
-            <p className="text-sm leading-6 text-slate-700">
-              {health?.message ?? "接続状態を確認できませんでした。"}
-            </p>
-          </SectionCard>
-        ) : null}
-
         {importPreview ? (
           <SectionCard
             className="mb-4"

@@ -81,7 +81,7 @@ describe("data mode", () => {
     expect(getRuntimeDataMode()).toBe("local");
   });
 
-  it("falls back from shared mode when Supabase health is not ok", () => {
+  it("keeps shared mode on the local repository now that Supabase is removed", () => {
     setRuntimeDataMode("shared");
     setRuntimeSupabaseHealth({
       checkedAt: "2026-01-01T00:00:00.000Z",
@@ -92,12 +92,13 @@ describe("data mode", () => {
     expect(shouldUseLocalRepository()).toBe(true);
     expect(getRuntimeSupabaseHealth()?.status).toBe("paused_or_unreachable");
 
+    // Supabase 廃止後は health が ok でも shared は local を使う（共有保存は D1 に統一）。
     setRuntimeSupabaseHealth({
       checkedAt: "2026-01-01T00:00:00.000Z",
       message: "ok",
       status: "ok",
     });
 
-    expect(shouldUseLocalRepository()).toBe(false);
+    expect(shouldUseLocalRepository()).toBe(true);
   });
 });
