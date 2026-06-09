@@ -52,7 +52,7 @@ export function corsHeaders(
 ): Record<string, string> {
   const headers: Record<string, string> = {
     Vary: "Origin",
-    "Access-Control-Allow-Methods": "GET,POST,PATCH,OPTIONS",
+    "Access-Control-Allow-Methods": "GET,POST,PATCH,DELETE,OPTIONS",
     "Access-Control-Allow-Headers":
       "Content-Type,X-Share-Code,X-Edit-Token,X-Admin-Token",
     "Access-Control-Max-Age": "86400",
