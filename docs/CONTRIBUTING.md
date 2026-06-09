@@ -1,7 +1,7 @@
 # Contributing
 
 World Toto Lab への contribution は歓迎です。  
-ただしこの repo は `main` から GitHub Pages と Supabase 運用に直結しているため、変更は小さく、目的を絞って進めます。
+ただしこの repo は `main` から Pages 配信と共有保存（Cloudflare D1）運用に直結しているため、変更は小さく、目的を絞って進めます。
 
 ## Working Agreement
 
@@ -23,13 +23,13 @@ GitHub の設定がまだ緩くても、運用上は `main` を protected branch
 - ドキュメント整備
 - データ入力支援
 - 既存フローの安全性向上
-- GitHub Pages / Supabase 運用改善
+- Pages / 共有保存（Cloudflare D1）運用改善
 
 Issue を先に切ってほしい変更:
 
 - route 追加や大きな情報設計変更
-- `src/lib/repository.ts` や `supabase/schema.sql` を触る変更
-- Edge Function の仕様変更
+- `src/lib/repository.ts` や `cloudflare/d1/schema.sql` を触る変更
+- 共有保存 Worker（`workers/api`）の仕様変更
 - 複数画面をまたぐ大きな refactor
 
 受けない変更:
@@ -66,7 +66,7 @@ Issue を先に切ってほしい変更:
 
 - `pick-room` の文言だけ直す
 - PR / Issue template を整える
-- `schema.sql` に必要最小限の列を 1 つ追加する
+- `cloudflare/d1/schema.sql` に必要最小限の列を 1 つ追加する
 - `round-links.ts` のリンク生成だけ修正する
 
 避けたい PR の例:
@@ -75,7 +75,7 @@ Issue を先に切ってほしい変更:
 - 「ついで修正」を積み上げて review 観点がぼやける
 - route / data / deploy の変更を 1 本に押し込む
 
-## Pages And Supabase Constraints
+## Pages And Cloudflare D1 Constraints
 
 GitHub Pages:
 
@@ -84,13 +84,13 @@ GitHub Pages:
 - route は query param 方式を維持する
 - link 生成は `src/lib/round-links.ts` を優先する
 
-Supabase:
+共有保存（Cloudflare D1）:
 
-- 共有本番データを前提にしている
-- 本番データを消さない
+- 共有 DB を前提にしている
+- 共有データにある他人のデータを消さない
 - 不要な全件更新をしない
-- `schema.sql` の変更は最小差分にする
-- schema 変更時は `npm run audit:schema` を確認する
+- `cloudflare/d1/schema.sql` の変更は最小差分（足す方向）にする
+- スキーマ変更時は共有保存モードでの読み書きを確認する
 
 ## PR Checklist
 
@@ -114,8 +114,6 @@ npm run build
 変更内容に応じて次も使ってください。
 
 ```bash
-npm run audit:schema
-npm run check:supabase
 npm run check:pages
 ```
 
@@ -130,7 +128,7 @@ npm run check:pages
 
 - 1PR 1目的になっているか
 - Pages / `basePath` / static export を壊していないか
-- Supabase 本番データに危険がないか
+- 共有保存（Cloudflare D1）の他人のデータに危険がないか
 - 並走ルールを破っていないか
 - 仕様より refactor の比重が大きくなっていないか
 

@@ -1,6 +1,6 @@
 # Development
 
-World Toto Lab は、`Next.js 16 App Router + static export + GitHub Pages + Supabase` を前提にした共有 MVP です。  
+World Toto Lab は、`Next.js 16 App Router + static export + GitHub Pages / Cloudflare Pages + Cloudflare D1` を前提にした共有 MVP です。  
 通常のサーバー常駐アプリとは制約が違うため、開発フローもその前提に合わせます。
 
 ## Current Reality
@@ -8,10 +8,10 @@ World Toto Lab は、`Next.js 16 App Router + static export + GitHub Pages + Sup
 - フロントエンドは `src/app` 配下の Next.js 16 App Router
 - 配信は [next.config.ts](../next.config.ts) の `output: "export"` と `trailingSlash: true` を使った GitHub Pages static export
 - `basePath` / `assetPrefix` は build 時の `GITHUB_REPOSITORY` を見て決まる
-- データは Supabase をブラウザから直接利用する共有 MVP
+- 共有データは Cloudflare D1（`workers/api` の Worker 経由）。共有保存を使わなければローカル保存（localStorage）で動く
 - 今日の実際の deploy は `main` push 起点
   - `.github/workflows/deploy-pages.yml`: `main` push で Pages を再配信
-  - `.github/workflows/deploy-supabase-functions.yml`: `main` push かつ対象 path 変更で Edge Functions を再配備
+  - `.github/workflows/ci.yml`: `main` への PR で `lint` / `test` / `build` を実行
 - 今後の推奨運用は `feature/*` などの作業 branch -> PR -> main merge
 
 GitHub の branch protection がまだ完全でなくても、`main` は live deploy branch として扱ってください。  
@@ -39,7 +39,7 @@ Next.js の route / config 変更でまず見る候補:
 
 - Node.js 24 系
 - npm
-- Supabase プロジェクト
+- （共有保存を使う場合のみ）Cloudflare D1 + Worker
 
 初回セットアップ:
 
@@ -49,19 +49,19 @@ Next.js の route / config 変更でまず見る候補:
 npm ci
 ```
 
-2. `.env.example` をもとに `.env.local` を作る
+2. 環境変数（任意）
+
+環境変数なしならローカル保存（localStorage）で起動します。  
+共有保存（Cloudflare D1）を使うときだけ、`.env.example` をもとに `.env.local` を作ります。
 
 ```bash
-NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-public-anon-or-publishable-key
-NEXT_PUBLIC_TOTO_OFFICIAL_ROUND_SYNC_FUNCTION_NAME=sync-toto-official-round-list
-NEXT_PUBLIC_BIG_OFFICIAL_WATCH_FUNCTION_NAME=sync-big-official-watch
+NEXT_PUBLIC_STORAGE_MODE=cloudflare_d1
+NEXT_PUBLIC_D1_API_BASE=https://world-toto-lab-api.<account>.workers.dev
 ```
 
-`NEXT_PUBLIC_*` はブラウザへ配信される public client 用の値です。  
-`service_role` や secret key は `.env.local`、GitHub Pages build secret、PR ログに入れないでください。
+`NEXT_PUBLIC_*` はブラウザへ配信される public な値です。secret key は `.env.local`、build secret、PR ログに入れないでください。
 
-3. 新規 Supabase プロジェクトを使う場合は `supabase/schema.sql` を適用する
+3. 共有保存を使う場合は、[cloudflare/d1/README.md](../cloudflare/d1/README.md) の手順で D1 スキーマを適用し、[workers/api](../workers/api/) の Worker をデプロイする
 4. 開発サーバーを起動する
 
 ```bash
@@ -74,30 +74,25 @@ npm run dev
 npm run lint
 npm run test
 npm run build
-npm run audit:schema
-npm run check:supabase
 npm run check:pages
 ```
 
 - `lint`: ESLint
 - `test`: Vitest
 - `build`: static export を含む本番 build 確認
-- `audit:schema`: コードと `supabase/schema.sql` の参照整合確認
-- `check:supabase`: 接続先 Supabase の主要 relation / column を確認
-- `check:pages`: 公開中 GitHub Pages の主要 route を確認
+- `check:pages`: 公開中の主要 route を確認
 
 本番運用前の Pages smoke は、実際に使う Round / User を指定して実行します。
 
 ```bash
-WORLD_TOTO_LAB_BASE_URL=https://quietbriony.github.io/world-toto-lab
+WORLD_TOTO_LAB_BASE_URL=https://world-toto-lab.pages.dev
 WORLD_TOTO_LAB_ROUND_ID=<production-round-id>
 WORLD_TOTO_LAB_USER_ID=<optional-user-id>
 WORLD_TOTO_LAB_REQUIRE_ROUND=1
 npm run check:pages
 ```
 
-`check:supabase` は `.env.local` と `.env` を読んだあと、process env を確認します。  
-ローカルで失敗する場合は、まず `.env.local` に `NEXT_PUBLIC_SUPABASE_URL` と `NEXT_PUBLIC_SUPABASE_ANON_KEY` があるか確認してください。
+共有保存（Cloudflare D1）が絡む読み込み失敗を切り分けるときは、まず `.env.local` の `NEXT_PUBLIC_STORAGE_MODE` / `NEXT_PUBLIC_D1_API_BASE` と、Worker / D1 側の疎通を確認してください。
 
 ## Verification By Change Type
 
@@ -105,9 +100,8 @@ npm run check:pages
 | --- | --- |
 | `docs/**`, `README.md`, `.github` template のみ | Markdown 差分とリンク表記を見直す |
 | UI / 集計ロジック | `npm run lint`, `npm run test`, `npm run build` |
-| `repository.ts` / `schema.sql` | 上記に加えて `npm run audit:schema` |
+| `repository.ts` / D1 スキーマ / Worker | 上記に加えて共有保存モードでの読み書き確認 |
 | route / link / Pages まわり | 上記に加えて `npm run check:pages` か live URL 確認 |
-| 本番 Supabase 疎通まわり | 上記に加えて `npm run check:supabase` |
 
 実行できなかった確認は、PR に理由を書いて残します。
 
@@ -121,8 +115,8 @@ npm run check:pages
 6. 変更理由、影響範囲、未実施確認を添えて PR を出す
 7. merge で `main` に入れて deploy する
 
-PR では `.github/workflows/ci.yml` が `lint` / `test` / `audit:schema` / `build` を実行します。  
-Supabase 本番疎通と live Pages の実 Round クリック確認は、secret と対象 Round が必要なので、PR本文または検証ログに実施結果を残してください。
+PR では `.github/workflows/ci.yml` が `lint` / `test` / `build` を実行します。  
+共有保存（Cloudflare D1）の読み書きと live Pages の実 Round クリック確認は、Worker / D1 と対象 Round が必要なので、PR本文または検証ログに実施結果を残してください。
 
 ブランチ名の目安:
 
@@ -135,7 +129,7 @@ Supabase 本番疎通と live Pages の実 Round クリック確認は、secret 
 
 補足:
 
-- `main`: 本番 Pages と Edge Functions の deploy branch
+- `main`: 本番 Pages の deploy branch
 - `dev`: 任意の統合確認 branch。今は自動 preview を出していないので、必要ならローカル `npm run build` と `npm run check:pages` で確認する
 - `experiment/*`: 壊して試す branch。review 前提で、本番 merge を急がない
 
@@ -145,7 +139,7 @@ Supabase 本番疎通と live Pages の実 Round クリック確認は、secret 
 - 1PR = 1目的
 - 同じファイルを複数人または複数 AI で同時編集しない
 - `main` への直 push は緊急対応だけに限定する
-- route 変更、schema 変更、Edge Function 変更は別 PR に分けられるなら分ける
+- route 変更、D1 スキーマ変更、Worker 変更は別 PR に分けられるなら分ける
 
 特に直列で触りたいホットスポット:
 
@@ -154,8 +148,8 @@ Supabase 本番疎通と live Pages の実 Round クリック確認は、secret 
 - `src/lib/round-links.ts`
 - `src/lib/repository.ts`
 - `src/lib/types.ts`
-- `supabase/schema.sql`
-- `supabase/functions/**`
+- `cloudflare/d1/schema.sql`
+- `workers/api/src/handler.ts`
 
 ## Pages Guardrails
 
@@ -177,15 +171,15 @@ route を触るときは、まず [src/lib/round-links.ts](../src/lib/round-link
 
 `/workspace/<roundId>` のような動的 path に戻さないでください。
 
-## Supabase Guardrails
+## Cloudflare D1 Guardrails
 
-この MVP は `anon` クライアントから共有 DB を読む構成です。  
-つまり、開発ミスがそのまま実データ事故になります。
+共有保存は Cloudflare D1（`workers/api` の Worker 経由）の共有 DB です。  
+つまり、開発ミスがそのまま全員のデータ事故になります。
 
 - `delete` や大量更新は本当に必要かを先に確認する
-- スキーマ変更は最小差分で行う
+- D1 スキーマ変更は最小差分（足す方向）で行う
 - 既存データの意味を黙って変えない
-- hotfix SQL は履歴として残し、`schema.sql` を真実のソースに保つ
+- マイグレーションは履歴として残し、[cloudflare/d1/schema.sql](../cloudflare/d1/schema.sql) を真実のソースに保つ
 
 ## Out Of Scope
 

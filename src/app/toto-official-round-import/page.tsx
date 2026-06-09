@@ -474,7 +474,7 @@ function TotoOfficialRoundImportPageContent() {
 
     try {
       if (!sharedCreateEnabled) {
-        throw new Error("公式一覧の同期にはSupabase接続が必要です。Supabase NG時はCSV / 手入力、またはJSON importを使ってください。");
+        throw new Error("公式一覧の自動同期は廃止されました。CSV / 手入力、またはJSON importでラウンドを取り込んでください。");
       }
 
       if (

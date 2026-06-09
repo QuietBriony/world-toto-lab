@@ -48,7 +48,7 @@ const branchStrategy = [
 
 const onboardingSteps = [
   "GitHub に招待されたら repo を clone する",
-  "`.env.example` をコピーして `NEXT_PUBLIC_SUPABASE_URL` と `NEXT_PUBLIC_SUPABASE_ANON_KEY` を入れる",
+  "そのままで local 保存で動く。共有保存を使うときだけ `.env.example` をコピーして `NEXT_PUBLIC_STORAGE_MODE=cloudflare_d1` と `NEXT_PUBLIC_D1_API_BASE` を入れる",
   "`npm ci` のあと `npm run dev` でローカル起動する",
   "1タスク 1ブランチを切って、Codex へ狭い scope で依頼する",
   "変更後に `lint / test / build` を回し、PR を出す",
@@ -58,7 +58,7 @@ const onboardingSteps = [
 const aiGuardrails = [
   {
     title: "同時編集禁止",
-    body: "特に `src/lib/repository.ts`、`supabase/schema.sql`、`next.config.ts`、`src/lib/types.ts` は 1 回に 1 AI だけが触る運用にします。",
+    body: "特に `src/lib/repository.ts`、`next.config.ts`、`src/lib/types.ts`、Cloudflare Worker / D1 スキーマは 1 回に 1 AI だけが触る運用にします。",
     tone: "warning" as const,
   },
   {
@@ -78,7 +78,7 @@ const prChecklist = [
   "影響範囲を書いた",
   "テスト結果を書いた",
   "スクリーンショットを添付した",
-  "Pages / Supabase への影響を確認した",
+  "Pages / 共有保存（Cloudflare D1）への影響を確認した",
 ];
 
 const docsToRead = [
@@ -124,7 +124,7 @@ export default function DevPlaybookPage() {
       <PageHeader
         eyebrow="共同開発"
         title="GitHub で共同開発を始めよう"
-        description="友人を GitHub に招待したあと、初心者でも迷いにくいように、branch 運用・AI 並走・Pages / Supabase の安全ルールをひとつにまとめています。"
+        description="友人を GitHub に招待したあと、初心者でも迷いにくいように、branch 運用・AI 並走・Pages / 共有保存（Cloudflare D1）の安全ルールをひとつにまとめています。"
         actions={
           <div className="flex flex-wrap gap-3">
             <Link href={appRoute.dashboard} className={secondaryButtonClassName}>
@@ -241,21 +241,21 @@ export default function DevPlaybookPage() {
 
       <SectionCard
         title="危険変更ポイント"
-        description="この repo は GitHub Pages と Supabase の制約が強いので、触るときは PR を小さく保ちます。"
+        description="この repo は GitHub Pages と共有保存（Cloudflare D1）の制約が強いので、触るときは PR を小さく保ちます。"
       >
         <div className="grid gap-3 lg:grid-cols-2">
           <div className="rounded-[24px] border border-slate-200 bg-white/86 p-5">
             <div className="flex items-center gap-2">
-              <Badge tone="warning">Supabase</Badge>
+              <Badge tone="warning">Cloudflare D1</Badge>
               <h3 className="font-display text-lg font-semibold tracking-[-0.04em] text-slate-950">
-                本番データ保護
+                共有データ保護
               </h3>
             </div>
             <ul className="mt-4 space-y-2 text-sm leading-7 text-slate-700">
-              <li>本番 Supabase データを消さない</li>
-              <li>`schema.sql` は最小差分で更新する</li>
+              <li>共有 D1 にある他人のデータを消さない</li>
+              <li>D1 スキーマ変更は最小差分（足す方向）で更新する</li>
               <li>掃除のための全件 delete を気軽に打たない</li>
-              <li>`repository.ts` と schema 変更は特に慎重に扱う</li>
+              <li>`repository.ts` と Worker / スキーマ変更は特に慎重に扱う</li>
             </ul>
           </div>
 

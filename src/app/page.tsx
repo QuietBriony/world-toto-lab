@@ -794,7 +794,7 @@ export default function DashboardPage() {
                     ? "4回分は作成済みです。各回のレビュー画面でHaziの初期予想を確認し、必要な試合だけ手動で直せます。"
                     : dataMode.mode === "cloudflare_d1"
                       ? "公式で公開されている第1634〜1637回totoを、みんなが見られる共有D1に作ります。Haziの初期AI予想つきで、友達も同じ画面で確認できます。"
-                      : "公式で公開されている第1634〜1637回totoを、このブラウザのローカル保存に作ります。Supabaseなしで始められます。"}
+                      : "公式で公開されている第1634〜1637回totoを、このブラウザのローカル保存に作ります。アカウント登録なしで、すぐに始められます。"}
                 </p>
                 <div className="mt-5 flex flex-wrap gap-2">
                   {haziWorldTotoComplete && haziWorldTotoReviewHref ? (
@@ -1371,7 +1371,7 @@ export default function DashboardPage() {
                     "候補配分",
                     "振り返り",
                     "GitHub Pages公開",
-                    "Supabase保存",
+                    "共有保存(Cloudflare D1)",
                   ].map((item) => (
                     <Badge key={item} tone="teal">
                       {item}
@@ -1421,8 +1421,8 @@ export default function DashboardPage() {
                   eyebrow: "保存先",
                   title: "データはどこに保存される？",
                   summary:
-                    "GitHub の repo にメンバー情報や予想が直接書き戻るわけではありません。保存先は Supabase です。",
-                  body: "このサイトで作成したメンバー名、ラウンド、人力予想、根拠カード、振り返りメモは Supabase の DB に保存されます。GitHub Pages は画面を配信しているだけで、保存データそのものを GitHub のコード一覧に並べるものではありません。",
+                    "GitHub の repo にメンバー情報や予想が直接書き戻るわけではありません。保存先は共有保存（Cloudflare D1）か、このブラウザのローカル保存です。",
+                  body: "このサイトで作成したメンバー名、ラウンド、人力予想、根拠カード、振り返りメモは、共有保存モードでは Cloudflare D1 に、ローカル保存モードではこのブラウザ内に保存されます。GitHub Pages は画面を配信しているだけで、保存データそのものを GitHub のコード一覧に並べるものではありません。",
                   note: "ただし今の MVP は公開サイト + 匿名アクセス前提なので、公開 URL 経由で読める前提で扱ってください。",
                   tone: "teal" as const,
                 },
@@ -2652,7 +2652,7 @@ export default function DashboardPage() {
                   <p>main 直接 push 禁止</p>
                   <p>1PR 1目的</p>
                   <p>PR にテスト / スクショ / 影響範囲を書く</p>
-                  <p>DB migration は最小差分、Supabase 本番データは消さない</p>
+                  <p>DB migration は最小差分、共有保存（Cloudflare D1）の他人のデータは消さない</p>
                 </div>
                 <div className="mt-5 flex flex-wrap gap-3">
                   <Link href={appRoute.devPlaybook} className={buttonClassName}>

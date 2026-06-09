@@ -10,58 +10,6 @@ import {
 import { appRoute, buildRoundHref } from "@/lib/round-links";
 import { useDashboardData } from "@/lib/use-app-data";
 
-export function ConfigurationNotice() {
-  return (
-    <SectionCard
-      title="Supabase 設定が必要です"
-      description="GitHub Pages から共有利用するため、データ保存先は Supabase を前提にしています。"
-      actions={
-        <div className="flex flex-wrap gap-2">
-          <Link href={appRoute.dashboard} className={secondaryButtonClassName}>
-            ダッシュボードへ
-          </Link>
-          <a
-            href="https://github.com/QuietBriony/world-toto-lab/blob/main/docs/DEVELOPMENT.md"
-            target="_blank"
-            rel="noreferrer"
-            className={buttonClassName}
-          >
-            設定手順を見る
-          </a>
-        </div>
-      }
-    >
-      <div className="space-y-3 text-sm leading-7 text-slate-700">
-        <p>
-          `.env.local` に `NEXT_PUBLIC_SUPABASE_URL` と
-          `NEXT_PUBLIC_SUPABASE_ANON_KEY` を設定してください。
-        </p>
-        <p>
-          ローカル確認では `npm run check:supabase` が `.env.local` を読みます。
-          GitHub Pages の build では同じ値を Actions secrets に入れてください。
-        </p>
-        <p>
-          `NEXT_PUBLIC_*` は public client 用です。`service_role` や secret key は入れないでください。
-        </p>
-        <p>
-          初回セットアップ用 SQL は
-          {" "}
-          <a
-            href="https://github.com/QuietBriony/world-toto-lab/blob/main/supabase/schema.sql"
-            target="_blank"
-            rel="noreferrer"
-            className="font-medium text-teal-700 underline decoration-teal-300 underline-offset-4"
-          >
-            GitHub 上の `supabase/schema.sql`
-          </a>
-          {" "}
-          にまとめています。
-        </p>
-      </div>
-    </SectionCard>
-  );
-}
-
 export function LoadingNotice({
   description = "最新データを読み込んでいます。",
   title = "読み込み中",
@@ -90,7 +38,7 @@ export function ErrorNotice({
   return (
     <SectionCard
       title="読み込みに失敗しました"
-      description="接続情報や Supabase 側のテーブル構成を確認してください。"
+      description="ネットワークや共有保存（Cloudflare D1）への接続状態を確認してください。"
       actions={
         <div className="flex flex-wrap gap-2">
           <Link href={appRoute.dashboard} className={secondaryButtonClassName}>
@@ -107,7 +55,7 @@ export function ErrorNotice({
       <div className="space-y-3">
         <p className="text-sm text-rose-700">{error}</p>
         <p className="text-sm leading-6 text-slate-600">
-          実運用前の切り分けは `npm run check:supabase` と、実 Round ID 付きの
+          切り分けは、まずローカル保存モードで開けるか確認し、共有保存なら実 Round ID 付きの
           `npm run check:pages` から見ると早いです。
         </p>
       </div>

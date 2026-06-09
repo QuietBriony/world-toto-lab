@@ -3,8 +3,8 @@
 友人 10 人前後で使う、W杯toto / WINNER 向けの予想・分析・記録・振り返りダッシュボードです。
 
 このリポジトリは **GitHub Pages で配信できる静的フロントエンド** として再構成しています。<br />
-データ保存先は Supabase を使い、GitHub Pages から直接アクセスして共有利用する MVP です。<br />
-Supabase が paused / 未設定 / 一時到達不能になった場合でも、GitHub Pages の静的アプリ自体は起動し、ローカル保存や JSON export/import で最低限の予想・候補表示を継続できます。
+共有データの保存先は Cloudflare D1（Worker 経由）で、GitHub Pages から API を呼んで共有利用する MVP です。<br />
+共有保存が未設定 / 一時到達不能になった場合でも、静的アプリ自体は起動し、ローカル保存（localStorage）や JSON export/import で最低限の予想・候補表示を継続できます。
 
 ## このアプリが扱わないもの
 
@@ -41,7 +41,7 @@ UI 上でも以下を常時表示します。
 ### 最短移行方針
 
 GitHub Pages は静的配信なので、build 後に増える Round を動的ルートで増やし続ける構成と相性がよくありません。  
-そのため今回は、**Next.js static export + Supabase + query param 方式**に寄せています。
+そのため今回は、**Next.js static export + Cloudflare D1 + query param 方式**に寄せています。
 
 - 静的 route:
   - `/`
@@ -64,14 +64,14 @@ GitHub Pages は静的配信なので、build 後に増える Round を動的ル
 - 対象 User は `?user=<id>` で切り替え
 - Match Editor は `?round=<id>&match=<id>` で開く
 
-これにより、**GitHub Pages から静的ファイルを配信しつつ、Round 作成・入力・集計は Supabase へ保存**できます。
+これにより、**GitHub Pages から静的ファイルを配信しつつ、Round 作成・入力・集計は Cloudflare D1 へ保存**できます。
 
 ## 技術スタック
 
 - Next.js 16 App Router
 - TypeScript
 - Tailwind CSS v4
-- Supabase JavaScript client
+- Cloudflare D1 + Workers（共有保存 API）
 - GitHub Pages static export
 
 ## できること
@@ -359,31 +359,25 @@ npm ci
 
 ### 2. 環境変数を入れる
 
-`.env.example` を参考に `.env.local` を作ってください。
+環境変数なしでもローカル保存（localStorage）で起動できます。  
+共有保存（Cloudflare D1）を使うときだけ、`.env.example` を参考に `.env.local` を作ってください。
 
 ```bash
-NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-public-anon-key
-NEXT_PUBLIC_TOTO_OFFICIAL_ROUND_SYNC_FUNCTION_NAME=sync-toto-official-round-list
-NEXT_PUBLIC_BIG_OFFICIAL_WATCH_FUNCTION_NAME=sync-big-official-watch
+NEXT_PUBLIC_STORAGE_MODE=cloudflare_d1
+NEXT_PUBLIC_D1_API_BASE=https://world-toto-lab-api.<account>.workers.dev
 ```
 
-## Supabase が paused になったとき
+## 共有保存に接続できないとき
 
-Free project は activity が少ないと pause 対象になる可能性があります。Supabase 停止時も GitHub Pages の静的ファイル配信は生きるため、このアプリは起動時の health check で接続状態を確認し、失敗した場合はローカル保存モードへ fallback します。過度な keep-alive や規約回避目的のアクセスは実装していません。
+共有保存（Cloudflare D1）が未設定 / 一時到達不能でも、GitHub Pages の静的ファイル配信は生きます。このアプリは起動時の health check で接続状態を確認し、失敗した場合はローカル保存モードへ fallback します。
 
 表示されるモード:
 
-- `共有保存`: Supabase が使える状態。Round、友人予想、コメント、候補 vote を共有保存します。
-- `ローカル保存`: Supabase が使えない、または使わない状態。自分のブラウザの `localStorage` に保存します。
+- `Cloudflare共有保存`: D1 API に接続できる状態。Round、友人予想、コメント、候補 vote を共有保存します。
+- `ローカル保存`: 共有保存を使わない、または接続できない状態。自分のブラウザの `localStorage` に保存します。
 - `デモ`: サンプルデータだけで UI や試算を確認します。保存しません。
 
-Supabase に接続できない場合は画面上部に「Supabaseに接続できません。プロジェクトがpaused、ネットワークエラー、接続設定不足、または必要テーブル不足の可能性があります。」を表示し、次の操作を選べます。
-
-- `ローカル保存で続ける`
-- `JSONを読み込む`
-- `Supabase設定を確認`
-- `再接続する`
+接続状態は画面右下のモードバッジで確認できます。共有保存に切り替えたいときは設定画面、または右上の `再接続` から health check を再実行します。
 
 ローカル保存では、次の namespace 付き key に Round / Matches / Human Picks / Scout Reports / Research Memos / Candidate Tickets / Candidate Votes / Review Notes / Official Round snapshot / BIG Carryover assumptions などを保存します。
 
@@ -394,12 +388,6 @@ world-toto-lab:v1:picks
 ```
 
 ローカル保存は同じブラウザ・同じ端末だけで有効です。友人と共有する場合は、画面共有、スクリーンショット、または Round 単位の JSON export/import を使ってください。
-
-### paused project の unpause
-
-Supabase から pause 通知が来た場合、pause 後 90 日以内なら Supabase Dashboard から対象 project を開き、案内に従って unpause できます。復帰後はアプリ右上の `再接続` を押すと、health check が成功した場合に共有保存モードへ戻ります。
-
-本番大会期間など安定運用が必要な時期は、Free project の inactive pause を避けるために Pro plan、または別 backend への切り替えも検討してください。
 
 ### JSON export/import
 
@@ -419,89 +407,33 @@ Supabase から pause 通知が来た場合、pause 後 90 日以内なら Supab
 - totoOfficialMatches
 - metadata (`exportedAt`, `appVersion`, `dataMode`)
 
-読み込みは画面上部の `JSON` ボタン、または Supabase 接続失敗パネルの `JSONを読み込む` から行います。import 前に preview が出るので、`別Roundとして取り込み` または `上書きで取り込み` を選んでください。共有保存モードで Supabase に接続できる場合は共有保存へ、ローカル保存モード中または Supabase に接続できない場合は localStorage へ保存します。
+読み込みは画面上部の `JSON` ボタンから行います。import 前に preview が出るので、`別Roundとして取り込み` または `上書きで取り込み` を選んでください。共有保存モードで D1 に接続できる場合は共有保存へ、ローカル保存モード中または共有保存に接続できない場合は localStorage へ保存します。
 
-Supabase を使わない運用にする場合は、環境変数を未設定のまま起動し、ローカル保存モードで Round を作成してください。公式同期など Edge Function 前提の共有機能は使えませんが、URL query ベースの計算、サンプルデータ、localStorage 保存、JSON バックアップは使えます。
+共有保存を使わない運用にする場合は、環境変数を未設定のまま起動し、ローカル保存モードで Round を作成してください。URL query ベースの計算、サンプルデータ、localStorage 保存、JSON バックアップはそのまま使えます。
 
-### 公式一覧の一発同期（推奨導線）
+### 公式回の取り込み（CSV / 手入力 / JSON）
 
-ダッシュボードやラウンド詳細の `回を作る` から入ると、
-対象 product に絞った状態でおすすめソースをそのまま同期できます。
+公式一覧の自動同期は廃止しました。`回を作る` 画面から、CSV / TSV の貼り付け、手入力、または JSON import で公式回を取り込みます。
 
-現状のおすすめ同期元は次です。
+公式人気や日程を手元に集めるときの参考ソース:
 
 - `https://toto.yahoo.co.jp/schedule/toto`
   - 開催回の一覧が安定していて、各回の `くじ情報を見る` から公式詳細ページへ辿れます
-  - Edge Function はこの一覧から販売中 / これからの回を拾い、公式詳細ページを追加取得して `toto / mini toto-A / mini toto-B` をライブラリ化します
 - `store.toto-dream.com` の個別 `くじ情報` URL
-  - 1回分だけ直接読みたいときの補助用です
+  - 1回分だけ確認したいときの補助用です
 - `sp.toto-dream.com` の個別 `くじ情報` URL
-  - スマホ公式の `SalesTermtotoSP` ページから 13 試合を読み、同じ回の `VotetotoSP` 投票状況ページを追加取得して公式人気 `1 / 0 / 2` も埋めます
-
-`回を作る` で `公式一覧を同期` すると
-`Supabase Edge Function` (`sync-toto-official-round-list`) を経由して取り込みます。
-
-Edge Function は次を行います。
-
-- 公開URLからHTML/JSON/CSVを取得
-- Yahoo! toto 販売スケジュールなら、開催回一覧を抽出し、必要な回だけ公式 `くじ情報` ページも追って詳細を埋める
-- `store.toto-dream.com` の `くじ情報` ページなら、`toto / mini toto-A / mini toto-B / totoGOAL3` の対象情報・販売終了・売上速報を抽出する
-- `sp.toto-dream.com` のスマホ版 `toto` ページなら、販売期間・13 試合・売上速報・投票状況の `1 / 0 / 2` 割合を結合する
-- 取り得る形式を順に試行して回情報を正規化
-- 取り込めない場合は警告を返して、手入力フローへフォールバック
+  - スマホ公式の `SalesTermtotoSP` で 13 試合、`VotetotoSP` で公式人気 `1 / 0 / 2` を確認できます
 
 注意:
 
-- `totoGOAL3` は公式同期対象に含めますが、通常の回作成ではなく `GOAL3 Value Board` へ分けて表示します
-- 公式人気 (`official_vote_1 / 0 / 2`) はスマホ版 `VotetotoSP` が取得できる toto 回では自動補完します。取れない回だけ CSV / TSV で補完します
+- 公式人気 (`official_vote_1 / 0 / 2`) は、取れる回だけ CSV / TSV で補完します
+- `totoGOAL3` は通常の回作成ではなく `GOAL3 Value Board` へ分けて表示します
 
-GitHub Pages 側はこのFunction名を `NEXT_PUBLIC_TOTO_OFFICIAL_ROUND_SYNC_FUNCTION_NAME` から参照します。  
-未設定でも既定名 `sync-toto-official-round-list` を使います。
+### 3. 共有保存（Cloudflare D1）をセットアップする
 
-運用メモ:
+共有保存を使う場合は、D1 のスキーマ適用と Worker のデプロイが必要です。手順は [cloudflare/d1/README.md](cloudflare/d1/README.md) と [workers/api](workers/api/) を参照してください（ローカル保存だけで使うなら不要です）。
 
-- この Function は `sb_publishable_...` 形式の公開キーでも叩けるよう、`supabase/config.toml` で `verify_jwt = false` にしています
-- 代わりに取得先URLは Yahoo! toto / スポーツくじオフィシャルのホストに制限しています
-- Supabase の新しい publishable key を使う場合は、Function 側にも `SB_PUBLISHABLE_KEY` secret を入れてください
-- 手動 deploy するときも `supabase/functions/sync-toto-official-round-list` は `--no-verify-jwt` 相当の設定を維持してください
-
-### 3. Supabase にテーブルを作る
-
-Supabase SQL Editor で [supabase/schema.sql](supabase/schema.sql) を実行してください。
-
-### 3.1 コードとスキーマの整合監査
-
-デプロイ前に、`repository.ts` で参照しているテーブル名と `schema.sql` の定義ズレを検査できます。
-
-```bash
-npm run audit:schema
-```
-
-ズレがない場合は「`all repository tables are present in schema.sql`」で終了します。  
-ズレがある場合は不足テーブル名を赤字で一覧表示します。
-
-CI でも `npm run audit:schema` を通し、`main` への push 時点でスキーマ参照不整合を検知できるようにしています。
-
-### 3.2 本番 Supabase の疎通チェック
-
-GitHub Pages 上で読み込み失敗が出た場合、まず接続先 DB の実体を確認すると速いです。
-
-```bash
-npm run check:supabase
-```
-
-`.env.local` / `.env` / 実行環境の環境変数に以下を設定して実行してください。
-
-```bash
-NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-```
-
-`critical` が全て `OK` の場合は、接続先DBに必要テーブルと主要カラムが揃っています。  
-`MISSING_COLUMN` や `MISSING_RELATION` が出た場合は、本番 Supabase に `supabase/schema.sql` を再適用してください。  
-`candidate_tickets` / `candidate_votes` は現状 UI 側でフェイルセーフを入れていますが、`missing` が出るなら SQL 再実行が推奨です。
-
-### 3.3 GitHub Pages ルートの疎通チェック
+### 3.1 GitHub Pages ルートの疎通チェック
 
 公開 URL の route が生きているかは、次でまとめて確認できます。
 
@@ -512,66 +444,16 @@ npm run check:pages
 必要に応じて次を上書きしてください。
 
 ```bash
-WORLD_TOTO_LAB_BASE_URL=https://quietbriony.github.io/world-toto-lab
+WORLD_TOTO_LAB_BASE_URL=https://world-toto-lab.pages.dev
 WORLD_TOTO_LAB_ROUND_ID=<いま使う roundId>
 WORLD_TOTO_LAB_USER_ID=<optional-user-id>
 ```
 
 チェック対象は `/workspace`, `/big-carryover`, `/big-carryover` の共有URL復元, `/official-schedule-import`, `/fixture-selector`, `/toto-official-round-import`, `/toto-official-round-import` の WINNER 導線, `/simple-view`, `/pick-room`, `/winner-value`, `/consensus`, `/edge-board`, `/review`, `/ticket-generator` です。
 
-### 3.4 まだ候補系テーブルがない場合（`candidate_tickets` / `candidate_votes`）
+### 3.2 共有保存でテーブル不足エラーが出る場合
 
-次のエラーが出る場合は、実運用DBへ候補系テーブルが未反映です。
-
-- `Failed to load candidate tickets: Could not find the table 'public.candidate_tickets' in the schema cache`
-
-下記をSupabase SQL Editorで実行してください。
-
-```sql
-create table if not exists public.candidate_tickets (
-  id uuid primary key default gen_random_uuid(),
-  round_id uuid not null references public.rounds(id) on delete cascade,
-  label text not null,
-  strategy_type text not null check (
-    strategy_type in ('orthodox_model', 'public_favorite', 'human_consensus', 'ev_hunter', 'sleeping_value', 'draw_alert', 'upset')
-  ),
-  picks_json jsonb not null,
-  p_model_combo double precision,
-  p_public_combo double precision,
-  estimated_payout_yen double precision,
-  gross_ev_yen double precision,
-  ev_multiple double precision,
-  ev_percent double precision,
-  proxy_score double precision,
-  hit_probability double precision,
-  public_overlap_score double precision,
-  contrarian_count integer not null default 0,
-  draw_count integer not null default 0,
-  human_alignment_score double precision,
-  data_quality text not null check (
-    data_quality in ('complete', 'missing_official_vote', 'missing_model_prob', 'proxy_only', 'demo_data')
-  ),
-  rationale text,
-  warning text,
-  created_at timestamptz not null default timezone('utc', now()),
-  updated_at timestamptz not null default timezone('utc', now())
-);
-
-create table if not exists public.candidate_votes (
-  id uuid primary key default gen_random_uuid(),
-  round_id uuid not null references public.rounds(id) on delete cascade,
-  candidate_ticket_id uuid not null references public.candidate_tickets(id) on delete cascade,
-  user_id uuid not null references public.users(id) on delete cascade,
-  vote text not null check (vote in ('like', 'maybe', 'pass', 'bought_myself')),
-  comment text,
-  created_at timestamptz not null default timezone('utc', now()),
-  updated_at timestamptz not null default timezone('utc', now())
-);
-```
-
-必要なら、`public.candidate_tickets` / `public.candidate_votes` の `RLS` ポリシーが有効か、`anon` 向けの `select / insert / update / delete` が開放されているかも確認してください。
-
-作成後、`Settings > API` の `Project URL` / `anon key` が `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` と一致していることを確認し、再デプロイして再読込してください。
+共有保存モードで候補系などの読み込みに失敗する場合は、D1 のマイグレーション未適用が考えられます。[cloudflare/d1/README.md](cloudflare/d1/README.md) の手順で `migrations/` を再適用してください。テーブル定義の真実のソースは [cloudflare/d1/schema.sql](cloudflare/d1/schema.sql) です。
 
 ### 4. 開発サーバーを起動する
 
@@ -610,8 +492,8 @@ Round は `W杯totoモード / 通常totoモード / WINNER / custom` を持ち�
 
 - `.github/workflows/deploy-pages.yml`
   - `main` push で GitHub Pages を再ビルド / 再配信
-- `.github/workflows/deploy-supabase-functions.yml`
-  - `main` push かつ対象 path 変更で Supabase Edge Functions を再配備
+- `.github/workflows/ci.yml`
+  - `main` への PR で `lint` / `test` / `build` を実行
 
 つまり、`main` は today の deploy branch です。
 普段の作業は `main` へ直 push せず、`feature/*` などの作業 branch -> PR -> merge を推奨します。
@@ -621,18 +503,17 @@ Round は `W杯totoモード / 通常totoモード / WINNER / custom` を持ち�
 - 1タスク = 1ブランチ
 - 1PR = 1目的
 - 同じファイルを複数人または複数 AI で同時編集しない
-- 特に `next.config.ts`, `src/lib/round-links.ts`, `src/lib/repository.ts`, `src/lib/types.ts`, `supabase/schema.sql`, `supabase/functions/**` は直列で触る
+- 特に `next.config.ts`, `src/lib/round-links.ts`, `src/lib/repository.ts`, `src/lib/types.ts`, `cloudflare/d1/schema.sql`, `workers/api/src/handler.ts` は直列で触る
 - Pages / route / schema に触る変更では `npm run lint`, `npm run test`, `npm run build` を揃える
 - もし GitHub 設定上 direct push できてしまっても、通常運用では branch + PR を前提にします
 
 ## GitHub Pages 公開手順
 
-### 1. GitHub リポジトリに公開用の値を入れる
+### 1. 公開用の値を入れる
 
-Repository Secrets に以下を設定してください。
+GitHub Pages の build はローカル保存モードで動くため、Pages 配信だけならストレージ系の secret は不要です。
 
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+共有保存（Cloudflare D1）を使うビルドでは、`NEXT_PUBLIC_STORAGE_MODE` と `NEXT_PUBLIC_D1_API_BASE` をビルド環境（Cloudflare Pages 側のプロジェクト設定など）に入れてください。
 
 ### 2. GitHub Pages を GitHub Actions 配信にする
 
@@ -676,18 +557,18 @@ Next.js 側は `GITHUB_REPOSITORY` を見て `basePath` / `assetPrefix` を自�
 - `?round=...` や `?user=...` 自体は 404 の原因ではありません
 - 404 になる場合は、元の static path が存在しないか、repo path が抜けていることが多いです
 
-## Supabase 側の前提
+## 共有保存（Cloudflare D1）の前提
 
 今回は **認証なし共有 MVP** を優先しています。  
-そのため `supabase/schema.sql` では、anon クライアントから読み書きできる RLS policy を設定しています。
+共有保存は Cloudflare D1（`workers/api` の Worker 経由）で、編集は共有リンクに含まれる書き込みトークン（`?round=<id>&edit=<token>`）で許可します。
 
 これは次のトレードオフがあります。
 
-- URL を知っている人は編集できる
+- 編集リンク（トークン付き URL）を知っている人は編集できる
 - 友人グループ向けの軽量運用には向く
 - 公開 URL を広く拡散する用途には向かない
 
-必要になったら次段で Supabase Auth を入れてください。
+必要になったら次段で本格的な認証を入れてください。
 
 ## 候補配分のロジック
 

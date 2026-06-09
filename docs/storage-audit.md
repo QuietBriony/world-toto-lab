@@ -1,11 +1,16 @@
-# Storage Audit — Supabase 依存の洗い出し
+# Storage Audit — Supabase 依存の洗い出し（移行前スナップショット）
 
-World Toto Lab の保存（storage）まわりが、どこで Supabase に直接依存しているかを洗い出した監査メモ。
-`Supabase 依存を薄くし、Cloudflare D1 を追加できる構造にする`ための前提資料。
+> ⚠️ 状態: 完了済みの履歴メモ。この監査が対象にした Supabase 依存は **すべて撤去済み** で、
+> 現在の保存先は **Cloudflare D1（共有）/ localStorage（ローカル）** のみ。Supabase 依存・`supabase/` ディレクトリ・
+> `src/lib/supabase.ts`・schema 整合スクリプトはもう存在しない。以下は移行前の状態を記録した資料として残している
+> （リンク先のうち `supabase/*` などは削除済み）。移行結果は [docs/CLOUDFLARE_D1_MIGRATION.md](./CLOUDFLARE_D1_MIGRATION.md) を参照。
 
-> 重要な前提: このリポジトリは「Supabase 直結アプリ」ではなく、すでに
-> **2層ストレージ抽象（Supabase ⇄ localStorage）+ モード判定 + バッジ + JSON export/import + health check** を持つ。
-> 本監査はその上に `StorageAdapter` 抽象層（[`src/lib/storage/`](../src/lib/storage)）を追加するための整理。
+World Toto Lab の保存（storage）まわりが、どこで Supabase に直接依存していたかを洗い出した監査メモ。
+`Supabase 依存を薄くし、Cloudflare D1 を追加できる構造にする`ための前提資料だった。
+
+> 当時の前提: このリポジトリは「Supabase 直結アプリ」ではなく、すでに
+> **2層ストレージ抽象（Supabase ⇄ localStorage）+ モード判定 + バッジ + JSON export/import + health check** を持っていた。
+> 本監査はその上に `StorageAdapter` 抽象層（[`src/lib/storage/`](../src/lib/storage)）を追加するための整理だった。
 
 ## 1. 全体構造
 

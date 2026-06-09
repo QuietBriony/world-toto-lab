@@ -31,7 +31,7 @@ assignees: []
 - Route:
 - Component:
 - `src/lib`:
-- Supabase:
+- Cloudflare D1 / Worker:
 - Docs:
 
 ## Acceptance Criteria

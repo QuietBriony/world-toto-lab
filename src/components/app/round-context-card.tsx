@@ -96,7 +96,7 @@ export function RoundContextCard({
     return (
       <SectionCard
         title={title}
-        description="Roundデータを取得できませんでした。round idまたはSupabase接続を確認してください。"
+        description="Roundデータを取得できませんでした。round id を確認してください。"
         actions={
           <div className="flex flex-wrap gap-3">
             {backHref ? (
