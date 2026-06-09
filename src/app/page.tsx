@@ -198,7 +198,11 @@ export default function DashboardPage() {
         throw new Error("この回で使うメンバーを1人以上選んでください。");
       }
 
-      dataMode.setMode("local");
+      // 共有D1（cloudflare_d1）ではそのまま D1 に作成し、みんなで共有する。
+      // local はそのまま、demo のときだけ実データ用に local へ切り替える。
+      if (dataMode.mode === "demo") {
+        dataMode.setMode("local");
+      }
 
       if (shouldBootstrapMembers) {
         await createInitialUsers();
@@ -410,37 +414,43 @@ export default function DashboardPage() {
           return roundNumber ? [[roundNumber, round.id] as const] : [];
         }),
       );
+      const haziNoteSuffix =
+        "\nHaziレビュー待ちの軽量セットです。候補カード生成はスマホ負荷を避けるため後で必要な時だけ行います。";
+      const resolveExistingRoundId = (officialRoundNumber: number | null) =>
+        officialRoundNumber !== null
+          ? existingRoundsByNumber.get(officialRoundNumber) ?? null
+          : null;
+      const payloads = buildFeaturedWorldTotoImportPayloads();
       const roundRefs: Array<{ haziUserId: string | null; roundId: string }> = [];
 
-      for (const payload of buildFeaturedWorldTotoImportPayloads()) {
-        const existingRoundId =
-          payload.officialRoundNumber !== null
-            ? existingRoundsByNumber.get(payload.officialRoundNumber)
-            : null;
-        const haziNotes = `${payload.notes}\nHaziレビュー待ちの軽量セットです。候補カード生成はスマホ負荷を避けるため後で必要な時だけ行います。`;
-
-        let roundId: string;
-        if (useSharedD1) {
-          roundId = await createFeaturedWorldTotoRoundInD1({
-            existingRoundId,
-            participantIds: haziParticipantIds,
-            payload: { ...payload, notes: haziNotes },
-          });
-        } else {
-          roundId = await saveTotoOfficialRoundImport({
+      if (useSharedD1) {
+        // 共有D1は fetch ベースで各回が独立（storeRoundTokens は await を挟まず同期 write =
+        // レース無し）。4回分を並列作成して体感を短縮する。Promise.all は順序を保つ。
+        const refs = await Promise.all(
+          payloads.map(async (payload) => {
+            const roundId = await createFeaturedWorldTotoRoundInD1({
+              existingRoundId: resolveExistingRoundId(payload.officialRoundNumber),
+              participantIds: haziParticipantIds,
+              payload: { ...payload, notes: `${payload.notes}${haziNoteSuffix}` },
+            });
+            const savedHaziUserId = await saveHaziInitialPicks(roundId, haziUserId);
+            return { haziUserId: savedHaziUserId, roundId };
+          }),
+        );
+        roundRefs.push(...refs);
+      } else {
+        // local は localStorage の read-modify-write が await を挟むため逐次で行う。
+        for (const payload of payloads) {
+          const roundId = await saveTotoOfficialRoundImport({
             ...payload,
-            notes: haziNotes,
+            notes: `${payload.notes}${haziNoteSuffix}`,
             participantIds: haziParticipantIds,
-            roundId: existingRoundId,
+            roundId: resolveExistingRoundId(payload.officialRoundNumber),
           });
-          await estimateRoundAiModel({
-            overwriteExisting: false,
-            roundId,
-          });
+          await estimateRoundAiModel({ overwriteExisting: false, roundId });
+          const savedHaziUserId = await saveHaziInitialPicks(roundId, haziUserId);
+          roundRefs.push({ haziUserId: savedHaziUserId, roundId });
         }
-
-        const savedHaziUserId = await saveHaziInitialPicks(roundId, haziUserId);
-        roundRefs.push({ haziUserId: savedHaziUserId, roundId });
       }
 
       await refresh();
@@ -2142,24 +2152,33 @@ export default function DashboardPage() {
 
                 <div className="md:col-span-2 rounded-3xl border border-slate-200 bg-slate-50/88 p-4">
                   <div className="flex flex-wrap items-center gap-2">
-                    <Badge tone="sky">
-                      現在 {dataMode.mode === "demo" ? "デモモード" : "ローカル保存モード"}
+                    <Badge tone={dataMode.mode === "cloudflare_d1" ? "teal" : "sky"}>
+                      現在{" "}
+                      {dataMode.mode === "cloudflare_d1"
+                        ? "共有D1モード"
+                        : dataMode.mode === "demo"
+                          ? "デモモード"
+                          : "ローカル保存モード"}
                     </Badge>
                   </div>
                   <p className="mt-3 text-sm leading-6 text-slate-600">
-                    作成したラウンドはこのブラウザのローカル保存に作られます。
+                    {dataMode.mode === "cloudflare_d1"
+                      ? "作成したラウンドは共有D1に作られ、友達も同じものを見られます（編集は招待リンクで共有）。"
+                      : "作成したラウンドはこのブラウザのローカル保存に作られます。"}
                   </p>
                 </div>
 
                 <div className="md:col-span-2 flex flex-wrap justify-end gap-3">
                   <button
                     type="submit"
-                    name="storageMode"
-                    value="local"
                     className={buttonClassName}
                     disabled={busy === "round"}
                   >
-                    {busy === "round" ? "作成中..." : "ローカル保存で作る"}
+                    {busy === "round"
+                      ? "作成中..."
+                      : dataMode.mode === "cloudflare_d1"
+                        ? "共有D1で作る"
+                        : "ローカル保存で作る"}
                   </button>
                 </div>
               </form>
