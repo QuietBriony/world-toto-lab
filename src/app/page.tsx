@@ -100,6 +100,7 @@ import {
   featuredWorldTotoRoundNumbers,
   featuredWorldTotoSnapshotLabel,
 } from "@/lib/featured-world-toto";
+import { createFeaturedWorldTotoRoundInD1 } from "@/lib/featured-world-toto-d1";
 import {
   filterPredictors,
   isPredictorRole,
@@ -401,12 +402,17 @@ export default function DashboardPage() {
     setActionError(null);
 
     try {
-      dataMode.setMode("local");
+      // 共有D1（cloudflare_d1）ではみんなが見える共有データに作る。それ以外は従来
+      // どおりこの端末のローカル保存に作る（import/AI推定が未配線のため local へ）。
+      const useSharedD1 = dataMode.mode === "cloudflare_d1";
+      if (!useSharedD1) {
+        dataMode.setMode("local");
+      }
       const haziUserId = await ensureHaziUserId();
       const haziParticipantIds = haziUserId ? [haziUserId] : undefined;
 
-      const currentLocalData = await listDashboardData();
-      const currentInventoryRounds = currentLocalData.rounds.filter(
+      const currentData = await listDashboardData();
+      const currentInventoryRounds = currentData.rounds.filter(
         (round) => !isDemoRoundTitle(round.title),
       );
       const existingRoundsByNumber = new Map(
@@ -422,17 +428,28 @@ export default function DashboardPage() {
           payload.officialRoundNumber !== null
             ? existingRoundsByNumber.get(payload.officialRoundNumber)
             : null;
-        const roundId = await saveTotoOfficialRoundImport({
-          ...payload,
-          notes: `${payload.notes}\nHaziレビュー待ちの軽量セットです。候補カード生成はスマホ負荷を避けるため後で必要な時だけ行います。`,
-          participantIds: haziParticipantIds,
-          roundId: existingRoundId,
-        });
+        const haziNotes = `${payload.notes}\nHaziレビュー待ちの軽量セットです。候補カード生成はスマホ負荷を避けるため後で必要な時だけ行います。`;
 
-        await estimateRoundAiModel({
-          overwriteExisting: false,
-          roundId,
-        });
+        let roundId: string;
+        if (useSharedD1) {
+          roundId = await createFeaturedWorldTotoRoundInD1({
+            existingRoundId,
+            participantIds: haziParticipantIds,
+            payload: { ...payload, notes: haziNotes },
+          });
+        } else {
+          roundId = await saveTotoOfficialRoundImport({
+            ...payload,
+            notes: haziNotes,
+            participantIds: haziParticipantIds,
+            roundId: existingRoundId,
+          });
+          await estimateRoundAiModel({
+            overwriteExisting: false,
+            roundId,
+          });
+        }
+
         const savedHaziUserId = await saveHaziInitialPicks(roundId, haziUserId);
         roundRefs.push({ haziUserId: savedHaziUserId, roundId });
       }
@@ -778,7 +795,9 @@ export default function DashboardPage() {
                 <p className="mt-2 text-sm leading-6 text-slate-600">
                   {haziWorldTotoComplete
                     ? "4回分は作成済みです。各回のレビュー画面でHaziの初期予想を確認し、必要な試合だけ手動で直せます。"
-                    : "公式で公開されている第1634〜1637回totoを、このブラウザのローカル保存に作ります。Supabaseなしで始められます。"}
+                    : dataMode.mode === "cloudflare_d1"
+                      ? "公式で公開されている第1634〜1637回totoを、みんなが見られる共有D1に作ります。Haziの初期AI予想つきで、友達も同じ画面で確認できます。"
+                      : "公式で公開されている第1634〜1637回totoを、このブラウザのローカル保存に作ります。Supabaseなしで始められます。"}
                 </p>
                 <div className="mt-5 flex flex-wrap gap-2">
                   {haziWorldTotoComplete && haziWorldTotoReviewHref ? (

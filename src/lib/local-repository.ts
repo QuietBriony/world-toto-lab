@@ -279,7 +279,9 @@ function resolveRoundProductDefaults(input: {
   };
 }
 
-function placeholderMatches(roundId: string, count: number): Match[] {
+// 完全な Match 形（全フィールド null 既定）を生成する純粋ヘルパー。
+// 共有D1の featured 取り込み（featured-world-toto-d1）でもフィールド欠落を防ぐため再利用する。
+export function placeholderMatches(roundId: string, count: number): Match[] {
   const createdAt = nowIso();
   return Array.from({ length: count }, (_, index) => ({
     actualResult: null,
