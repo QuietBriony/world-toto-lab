@@ -2,20 +2,18 @@
 
 ## System Model
 
-World Toto Lab は、GitHub Pages 上で配信する static export フロントエンドと、Supabase を共有データストアにした MVP です。
+World Toto Lab は、GitHub Pages / Cloudflare Pages 上で配信する static export フロントエンドと、Cloudflare D1 を共有データストアにした MVP です。
 
 ```mermaid
 flowchart LR
   Dev["Topic branches / PRs"] --> Main["main"]
   Main --> PagesWorkflow["GitHub Actions<br/>deploy-pages.yml"]
-  Main --> FnWorkflow["GitHub Actions<br/>deploy-supabase-functions.yml"]
-  PagesWorkflow --> Pages["GitHub Pages<br/>static export"]
+  PagesWorkflow --> Pages["Pages<br/>static export"]
   Pages --> Browser["Browser UI"]
   Browser --> Repo["src/lib/repository.ts"]
-  Repo --> Supabase["Supabase REST / PostgREST"]
-  Browser --> Edge["Supabase Edge Functions"]
-  Edge --> Supabase
-  FnWorkflow --> Edge
+  Repo --> Worker["Cloudflare Worker<br/>workers/api"]
+  Worker --> D1["Cloudflare D1"]
+  Browser -.->|未設定/接続不可| Local["localStorage fallback"]
 ```
 
 ## Core Constraints
@@ -36,10 +34,11 @@ flowchart LR
 | `src/components` | UI コンポーネントと画面断片 |
 | `src/lib` | repository、型、集計、route helper、入出力ロジック |
 | `public` | static asset |
-| `scripts` | schema / Pages / Supabase の確認スクリプト |
-| `supabase` | `schema.sql`、Edge Functions、hotfix SQL |
+| `scripts` | Pages route などの確認スクリプト |
+| `cloudflare/d1` | D1 の `schema.sql` とマイグレーション |
+| `workers/api` | 共有保存 API の Cloudflare Worker |
 | `docs` | 開発運用、設計、監査メモ |
-| `.github` | Pages deploy、Supabase Functions deploy、Issue / PR template |
+| `.github` | Pages deploy、CI、Issue / PR template |
 
 ## Route Model
 
@@ -74,8 +73,8 @@ route helper は [src/lib/round-links.ts](../src/lib/round-links.ts) に集約�
 
 1. `src/app/**/page.tsx` が route を描画する
 2. `src/components/**` と `src/lib/**` が画面ロジックを組み立てる
-3. [src/lib/repository.ts](../src/lib/repository.ts) が Supabase を読む / 書く
-4. 必要に応じて Edge Functions を呼ぶ
+3. [src/lib/repository.ts](../src/lib/repository.ts) が共有保存モードでは Cloudflare Worker（D1）を、それ以外では localStorage を読む / 書く
+4. 共有保存に接続できないときは localStorage へ fallback する
 5. UI が query param と取得データをもとに表示を切り替える
 
 影響範囲が広い中心ファイル:
@@ -247,7 +246,7 @@ MVP では自動検索をしません。手入力で構造化し、後から「�
 
 ## Data Domains
 
-[supabase/schema.sql](../supabase/schema.sql) にある主要テーブルは次です。
+共有保存（Cloudflare D1）と localStorage が扱う主要ドメインは次です（D1 の定義は [cloudflare/d1/schema.sql](../cloudflare/d1/schema.sql)）。
 
 共有運用のコア:
 
@@ -295,21 +294,18 @@ MVP では自動検索をしません。手入力で構造化し、後から「�
 2. Configure Pages
 3. Node 24 をセットアップ
 4. `npm ci`
-5. `npm run audit:schema`
-6. `npm run build`
-7. `out/.nojekyll` を作成
-8. `out/` を Pages artifact として deploy
+5. `npm run build`
+6. `out/.nojekyll` を作成
+7. `out/` を Pages artifact として deploy
 
-### Supabase Edge Functions
+### Cloudflare D1 / Worker
 
-`.github/workflows/deploy-supabase-functions.yml` は `main` push かつ次のような path 変更で動きます。
+共有保存 API は [workers/api](../workers/api/) の Cloudflare Worker で、`wrangler` でデプロイします。  
+D1 スキーマの適用とデプロイ手順は [cloudflare/d1/README.md](../cloudflare/d1/README.md) を参照してください。
 
-- `supabase/functions/**`
-- `supabase/config.toml`
-- `src/lib/big-official.ts`
-- `src/lib/big-carryover.ts`
+### CI
 
-workflow は Supabase CLI で project ref `jtypbwgdtqeznhxffpgo` へ deploy します。
+`.github/workflows/ci.yml` は `main` への PR で `lint` / `test` / `build` を実行します。
 
 ## Why Pages 404 Happens
 
@@ -330,8 +326,8 @@ workflow は Supabase CLI で project ref `jtypbwgdtqeznhxffpgo` へ deploy し�
 - `src/lib/round-links.ts`
 - `src/lib/repository.ts`
 - `src/lib/types.ts`
-- `supabase/schema.sql`
-- `supabase/functions/**`
+- `cloudflare/d1/schema.sql`
+- `workers/api/src/handler.ts`
 
 このあたりは小 PR、明確な ownership、直列作業が原則です。
 
@@ -339,9 +335,9 @@ workflow は Supabase CLI で project ref `jtypbwgdtqeznhxffpgo` へ deploy し�
 
 1. まず static route と query param で解けるか考える
 2. route を足す前に既存 `src/lib/round-links.ts` で十分か確認する
-3. schema 変更が必要なら最小差分で追加する
+3. D1 スキーマ変更が必要なら最小差分で追加する
 4. `lint` / `test` / `build` を回す
-5. Pages / Supabase への影響を PR に書く
+5. Pages / 共有保存（Cloudflare D1）への影響を PR に書く
 
 ## Out Of Scope
 

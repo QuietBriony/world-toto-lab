@@ -4,14 +4,14 @@
 
 ## 目的
 
-- 実データの Round を 1 本流し込む前に、GitHub Pages と Supabase の最低限の導線が生きているかを短時間で確認する
+- 実データの Round を 1 本流し込む前に、Pages 配信と共有保存（Cloudflare D1）の最低限の導線が生きているかを短時間で確認する
 - 友人向け主導線の `Simple View` / `Friend Pick Room` と、管理導線の `回を作る` / `公式取り込み` を切り分けて確認する
 
 ## 事前確認
 
-1. GitHub Pages 最新 deploy が success
-2. `.env.local` または GitHub Actions secrets に `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` が入っている
-3. `npm run check:supabase` で `critical failures: 0`
+1. Pages 最新 deploy が success
+2. 共有保存を使う場合、ビルド環境に `NEXT_PUBLIC_STORAGE_MODE=cloudflare_d1` / `NEXT_PUBLIC_D1_API_BASE` が入っている
+3. 共有保存を使う場合、Worker / D1 が応答する（モードバッジが `Cloudflare共有保存`）
 4. 対象 Round ID と、可能なら User ID を 1 本決める
 
 ## 自動スモーク
@@ -23,7 +23,7 @@ npm run check:pages
 必要に応じて環境変数を上書きします。
 
 ```bash
-WORLD_TOTO_LAB_BASE_URL=https://quietbriony.github.io/world-toto-lab
+WORLD_TOTO_LAB_BASE_URL=https://world-toto-lab.pages.dev
 WORLD_TOTO_LAB_ROUND_ID=<いま使う roundId>
 WORLD_TOTO_LAB_USER_ID=<optional-user-id>
 WORLD_TOTO_LAB_REQUIRE_ROUND=1
@@ -33,13 +33,9 @@ npm run check:pages
 `WORLD_TOTO_LAB_REQUIRE_ROUND=1` を付けると、Round ID 未指定の軽量 route check ではなく、実 Round 導線の確認として扱います。  
 User ID は未指定でも 200 確認はできますが、実運用前は友人 1 人分の ID を入れて `Simple View` / `Friend Pick Room` の URL 復元も確認してください。
 
-Supabase 側は次で確認します。
+共有保存（Cloudflare D1）側は、アプリ右下のモードバッジが `Cloudflare共有保存` になり、Round の読み書きが反映されることで確認します。
 
-```bash
-npm run check:supabase
-```
-
-ローカルで `Supabase public client environment is not configured` が出た場合は、`.env.example` を `.env.local` にコピーし、public client 用の URL と anon/publishable key を入れてから再実行します。`service_role` は入れません。
+`ローカル保存` のままになる場合は、`.env.local` の `NEXT_PUBLIC_STORAGE_MODE` / `NEXT_PUBLIC_D1_API_BASE` と、Worker / D1 側の health を確認してから、アプリ右上の `再接続` を押します。
 
 ## 手動クリック確認
 
@@ -93,10 +89,8 @@ npm run check:supabase
 - `作り方を選ぶ` が見える
 - `公式toto回から作る` が `回を選ぶ` へ移動する
 - `CSV / 手入力で作る` が補完入力セクションを開く
-- `公式一覧を同期`
-- `同期結果:` が出る、または意味のある警告が出る
-- `UNAUTHORIZED_INVALID_JWT_FORMAT` / `Invalid JWT` / 無反応にならない
-- `公式一覧を同期してこの回で作る`
+- 自動同期は廃止済みのため、`公式一覧を同期` は「自動同期は廃止されました」の案内を返す（無反応にならない）
+- CSV / 手入力 / JSON import で回を取り込める
 - `Friend Pick Room`
 - 上記ボタン群が無反応でない
 
@@ -136,16 +130,13 @@ npm run check:supabase
 ## エラー時の切り分け
 
 - `読み込みに失敗しました`
-  - まず `npm run check:supabase`
+  - まずモードバッジを見る。`Cloudflare共有保存` でないなら共有保存に接続できていない
+  - 共有保存なら Worker / D1 の health と `NEXT_PUBLIC_D1_API_BASE` を確認する
 - `Round ID が見つかりません`
   - 既存 Round を開く導線なら URL の `round` query を確認
   - 新規作成導線なら `新規Round向け` が出るのが正常
-- `candidate_tickets` 系の schema cache
-  - `supabase/schema.sql` を再適用
-- `rounds.competition_type` / `matches.recent_form_note` / `research_memos` 系の不足
-  - `supabase/production-hotfix-round-context-research-memos.sql` を Supabase SQL Editor で適用
-  - または GitHub Actions secret `SUPABASE_DB_PASSWORD` を追加し、`Apply Supabase DB Migrations` を `apply` で実行
-  - その後 `npm run check:supabase` を再実行
+- 共有保存でテーブル不足エラーが出る
+  - D1 のマイグレーション未適用が疑わしい。[cloudflare/d1/README.md](../cloudflare/d1/README.md) の手順で `migrations/` を再適用する
 - route は 200 だが中身が変
   - `workspace?round=<id>&debug=1` で Debug Panel を見る
 - `check:pages` が軽量確認だけで終わる

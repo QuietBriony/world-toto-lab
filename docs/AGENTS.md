@@ -35,7 +35,7 @@ AI に実装を任せる前に、最低限次を読んでください。
   - `buildOfficialRoundImportHref`
 - 今日の deploy は `main` push 起点
 - 推奨運用は branch + PR
-- Supabase は共有 DB で、`anon` からの操作ミスも本番影響になる
+- 共有保存は Cloudflare D1（Worker 経由）。共有データの誤操作はそのまま全員に影響する
 
 ## Default Roles
 
@@ -62,9 +62,9 @@ Claude など他 AI:
 2. 1タスク = 1ブランチ
 3. 1PR = 1目的
 4. 同じファイルを複数 AI に同時編集させない
-5. `repository.ts` / `schema.sql` / `next.config.ts` の同時編集は禁止
-6. DB 変更は最小差分にする
-7. Supabase 本番データを消さない
+5. `repository.ts` / Cloudflare D1 スキーマ / `next.config.ts` の同時編集は禁止
+6. D1 スキーマ変更は最小差分（足す方向）にする
+7. 共有 D1 にある他人のデータを消さない
 8. GitHub Pages の `basePath` と static export を壊さない
 9. 決済、代理購入、配当、精算、ユーザー間賭博は実装しない
 10. PR には確認内容、影響範囲、未実施項目を書く
@@ -85,8 +85,6 @@ AI を動かす前に、触ってよい範囲を決めます。
 - `src/lib/round-links.ts`
 - `src/lib/repository.ts`
 - `src/lib/types.ts`
-- `supabase/schema.sql`
-- `supabase/functions/**`
 
 これらは「1回に1 AI」運用を前提にしてください。
 
@@ -99,7 +97,7 @@ AI を動かす前に、触ってよい範囲を決めます。
 ## Bad Parallel Examples
 
 - AI A と AI B が同時に `src/lib/repository.ts` を編集する
-- AI A が `schema.sql`、AI B がそれに依存する `types.ts` を別々に変える
+- AI A が `cloudflare/d1/schema.sql`、AI B がそれに依存する `workers/api/src/handler.ts` を別々に変える
 - Claude が大きくコードを書き、Codex が同じ branch で上書きする
 - 1つの PR に複数 AI の未整理な差分を混ぜる
 
@@ -126,23 +124,25 @@ Checks to run:
 - schema 変更は UI 変更と無理に同じ PR に混ぜない
 - hotfix でも、まず「削除せずに足す」方法を優先する
 
-## Supabase Safety Rules
+## Cloudflare D1 / Worker Safety Rules
 
-この repo は GitHub Pages から直接 Supabase を使う都合で、`anon` 権限が広いです。  
-AI の誤操作がそのまま本番影響になります。
+共有保存は Cloudflare D1（`workers/api/src/handler.ts` 経由）です。  
+共有 DB なので、AI の誤操作がそのまま全員のデータに影響します。
 
 禁止:
 
 - 気軽な `delete`
 - 全件更新での掃除
 - 既存カラムの意味の黙った変更
-- `schema.sql` の全面書き換え
+- `cloudflare/d1/schema.sql` の全面書き換え
 
 推奨:
 
-- `alter table ... add column if not exists`
+- `alter table ... add column if not exists` 相当の追加マイグレーション
 - 互換性を残す差分
 - 既存データを壊さない追加方式
+- `workers/api/src/handler.ts` の変更は最小限・追加方向に保つ
+- market-sources は read-only（共有 DB に配線しない）
 
 ## Pages And Routing Rules
 

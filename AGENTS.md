@@ -12,4 +12,4 @@ Before substantial edits, also read:
 - `docs/ARCHITECTURE.md`
 - `docs/DEVELOPMENT.md`
 
-This repo runs on `GitHub Pages + static export + Supabase`. Do not break `next.config.ts`, `basePath`, `assetPrefix`, or the query-param routing model.
+This repo runs on `GitHub Pages + Cloudflare Pages + static export + Cloudflare D1`. Do not break `next.config.ts`, `basePath`, `assetPrefix`, or the query-param routing model.

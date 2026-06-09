@@ -40,7 +40,7 @@ assignees: []
 - [ ] 入力不能
 - [ ] 集計不正
 - [ ] route / navigation
-- [ ] Supabase data risk
+- [ ] Cloudflare D1 data risk
 - [ ] build / deploy
 - [ ] GitHub Pages 404 / asset 404
 
@@ -58,12 +58,12 @@ assignees: []
 
 - [ ] 最新 `main` の Pages deploy 状態を確認した
 - [ ] URL の repo path と query param を確認した
-- [ ] `npm run check:pages` または `npm run check:supabase` を試した
+- [ ] `npm run check:pages`、または共有保存モードでの読み書きを試した
 - [ ] 未実施の項目があれば Notes に書いた
 
 ## Safety Check
 
-- [ ] 本番 Supabase データ削除はまだしていない
+- [ ] 共有保存（Cloudflare D1）の他人のデータ削除はまだしていない
 - [ ] 再現手順が書けている
 - [ ] 同じファイルを複数人または複数 AI に同時編集させる前提ではない
 

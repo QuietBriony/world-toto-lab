@@ -27,28 +27,27 @@
 ## Impact
 
 - UI / route:
-- Supabase schema / data:
+- Cloudflare D1 schema / data:
 - GitHub Pages / `basePath` / static export:
-- Edge Functions:
+- Worker (`workers/api`):
 - Docs / templates:
 
 ## Validation
 
 - CI:
-  - [ ] Pull request CI passed (`lint` / `test` / `audit:schema` / `build`)
+  - [ ] Pull request CI passed (`lint` / `test` / `build`)
 - [ ] Docs only
 - [ ] `npm run lint`
 - [ ] `npm run test`
 - [ ] `npm run build`
-- [ ] `npm run audit:schema`
 - [ ] `npm run check:pages`
-- [ ] `npm run check:supabase`
+- [ ] 共有保存（Cloudflare D1）の読み書きを確認した
 - [ ] 未実施または N/A の項目は下に理由を書いた
 
 Operational smoke, when applicable:
 
 ```bash
-WORLD_TOTO_LAB_BASE_URL=https://quietbriony.github.io/world-toto-lab
+WORLD_TOTO_LAB_BASE_URL=https://world-toto-lab.pages.dev
 WORLD_TOTO_LAB_ROUND_ID=<round-id>
 WORLD_TOTO_LAB_USER_ID=<optional-user-id>
 WORLD_TOTO_LAB_REQUIRE_ROUND=1
@@ -71,9 +70,9 @@ Validation notes:
 
 ## Risk Checklist
 
-- [ ] `repository.ts` / `schema.sql` / `next.config.ts` の変更は必要最小限です
+- [ ] `repository.ts` / `cloudflare/d1/schema.sql` / `workers/api/src/handler.ts` / `next.config.ts` の変更は必要最小限です
 - [ ] route / link 変更が query-param routing と static export を壊していません
-- [ ] Supabase 本番データ削除を伴いません
+- [ ] 共有保存（Cloudflare D1）の他人のデータ削除を伴いません
 - [ ] 決済、代理購入、配当、精算、ユーザー間賭博は実装していません
 - [ ] 残リスクや未確認項目を Notes に書きました
 

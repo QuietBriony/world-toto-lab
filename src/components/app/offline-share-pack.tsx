@@ -135,10 +135,10 @@ export function OfflineSharePack({ roundId, roundTitle }: OfflineSharePackProps)
   return (
     <SectionCard
       title="スマホ共有パック"
-      description="Supabaseなしでも、URLとJSONで同じラウンドを配れます。リアルタイム同期ではなく、JSONを回して集約します。"
+      description="URLとJSONで同じラウンドを配れます。リアルタイム同期ではなく、JSONを回して集約します。"
       actions={
         <div className="flex flex-wrap gap-2">
-          <Badge tone="teal">Supabase不要</Badge>
+          <Badge tone="teal">オフライン共有</Badge>
           <Badge tone="info">スマホOK</Badge>
           <Badge tone="slate">{modeLabel(dataMode.mode)}</Badge>
         </div>

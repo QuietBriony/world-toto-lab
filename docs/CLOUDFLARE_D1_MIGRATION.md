@@ -1,9 +1,12 @@
 # Cloudflare D1 Migration Guide
 
-World Toto Lab の共有保存先を、Supabase に加えて **Cloudflare D1** でも使えるようにするための移行ガイド。
+World Toto Lab の共有保存先を Supabase から **Cloudflare D1** へ移行するためのガイド。
 
-> 方針: いきなり完全移行はしない。`StorageAdapter` 抽象 + localStorage fallback + D1 adapter +
-> D1 schema/migration + 本ドキュメントまでが第一段階。実際の Cloudflare account 設定や
+> 状態: 移行は完了済み。共有保存先は現在 **Cloudflare D1（localStorage fallback つき）** のみで、
+> Supabase は撤去済み。以下は移行の経緯・手順と、Supabase との設計差分の記録として残している。
+
+> 当時の方針: いきなり完全移行はせず、`StorageAdapter` 抽象 + localStorage fallback + D1 adapter +
+> D1 schema/migration + 本ドキュメントまでを第一段階とした。実際の Cloudflare account 設定や
 > `database_id` 投入は人間が dashboard / wrangler で行う。
 
 関連:
