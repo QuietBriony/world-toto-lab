@@ -52,12 +52,13 @@ export function getRuntimeSupabaseHealth() {
 }
 
 export function shouldUseLocalRepository() {
-  // cloudflare_d1 では、D1 配線済みの関数は repository 内で isCloudflareD1Mode() により
-  // 先に短絡される。ここで true を返すのは「D1 未配線の関数（fixture master / official
-  // library / sync 等）を Supabase ではなく安全に local へ落とす」ため。
+  // Supabase は廃止。共有保存は Cloudflare D1（isCloudflareD1Mode で先に短絡）。
+  // 残りの全モード（demo / local / shared / cloudflare_d1 の D1 未配線関数）は local へ落とす。
+  // これにより repository.ts の旧 Supabase 分岐には到達しない（dead code）。
   if (
     runtimeDataMode === "demo" ||
     runtimeDataMode === "local" ||
+    runtimeDataMode === "shared" ||
     runtimeDataMode === "cloudflare_d1"
   ) {
     return true;
