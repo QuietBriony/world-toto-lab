@@ -35,8 +35,5 @@ jobs:
       - name: Test
         run: npm run test
 
-      - name: Check repository-schema consistency
-        run: npm run audit:schema
-
       - name: Build static export
         run: npm run build

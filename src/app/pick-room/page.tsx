@@ -11,14 +11,12 @@ import {
   buildCandidateVoteSummaryMap,
 } from "@/components/app/friend-pick-room";
 import {
-  ConfigurationNotice,
   ErrorNotice,
   LoadingNotice,
   RoundMissingNotice,
   RoundRequiredNotice,
 } from "@/components/app/states";
 import { TotoVisualBoard } from "@/components/app/toto-visual-board";
-import { useDataMode } from "@/components/app/data-mode-provider";
 import { OfflineSharePack } from "@/components/app/offline-share-pack";
 import { RoundInviteLink } from "@/components/app/round-invite-link";
 import { RoundNav } from "@/components/round-nav";
@@ -59,7 +57,6 @@ import {
   probabilityReadinessDescription,
   roundEstimateStatusBanner,
 } from "@/lib/round-mode";
-import { isSupabaseConfigured } from "@/lib/supabase";
 import { isWinnerLikeRound } from "@/lib/winner-value";
 import { resolveWorldTotoProductLabel } from "@/lib/world-toto";
 import { useRoundWorkspace } from "@/lib/use-app-data";
@@ -256,7 +253,6 @@ function GroupPlaySection(props: {
 function PickRoomPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const dataMode = useDataMode();
   const roundId = getSingleSearchParam(searchParams.get("round"));
   const requestedUserId = getSingleSearchParam(searchParams.get("user"));
   const { data, error, loading, refresh } = useRoundWorkspace(roundId);
@@ -370,10 +366,6 @@ function PickRoomPageContent() {
       }
     })();
   }, [candidateIdentity, data, dataQualitySummary, refresh, roundId]);
-
-  if (dataMode.mode === "shared" && !isSupabaseConfigured()) {
-    return <ConfigurationNotice />;
-  }
 
   if (!roundId) {
     return <RoundRequiredNotice />;
@@ -535,17 +527,9 @@ function PickRoomPageContent() {
       />
 
       <InfoBanner
-        title={
-          dataMode.mode === "shared"
-            ? "共有保存モードです。友人の投票が保存されます。"
-            : "この画面はローカル保存モードです。"
-        }
-        body={
-          dataMode.mode === "shared"
-            ? "Supabaseに保存されるため、同じRound URLを開いた友人の投票やコメントを共有できます。"
-            : "他の人の投票はリアルタイム共有されません。JSONまたはスクショで共有してください。"
-        }
-        tone={dataMode.mode === "shared" ? "teal" : "amber"}
+        title="この画面はローカル保存モードです。"
+        body="他の人の投票はリアルタイム共有されません。JSONまたはスクショで共有してください。"
+        tone="amber"
       />
 
       {estimateStatus ? (

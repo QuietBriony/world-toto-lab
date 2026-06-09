@@ -5,8 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { RouteGlossaryCard } from "@/components/app/round-guides";
-import { ConfigurationNotice, ErrorNotice, LoadingNotice } from "@/components/app/states";
-import { useDataMode } from "@/components/app/data-mode-provider";
+import { ErrorNotice, LoadingNotice } from "@/components/app/states";
 import {
   ArtBannerPanel,
   Badge,
@@ -32,7 +31,6 @@ import {
   upsertTotoOfficialRoundLibraryFromSync,
   type SyncedTotoOfficialRoundEntry,
 } from "@/lib/repository";
-import { isSupabaseConfigured } from "@/lib/supabase";
 import { boardHeroArt, resolveArtAsset } from "@/lib/ui-art";
 import { useBigOfficialWatch, useTotoOfficialRoundLibrary } from "@/lib/use-app-data";
 
@@ -46,7 +44,6 @@ function proxyOutcomeLabel(outcome: Goal3OutcomeValue | null) {
 
 export default function Goal3ValuePage() {
   const pathname = usePathname();
-  const dataMode = useDataMode();
   const library = useTotoOfficialRoundLibrary({ productType: "custom" });
   const bigOfficialWatch = useBigOfficialWatch();
   const [syncing, setSyncing] = useState(false);
@@ -168,10 +165,6 @@ export default function Goal3ValuePage() {
       active = false;
     };
   }, [attemptedSnapshotEntryIds, loadingSnapshot, selectedEntry, selectedVoteRateUrl, voteRows.length]);
-
-  if (dataMode.mode === "shared" && !isSupabaseConfigured()) {
-    return <ConfigurationNotice />;
-  }
 
   const handleSync = async () => {
     setSyncing(true);

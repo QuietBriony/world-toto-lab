@@ -9,12 +9,10 @@ import {
   RoundProgressCallout,
 } from "@/components/app/round-guides";
 import {
-  ConfigurationNotice,
   ErrorNotice,
   LoadingNotice,
   RoundRequiredNotice,
 } from "@/components/app/states";
-import { useDataMode } from "@/components/app/data-mode-provider";
 import { RoundNav } from "@/components/round-nav";
 import {
   Badge,
@@ -35,7 +33,6 @@ import {
   roundStatusLabel,
 } from "@/lib/domain";
 import { appRoute, buildRoundHref, getSingleSearchParam } from "@/lib/round-links";
-import { isSupabaseConfigured } from "@/lib/supabase";
 import { useRoundWorkspace } from "@/lib/use-app-data";
 
 function bucketTone(bucket: keyof typeof advantageBucketLabel) {
@@ -76,7 +73,6 @@ function probabilityWithCount(
 
 function EdgeBoardPageContent() {
   const searchParams = useSearchParams();
-  const dataMode = useDataMode();
   const roundId = getSingleSearchParam(searchParams.get("round"));
   const { data, error, loading, refresh } = useRoundWorkspace(roundId);
   const advantageRows = data
@@ -106,9 +102,7 @@ function EdgeBoardPageContent() {
         description="一般人気を基準に、AI、予想者ライン、ウォッチ支持を合成して注目候補を並べます。ここでの注目配分は、どこから見るかの目安です。"
       />
 
-      {dataMode.mode === "shared" && !isSupabaseConfigured() ? (
-        <ConfigurationNotice />
-      ) : !roundId ? (
+      {!roundId ? (
         <RoundRequiredNotice />
       ) : loading && !data ? (
         <LoadingNotice title="優位ボードを読み込み中" />

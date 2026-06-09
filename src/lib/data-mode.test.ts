@@ -3,10 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   dataModePreferenceKey,
   getRuntimeDataMode,
-  getRuntimeSupabaseHealth,
   getStoredDataModePreference,
+  isCloudflareD1Mode,
   setRuntimeDataMode,
-  setRuntimeSupabaseHealth,
   setStoredDataModePreference,
   shouldUseLocalRepository,
 } from "@/lib/data-mode";
@@ -47,7 +46,6 @@ function installWindow(storage = new MemoryStorage()) {
 describe("data mode", () => {
   beforeEach(() => {
     setRuntimeDataMode("local");
-    setRuntimeSupabaseHealth(null);
   });
 
   afterEach(() => {
@@ -66,10 +64,10 @@ describe("data mode", () => {
   it("persists valid browser data-mode preferences", () => {
     const storage = installWindow();
 
-    setStoredDataModePreference("shared");
+    setStoredDataModePreference("cloudflare_d1");
 
-    expect(storage.getItem(dataModePreferenceKey)).toBe("shared");
-    expect(getStoredDataModePreference()).toBe("shared");
+    expect(storage.getItem(dataModePreferenceKey)).toBe("cloudflare_d1");
+    expect(getStoredDataModePreference()).toBe("cloudflare_d1");
   });
 
   it("keeps demo and local modes on the local repository", () => {
@@ -81,24 +79,12 @@ describe("data mode", () => {
     expect(getRuntimeDataMode()).toBe("local");
   });
 
-  it("keeps shared mode on the local repository now that Supabase is removed", () => {
-    setRuntimeDataMode("shared");
-    setRuntimeSupabaseHealth({
-      checkedAt: "2026-01-01T00:00:00.000Z",
-      message: "paused",
-      status: "paused_or_unreachable",
-    });
+  it("treats cloudflare_d1 mode as local repository for non-D1-wired functions", () => {
+    setRuntimeDataMode("cloudflare_d1");
 
+    // 共有保存は D1。D1 未配線の関数は local へ落とすため shouldUseLocalRepository は true。
     expect(shouldUseLocalRepository()).toBe(true);
-    expect(getRuntimeSupabaseHealth()?.status).toBe("paused_or_unreachable");
-
-    // Supabase 廃止後は health が ok でも shared は local を使う（共有保存は D1 に統一）。
-    setRuntimeSupabaseHealth({
-      checkedAt: "2026-01-01T00:00:00.000Z",
-      message: "ok",
-      status: "ok",
-    });
-
-    expect(shouldUseLocalRepository()).toBe(true);
+    expect(isCloudflareD1Mode()).toBe(true);
+    expect(getRuntimeDataMode()).toBe("cloudflare_d1");
   });
 });

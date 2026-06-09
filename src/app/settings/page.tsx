@@ -25,9 +25,6 @@ import type { DataMode } from "@/lib/data-mode";
 import type { Round } from "@/lib/types";
 
 function dataModeToStorageMode(mode: DataMode): StorageMode {
-  if (mode === "shared") {
-    return "supabase";
-  }
   if (mode === "demo") {
     return "demo";
   }
@@ -75,7 +72,6 @@ function StatusRow({
 
 export default function SettingsPage() {
   const {
-    health: supabaseHealth,
     isChecking,
     mode,
     reconnect,
@@ -152,15 +148,6 @@ export default function SettingsPage() {
     }
   };
 
-  const supabaseTone: StatusTone =
-    supabaseHealth?.status === "ok"
-      ? "teal"
-      : supabaseHealth?.status === "missing_env"
-        ? "slate"
-        : supabaseHealth
-          ? "amber"
-          : "slate";
-
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -185,15 +172,13 @@ export default function SettingsPage() {
         description="アプリが実際に読み書きしている保存先です。"
       >
         <div className="flex flex-wrap items-center gap-3">
-          <Badge tone={mode === "shared" ? "teal" : mode === "demo" ? "warning" : "sky"}>
+          <Badge tone={mode === "demo" ? "warning" : "sky"}>
             {isChecking ? "接続確認中" : getStorageModeLabel(storageMode)}
           </Badge>
           <p className="text-sm leading-6 text-slate-600">
-            {mode === "shared"
-              ? "Supabase 共有 DB に保存しています。"
-              : mode === "demo"
-                ? "デモデータを表示中です（変更は保存されません）。"
-                : "この端末のローカル保存に保存しています。"}
+            {mode === "demo"
+              ? "デモデータを表示中です（変更は保存されません）。"
+              : "この端末のローカル保存に保存しています。"}
           </p>
         </div>
       </SectionCard>
@@ -211,24 +196,6 @@ export default function SettingsPage() {
               localHealth?.message ?? "ブラウザのローカル保存を確認しています。"
             }
             checkedAt={localHealth?.checkedAt}
-          />
-          <StatusRow
-            label="Supabase共有保存"
-            badge={
-              supabaseHealth?.status === "ok"
-                ? "接続OK"
-                : supabaseHealth?.status === "missing_env"
-                  ? "未設定"
-                  : supabaseHealth
-                    ? "要確認"
-                    : "確認中"
-            }
-            tone={supabaseTone}
-            detail={
-              supabaseHealth?.message ??
-              "Supabase の接続状態を確認しています。"
-            }
-            checkedAt={supabaseHealth?.checkedAt}
           />
           <StatusRow
             label="Cloudflare共有保存 (D1 API)"
@@ -260,7 +227,7 @@ export default function SettingsPage() {
 
       <SectionCard
         title="JSON エクスポート / インポート"
-        description="Round 単位の JSON で、保存先間（Supabase ↔ ローカル ↔ Cloudflare D1）を移行できます。"
+        description="Round 単位の JSON で、保存先間（ローカル ↔ Cloudflare D1）を移行できます。"
         actions={
           <div className="flex flex-wrap gap-2">
             <button
