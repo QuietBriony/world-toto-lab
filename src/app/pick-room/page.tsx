@@ -20,6 +20,7 @@ import {
 import { TotoVisualBoard } from "@/components/app/toto-visual-board";
 import { useDataMode } from "@/components/app/data-mode-provider";
 import { OfflineSharePack } from "@/components/app/offline-share-pack";
+import { RoundInviteLink } from "@/components/app/round-invite-link";
 import { RoundNav } from "@/components/round-nav";
 import {
   Badge,
@@ -564,6 +565,8 @@ function PickRoomPageContent() {
           worldCupLike={data.round.competitionType === "world_cup"}
         />
       ) : null}
+
+      <RoundInviteLink roundId={data.round.id} />
 
       <OfflineSharePack roundId={data.round.id} roundTitle={data.round.title} />
 
