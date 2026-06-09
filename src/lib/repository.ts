@@ -29,7 +29,12 @@ import {
   buildSupabaseFunctionHeaders,
   requireSupabaseClient,
 } from "@/lib/supabase";
-import { getRuntimeDataMode, shouldUseLocalRepository } from "@/lib/data-mode";
+import {
+  getRuntimeDataMode,
+  isCloudflareD1Mode,
+  shouldUseLocalRepository,
+} from "@/lib/data-mode";
+import * as d1Repository from "@/lib/repository-d1";
 import * as localRepository from "@/lib/local-repository";
 import { generateAllModeTickets } from "@/lib/tickets";
 import { filterPredictors, isPredictorRole } from "@/lib/users";
@@ -1932,6 +1937,9 @@ async function replaceDemoUsers() {
 }
 
 export async function listDashboardData(): Promise<DashboardData> {
+  if (isCloudflareD1Mode()) {
+    return d1Repository.listDashboardData();
+  }
   if (shouldUseLocalRepository()) {
     return localRepository.localListDashboardData();
   }
@@ -2047,6 +2055,9 @@ export async function listDashboardData(): Promise<DashboardData> {
 }
 
 export async function getRoundWorkspace(roundId: string): Promise<RoundWorkspace | null> {
+  if (isCloudflareD1Mode()) {
+    return d1Repository.getRoundWorkspace(roundId);
+  }
   if (shouldUseLocalRepository()) {
     return localRepository.localGetRoundWorkspace(roundId);
   }
@@ -2229,6 +2240,9 @@ export async function getRoundWorkspace(roundId: string): Promise<RoundWorkspace
 }
 
 export async function createInitialUsers() {
+  if (isCloudflareD1Mode()) {
+    return d1Repository.createInitialUsers();
+  }
   if (shouldUseLocalRepository()) {
     return localRepository.localCreateInitialUsers();
   }
@@ -2253,6 +2267,9 @@ export async function createInitialUsers() {
 }
 
 export async function createUser(input: { name: string; role?: UserRole }) {
+  if (isCloudflareD1Mode()) {
+    return d1Repository.createUser(input);
+  }
   if (shouldUseLocalRepository()) {
     return localRepository.localCreateUser(input);
   }
@@ -2277,6 +2294,9 @@ export async function updateUserProfile(input: {
   name: string;
   role: UserRole;
 }) {
+  if (isCloudflareD1Mode()) {
+    return d1Repository.updateUserProfile(input);
+  }
   if (shouldUseLocalRepository()) {
     return localRepository.localUpdateUserProfile(input);
   }
@@ -2366,6 +2386,9 @@ export async function createRound(input: {
   title: string;
   voidHandling?: VoidHandling;
 }) {
+  if (isCloudflareD1Mode()) {
+    return d1Repository.createRound(input);
+  }
   if (shouldUseLocalRepository()) {
     return localRepository.localCreateRound(input);
   }
@@ -2640,6 +2663,9 @@ export async function updateRound(input: {
   title: string;
   voidHandling?: VoidHandling;
 }) {
+  if (isCloudflareD1Mode()) {
+    return d1Repository.updateRound(input);
+  }
   if (shouldUseLocalRepository()) {
     return localRepository.localUpdateRound(input);
   }
@@ -2766,6 +2792,9 @@ export async function updateMatch(input: {
   confidence: number | null;
   recommendedOutcomes: string | null;
 }) {
+  if (isCloudflareD1Mode()) {
+    return d1Repository.updateMatch(input);
+  }
   if (shouldUseLocalRepository()) {
     return localRepository.localUpdateMatch(input);
   }
@@ -2838,6 +2867,9 @@ export async function bulkUpdateRoundMatches(input: {
     venue: string | null;
   }>;
 }) {
+  if (isCloudflareD1Mode()) {
+    return d1Repository.bulkUpdateRoundMatches(input);
+  }
   if (shouldUseLocalRepository()) {
     return localRepository.localBulkUpdateRoundMatches(input);
   }
@@ -2971,6 +3003,9 @@ export async function replacePicks(input: {
     support?: PickSupport;
   }>;
 }) {
+  if (isCloudflareD1Mode()) {
+    return d1Repository.replacePicks(input);
+  }
   if (shouldUseLocalRepository()) {
     return localRepository.localReplacePicks(input);
   }
@@ -3027,6 +3062,9 @@ export async function replaceScoutReports(input: {
     exceptionNote: string | null;
   }>;
 }) {
+  if (isCloudflareD1Mode()) {
+    return d1Repository.replaceScoutReports(input);
+  }
   if (shouldUseLocalRepository()) {
     return localRepository.localReplaceScoutReports(input);
   }
@@ -4423,6 +4461,9 @@ export async function saveRoundEvAssumption(input: {
   payoutCapYen: number | null;
   note: string | null;
 }) {
+  if (isCloudflareD1Mode()) {
+    return d1Repository.saveRoundEvAssumption(input);
+  }
   if (shouldUseLocalRepository()) {
     return localRepository.localSaveRoundEvAssumption(input);
   }
@@ -4470,6 +4511,9 @@ export async function replaceCandidateTickets(input: {
     warning: string | null;
   }>;
 }) {
+  if (isCloudflareD1Mode()) {
+    return d1Repository.replaceCandidateTickets(input);
+  }
   if (shouldUseLocalRepository()) {
     return localRepository.localReplaceCandidateTickets(input);
   }
@@ -4544,6 +4588,9 @@ export async function upsertCandidateVote(input: {
   vote: CandidateVoteValue;
   comment: string | null;
 }) {
+  if (isCloudflareD1Mode()) {
+    return d1Repository.upsertCandidateVote(input);
+  }
   if (shouldUseLocalRepository()) {
     return localRepository.localUpsertCandidateVote(input);
   }
@@ -4611,6 +4658,9 @@ export async function addReviewNote(input: {
   userId: string | null;
   note: string;
 }) {
+  if (isCloudflareD1Mode()) {
+    return d1Repository.addReviewNote(input);
+  }
   if (shouldUseLocalRepository()) {
     return localRepository.localAddReviewNote(input);
   }
@@ -4640,6 +4690,9 @@ export async function saveResearchMemo(input: {
   team: string | null;
   title: string;
 }) {
+  if (isCloudflareD1Mode()) {
+    return d1Repository.saveResearchMemo(input);
+  }
   if (shouldUseLocalRepository()) {
     return localRepository.localSaveResearchMemo(input);
   }
@@ -4666,6 +4719,9 @@ export async function saveResearchMemo(input: {
 }
 
 export async function deleteResearchMemo(memoId: string) {
+  if (isCloudflareD1Mode()) {
+    return d1Repository.deleteResearchMemo(memoId);
+  }
   if (shouldUseLocalRepository()) {
     return localRepository.localDeleteResearchMemo(memoId);
   }
@@ -4681,7 +4737,11 @@ export async function exportRoundJson(roundId: string) {
     throw new Error("JSON export 対象のラウンドが見つかりません。");
   }
 
-  return localRepository.buildLocalRoundBundle(workspace, getRuntimeDataMode());
+  const mode = getRuntimeDataMode();
+  return localRepository.buildLocalRoundBundle(
+    workspace,
+    mode === "cloudflare_d1" ? "shared" : mode,
+  );
 }
 
 async function clearSharedRoundImportChildren(roundId: string) {

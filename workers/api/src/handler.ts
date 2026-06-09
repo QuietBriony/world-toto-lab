@@ -345,15 +345,15 @@ async function handleUpsertMatches(
       .first<EntityRow>();
 
     const base = existing ? entityRowToDomain(existing) : { matchNo, roundId };
+    // incoming が全フィールドを持つ場合（updateMatch）は全て反映。
+    // 一部だけ（一括編集）の場合は base に上書きマージ。
     const merged = {
       ...base,
+      ...incoming,
       matchNo,
+      roundId,
       homeTeam: incoming.homeTeam ?? base.homeTeam ?? "",
       awayTeam: incoming.awayTeam ?? base.awayTeam ?? "",
-      kickoffTime: incoming.kickoffTime ?? base.kickoffTime ?? null,
-      venue: incoming.venue ?? base.venue ?? null,
-      stage: incoming.stage ?? base.stage ?? null,
-      adminNote: incoming.adminNote ?? base.adminNote ?? null,
       id: existing?.id ?? newId(),
     };
 
@@ -383,10 +383,48 @@ async function handleUpsertPick(
 
   const body = (await request.json().catch(() => ({}))) as AnyRecord;
   const userId = String(body.userId ?? "");
+  if (!userId) {
+    return errorResponse("userId が必要です。", 400, cors);
+  }
+
+  // bulk replace: { userId, picks: [{ matchId, pick, note, support }] }
+  // repository.replacePicks と同じく、そのユーザーの round 内 picks を置き換える。
+  if (Array.isArray(body.picks)) {
+    await env.DB.prepare("DELETE FROM picks WHERE round_id = ? AND user_id = ?")
+      .bind(roundId, userId)
+      .run();
+    for (const entry of body.picks as AnyRecord[]) {
+      const pick = String(entry.pick ?? "");
+      const matchId = String(entry.matchId ?? "");
+      if (!matchId || !["ONE", "DRAW", "TWO"].includes(pick)) continue;
+      const id = newId();
+      const timestamp = nowIso();
+      const domain = {
+        id,
+        roundId,
+        matchId,
+        userId,
+        pick,
+        note: (entry.note as string | null) ?? null,
+        support: entry.support ?? { kind: "manual" },
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      };
+      await env.DB.prepare(
+        `INSERT INTO picks (id, round_id, user_id, match_id, pick, note, data, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+        .bind(id, roundId, userId, matchId, pick, domain.note, JSON.stringify(domain), timestamp, timestamp)
+        .run();
+    }
+    return jsonResponse({ picks: await listChildren(env, "picks", roundId) }, 200, cors);
+  }
+
+  // single upsert
   const matchId = String(body.matchId ?? "");
   const pick = String(body.pick ?? "");
-  if (!userId || !matchId || !["ONE", "DRAW", "TWO"].includes(pick)) {
-    return errorResponse("userId / matchId / pick が不正です。", 400, cors);
+  if (!matchId || !["ONE", "DRAW", "TWO"].includes(pick)) {
+    return errorResponse("matchId / pick が不正です。", 400, cors);
   }
 
   const id = newId();
@@ -437,26 +475,43 @@ async function handleUpsertScoutReport(
     return errorResponse("編集トークンが必要です。", 403, cors);
   }
 
-  const report = (await request.json().catch(() => ({}))) as AnyRecord;
-  const userId = String(report.userId ?? "");
-  const matchId = String(report.matchId ?? "");
-  if (!userId || !matchId) {
-    return errorResponse("userId / matchId が必要です。", 400, cors);
+  const body = (await request.json().catch(() => ({}))) as AnyRecord;
+  const userId = String(body.userId ?? "");
+  if (!userId) {
+    return errorResponse("userId が必要です。", 400, cors);
   }
 
-  const id = newId();
-  const timestamp = nowIso();
-  const domain = { ...report, id, roundId, userId, matchId, createdAt: timestamp, updatedAt: timestamp };
+  async function upsertOne(report: AnyRecord) {
+    const matchId = String(report.matchId ?? "");
+    if (!matchId) return;
+    const id = newId();
+    const timestamp = nowIso();
+    const domain = { ...report, id, roundId, userId, matchId, createdAt: timestamp, updatedAt: timestamp };
+    await env.DB.prepare(
+      `INSERT INTO scout_reports (id, round_id, user_id, match_id, data, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT (round_id, user_id, match_id)
+       DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at`,
+    )
+      .bind(id, roundId, userId, matchId, JSON.stringify(domain), timestamp, timestamp)
+      .run();
+  }
 
-  await env.DB.prepare(
-    `INSERT INTO scout_reports (id, round_id, user_id, match_id, data, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)
-     ON CONFLICT (round_id, user_id, match_id)
-     DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at`,
-  )
-    .bind(id, roundId, userId, matchId, JSON.stringify(domain), timestamp, timestamp)
-    .run();
+  // bulk replace: { userId, reports: [...] } — そのユーザーの round 内レポートを置き換える
+  if (Array.isArray(body.reports)) {
+    await env.DB.prepare("DELETE FROM scout_reports WHERE round_id = ? AND user_id = ?")
+      .bind(roundId, userId)
+      .run();
+    for (const report of body.reports as AnyRecord[]) {
+      await upsertOne(report);
+    }
+    return jsonResponse({ scoutReports: await listChildren(env, "scout_reports", roundId) }, 200, cors);
+  }
 
+  if (!body.matchId) {
+    return errorResponse("matchId が必要です。", 400, cors);
+  }
+  await upsertOne(body);
   return jsonResponse({ ok: true }, 200, cors);
 }
 
@@ -846,6 +901,209 @@ async function handleImport(
   );
 }
 
+// --- users (global) ---------------------------------------------------------
+
+type UserRow = {
+  id: string;
+  name: string;
+  role: string;
+  created_at: string;
+  updated_at: string;
+};
+
+function userRowToDomain(row: UserRow) {
+  return {
+    id: row.id,
+    name: row.name,
+    role: row.role,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+let usersTableEnsured = false;
+
+// users はマイグレーション 0002 で追加。Console 手順を不要にするため Worker でも自動作成する。
+async function ensureUsersTable(env: Env) {
+  if (usersTableEnsured) return;
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS users (
+       id TEXT PRIMARY KEY NOT NULL,
+       name TEXT NOT NULL,
+       role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('admin', 'member')),
+       created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+       updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+     )`,
+  ).run();
+  usersTableEnsured = true;
+}
+
+async function listUsers(env: Env) {
+  await ensureUsersTable(env);
+  const result = await env.DB.prepare(
+    "SELECT * FROM users ORDER BY role ASC, name ASC",
+  ).all<UserRow>();
+  return (result.results ?? []).map(userRowToDomain);
+}
+
+async function handleListUsers(env: Env, cors: Record<string, string>) {
+  return jsonResponse({ users: await listUsers(env) }, 200, cors);
+}
+
+async function handleCreateUser(
+  request: Request,
+  env: Env,
+  cors: Record<string, string>,
+) {
+  const body = (await request.json().catch(() => ({}))) as AnyRecord;
+  const name = String(body.name ?? "").trim();
+  if (!name) return errorResponse("name が必要です。", 400, cors);
+  const role = body.role === "admin" ? "admin" : "member";
+  await ensureUsersTable(env);
+  const id = newId();
+  const timestamp = nowIso();
+  await env.DB.prepare(
+    "INSERT INTO users (id, name, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+  )
+    .bind(id, name, role, timestamp, timestamp)
+    .run();
+  return jsonResponse(
+    { user: { id, name, role, createdAt: timestamp, updatedAt: timestamp } },
+    201,
+    cors,
+  );
+}
+
+async function handleUpdateUser(
+  request: Request,
+  env: Env,
+  userId: string,
+  cors: Record<string, string>,
+) {
+  const body = (await request.json().catch(() => ({}))) as AnyRecord;
+  const name = String(body.name ?? "").trim();
+  const role = body.role === "admin" ? "admin" : "member";
+  if (!name) return errorResponse("name が必要です。", 400, cors);
+  await ensureUsersTable(env);
+  await env.DB.prepare(
+    "UPDATE users SET name = ?, role = ?, updated_at = ? WHERE id = ?",
+  )
+    .bind(name, role, nowIso(), userId)
+    .run();
+  return jsonResponse({ ok: true }, 200, cors);
+}
+
+// --- research memos / ev assumption -----------------------------------------
+
+async function handleSaveResearchMemo(
+  request: Request,
+  env: Env,
+  roundId: string,
+  cors: Record<string, string>,
+) {
+  const row = await getRoundRow(env, roundId);
+  if (!row) return errorResponse("Round が見つかりません。", 404, cors);
+  if (!(await isAuthorized(request, row, "edit"))) {
+    return errorResponse("編集トークンが必要です。", 403, cors);
+  }
+  const memo = (await request.json().catch(() => ({}))) as AnyRecord;
+  const id = String(memo.id ?? "") || newId();
+  await insertDataRow(
+    env,
+    "research_memos",
+    roundId,
+    { ...memo, id, roundId },
+    { match_id: (memo.matchId as string | null) ?? null },
+  );
+  return jsonResponse({ id }, 200, cors);
+}
+
+async function handleDeleteResearchMemo(
+  request: Request,
+  env: Env,
+  roundId: string,
+  memoId: string,
+  cors: Record<string, string>,
+) {
+  const row = await getRoundRow(env, roundId);
+  if (!row) return errorResponse("Round が見つかりません。", 404, cors);
+  if (!(await isAuthorized(request, row, "edit"))) {
+    return errorResponse("編集トークンが必要です。", 403, cors);
+  }
+  await env.DB.prepare("DELETE FROM research_memos WHERE id = ? AND round_id = ?")
+    .bind(memoId, roundId)
+    .run();
+  return jsonResponse({ ok: true }, 200, cors);
+}
+
+async function handleSaveEvAssumption(
+  request: Request,
+  env: Env,
+  roundId: string,
+  cors: Record<string, string>,
+) {
+  const row = await getRoundRow(env, roundId);
+  if (!row) return errorResponse("Round が見つかりません。", 404, cors);
+  if (!(await isAuthorized(request, row, "edit"))) {
+    return errorResponse("編集トークンが必要です。", 403, cors);
+  }
+  const input = (await request.json().catch(() => ({}))) as AnyRecord;
+  const existing = await env.DB.prepare(
+    "SELECT * FROM big_carryover_assumptions WHERE round_id = ? LIMIT 1",
+  )
+    .bind(roundId)
+    .first<EntityRow>();
+  const id = existing?.id ?? newId();
+  await insertDataRow(env, "big_carryover_assumptions", roundId, {
+    ...input,
+    id,
+    roundId,
+  });
+  return jsonResponse({ id }, 200, cors);
+}
+
+// --- full state (for D1-backed repository reads) ------------------------------
+
+async function handleGetState(env: Env, cors: Record<string, string>) {
+  const allOf = async (table: string) => {
+    const result = await env.DB.prepare(
+      `SELECT * FROM ${table} ORDER BY created_at ASC`,
+    ).all<EntityRow>();
+    return (result.results ?? []).map(entityRowToDomain);
+  };
+
+  const roundsResult = await env.DB.prepare(
+    "SELECT * FROM rounds ORDER BY created_at DESC",
+  ).all<RoundRow>();
+  const rounds = (roundsResult.results ?? []).map(roundRowToDomain);
+
+  const officialRows = await allOf("official_rounds");
+  const evRows = await allOf("big_carryover_assumptions");
+
+  const state = {
+    rounds,
+    matches: await allOf("matches"),
+    picks: await allOf("picks"),
+    scoutReports: await allOf("scout_reports"),
+    candidateTickets: await allOf("candidate_tickets"),
+    candidateVotes: await allOf("candidate_votes"),
+    reviewNotes: await allOf("review_notes"),
+    researchMemos: await allOf("research_memos"),
+    roundEvAssumptions: evRows,
+    totoOfficialRounds: officialRows
+      .map((entry) => entry.round)
+      .filter(Boolean),
+    totoOfficialMatches: officialRows.flatMap(
+      (entry) => (entry.matches as unknown[]) ?? [],
+    ),
+    generatedTickets: [],
+    fixtureMaster: [],
+    officialRoundLibrary: [],
+    users: await listUsers(env),
+  };
+  return jsonResponse({ state }, 200, cors);
+}
+
 // --- router -----------------------------------------------------------------
 
 export async function handleApiRequest(
@@ -876,6 +1134,22 @@ export async function handleApiRequest(
       // /api/import
       if (segments.length === 2 && segments[1] === "import" && method === "POST") {
         return await handleImport(request, env, cors);
+      }
+
+      // /api/state（D1 backed repository の読み取り用：全状態）
+      if (segments.length === 2 && segments[1] === "state" && method === "GET") {
+        return await handleGetState(env, cors);
+      }
+
+      // /api/users ...（グローバルユーザー）
+      if (segments[1] === "users") {
+        if (segments.length === 2) {
+          if (method === "GET") return await handleListUsers(env, cors);
+          if (method === "POST") return await handleCreateUser(request, env, cors);
+        }
+        if (segments.length === 3 && segments[2] && method === "PATCH") {
+          return await handleUpdateUser(request, env, segments[2], cors);
+        }
       }
 
       // /api/rounds ...
@@ -928,6 +1202,8 @@ export async function handleApiRequest(
                 return jsonResponse({ candidateVotes: await listChildren(env, "candidate_votes", roundId) }, 200, cors);
               case "review-notes":
                 return jsonResponse({ reviewNotes: await listChildren(env, "review_notes", roundId) }, 200, cors);
+              case "research-memos":
+                return jsonResponse({ researchMemos: await listChildren(env, "research_memos", roundId) }, 200, cors);
               case "export":
                 return await handleExport(env, roundId, cors);
               default:
@@ -948,10 +1224,30 @@ export async function handleApiRequest(
                 return await handleUpsertCandidateVote(request, env, roundId, cors);
               case "review-notes":
                 return await handleAddReviewNote(request, env, roundId, cors);
+              case "research-memos":
+                return await handleSaveResearchMemo(request, env, roundId, cors);
+              case "ev-assumption":
+                return await handleSaveEvAssumption(request, env, roundId, cors);
               default:
                 return errorResponse("Not found", 404, cors);
             }
           }
+        }
+
+        // /api/rounds/:id/research-memos/:memoId
+        if (
+          roundId &&
+          segments.length === 5 &&
+          child === "research-memos" &&
+          method === "DELETE"
+        ) {
+          return await handleDeleteResearchMemo(
+            request,
+            env,
+            roundId,
+            segments[4],
+            cors,
+          );
         }
       }
 

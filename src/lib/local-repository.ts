@@ -105,7 +105,7 @@ export type LocalRoundBundle = {
   users: User[];
 };
 
-type LocalState = {
+export type LocalState = {
   candidateTickets: RoundWorkspace["round"]["candidateTickets"];
   candidateVotes: RoundWorkspace["round"]["candidateVotes"];
   fixtureMaster: FixtureMaster[];
@@ -425,7 +425,11 @@ function resolveUsersForRound(state: LocalState, round: Round) {
   return resolveRoundParticipantUsers(sourceUsers, round.participantIds);
 }
 
-function workspaceFromState(state: LocalState, roundId: string): RoundWorkspace | null {
+/**
+ * 配列状態（LocalState）から RoundWorkspace を組み立てる純粋関数。
+ * local / D1 の両方で再利用する（consensus / readiness / 関連付けを含む）。
+ */
+export function workspaceFromState(state: LocalState, roundId: string): RoundWorkspace | null {
   const round = state.rounds.find((entry) => entry.id === roundId) ?? null;
   if (!round) {
     return null;
@@ -490,7 +494,8 @@ function workspaceFromState(state: LocalState, roundId: string): RoundWorkspace 
   };
 }
 
-function summaryFromWorkspace(workspace: RoundWorkspace): DashboardRoundSummary {
+/** RoundWorkspace から Dashboard 用サマリを作る純粋関数（local / D1 共用）。 */
+export function summaryFromWorkspace(workspace: RoundWorkspace): DashboardRoundSummary {
   const round = workspace.round;
   const resultedCount = round.matches.filter((match) => match.actualResult !== null).length;
   const advantageRows = buildAdvantageRows({

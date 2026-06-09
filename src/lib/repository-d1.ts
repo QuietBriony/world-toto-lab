@@ -1,0 +1,337 @@
+/**
+ * Cloudflare D1 backed repository（ライブのデータ読み書きを D1 へ）。
+ *
+ * 読み取り: Worker の GET /api/state で全状態を取得し、local-repository の純粋 assembler
+ *   `workspaceFromState` / `summaryFromWorkspace` を再利用して RoundWorkspace / Dashboard を組む。
+ * 書き込み: Worker の各エンドポイントへ fetch（round 単位の editToken を添付）。
+ *
+ * repository.ts から `isCloudflareD1Mode()` のときに短絡呼び出しされる。
+ * D1 未対応の操作（fixture master / official library / sync / round 削除 / demo 等）は
+ * repository 側で local fallback されるため、ここには実装しない。
+ */
+import {
+  summaryFromWorkspace,
+  workspaceFromState,
+  type LocalState,
+} from "@/lib/local-repository";
+import {
+  getStoredRoundTokens,
+  storeRoundTokens,
+} from "@/lib/storage/d1ApiAdapter";
+import { defaultInitialUsers } from "@/lib/sample-data";
+import type {
+  DashboardData,
+  RoundWorkspace,
+  User,
+  UserRole,
+} from "@/lib/types";
+
+function apiBase() {
+  return (process.env.NEXT_PUBLIC_D1_API_BASE ?? "").replace(/\/+$/, "");
+}
+
+function enc(value: string) {
+  return encodeURIComponent(value);
+}
+
+type RequestOptions = {
+  body?: unknown;
+  roundId?: string;
+  write?: boolean;
+};
+
+async function req<T = unknown>(
+  method: string,
+  path: string,
+  { body, roundId, write }: RequestOptions = {},
+): Promise<T> {
+  const base = apiBase();
+  if (!base) {
+    throw new Error("NEXT_PUBLIC_D1_API_BASE が設定されていません。");
+  }
+
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (roundId) {
+    const tokens = getStoredRoundTokens(roundId);
+    if (tokens?.shareCode) headers["X-Share-Code"] = tokens.shareCode;
+    if (write && tokens?.editToken) headers["X-Edit-Token"] = tokens.editToken;
+    if (write && tokens?.adminToken) headers["X-Admin-Token"] = tokens.adminToken;
+  }
+
+  const response = await fetch(`${base}${path}`, {
+    method,
+    headers,
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+
+  if (!response.ok) {
+    let message = `${method} ${path} に失敗しました (HTTP ${response.status})`;
+    try {
+      const data = (await response.json()) as { error?: unknown };
+      if (data?.error) message = String(data.error);
+    } catch {
+      // ignore
+    }
+    throw new Error(message);
+  }
+
+  if (response.status === 204) {
+    return undefined as T;
+  }
+  return (await response.json()) as T;
+}
+
+function emptyState(): LocalState {
+  return {
+    candidateTickets: [],
+    candidateVotes: [],
+    fixtureMaster: [],
+    generatedTickets: [],
+    matches: [],
+    officialRoundLibrary: [],
+    picks: [],
+    researchMemos: [],
+    reviewNotes: [],
+    roundEvAssumptions: [],
+    rounds: [],
+    scoutReports: [],
+    totoOfficialMatches: [],
+    totoOfficialRounds: [],
+    users: [],
+  };
+}
+
+async function fetchState(): Promise<LocalState> {
+  const data = await req<{ state?: Partial<LocalState> }>("GET", "/api/state");
+  return { ...emptyState(), ...(data.state ?? {}) };
+}
+
+function sortUsers(users: User[]) {
+  return users
+    .slice()
+    .sort(
+      (left, right) =>
+        left.role.localeCompare(right.role) || left.name.localeCompare(right.name),
+    );
+}
+
+// --- reads ------------------------------------------------------------------
+
+export async function getRoundWorkspace(
+  roundId: string,
+): Promise<RoundWorkspace | null> {
+  const state = await fetchState();
+  return workspaceFromState(state, roundId);
+}
+
+export async function listDashboardData(): Promise<DashboardData> {
+  const state = await fetchState();
+  const rounds = state.rounds
+    .slice()
+    .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+    .flatMap((round) => {
+      const workspace = workspaceFromState(state, round.id);
+      return workspace ? [summaryFromWorkspace(workspace)] : [];
+    });
+
+  return {
+    demoUsers: [],
+    rounds,
+    users: sortUsers(state.users),
+  };
+}
+
+// --- users ------------------------------------------------------------------
+
+async function listUsers(): Promise<User[]> {
+  const data = await req<{ users?: User[] }>("GET", "/api/users");
+  return sortUsers(data.users ?? []);
+}
+
+export async function createInitialUsers(): Promise<User[]> {
+  const existing = await listUsers();
+  if (existing.length > 0) {
+    return existing;
+  }
+  for (const user of defaultInitialUsers) {
+    await req("POST", "/api/users", {
+      body: { name: user.name, role: user.role },
+      write: true,
+    });
+  }
+  return listUsers();
+}
+
+export async function createUser(input: {
+  name: string;
+  role?: UserRole;
+}): Promise<User[]> {
+  await req("POST", "/api/users", {
+    body: { name: input.name, role: input.role ?? "member" },
+    write: true,
+  });
+  return listUsers();
+}
+
+export async function updateUserProfile(input: {
+  name: string;
+  role: UserRole;
+  userId: string;
+}): Promise<User[]> {
+  await req("PATCH", `/api/users/${enc(input.userId)}`, {
+    body: { name: input.name, role: input.role },
+    write: true,
+  });
+  return listUsers();
+}
+
+// --- round writes -----------------------------------------------------------
+
+export async function createRound(input: Record<string, unknown>): Promise<string> {
+  const data = await req<{
+    round: { id: string };
+    shareCode: string;
+    editToken: string;
+    adminToken?: string;
+  }>("POST", "/api/rounds", { body: input, write: true });
+
+  if (data.round?.id) {
+    storeRoundTokens(data.round.id, {
+      shareCode: data.shareCode,
+      editToken: data.editToken,
+      adminToken: data.adminToken,
+    });
+  }
+  return data.round.id;
+}
+
+export async function updateRound(
+  input: { roundId: string } & Record<string, unknown>,
+): Promise<void> {
+  await req("PATCH", `/api/rounds/${enc(input.roundId)}`, {
+    body: input,
+    roundId: input.roundId,
+    write: true,
+  });
+}
+
+export async function bulkUpdateRoundMatches(input: {
+  roundId: string;
+  rows: Array<Record<string, unknown> & { matchNo: number }>;
+}): Promise<void> {
+  await req("POST", `/api/rounds/${enc(input.roundId)}/matches`, {
+    body: { matches: input.rows },
+    roundId: input.roundId,
+    write: true,
+  });
+}
+
+export async function updateMatch(
+  input: { roundId: string; matchId: string } & Record<string, unknown>,
+): Promise<void> {
+  // matches は matchNo キーで upsert するため、対象試合の matchNo を解決する。
+  const state = await fetchState();
+  const match = state.matches.find((entry) => entry.id === input.matchId);
+  if (!match) {
+    throw new Error("更新対象の試合が見つかりません。");
+  }
+  await req("POST", `/api/rounds/${enc(input.roundId)}/matches`, {
+    body: { matches: [{ ...input, id: input.matchId, matchNo: match.matchNo }] },
+    roundId: input.roundId,
+    write: true,
+  });
+}
+
+export async function replacePicks(input: {
+  roundId: string;
+  userId: string;
+  picks: Array<Record<string, unknown>>;
+}): Promise<void> {
+  await req("POST", `/api/rounds/${enc(input.roundId)}/picks`, {
+    body: { userId: input.userId, picks: input.picks },
+    roundId: input.roundId,
+    write: true,
+  });
+}
+
+export async function replaceScoutReports(input: {
+  roundId: string;
+  userId: string;
+  reports: Array<Record<string, unknown>>;
+}): Promise<void> {
+  await req("POST", `/api/rounds/${enc(input.roundId)}/scout-reports`, {
+    body: { userId: input.userId, reports: input.reports },
+    roundId: input.roundId,
+    write: true,
+  });
+}
+
+export async function replaceCandidateTickets(input: {
+  roundId: string;
+  tickets: Array<Record<string, unknown>>;
+}): Promise<void> {
+  await req("POST", `/api/rounds/${enc(input.roundId)}/candidate-tickets`, {
+    body: { tickets: input.tickets },
+    roundId: input.roundId,
+    write: true,
+  });
+}
+
+export async function upsertCandidateVote(input: {
+  roundId: string;
+  candidateTicketId: string;
+  userId: string;
+  vote: string;
+  comment: string | null;
+}): Promise<void> {
+  await req("POST", `/api/rounds/${enc(input.roundId)}/candidate-votes`, {
+    body: input,
+    roundId: input.roundId,
+    write: true,
+  });
+}
+
+export async function addReviewNote(input: {
+  roundId: string;
+  matchId: string | null;
+  userId: string | null;
+  note: string;
+}): Promise<void> {
+  await req("POST", `/api/rounds/${enc(input.roundId)}/review-notes`, {
+    body: input,
+    roundId: input.roundId,
+    write: true,
+  });
+}
+
+export async function saveResearchMemo(
+  input: { roundId: string } & Record<string, unknown>,
+): Promise<void> {
+  await req("POST", `/api/rounds/${enc(input.roundId)}/research-memos`, {
+    body: input,
+    roundId: input.roundId,
+    write: true,
+  });
+}
+
+export async function deleteResearchMemo(memoId: string): Promise<void> {
+  const state = await fetchState();
+  const memo = state.researchMemos.find((entry) => entry.id === memoId);
+  if (!memo) {
+    return;
+  }
+  await req("DELETE", `/api/rounds/${enc(memo.roundId)}/research-memos/${enc(memoId)}`, {
+    roundId: memo.roundId,
+    write: true,
+  });
+}
+
+export async function saveRoundEvAssumption(
+  input: { roundId: string } & Record<string, unknown>,
+): Promise<void> {
+  await req("POST", `/api/rounds/${enc(input.roundId)}/ev-assumption`, {
+    body: input,
+    roundId: input.roundId,
+    write: true,
+  });
+}
