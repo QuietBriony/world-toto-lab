@@ -89,13 +89,13 @@ describe("createRepositoryAdapter", () => {
       matches: [{ id: "m1" } as unknown as RoundWorkspaceRound["matches"][number]],
     });
     const backend = makeBackend(round);
-    const adapter = createRepositoryAdapter("supabase", backend, async () => ({
+    const adapter = createRepositoryAdapter("cloudflare_d1", backend, async () => ({
       status: "ok",
       message: "ok",
       checkedAt: "2026-01-01T00:00:00.000Z",
     }));
 
-    expect(adapter.mode).toBe("supabase");
+    expect(adapter.mode).toBe("cloudflare_d1");
 
     const rounds = await adapter.getRounds();
     expect(rounds).toHaveLength(1);

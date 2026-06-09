@@ -1,7 +1,7 @@
 /**
  * StorageAdapter 抽象層の共通型。
  *
- * 目的: World Toto Lab の保存先（localStorage / Supabase / Cloudflare D1 API / demo）を
+ * 目的: World Toto Lab の保存先（localStorage / Cloudflare D1 API / demo）を
  * 1つの interface で扱えるようにする。既存の `src/lib/repository.ts` を壊さない追加方式の
  * 第一歩で、まずは「契約（interface）」と「共通型」だけをここに定義する。
  *
@@ -34,16 +34,14 @@ import type {
 
 /**
  * 保存モード。
- * - `local`         : ブラウザ localStorage（Supabaseなしでも動く fallback）
- * - `supabase`      : 既存の共有 Supabase（PostgREST）
- * - `cloudflare_d1` : Cloudflare Worker / Pages Functions 経由の D1（SQLite）
+ * - `local`         : ブラウザ localStorage（単独作業用 fallback）
+ * - `cloudflare_d1` : Cloudflare Worker / Pages Functions 経由の D1（SQLite、共有保存）
  * - `demo`          : サンプルデータ閲覧用（書き込みは破棄）
  */
-export type StorageMode = "local" | "supabase" | "cloudflare_d1" | "demo";
+export type StorageMode = "local" | "cloudflare_d1" | "demo";
 
 export const STORAGE_MODES: readonly StorageMode[] = [
   "local",
-  "supabase",
   "cloudflare_d1",
   "demo",
 ] as const;
@@ -51,7 +49,6 @@ export const STORAGE_MODES: readonly StorageMode[] = [
 export function isStorageMode(value: unknown): value is StorageMode {
   return (
     value === "local" ||
-    value === "supabase" ||
     value === "cloudflare_d1" ||
     value === "demo"
   );
@@ -208,7 +205,7 @@ export interface StorageAdapter {
   createRound(input: CreateRoundInput): Promise<string>;
   updateRound(roundId: string, patch: UpdateRoundPatch): Promise<void>;
   /**
-   * Round 削除。Supabase / local では実行されるが、`cloudflare_d1` では
+   * Round 削除。local では実行されるが、`cloudflare_d1` では
    * 安全のため未実装（adminToken 必須の設計）。本番データ保護のため安易に呼ばない。
    */
   deleteRound(roundId: string): Promise<void>;
@@ -245,7 +242,7 @@ export interface StorageAdapter {
   getReviewNotes(roundId: string): Promise<ReviewNote[]>;
   upsertReviewNote(note: ReviewNoteUpsert): Promise<void>;
 
-  // --- JSON export / import（Supabase → JSON → D1 の移行に使う） ---
+  // --- JSON export / import（local ⇄ D1 の移行・バックアップに使う） ---
   exportRoundBundle(roundId: string): Promise<RoundBundle>;
   importRoundBundle(
     bundle: RoundBundle,
