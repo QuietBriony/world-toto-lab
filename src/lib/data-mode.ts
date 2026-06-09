@@ -1,6 +1,6 @@
 import type { SupabaseHealthCheck } from "@/lib/supabase";
 
-export type DataMode = "demo" | "local" | "shared";
+export type DataMode = "demo" | "local" | "shared" | "cloudflare_d1";
 export type DataModePreference = "auto" | DataMode;
 
 export const dataModePreferenceKey = "world-toto-lab:v1:dataMode";
@@ -18,7 +18,11 @@ export function getStoredDataModePreference(): DataModePreference {
   }
 
   const stored = window.localStorage.getItem(dataModePreferenceKey);
-  return stored === "shared" || stored === "local" || stored === "demo" || stored === "auto"
+  return stored === "shared" ||
+    stored === "local" ||
+    stored === "demo" ||
+    stored === "cloudflare_d1" ||
+    stored === "auto"
     ? stored
     : "auto";
 }
@@ -48,7 +52,14 @@ export function getRuntimeSupabaseHealth() {
 }
 
 export function shouldUseLocalRepository() {
-  if (runtimeDataMode === "demo" || runtimeDataMode === "local") {
+  // cloudflare_d1 では、D1 配線済みの関数は repository 内で isCloudflareD1Mode() により
+  // 先に短絡される。ここで true を返すのは「D1 未配線の関数（fixture master / official
+  // library / sync 等）を Supabase ではなく安全に local へ落とす」ため。
+  if (
+    runtimeDataMode === "demo" ||
+    runtimeDataMode === "local" ||
+    runtimeDataMode === "cloudflare_d1"
+  ) {
     return true;
   }
 
@@ -57,4 +68,8 @@ export function shouldUseLocalRepository() {
 
 export function isDemoDataMode() {
   return runtimeDataMode === "demo";
+}
+
+export function isCloudflareD1Mode() {
+  return runtimeDataMode === "cloudflare_d1";
 }

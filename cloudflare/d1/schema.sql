@@ -13,6 +13,15 @@
 
 PRAGMA foreign_keys = ON;
 
+-- グローバルユーザー（友人グループ。round 横断で共有。picks.user_id 等が参照）。
+CREATE TABLE IF NOT EXISTS users (
+  id TEXT PRIMARY KEY NOT NULL,
+  name TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('admin', 'member')),
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
 -- ラウンド本体 + 共有/編集トークン（ハッシュ保存）。
 CREATE TABLE IF NOT EXISTS rounds (
   id TEXT PRIMARY KEY NOT NULL,

@@ -25,6 +25,7 @@ import {
   type SupabaseHealthCheck,
 } from "@/lib/supabase";
 import { importRoundJson } from "@/lib/repository";
+import { d1ApiAdapter, storeRoundTokens } from "@/lib/storage/d1ApiAdapter";
 import Link from "next/link";
 
 import {
@@ -63,6 +64,10 @@ function initialMode(): DataMode {
 function modeLabel(mode: DataMode) {
   if (mode === "shared") {
     return "共有保存";
+  }
+
+  if (mode === "cloudflare_d1") {
+    return "Cloudflare共有保存";
   }
 
   if (mode === "demo") {
@@ -186,6 +191,28 @@ export function DataModeProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    // Cloudflare D1: NEXT_PUBLIC_D1_API_BASE が設定され、env または preference が
+    // cloudflare_d1 を望むとき。接続できれば D1、落ちていれば local で継続。
+    const d1Base = process.env.NEXT_PUBLIC_D1_API_BASE;
+    const wantsD1 =
+      storedPreference === "cloudflare_d1" ||
+      (storedPreference === "auto" &&
+        process.env.NEXT_PUBLIC_STORAGE_MODE === "cloudflare_d1");
+    if (wantsD1 && d1Base) {
+      const d1Health = await d1ApiAdapter.health();
+      setRuntimeSupabaseHealth(null);
+      setHealth(null);
+      if (d1Health.status === "ok") {
+        setRuntimeDataMode("cloudflare_d1");
+        setModeState("cloudflare_d1");
+      } else {
+        setRuntimeDataMode("local");
+        setModeState("local");
+      }
+      setIsChecking(false);
+      return;
+    }
+
     const nextHealth = await checkSupabaseHealth();
     setRuntimeSupabaseHealth(nextHealth);
     setHealth(nextHealth);
@@ -212,6 +239,24 @@ export function DataModeProvider({ children }: { children: ReactNode }) {
       void runHealthCheck();
     });
   }, [runHealthCheck]);
+
+  // 共有リンク（?round=<id>&edit=<token>[&admin=<token>][&share=<code>]）から
+  // D1 の書き込みトークンを取り込む。これで作成者以外の友人もそのラウンドを編集できる。
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const params = new URLSearchParams(window.location.search);
+    const roundId = params.get("round");
+    const editToken = params.get("edit");
+    if (roundId && editToken) {
+      storeRoundTokens(roundId, {
+        shareCode: params.get("share") ?? "",
+        editToken,
+        adminToken: params.get("admin") ?? undefined,
+      });
+    }
+  }, []);
 
   const reconnect = useCallback(async () => {
     setStoredDataModePreference("auto");
