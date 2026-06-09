@@ -73,5 +73,6 @@ export const appRoute = {
   officialScheduleImport: "/official-schedule-import",
   fixtureSelector: "/fixture-selector",
   totoOfficialRoundImport: "/toto-official-round-import",
+  marketSources: "/market-sources",
   settings: "/settings",
 } as const;

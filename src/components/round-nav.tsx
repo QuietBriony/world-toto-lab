@@ -81,6 +81,10 @@ export function RoundNav({
           { href: buildRoundHref(appRoute.consensus, roundId), label: "コンセンサス" },
           { href: buildRoundHref(appRoute.edgeBoard, roundId), label: "優位ボード" },
           {
+            href: buildRoundHref(appRoute.marketSources, roundId),
+            label: "市場ソース",
+          },
+          {
             href: buildRoundHref(appRoute.ticketGenerator, roundId),
             label: "詳細候補配分",
           },
