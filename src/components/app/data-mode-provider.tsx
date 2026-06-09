@@ -26,6 +26,7 @@ import {
 } from "@/lib/supabase";
 import { importRoundJson } from "@/lib/repository";
 import { d1ApiAdapter, storeRoundTokens } from "@/lib/storage/d1ApiAdapter";
+import { LegacyHostBanner } from "@/components/app/legacy-host-banner";
 import Link from "next/link";
 
 import {
@@ -339,6 +340,8 @@ export function DataModeProvider({ children }: { children: ReactNode }) {
 
   return (
     <DataModeContext.Provider value={value}>
+      <LegacyHostBanner />
+
       <input
         ref={fileInputRef}
         type="file"
