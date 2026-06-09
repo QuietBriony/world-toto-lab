@@ -15,6 +15,7 @@ import {
 import { placeholderMatches } from "@/lib/local-repository";
 import { calculateModelProbabilities } from "@/lib/probability/engine";
 import { bulkUpdateRoundMatches, createRound } from "@/lib/repository";
+import { modelSeed } from "@/lib/world-toto-strength";
 import type { Match, TotoOfficialRoundLibraryMatch } from "@/lib/types";
 
 type FeaturedWorldTotoPayload = ReturnType<typeof buildFeaturedWorldTotoImportPayload>;
@@ -57,11 +58,20 @@ export function buildFeaturedWorldTotoMatchRows(
       venue: row.venue,
     };
 
-    // local の AI 推定（localEstimateRoundAiModel）と同じ呼び方。
-    // ProbabilityEngineResult.modelProb* は常に number（公式票があれば反映、無ければ
-    // 競技別 fallback prior）。
+    // 公式票が揃えば票ベース、無ければ国別強度モデルで market 確率を作り（/hazi 軽量版と
+    // 同じ最適ロジック）、それを基に engine でモデル本命を推定する。
+    const seed = modelSeed({
+      awayTeam: merged.awayTeam,
+      homeTeam: merged.homeTeam,
+      officialVote0: merged.officialVote0,
+      officialVote1: merged.officialVote1,
+      officialVote2: merged.officialVote2,
+    });
     const estimated = calculateModelProbabilities({
       ...merged,
+      marketProb0: seed.marketProb0,
+      marketProb1: seed.marketProb1,
+      marketProb2: seed.marketProb2,
       competitionType: "world_cup",
       dataProfile: "manual_light",
     });

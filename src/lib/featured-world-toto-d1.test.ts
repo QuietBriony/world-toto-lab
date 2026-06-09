@@ -40,12 +40,31 @@ describe("buildFeaturedWorldTotoMatchRows", () => {
     expect(germany.recommendedOutcomes?.startsWith("1")).toBe(true);
   });
 
-  it("still models rounds without official votes via the competition fallback prior", () => {
-    const payload1635 = buildFeaturedWorldTotoImportPayload(1635);
-    const rows1635 = buildFeaturedWorldTotoMatchRows("round-1635", payload1635.rows);
-    rows1635.forEach((match) => {
-      expect(match.officialVote1).toBeNull();
-      expect(typeof match.modelProb1).toBe("number");
-    });
+  it("models no-vote rounds from the country-strength model (home favorite → 1)", () => {
+    const rows1635 = buildFeaturedWorldTotoMatchRows(
+      "round-1635",
+      buildFeaturedWorldTotoImportPayload(1635).rows,
+    );
+    // 第1635回: ブラジル(94) vs ハイチ(66) は票なしでも強度差で home(1) 本命。
+    const brazil = rows1635.find(
+      (match) => match.homeTeam === "ブラジル" && match.awayTeam === "ハイチ",
+    );
+    expect(brazil).toBeDefined();
+    expect(brazil?.officialVote1).toBeNull();
+    expect(brazil?.recommendedOutcomes?.startsWith("1")).toBe(true);
+  });
+
+  it("varies no-vote recommendations by matchup (away favorite → 2, not a flat prior)", () => {
+    const rows1637 = buildFeaturedWorldTotoMatchRows(
+      "round-1637",
+      buildFeaturedWorldTotoImportPayload(1637).rows,
+    );
+    // 第1637回: エクアドル(82) vs ドイツ(90) は away(ドイツ)が上 → 2 を先頭推奨。
+    const m = rows1637.find(
+      (match) => match.homeTeam === "エクアドル" && match.awayTeam === "ドイツ",
+    );
+    expect(m).toBeDefined();
+    expect(m?.officialVote1).toBeNull();
+    expect(m?.recommendedOutcomes?.startsWith("2")).toBe(true);
   });
 });

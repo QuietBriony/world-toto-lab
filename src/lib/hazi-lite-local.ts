@@ -4,6 +4,7 @@ import {
 } from "@/lib/featured-world-toto";
 import { calculateTicketEv } from "@/lib/ev";
 import { calculateModelProbabilities } from "@/lib/probability/engine";
+import { modelSeed } from "@/lib/world-toto-strength";
 import type {
   Match,
   Outcome,
@@ -814,101 +815,7 @@ function recommendedOutcomes(input: { modelProb0: number; modelProb1: number; mo
     .join(",");
 }
 
-const teamStrengthByName: Record<string, number> = {
-  "アイスランド": 74,
-  "アルジェリア": 78,
-  "アルゼンチン": 96,
-  "イングランド": 93,
-  "ウズベキスタン": 73,
-  "ウルグアイ": 87,
-  "エクアドル": 82,
-  "エジプト": 80,
-  "オーストラリア": 77,
-  "オーストリア": 83,
-  "オランダ": 91,
-  "カーボベルデ": 70,
-  "カタール": 72,
-  "カナダ": 77,
-  "ガーナ": 79,
-  "キュラソー": 67,
-  "クロアチア": 86,
-  "コロンビア": 86,
-  "コンゴ民主共和国": 72,
-  "コートジボワール": 80,
-  "サウジアラビア": 72,
-  "スイス": 84,
-  "スウェーデン": 82,
-  "スコットランド": 78,
-  "スペイン": 94,
-  "セネガル": 83,
-  "チュニジア": 76,
-  "チェコ": 79,
-  "チリ": 76,
-  "ドイツ": 90,
-  "ニュージーランド": 67,
-  "日本": 83,
-  "ノルウェー": 80,
-  "ハイチ": 66,
-  "パナマ": 70,
-  "パラグアイ": 77,
-  "ブラジル": 94,
-  "フランス": 95,
-  "ベルギー": 88,
-  "ボスニア": 75,
-  "ボスニア・ヘルツェゴビナ": 75,
-  "ポルトガル": 92,
-  "南アフリカ": 72,
-  "メキシコ": 81,
-  "モロッコ": 84,
-  "ヨルダン": 69,
-  "韓国": 80,
-};
-
-function teamStrength(teamName: string) {
-  return teamStrengthByName[teamName] ?? 75;
-}
-
-function teamStrengthPrior(input: { awayTeam: string; homeTeam: string }) {
-  const homeStrength = teamStrength(input.homeTeam);
-  const awayStrength = teamStrength(input.awayTeam);
-  const diff = homeStrength - awayStrength;
-  const draw = Math.max(0.19, Math.min(0.31, 0.29 - Math.abs(diff) * 0.003));
-  const homeShare = 1 / (1 + Math.exp(-diff / 10));
-  const winMass = 1 - draw;
-
-  return {
-    modelRationale: `${input.homeTeam} ${homeStrength} / ${input.awayTeam} ${awayStrength} の国別強度差から軽量推定。`,
-    modelSource: "team_strength" as const,
-    marketProb0: draw,
-    marketProb1: winMass * homeShare,
-    marketProb2: winMass * (1 - homeShare),
-  };
-}
-
-function modelSeed(input: {
-  awayTeam: string;
-  homeTeam: string;
-  officialVote0: number | null;
-  officialVote1: number | null;
-  officialVote2: number | null;
-}) {
-  const hasOfficialVote =
-    input.officialVote1 !== null &&
-    input.officialVote0 !== null &&
-    input.officialVote2 !== null;
-
-  if (hasOfficialVote) {
-    return {
-      modelRationale: "公式人気を市場確率として軽量推定。",
-      modelSource: "official_vote" as const,
-      marketProb0: input.officialVote0,
-      marketProb1: input.officialVote1,
-      marketProb2: input.officialVote2,
-    };
-  }
-
-  return teamStrengthPrior(input);
-}
+// 国別強度モデル / modelSeed は @/lib/world-toto-strength へ移設（共有D1 featured 取り込みと共用）。
 
 function worldRoundNumber(round: Round, officialRound?: TotoOfficialRound | null) {
   const numberFromOfficial = officialRound?.officialRoundNumber ?? null;
