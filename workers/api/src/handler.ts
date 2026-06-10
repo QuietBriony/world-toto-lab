@@ -1076,31 +1076,62 @@ async function handleSaveEvAssumption(
 
 // --- full state (for D1-backed repository reads) ------------------------------
 
-async function handleGetState(env: Env, cors: Record<string, string>) {
+async function handleGetState(
+  env: Env,
+  cors: Record<string, string>,
+  roundId: string | null,
+) {
+  // roundId 指定時はそのラウンドの行だけ返す（全テーブルに round_id インデックス有り）。
+  // 未指定なら従来どおり全状態。クエリは相互独立なので並列発行して待ち時間を重ねない。
   const allOf = async (table: string) => {
-    const result = await env.DB.prepare(
-      `SELECT * FROM ${table} ORDER BY created_at ASC`,
-    ).all<EntityRow>();
+    const statement = roundId
+      ? env.DB.prepare(
+          `SELECT * FROM ${table} WHERE round_id = ? ORDER BY created_at ASC`,
+        ).bind(roundId)
+      : env.DB.prepare(`SELECT * FROM ${table} ORDER BY created_at ASC`);
+    const result = await statement.all<EntityRow>();
     return (result.results ?? []).map(entityRowToDomain);
   };
 
-  const roundsResult = await env.DB.prepare(
-    "SELECT * FROM rounds ORDER BY created_at DESC",
-  ).all<RoundRow>();
-  const rounds = (roundsResult.results ?? []).map(roundRowToDomain);
+  const roundsStatement = roundId
+    ? env.DB.prepare("SELECT * FROM rounds WHERE id = ?").bind(roundId)
+    : env.DB.prepare("SELECT * FROM rounds ORDER BY created_at DESC");
 
-  const officialRows = await allOf("official_rounds");
-  const evRows = await allOf("big_carryover_assumptions");
+  const [
+    roundsResult,
+    matches,
+    picks,
+    scoutReports,
+    candidateTickets,
+    candidateVotes,
+    reviewNotes,
+    researchMemos,
+    evRows,
+    officialRows,
+    users,
+  ] = await Promise.all([
+    roundsStatement.all<RoundRow>(),
+    allOf("matches"),
+    allOf("picks"),
+    allOf("scout_reports"),
+    allOf("candidate_tickets"),
+    allOf("candidate_votes"),
+    allOf("review_notes"),
+    allOf("research_memos"),
+    allOf("big_carryover_assumptions"),
+    allOf("official_rounds"),
+    listUsers(env),
+  ]);
 
   const state = {
-    rounds,
-    matches: await allOf("matches"),
-    picks: await allOf("picks"),
-    scoutReports: await allOf("scout_reports"),
-    candidateTickets: await allOf("candidate_tickets"),
-    candidateVotes: await allOf("candidate_votes"),
-    reviewNotes: await allOf("review_notes"),
-    researchMemos: await allOf("research_memos"),
+    rounds: (roundsResult.results ?? []).map(roundRowToDomain),
+    matches,
+    picks,
+    scoutReports,
+    candidateTickets,
+    candidateVotes,
+    reviewNotes,
+    researchMemos,
     roundEvAssumptions: evRows,
     totoOfficialRounds: officialRows
       .map((entry) => entry.round)
@@ -1111,7 +1142,7 @@ async function handleGetState(env: Env, cors: Record<string, string>) {
     generatedTickets: [],
     fixtureMaster: [],
     officialRoundLibrary: [],
-    users: await listUsers(env),
+    users,
   };
   return jsonResponse({ state }, 200, cors);
 }
@@ -1148,9 +1179,9 @@ export async function handleApiRequest(
         return await handleImport(request, env, cors);
       }
 
-      // /api/state（D1 backed repository の読み取り用：全状態）
+      // /api/state（D1 backed repository の読み取り用。?round=<id> でラウンド単位に絞る）
       if (segments.length === 2 && segments[1] === "state" && method === "GET") {
-        return await handleGetState(env, cors);
+        return await handleGetState(env, cors, url.searchParams.get("round"));
       }
 
       // /api/users ...（グローバルユーザー）

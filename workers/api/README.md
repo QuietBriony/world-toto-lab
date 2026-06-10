@@ -60,7 +60,7 @@ NEXT_PUBLIC_D1_API_BASE=https://world-toto-lab-api.<account>.workers.dev
 | DELETE | `/api/rounds/:id/research-memos/:memoId` | edit | リサーチメモ削除 |
 | POST | `/api/rounds/:id/ev-assumption` | edit | EV 前提保存 |
 | GET | `/api/rounds/:id/export` | public | Round バンドル JSON |
-| GET | `/api/state` | public | 全状態（D1 backed repository の読み取り用） |
+| GET | `/api/state` | public | 全状態（D1 backed repository の読み取り用）。`?round=<id>` でそのラウンド分のみ |
 | GET | `/api/users` | public | グローバルユーザー一覧 |
 | POST | `/api/users` | public | ユーザー作成 |
 | PATCH | `/api/users/:id` | public | ユーザー更新 |
