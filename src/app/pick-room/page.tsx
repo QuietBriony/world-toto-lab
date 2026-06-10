@@ -356,7 +356,8 @@ function PickRoomPageContent() {
       setActionMessage(null);
 
       try {
-        await refreshCandidateTicketsForRound({ roundId });
+        // 直前に読み込んだ workspace を渡し、D1 モードでの全状態再フェッチを省く。
+        await refreshCandidateTicketsForRound({ roundId, workspace: data });
         await refresh();
         setActionMessage("候補カードを最新データから更新しました。");
       } catch (nextError) {

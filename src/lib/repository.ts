@@ -539,8 +539,13 @@ export async function saveTotoOfficialRoundImport(input: TotoOfficialRoundImport
 export async function refreshCandidateTicketsForRound(input: {
   force?: boolean;
   roundId: string;
+  /** 呼び出し側が直前に読み込んだ workspace。渡すと再フェッチせずそのデータから候補を生成する。 */
+  workspace?: RoundWorkspace | null;
 }) {
-  const workspace = await getRoundWorkspace(input.roundId);
+  const workspace =
+    input.workspace && input.workspace.round.id === input.roundId
+      ? input.workspace
+      : await getRoundWorkspace(input.roundId);
   if (!workspace) {
     throw new Error("候補を更新するラウンドが見つかりません。");
   }
@@ -557,7 +562,6 @@ export async function refreshCandidateTicketsForRound(input: {
   ) {
     return {
       regenerated: false,
-      round: workspace.round,
     };
   }
 
@@ -575,12 +579,11 @@ export async function refreshCandidateTicketsForRound(input: {
     tickets: generated.tickets,
   });
 
-  const refreshed = await getRoundWorkspace(input.roundId);
-
+  // 保存後の round は返さない（全呼び出し元が自前で refresh するため、
+  // ここでの再フェッチは D1 モードで丸ごと1往復の無駄になる）。
   return {
     dataQualitySummary: generated.dataQualitySummary,
     regenerated: true,
-    round: refreshed?.round ?? workspace.round,
   };
 }
 
