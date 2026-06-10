@@ -1,7 +1,8 @@
 /**
  * Cloudflare D1 backed repository（ライブのデータ読み書きを D1 へ）。
  *
- * 読み取り: Worker の GET /api/state で全状態を取得し、local-repository の純粋 assembler
+ * 読み取り: Worker の GET /api/state（round 単位の読み取りは ?round=<id> で絞る）から
+ *   状態を取得し、local-repository の純粋 assembler
  *   `workspaceFromState` / `summaryFromWorkspace` を再利用して RoundWorkspace / Dashboard を組む。
  * 書き込み: Worker の各エンドポイントへ fetch（round 単位の editToken を添付）。
  *
@@ -101,8 +102,12 @@ function emptyState(): LocalState {
   };
 }
 
-async function fetchState(): Promise<LocalState> {
-  const data = await req<{ state?: Partial<LocalState> }>("GET", "/api/state");
+async function fetchState(roundId?: string): Promise<LocalState> {
+  // roundId 指定時は Worker 側でそのラウンドの行だけに絞る（ペイロードと D1 読み取りを削減）。
+  // ?round= 未対応の旧 Worker はパラメータを無視して全状態を返すが、
+  // 利用側の workspaceFromState が roundId で絞るため結果は等価。
+  const path = roundId ? `/api/state?round=${enc(roundId)}` : "/api/state";
+  const data = await req<{ state?: Partial<LocalState> }>("GET", path);
   return { ...emptyState(), ...(data.state ?? {}) };
 }
 
@@ -120,7 +125,7 @@ function sortUsers(users: User[]) {
 export async function getRoundWorkspace(
   roundId: string,
 ): Promise<RoundWorkspace | null> {
-  const state = await fetchState();
+  const state = await fetchState(roundId);
   return workspaceFromState(state, roundId);
 }
 
@@ -230,7 +235,7 @@ export async function updateMatch(
   input: { roundId: string; matchId: string } & Record<string, unknown>,
 ): Promise<void> {
   // matches は matchNo キーで upsert するため、対象試合の matchNo を解決する。
-  const state = await fetchState();
+  const state = await fetchState(input.roundId);
   const match = state.matches.find((entry) => entry.id === input.matchId);
   if (!match) {
     throw new Error("更新対象の試合が見つかりません。");

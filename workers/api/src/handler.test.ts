@@ -148,4 +148,69 @@ describe("handleApiRequest", () => {
     expect(body.rounds[0].id).toBe("r1");
     expect(body.rounds[0].title).toBe("Round 1");
   });
+
+  // /api/state: round 行を r1/r2 の2件持つフェイク。?round= 付きはフィルタ済み SQL
+  // （rounds は WHERE id、entity は WHERE round_id）にだけ r1 分を返す。
+  function makeStateEnv() {
+    const roundRow = (id: string) => ({
+      id,
+      title: `Round ${id}`,
+      status: "draft",
+      data: "{}",
+      created_at: "2026-01-01T00:00:00.000Z",
+      updated_at: "2026-01-01T00:00:00.000Z",
+    });
+    const entityRow = (id: string, roundId: string) => ({
+      id,
+      round_id: roundId,
+      data: "{}",
+      created_at: "2026-01-01T00:00:00.000Z",
+      updated_at: "2026-01-01T00:00:00.000Z",
+    });
+    return makeEnv({
+      all: (sql) => {
+        if (sql.includes("FROM rounds")) {
+          return sql.includes("WHERE id = ?")
+            ? { results: [roundRow("r1")] }
+            : { results: [roundRow("r1"), roundRow("r2")] };
+        }
+        if (sql.includes("FROM users")) {
+          return { results: [] };
+        }
+        return sql.includes("WHERE round_id = ?")
+          ? { results: [entityRow("m1", "r1")] }
+          : { results: [entityRow("m1", "r1"), entityRow("m2", "r2")] };
+      },
+    });
+  }
+
+  type StateBody = {
+    state: {
+      rounds: Array<{ id: string }>;
+      matches: Array<{ id: string; roundId: string }>;
+      picks: Array<{ id: string }>;
+    };
+  };
+
+  it("returns the full state without a round filter", async () => {
+    const res = await handleApiRequest(request("GET", "/api/state"), makeStateEnv());
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as StateBody;
+    expect(body.state.rounds.map((round) => round.id)).toEqual(["r1", "r2"]);
+    expect(body.state.matches).toHaveLength(2);
+    expect(body.state.picks).toHaveLength(2);
+  });
+
+  it("scopes /api/state?round= to that round via round_id-filtered queries", async () => {
+    const res = await handleApiRequest(
+      request("GET", "/api/state?round=r1"),
+      makeStateEnv(),
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as StateBody;
+    expect(body.state.rounds.map((round) => round.id)).toEqual(["r1"]);
+    expect(body.state.matches).toHaveLength(1);
+    expect(body.state.matches[0].roundId).toBe("r1");
+    expect(body.state.picks).toHaveLength(1);
+  });
 });
