@@ -454,12 +454,7 @@ export default function DashboardPage() {
       }
 
       await refresh();
-      const firstRound = roundRefs[0];
-      router.push(
-        buildRoundHref(appRoute.review, firstRound?.roundId, {
-          user: firstRound?.haziUserId,
-        }),
-      );
+      router.push(appRoute.hazi);
     } catch (nextError) {
       setActionError(errorMessage(nextError));
     } finally {
@@ -842,11 +837,7 @@ export default function DashboardPage() {
                           user: slotUser?.id,
                         })
                       : null;
-                    const slotReviewHref = slot.round
-                      ? buildRoundHref(appRoute.review, slot.round.id, {
-                          user: slotUser?.id,
-                        })
-                      : null;
+                    const slotReviewHref = slot.round ? appRoute.hazi : null;
 
                     return (
                       <div
