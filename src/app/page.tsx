@@ -534,11 +534,7 @@ export default function DashboardPage() {
         user: haziWorldTotoUser?.id,
       })
     : null;
-  const haziWorldTotoReviewHref = haziWorldTotoRound
-    ? buildRoundHref(appRoute.review, haziWorldTotoRound.id, {
-        user: haziWorldTotoUser?.id,
-      })
-    : null;
+  const haziWorldTotoReviewHref = appRoute.hazi;
   const haziWorldTotoPickRoomHref = haziWorldTotoRound
     ? buildRoundHref(appRoute.pickRoom, haziWorldTotoRound.id, {
         user: haziWorldTotoUser?.id,
