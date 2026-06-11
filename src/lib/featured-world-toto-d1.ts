@@ -120,15 +120,15 @@ export async function createFeaturedWorldTotoRoundInD1(input: {
   payload: FeaturedWorldTotoPayload;
   participantIds?: string[];
   existingRoundId?: string | null;
-}): Promise<string> {
+}): Promise<{ matches: Match[]; roundId: string }> {
   const roundId =
     input.existingRoundId ??
     (await createRound(buildRoundInput(input.payload, input.participantIds)));
 
-  await bulkUpdateRoundMatches({
+  const matches = await bulkUpdateRoundMatches({
     roundId,
     rows: buildFeaturedWorldTotoMatchRows(roundId, input.payload.rows),
   });
 
-  return roundId;
+  return { matches, roundId };
 }

@@ -428,7 +428,7 @@ export default function DashboardPage() {
         // レース無し）。4回分を並列作成して体感を短縮する。Promise.all は順序を保つ。
         const refs = await Promise.all(
           payloads.map(async (payload) => {
-            const roundId = await createFeaturedWorldTotoRoundInD1({
+            const { roundId } = await createFeaturedWorldTotoRoundInD1({
               existingRoundId: resolveExistingRoundId(payload.officialRoundNumber),
               participantIds: haziParticipantIds,
               payload: { ...payload, notes: `${payload.notes}${haziNoteSuffix}` },
