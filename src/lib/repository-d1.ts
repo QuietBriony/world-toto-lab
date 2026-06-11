@@ -22,6 +22,7 @@ import {
 import { defaultInitialUsers } from "@/lib/sample-data";
 import type {
   DashboardData,
+  Match,
   RoundWorkspace,
   User,
   UserRole,
@@ -223,12 +224,13 @@ export async function updateRound(
 export async function bulkUpdateRoundMatches(input: {
   roundId: string;
   rows: Array<Record<string, unknown> & { matchNo: number }>;
-}): Promise<void> {
-  await req("POST", `/api/rounds/${enc(input.roundId)}/matches`, {
+}): Promise<Match[]> {
+  const data = await req<{ matches?: Match[] }>("POST", `/api/rounds/${enc(input.roundId)}/matches`, {
     body: { matches: input.rows },
     roundId: input.roundId,
     write: true,
   });
+  return data.matches ?? [];
 }
 
 export async function updateMatch(
