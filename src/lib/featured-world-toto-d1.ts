@@ -14,7 +14,7 @@ import {
 } from "@/lib/featured-world-toto";
 import { placeholderMatches } from "@/lib/local-repository";
 import { calculateModelProbabilities } from "@/lib/probability/engine";
-import { bulkUpdateRoundMatches, createRound } from "@/lib/repository";
+import { bulkUpdateRoundMatches, createRound } from "@/lib/repository-d1";
 import { modelSeed } from "@/lib/world-toto-strength";
 import type { Match, TotoOfficialRoundLibraryMatch } from "@/lib/types";
 
