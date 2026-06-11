@@ -63,6 +63,7 @@ export const appRoute = {
   winnerValue: "/winner-value",
   play: "/play",
   practiceLab: "/practice-lab",
+  hazi: "/hazi",
   picks: "/picks",
   scoutCards: "/scout-cards",
   consensus: "/consensus",
