@@ -24,7 +24,6 @@ const localKeys = {
   candidateTickets: `${namespace}:candidateTickets`,
   candidateVotes: `${namespace}:candidateVotes`,
   currentRound: `${namespace}:currentRound`,
-  dataMode: `${namespace}:dataMode`,
   generatedTickets: `${namespace}:generatedTickets`,
   haziAiVersion: `${namespace}:haziLiteAiVersion`,
   matches: `${namespace}:matches`,
@@ -227,7 +226,6 @@ function writeState(state: HaziLiteLocalState) {
   writeArray(localKeys.totoOfficialMatches, state.totoOfficialMatches);
   writeArray(localKeys.totoOfficialRounds, state.totoOfficialRounds);
   writeArray(localKeys.users, state.users);
-  window.localStorage.setItem(localKeys.dataMode, "local");
   window.localStorage.setItem(localKeys.haziAiVersion, haziLiteAiVersion);
 }
 
