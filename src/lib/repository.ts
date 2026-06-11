@@ -240,6 +240,7 @@ export async function updateRound(input: {
 export async function updateMatch(input: {
   roundId: string;
   matchId: string;
+  matchNo: number;
   homeTeam: string;
   awayTeam: string;
   kickoffTime: string | null;
@@ -688,11 +689,14 @@ export async function saveResearchMemo(input: {
   return localRepository.localSaveResearchMemo(input);
 }
 
-export async function deleteResearchMemo(memoId: string) {
+export async function deleteResearchMemo(input: {
+  memoId: string;
+  roundId: string;
+}) {
   if (isCloudflareD1Mode()) {
-    return d1Repository.deleteResearchMemo(memoId);
+    return d1Repository.deleteResearchMemo(input);
   }
-  return localRepository.localDeleteResearchMemo(memoId);
+  return localRepository.localDeleteResearchMemo(input.memoId);
 }
 
 export async function exportRoundJson(roundId: string) {

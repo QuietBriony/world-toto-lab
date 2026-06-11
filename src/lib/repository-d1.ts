@@ -232,16 +232,12 @@ export async function bulkUpdateRoundMatches(input: {
 }
 
 export async function updateMatch(
-  input: { roundId: string; matchId: string } & Record<string, unknown>,
+  input: { roundId: string; matchId: string; matchNo: number } & Record<string, unknown>,
 ): Promise<void> {
-  // matches は matchNo キーで upsert するため、対象試合の matchNo を解決する。
-  const state = await fetchState(input.roundId);
-  const match = state.matches.find((entry) => entry.id === input.matchId);
-  if (!match) {
-    throw new Error("更新対象の試合が見つかりません。");
-  }
+  // matches は matchNo キーで upsert する。matchNo は呼び出し側が既に持っているため
+  // そのまま受け取り、解決のためだけの round state フェッチは行わない。
   await req("POST", `/api/rounds/${enc(input.roundId)}/matches`, {
-    body: { matches: [{ ...input, id: input.matchId, matchNo: match.matchNo }] },
+    body: { matches: [{ ...input, id: input.matchId }] },
     roundId: input.roundId,
     write: true,
   });
@@ -319,16 +315,20 @@ export async function saveResearchMemo(
   });
 }
 
-export async function deleteResearchMemo(memoId: string): Promise<void> {
-  const state = await fetchState();
-  const memo = state.researchMemos.find((entry) => entry.id === memoId);
-  if (!memo) {
-    return;
-  }
-  await req("DELETE", `/api/rounds/${enc(memo.roundId)}/research-memos/${enc(memoId)}`, {
-    roundId: memo.roundId,
-    write: true,
-  });
+export async function deleteResearchMemo(input: {
+  memoId: string;
+  roundId: string;
+}): Promise<void> {
+  // Worker 側 DELETE は idempotent（存在しない memo でも ok を返す）なので、
+  // roundId 逆引きのためだけの全 state フェッチは行わない。
+  await req(
+    "DELETE",
+    `/api/rounds/${enc(input.roundId)}/research-memos/${enc(input.memoId)}`,
+    {
+      roundId: input.roundId,
+      write: true,
+    },
+  );
 }
 
 export async function saveRoundEvAssumption(
