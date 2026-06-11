@@ -9,10 +9,19 @@ import {
   outcomeToEnum,
   type OutcomeValue,
 } from "@/lib/domain";
-import { featuredWorldTotoRoundNumbers } from "@/lib/featured-world-toto";
-import { listDashboardData, replacePicks } from "@/lib/repository-d1";
+import {
+  buildFeaturedWorldTotoImportPayloads,
+  featuredWorldTotoRoundNumbers,
+} from "@/lib/featured-world-toto";
+import { createFeaturedWorldTotoRoundInD1 } from "@/lib/featured-world-toto-d1";
+import {
+  createUser,
+  getRoundWorkspace,
+  listDashboardData,
+  replacePicks,
+} from "@/lib/repository-d1";
 import { getStoredRoundTokens } from "@/lib/storage/d1ApiAdapter";
-import type { DashboardData, DashboardRoundSummary, Match } from "@/lib/types";
+import type { DashboardData, DashboardRoundSummary, Match, User } from "@/lib/types";
 
 type PicksByRound = Record<string, Record<string, OutcomeValue>>;
 type LoadStatus = "loading" | "ready" | "error";
@@ -73,6 +82,8 @@ export function HaziSharedD1View() {
   const [reloadKey, setReloadKey] = useState(0);
   const [savingRoundId, setSavingRoundId] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [bootstrapping, setBootstrapping] = useState(false);
+  const [bootstrapError, setBootstrapError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -133,6 +144,79 @@ export function HaziSharedD1View() {
       })
       .sort((left, right) => left.number - right.number);
   }, [data]);
+
+  const ensureHaziUser = async (): Promise<User | null> => {
+    const current = await listDashboardData();
+    const existing = current.users.find((user) => user.name.trim().toLowerCase() === "hazi");
+    if (existing) return existing;
+
+    const users = await createUser({ name: "Hazi", role: "admin" });
+    return users.find((user) => user.name.trim().toLowerCase() === "hazi") ?? null;
+  };
+
+  const saveInitialPicks = async (roundId: string, userId: string) => {
+    const workspace = await getRoundWorkspace(roundId);
+    if (!workspace) return;
+
+    await replacePicks({
+      roundId,
+      userId,
+      picks: workspace.round.matches.map((match) => ({
+        matchId: match.id,
+        note: "Hazi初期予想: AI初期線から自動入力。あとで手動調整してください。",
+        pick: outcomeToEnum(aiPickOf(match) ?? "1"),
+        support: { kind: "manual" as const },
+      })),
+    });
+  };
+
+  const handleBootstrapWorldToto = () => {
+    if (!data || bootstrapping) return;
+    setBootstrapping(true);
+    setBootstrapError(null);
+    setSaveError(null);
+    void (async () => {
+      try {
+        const hazi = await ensureHaziUser();
+        if (!hazi) {
+          throw new Error("Haziユーザーを作成できませんでした。");
+        }
+
+        const current = await listDashboardData();
+        const existingRoundsByNumber = new Map(
+          current.rounds.flatMap((round) => {
+            const number = featuredRoundNumberOf(round);
+            return number ? [[number, round.id] as const] : [];
+          }),
+        );
+
+        for (const payload of buildFeaturedWorldTotoImportPayloads()) {
+          const roundId = await createFeaturedWorldTotoRoundInD1({
+            existingRoundId:
+              payload.officialRoundNumber !== null
+                ? existingRoundsByNumber.get(payload.officialRoundNumber) ?? null
+                : null,
+            participantIds: [hazi.id],
+            payload: {
+              ...payload,
+              notes: `${payload.notes}\nHaziレビュー待ちの軽量セットです。候補カード生成はスマホ負荷を避けるため後で必要な時だけ行います。`,
+            },
+          });
+          await saveInitialPicks(roundId, hazi.id);
+        }
+
+        setReloadKey((key) => key + 1);
+      } catch (nextError) {
+        setBootstrapError(
+          nextError instanceof Error
+            ? nextError.message
+            : "Hazi用W杯ラウンドの作成に失敗しました。",
+        );
+      } finally {
+        setBootstrapping(false);
+      }
+    })();
+  };
 
   const handlePick = (round: DashboardRoundSummary, matchId: string, value: OutcomeValue) => {
     if (!haziUser) return;
@@ -207,7 +291,7 @@ export function HaziSharedD1View() {
         </p>
         {!haziUser ? (
           <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-sm font-semibold leading-6 text-amber-800">
-            まだ Hazi ユーザーがいません。先にダッシュボードの「Haziの予想を入れる」で準備してください。
+            まだ Hazi ユーザーがいません。下のボタンで第1634〜1637回と一緒に準備できます。
           </p>
         ) : null}
         {saveError ? (
@@ -215,17 +299,30 @@ export function HaziSharedD1View() {
             {saveError}
           </p>
         ) : null}
+        {bootstrapError ? (
+          <p className="mt-3 rounded-xl bg-rose-50 px-3 py-2 text-sm font-semibold leading-6 text-rose-800">
+            {bootstrapError}
+          </p>
+        ) : null}
       </section>
 
       {rounds.length === 0 ? (
         <section className="rounded-2xl border border-slate-200 bg-white px-4 py-5 text-sm leading-6 text-slate-600">
           共有D1にW杯ラウンド（第1634〜1637回）がまだありません。
-          <div className="mt-3">
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={handleBootstrapWorldToto}
+              disabled={bootstrapping}
+              className="inline-flex rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+            >
+              {bootstrapping ? "作成中…" : "4回分を作ってHaziレビューへ"}
+            </button>
             <Link
               href="/"
-              className="inline-flex rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white"
+              className="inline-flex rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800"
             >
-              ダッシュボードで「Haziの予想を入れる」
+              ダッシュボードを開く
             </Link>
           </div>
         </section>
