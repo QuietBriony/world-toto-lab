@@ -130,9 +130,13 @@ export function DataModeProvider({ children }: { children: ReactNode }) {
 
   const runHealthCheck = useCallback(async () => {
     setIsChecking(true);
-    if (typeof window !== "undefined" && /\/hazi\/?$/.test(window.location.pathname)) {
+    const isHaziRoute = typeof window !== "undefined" && /\/hazi\/?$/.test(window.location.pathname);
+    const d1Base = process.env.NEXT_PUBLIC_D1_API_BASE;
+    const envWantsD1 = process.env.NEXT_PUBLIC_STORAGE_MODE === "cloudflare_d1";
+    const haziUsesSharedD1 = isHaziRoute && envWantsD1 && Boolean(d1Base);
+
+    if (isHaziRoute && !haziUsesSharedD1) {
       setRuntimeDataMode("local");
-      setStoredDataModePreference("local");
       setPreference("local");
       setModeState("local");
       setIsChecking(false);
@@ -140,21 +144,21 @@ export function DataModeProvider({ children }: { children: ReactNode }) {
     }
 
     const storedPreference = getStoredDataModePreference();
-    setPreference(storedPreference);
+    const effectivePreference = haziUsesSharedD1 ? "cloudflare_d1" : storedPreference;
+    setPreference(effectivePreference);
 
-    if (storedPreference === "demo" || storedPreference === "local") {
-      setRuntimeDataMode(storedPreference);
-      setModeState(storedPreference);
+    if (effectivePreference === "demo" || effectivePreference === "local") {
+      setRuntimeDataMode(effectivePreference);
+      setModeState(effectivePreference);
       setIsChecking(false);
       return;
     }
 
     // Cloudflare D1: NEXT_PUBLIC_D1_API_BASE が設定され、env または preference が
     // cloudflare_d1 を望むとき。接続できれば D1、落ちていれば local で継続。
-    const d1Base = process.env.NEXT_PUBLIC_D1_API_BASE;
     const wantsD1 =
-      storedPreference === "cloudflare_d1" ||
-      (storedPreference === "auto" &&
+      effectivePreference === "cloudflare_d1" ||
+      (effectivePreference === "auto" &&
         process.env.NEXT_PUBLIC_STORAGE_MODE === "cloudflare_d1");
     if (wantsD1 && d1Base) {
       const d1Health = await d1ApiAdapter.health();
