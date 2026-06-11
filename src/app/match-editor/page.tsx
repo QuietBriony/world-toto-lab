@@ -248,6 +248,7 @@ function MatchEditorPageContent() {
       await updateMatch({
         roundId: data.round.id,
         matchId: match.id,
+        matchNo: match.matchNo,
         homeTeam: stringValue(formData, "homeTeam") || "仮ホーム",
         awayTeam: stringValue(formData, "awayTeam") || "仮アウェイ",
         kickoffTime: (() => {
@@ -373,12 +374,15 @@ function MatchEditorPageContent() {
   };
 
   const handleDeleteMemo = async (memoId: string) => {
+    if (!data) {
+      return;
+    }
     if (!window.confirm("この Research Memo を削除しますか？")) {
       return;
     }
 
     try {
-      await deleteResearchMemo(memoId);
+      await deleteResearchMemo({ memoId, roundId: data.round.id });
       setSaveMessage({
         scope: currentFormScope,
         message: "Research Memo を削除しました。",
