@@ -652,8 +652,12 @@ export async function saveResults(input: {
   results: Array<{
     actualResult: Outcome | null;
     matchId: string;
+    matchNo: number;
   }>;
 }) {
+  if (isCloudflareD1Mode()) {
+    return d1Repository.saveResults(input);
+  }
   return localRepository.localSaveResults(input);
 }
 

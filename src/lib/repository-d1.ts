@@ -280,6 +280,33 @@ export async function replaceCandidateTickets(input: {
   });
 }
 
+export async function saveResults(input: {
+  roundId: string;
+  status: string;
+  results: Array<{ actualResult: string | null; matchId: string; matchNo: number }>;
+}): Promise<void> {
+  // matches upsert は matchNo キーの部分マージ（Worker 側が既存フィールドを保持するため
+  // actualResult だけ送ればよい）。round status の PATCH も部分マージ。相互独立なので並列。
+  await Promise.all([
+    req("POST", `/api/rounds/${enc(input.roundId)}/matches`, {
+      body: {
+        matches: input.results.map((row) => ({
+          actualResult: row.actualResult,
+          id: row.matchId,
+          matchNo: row.matchNo,
+        })),
+      },
+      roundId: input.roundId,
+      write: true,
+    }),
+    req("PATCH", `/api/rounds/${enc(input.roundId)}`, {
+      body: { status: input.status },
+      roundId: input.roundId,
+      write: true,
+    }),
+  ]);
+}
+
 export async function upsertCandidateVote(input: {
   roundId: string;
   candidateTicketId: string;
