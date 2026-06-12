@@ -1044,37 +1044,46 @@ export async function localBulkUpdateRoundMatches(input: {
   writeLocalState(state);
 }
 
-export async function localEstimateRoundAiModel(input: { overwriteExisting?: boolean; roundId: string }) {
-  assertWritable();
-  const state = readLocalState();
-  const round = state.rounds.find((entry) => entry.id === input.roundId) ?? null;
-  let updatedCount = 0;
+/** AI 推定の純粋ロジック（local / D1 共用）。対象ラウンドの matches から
+ *  モデル確率の更新行を作る。既存モデル確率のある試合は overwriteExisting
+ *  でない限りスキップする。 */
+export function estimateModelUpdatesForMatches(input: {
+  matches: Match[];
+  overwriteExisting: boolean;
+  // ドメイン型 Pick が TS ユーティリティ Pick を隠すため、必要フィールドだけ構造的に指定。
+  round: { competitionType: Round["competitionType"]; dataProfile: Round["dataProfile"] } | null;
+}) {
+  const updates: Array<{
+    id: string;
+    matchNo: number;
+    modelProb0: number;
+    modelProb1: number;
+    modelProb2: number;
+    recommendedOutcomes: string;
+  }> = [];
   let skippedCount = 0;
-  state.matches = state.matches.map((match) => {
-    if (match.roundId !== input.roundId) {
-      return match;
-    }
 
+  for (const match of input.matches) {
     const hasExistingModel = match.modelProb1 !== null || match.modelProb0 !== null || match.modelProb2 !== null;
     if (hasExistingModel && !input.overwriteExisting) {
       skippedCount += 1;
-      return match;
+      continue;
     }
 
     const estimated = calculateModelProbabilities({
       ...match,
-      competitionType: round?.competitionType ?? "world_cup",
-      dataProfile: round?.dataProfile ?? "manual_light",
+      competitionType: input.round?.competitionType ?? "world_cup",
+      dataProfile: input.round?.dataProfile ?? "manual_light",
     });
 
     if (!estimated) {
       skippedCount += 1;
-      return match;
+      continue;
     }
 
-    updatedCount += 1;
-    return {
-      ...match,
+    updates.push({
+      id: match.id,
+      matchNo: match.matchNo,
       modelProb0: estimated.modelProb0,
       modelProb1: estimated.modelProb1,
       modelProb2: estimated.modelProb2,
@@ -1084,12 +1093,40 @@ export async function localEstimateRoundAiModel(input: { overwriteExisting?: boo
         .slice(0, 2)
         .map((entry) => (entry.index === 0 ? "1" : entry.index === 1 ? "0" : "2"))
         .join(","),
+    });
+  }
+
+  return { skippedCount, updates };
+}
+
+export async function localEstimateRoundAiModel(input: { overwriteExisting?: boolean; roundId: string }) {
+  assertWritable();
+  const state = readLocalState();
+  const round = state.rounds.find((entry) => entry.id === input.roundId) ?? null;
+  const { skippedCount, updates } = estimateModelUpdatesForMatches({
+    matches: state.matches.filter((match) => match.roundId === input.roundId),
+    overwriteExisting: input.overwriteExisting ?? false,
+    round,
+  });
+  const updateByMatchId = new Map(updates.map((entry) => [entry.id, entry]));
+  state.matches = state.matches.map((match) => {
+    const update = updateByMatchId.get(match.id);
+    if (!update) {
+      return match;
+    }
+
+    return {
+      ...match,
+      modelProb0: update.modelProb0,
+      modelProb1: update.modelProb1,
+      modelProb2: update.modelProb2,
+      recommendedOutcomes: update.recommendedOutcomes,
       updatedAt: nowIso(),
     };
   });
   state.generatedTickets = state.generatedTickets.filter((ticket) => ticket.roundId !== input.roundId);
   writeLocalState(state);
-  return { skippedCount, updatedCount };
+  return { skippedCount, updatedCount: updates.length };
 }
 
 export async function localReplacePicks(input: {
