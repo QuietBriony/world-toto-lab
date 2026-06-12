@@ -1,9 +1,11 @@
 /**
  * featured W杯（第1634〜1637回）を「共有D1」に作るためのヘルパー。
  *
- * ローカル専用の `saveTotoOfficialRoundImport` + `estimateRoundAiModel` は D1 未配線なので、
+ * ローカル専用の `saveTotoOfficialRoundImport` は D1 未配線なので、
  * cloudflare_d1 では配線済みの facade（`createRound` / `bulkUpdateRoundMatches`）と
  * 純粋関数 `calculateModelProbabilities` を使って、ローカルと同じ内容を共有D1へ作成する。
+ * （`estimateRoundAiModel` 自体は D1 配線済みだが、ここは作成と同時に全フィールドを
+ *   埋めるため、placeholder ベースで一括構築する。）
  *
  * - 試合は `placeholderMatches` で全フィールドを埋め、公式票/チーム/kickoff を上書き。
  * - モデル確率は local の AI 推定（localEstimateRoundAiModel）と同じ呼び方で算出。

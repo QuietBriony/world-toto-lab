@@ -11,6 +11,7 @@
  * repository 側で local fallback されるため、ここには実装しない。
  */
 import {
+  estimateModelUpdatesForMatches,
   summaryFromWorkspace,
   workspaceFromState,
   type LocalState,
@@ -278,6 +279,31 @@ export async function replaceCandidateTickets(input: {
     roundId: input.roundId,
     write: true,
   });
+}
+
+export async function estimateRoundAiModel(input: {
+  overwriteExisting?: boolean;
+  roundId: string;
+}): Promise<{ skippedCount: number; updatedCount: number }> {
+  // 推定ロジックは local と共用の純粋関数。round-scoped state を読み、
+  // 更新行だけを matches へ部分 upsert する（Worker 側マージで他フィールド保持）。
+  const state = await fetchState(input.roundId);
+  const round = state.rounds.find((entry) => entry.id === input.roundId) ?? null;
+  if (!round) {
+    throw new Error("AI推定の対象ラウンドが見つかりません。");
+  }
+
+  const { skippedCount, updates } = estimateModelUpdatesForMatches({
+    matches: state.matches.filter((match) => match.roundId === input.roundId),
+    overwriteExisting: input.overwriteExisting ?? false,
+    round,
+  });
+
+  if (updates.length > 0) {
+    await bulkUpdateRoundMatches({ roundId: input.roundId, rows: updates });
+  }
+
+  return { skippedCount, updatedCount: updates.length };
 }
 
 export async function saveResults(input: {

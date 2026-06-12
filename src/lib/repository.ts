@@ -314,6 +314,9 @@ export async function estimateRoundAiModel(input: {
   overwriteExisting?: boolean;
   roundId: string;
 }) {
+  if (isCloudflareD1Mode()) {
+    return d1Repository.estimateRoundAiModel(input);
+  }
   return localRepository.localEstimateRoundAiModel(input);
 }
 
