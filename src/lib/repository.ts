@@ -137,6 +137,13 @@ export type UpsertTotoOfficialRoundLibraryFromSyncResult = {
 };
 
 export async function deleteRound(roundId: string) {
+  if (isCloudflareD1Mode()) {
+    // 共有D1にラウンド削除 API は提供しない（共有データ保護）。local 実装へ落とすと
+    // 共有ラウンドはローカル state に無く silent no-op になるため、明示エラーにする。
+    throw new Error(
+      "共有保存（Cloudflare D1）のラウンドは削除できません（共有データ保護のため削除APIを提供していません）。",
+    );
+  }
   return localRepository.localDeleteRound(roundId);
 }
 
