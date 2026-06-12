@@ -2,7 +2,15 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 
 import {
   CandidateCard,
@@ -57,8 +65,10 @@ import {
   probabilityReadinessDescription,
   roundEstimateStatusBanner,
 } from "@/lib/round-mode";
+import { getStoredRoundTokens } from "@/lib/storage/d1ApiAdapter";
 import { isWinnerLikeRound } from "@/lib/winner-value";
 import { resolveWorldTotoProductLabel } from "@/lib/world-toto";
+import { useDataMode } from "@/components/app/data-mode-provider";
 import { useRoundWorkspace } from "@/lib/use-app-data";
 import type { CandidateVoteValue, RoundSource } from "@/lib/types";
 
@@ -85,6 +95,10 @@ const groupPlayCallTone: Record<GroupPlayCall, "amber" | "rose" | "teal"> = {
 };
 
 const groupPlayOutcomeOrder = ["1", "0", "2"] as const;
+
+// localStorage のラウンドトークンは client 専用の外部値。ページ滞在中に変わる導線は
+// 無いので購読は no-op（useSyncExternalStore の server snapshot は false = 書き込み不可扱い）。
+const roundTokenSubscribe = () => () => {};
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "不明なエラーです。";
@@ -256,10 +270,29 @@ function PickRoomPageContent() {
   const roundId = getSingleSearchParam(searchParams.get("round"));
   const requestedUserId = getSingleSearchParam(searchParams.get("user"));
   const { data, error, loading, refresh } = useRoundWorkspace(roundId);
+  const dataMode = useDataMode();
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const autoRefreshIdentityRef = useRef<string | null>(null);
+
+  // 共有D1の候補カード生成は editToken を持つ端末だけができる（Worker が 403 を返す）。
+  // 閲覧専用の端末では自動生成を試みず、エラーの代わりに案内を出すための判定。
+  const getCanWriteCandidates = useCallback(() => {
+    if (dataMode.mode !== "cloudflare_d1") {
+      return true;
+    }
+    if (!roundId) {
+      return false;
+    }
+    const tokens = getStoredRoundTokens(roundId);
+    return Boolean(tokens?.editToken || tokens?.adminToken);
+  }, [dataMode.mode, roundId]);
+  const canWriteCandidates = useSyncExternalStore(
+    roundTokenSubscribe,
+    getCanWriteCandidates,
+    () => false,
+  );
 
   const activeUser =
     data?.users.find((user) => user.id === requestedUserId) ??
@@ -332,7 +365,7 @@ function PickRoomPageContent() {
       : null;
 
   useEffect(() => {
-    if (!data || !roundId || !dataQualitySummary || !candidateIdentity) {
+    if (!data || !roundId || !dataQualitySummary || !candidateIdentity || !canWriteCandidates) {
       return;
     }
 
@@ -366,7 +399,7 @@ function PickRoomPageContent() {
         setBusyKey(null);
       }
     })();
-  }, [candidateIdentity, data, dataQualitySummary, refresh, roundId]);
+  }, [candidateIdentity, canWriteCandidates, data, dataQualitySummary, refresh, roundId]);
 
   if (!roundId) {
     return <RoundRequiredNotice />;
@@ -608,28 +641,37 @@ function PickRoomPageContent() {
                 {evModeLabel}
               </Badge>
             </div>
-            <p className="mt-3 text-sm leading-6 text-slate-600">
-              まだ候補カードがありません。試合データが入っていれば、この場で王道・公式人気・人力推し・Proxy候補を再生成できます。
-              モデル確率や公式人気が足りない場合は、Data Quality Card の不足を見てから試合編集へ進んでください。
-            </p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => void handleRefreshCandidates()}
-                disabled={busyKey === "refresh"}
-                className={buttonClassName}
-              >
-                {busyKey === "refresh" ? "更新中..." : "候補を更新"}
-              </button>
-              <Link
-                href={buildRoundHref(appRoute.matchEditor, data.round.id, {
-                  match: data.round.matches[0]?.id,
-                })}
-                className={secondaryButtonClassName}
-              >
-                試合編集へ
-              </Link>
-            </div>
+            {canWriteCandidates ? (
+              <>
+                <p className="mt-3 text-sm leading-6 text-slate-600">
+                  まだ候補カードがありません。試合データが入っていれば、この場で王道・公式人気・人力推し・Proxy候補を再生成できます。
+                  モデル確率や公式人気が足りない場合は、Data Quality Card の不足を見てから試合編集へ進んでください。
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => void handleRefreshCandidates()}
+                    disabled={busyKey === "refresh"}
+                    className={buttonClassName}
+                  >
+                    {busyKey === "refresh" ? "更新中..." : "候補を更新"}
+                  </button>
+                  <Link
+                    href={buildRoundHref(appRoute.matchEditor, data.round.id, {
+                      match: data.round.matches[0]?.id,
+                    })}
+                    className={secondaryButtonClassName}
+                  >
+                    試合編集へ
+                  </Link>
+                </div>
+              </>
+            ) : (
+              <p className="mt-3 text-sm leading-6 text-slate-600">
+                まだ候補カードがありません。この端末は閲覧専用のため、ここでは生成できません。
+                ラウンド作成者（または編集リンクで参加した人）がこのページを開くと自動生成され、みんなに共有されます。
+              </p>
+            )}
           </div>
         ) : (
           <div className="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory">
