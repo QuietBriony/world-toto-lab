@@ -2275,17 +2275,20 @@ export default function DashboardPage() {
                         >
                           ラウンド詳細
                         </Link>
-                        <button
-                          type="button"
-                          className={cx(
-                            secondaryButtonClassName,
-                            "border-rose-200 text-rose-700 hover:border-rose-300 hover:bg-rose-50",
-                          )}
-                          disabled={removingRoundId !== null}
-                          onClick={() => void handleDeleteRound(round.id, round.title)}
-                        >
-                          {removingRoundId === round.id ? "削除中..." : "削除"}
-                        </button>
+                        {dataMode.mode !== "cloudflare_d1" ? (
+                          // 共有D1に削除APIは無い（共有データ保護）ため、共有モードでは出さない。
+                          <button
+                            type="button"
+                            className={cx(
+                              secondaryButtonClassName,
+                              "border-rose-200 text-rose-700 hover:border-rose-300 hover:bg-rose-50",
+                            )}
+                            disabled={removingRoundId !== null}
+                            onClick={() => void handleDeleteRound(round.id, round.title)}
+                          >
+                            {removingRoundId === round.id ? "削除中..." : "削除"}
+                          </button>
+                        ) : null}
                       </div>
                     </div>
 
