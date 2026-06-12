@@ -52,6 +52,15 @@ function useAsyncResource<T>(
     dataRef.current = data;
   }, [data]);
 
+  // loader はインラインの filters オブジェクト等を閉じ込めて毎レンダ識別が変わりがち。
+  // identity を deps に入れると「render → 新 loader → 新 refresh → effect 発火 →
+  // setState → render → …」の無限再フェッチループになる（dashboard が固まる実害）。
+  // ref 経由で常に最新の loader を呼び、再フェッチ条件は dependencyKey（内容比較）に集約する。
+  const loaderRef = useRef(loader);
+  useEffect(() => {
+    loaderRef.current = loader;
+  });
+
   const refresh = useCallback(async () => {
     if (!enabled) {
       setData(null);
@@ -66,7 +75,7 @@ function useAsyncResource<T>(
     }
 
     try {
-      const nextData = await loader();
+      const nextData = await loaderRef.current();
       setData(nextData);
       setError(null);
     } catch (nextError) {
@@ -78,7 +87,7 @@ function useAsyncResource<T>(
     } finally {
       setLoading(false);
     }
-  }, [enabled, loader]);
+  }, [enabled]);
 
   const dependencyKey = JSON.stringify(deps);
 
