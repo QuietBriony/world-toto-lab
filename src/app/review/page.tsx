@@ -157,6 +157,7 @@ function ReviewPageContent() {
         status: parseRoundStatus(stringValue(formData, "status")),
         results: data.round.matches.map((match) => ({
           matchId: match.id,
+          matchNo: match.matchNo,
           actualResult: parseOutcome(stringValue(formData, `actualResult_${match.id}`)),
         })),
       });
