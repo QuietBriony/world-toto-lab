@@ -383,6 +383,15 @@ export async function replaceGeneratedTickets(input: {
     contrarianScore: number;
   }>;
 }) {
+  if (isCloudflareD1Mode()) {
+    // generatedTickets は共有D1に保存先が無い（Worker の state は常に [] を返す）。
+    // local 実装へ落とすと localStorage に書かれて共有画面には反映されない
+    // silent no-op になるため、明示エラーにする。共有運用の候補比較は
+    // pick-room の「候補カード」を使う（UI 側でも D1 では生成ボタンを抑止）。
+    throw new Error(
+      "「注目配分ジェネレーター」は端末ローカル専用のツールです（共有保存には未対応）。みんなで共有する候補は「候補カード」をご利用ください。",
+    );
+  }
   return localRepository.localReplaceGeneratedTickets(input);
 }
 
