@@ -347,6 +347,10 @@ async function handleUpsertMatches(
     const base = existing ? entityRowToDomain(existing) : { matchNo, roundId };
     // incoming が全フィールドを持つ場合（updateMatch）は全て反映。
     // 一部だけ（一括編集）の場合は base に上書きマージ。
+    // updatedAt は incoming に含まれないため base の古い値を引き継いでしまう。
+    // 書き込みのたびに必ず前進させる（候補カードの staleness 判定が
+    // match.updatedAt を参照するため。estimateRoundAiModel/saveResults の
+    // 部分 upsert 後に候補が古いまま据え置かれるのを防ぐ）。
     const merged = {
       ...base,
       ...incoming,
@@ -355,6 +359,7 @@ async function handleUpsertMatches(
       homeTeam: incoming.homeTeam ?? base.homeTeam ?? "",
       awayTeam: incoming.awayTeam ?? base.awayTeam ?? "",
       id: existing?.id ?? newId(),
+      updatedAt: nowIso(),
     };
 
     await insertDataRow(env, "matches", roundId, merged, {
