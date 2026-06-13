@@ -11,6 +11,7 @@
  * repository 側で local fallback されるため、ここには実装しない。
  */
 import {
+  buildWorkspaceStateIndex,
   estimateModelUpdatesForMatches,
   summaryFromWorkspace,
   workspaceFromState,
@@ -134,11 +135,13 @@ export async function getRoundWorkspace(
 
 export async function listDashboardData(): Promise<DashboardData> {
   const state = await fetchState();
+  // 全ラウンドを組み立てるので索引を1回だけ構築して各ラウンドへ渡す（O(R²)→O(総行数)）。
+  const index = buildWorkspaceStateIndex(state);
   const rounds = state.rounds
     .slice()
     .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
     .flatMap((round) => {
-      const workspace = workspaceFromState(state, round.id);
+      const workspace = workspaceFromState(state, round.id, index);
       return workspace ? [summaryFromWorkspace(workspace)] : [];
     });
 

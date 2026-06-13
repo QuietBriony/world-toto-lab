@@ -431,29 +431,108 @@ function resolveUsersForRound(state: LocalState, round: Round) {
  * 配列状態（LocalState）から RoundWorkspace を組み立てる純粋関数。
  * local / D1 の両方で再利用する（consensus / readiness / 関連付けを含む）。
  */
-export function workspaceFromState(state: LocalState, roundId: string): RoundWorkspace | null {
+type RoundScopedRow = { roundId: string };
+
+function groupByRound<T extends RoundScopedRow>(rows: T[]): Map<string, T[]> {
+  const map = new Map<string, T[]>();
+  for (const row of rows) {
+    const bucket = map.get(row.roundId);
+    if (bucket) {
+      bucket.push(row);
+    } else {
+      map.set(row.roundId, [row]);
+    }
+  }
+  return map;
+}
+
+function firstByRound<T extends RoundScopedRow>(rows: T[]): Map<string, T> {
+  const map = new Map<string, T>();
+  for (const row of rows) {
+    if (!map.has(row.roundId)) {
+      map.set(row.roundId, row);
+    }
+  }
+  return map;
+}
+
+/**
+ * 複数ラウンドを組み立てる listDashboardData 用の事前グルーピング索引。
+ * 各 round-scoped 配列を roundId キーの Map に1パス（O(総行数)）で振り分ける。
+ * これを workspaceFromState に渡すと、各ラウンドの組み立てが全配列の線形 .filter
+ * （ラウンド数 × 全行 = O(R²)）ではなく Map 取得（O(1)）になり、全体 O(総行数) に落ちる。
+ * 単一ラウンドの getRoundWorkspace では索引を渡さず、従来どおり filter する。
+ */
+export type WorkspaceStateIndex = {
+  matchesByRound: Map<string, LocalState["matches"]>;
+  picksByRound: Map<string, LocalState["picks"]>;
+  scoutReportsByRound: Map<string, LocalState["scoutReports"]>;
+  researchMemosByRound: Map<string, LocalState["researchMemos"]>;
+  candidateTicketsByRound: Map<string, LocalState["candidateTickets"]>;
+  candidateVotesByRound: Map<string, LocalState["candidateVotes"]>;
+  generatedTicketsByRound: Map<string, LocalState["generatedTickets"]>;
+  reviewNotesByRound: Map<string, LocalState["reviewNotes"]>;
+  totoOfficialMatchesByRound: Map<string, LocalState["totoOfficialMatches"]>;
+  evByRound: Map<string, LocalState["roundEvAssumptions"][number]>;
+  totoOfficialRoundByRound: Map<string, LocalState["totoOfficialRounds"][number]>;
+};
+
+export function buildWorkspaceStateIndex(state: LocalState): WorkspaceStateIndex {
+  return {
+    matchesByRound: groupByRound(state.matches),
+    picksByRound: groupByRound(state.picks),
+    scoutReportsByRound: groupByRound(state.scoutReports),
+    researchMemosByRound: groupByRound(state.researchMemos),
+    candidateTicketsByRound: groupByRound(state.candidateTickets),
+    candidateVotesByRound: groupByRound(state.candidateVotes),
+    generatedTicketsByRound: groupByRound(state.generatedTickets),
+    reviewNotesByRound: groupByRound(state.reviewNotes),
+    totoOfficialMatchesByRound: groupByRound(state.totoOfficialMatches),
+    evByRound: firstByRound(state.roundEvAssumptions),
+    totoOfficialRoundByRound: firstByRound(state.totoOfficialRounds),
+  };
+}
+
+export function workspaceFromState(
+  state: LocalState,
+  roundId: string,
+  index?: WorkspaceStateIndex,
+): RoundWorkspace | null {
   const round = state.rounds.find((entry) => entry.id === roundId) ?? null;
   if (!round) {
     return null;
   }
 
+  // 索引があればその round の小さなバケット（複製）を返し、無ければ全配列を filter する。
+  // どちらも新しい配列を返すので後続の破壊的 sort は索引バケットを汚さない。
+  // 索引なし経路（単一ラウンドの getRoundWorkspace）は従来と完全一致。
+  const roundRows = <T extends RoundScopedRow>(
+    all: T[],
+    byRound: Map<string, T[]> | undefined,
+  ): T[] =>
+    byRound
+      ? (byRound.get(roundId) ?? []).slice()
+      : all.filter((row) => row.roundId === roundId);
+
   const users = resolveUsersForRound(state, round);
   const userIds = new Set(users.map((user) => user.id));
-  const matches = state.matches
-    .filter((match) => match.roundId === roundId)
-    .sort((left, right) => left.matchNo - right.matchNo);
+  const matches = roundRows(state.matches, index?.matchesByRound).sort(
+    (left, right) => left.matchNo - right.matchNo,
+  );
   const picks = attachPickRelations(
-    state.picks.filter((pick) => pick.roundId === roundId && userIds.has(pick.userId)),
+    roundRows(state.picks, index?.picksByRound).filter((pick) => userIds.has(pick.userId)),
     users,
   );
   const scoutReports = attachScoutRelations(
-    state.scoutReports.filter((report) => report.roundId === roundId && userIds.has(report.userId)),
+    roundRows(state.scoutReports, index?.scoutReportsByRound).filter((report) =>
+      userIds.has(report.userId),
+    ),
     users,
     matches,
   );
   const consensusMatches = updateConsensusFields(matches, scoutReports, users);
   const researchMemos = attachMemoRelations(
-    state.researchMemos.filter((memo) => memo.roundId === roundId),
+    roundRows(state.researchMemos, index?.researchMemosByRound),
     users,
     consensusMatches,
   ).sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
@@ -469,28 +548,35 @@ export function workspaceFromState(state: LocalState, roundId: string): RoundWor
       ...round,
       probabilityReadiness:
         inferredProbabilityReadiness ?? inferRoundProbabilityReadiness(consensusMatches),
-      candidateTickets: state.candidateTickets.filter((ticket) => ticket.roundId === roundId),
+      candidateTickets: roundRows(state.candidateTickets, index?.candidateTicketsByRound),
       candidateVotes: attachVoteRelations(
-        state.candidateVotes.filter((vote) => vote.roundId === roundId && userIds.has(vote.userId)),
+        roundRows(state.candidateVotes, index?.candidateVotesByRound).filter((vote) =>
+          userIds.has(vote.userId),
+        ),
         users,
       ),
-      evAssumption:
-        state.roundEvAssumptions.find((assumption) => assumption.roundId === roundId) ?? null,
-      generatedTickets: state.generatedTickets.filter((ticket) => ticket.roundId === roundId),
+      evAssumption: index
+        ? index.evByRound.get(roundId) ?? null
+        : state.roundEvAssumptions.find((assumption) => assumption.roundId === roundId) ?? null,
+      generatedTickets: roundRows(state.generatedTickets, index?.generatedTicketsByRound),
       matches: consensusMatches,
       picks,
       researchMemos,
       reviewNotes: attachReviewRelations(
-        state.reviewNotes.filter(
-          (note) => note.roundId === roundId && (!note.userId || userIds.has(note.userId)),
+        roundRows(state.reviewNotes, index?.reviewNotesByRound).filter(
+          (note) => !note.userId || userIds.has(note.userId),
         ),
         users,
         consensusMatches,
       ).sort((left, right) => right.createdAt.localeCompare(left.createdAt)),
       scoutReports,
-      totoOfficialMatches: state.totoOfficialMatches.filter((match) => match.roundId === roundId),
-      totoOfficialRound:
-        state.totoOfficialRounds.find((entry) => entry.roundId === roundId) ?? null,
+      totoOfficialMatches: roundRows(
+        state.totoOfficialMatches,
+        index?.totoOfficialMatchesByRound,
+      ),
+      totoOfficialRound: index
+        ? index.totoOfficialRoundByRound.get(roundId) ?? null
+        : state.totoOfficialRounds.find((entry) => entry.roundId === roundId) ?? null,
     },
     users,
   };
@@ -696,11 +782,13 @@ function ensureLocalUsers(state: LocalState) {
 
 export async function localListDashboardData(): Promise<DashboardData> {
   const state = readLocalState();
+  // 全ラウンドを組み立てるので索引を1回だけ構築して各ラウンドへ渡す（O(R²)→O(総行数)）。
+  const index = buildWorkspaceStateIndex(state);
   const rounds = state.rounds
     .slice()
     .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
     .flatMap((round) => {
-      const workspace = workspaceFromState(state, round.id);
+      const workspace = workspaceFromState(state, round.id, index);
       return workspace ? [summaryFromWorkspace(workspace)] : [];
     });
 

@@ -7,6 +7,7 @@ import {
   localGetRoundWorkspace,
   localImportRoundBundle,
   localListDashboardData,
+  localReplacePicks,
 } from "@/lib/local-repository";
 
 class MemoryStorage implements Storage {
@@ -115,6 +116,73 @@ describe("local repository", () => {
     expect(dashboard.rounds.map((round) => round.id).sort()).toEqual(
       [roundId, copiedRoundId].sort(),
     );
+  });
+
+  it("assembles dashboard rounds via the shared index identically to per-round filtering", async () => {
+    const r1 = await localCreateRound({
+      budgetYen: null,
+      matchCount: 2,
+      notes: null,
+      productType: "mini_toto",
+      requiredMatchCount: 2,
+      status: "analyzing",
+      title: "Round A",
+    });
+    const r2 = await localCreateRound({
+      budgetYen: null,
+      matchCount: 3,
+      notes: null,
+      productType: "mini_toto",
+      requiredMatchCount: 3,
+      status: "analyzing",
+      title: "Round B",
+    });
+
+    const wsA = await localGetRoundWorkspace(r1);
+    const wsB = await localGetRoundWorkspace(r2);
+    const userId = wsA!.users[0]!.id;
+
+    // 2ラウンドに pick を入れて picks 配列を round 跨ぎで interleave させる。
+    await localReplacePicks({
+      roundId: r1,
+      userId,
+      picks: wsA!.round.matches.map((match) => ({
+        matchId: match.id,
+        note: null,
+        pick: "ONE" as const,
+        support: { kind: "manual" as const },
+      })),
+    });
+    await localReplacePicks({
+      roundId: r2,
+      userId,
+      picks: wsB!.round.matches.map((match) => ({
+        matchId: match.id,
+        note: null,
+        pick: "TWO" as const,
+        support: { kind: "manual" as const },
+      })),
+    });
+
+    // dashboard は索引（buildWorkspaceStateIndex）経路で全ラウンドを組み立てる。
+    const dashboard = await localListDashboardData();
+    const summaryById = new Map(dashboard.rounds.map((round) => [round.id, round]));
+
+    // 索引経路の各ラウンドが、索引なし（per-round filter）の workspace と完全一致すること。
+    for (const [roundId, expectedMatchCount] of [
+      [r1, 2],
+      [r2, 3],
+    ] as const) {
+      const filtered = await localGetRoundWorkspace(roundId);
+      const indexed = summaryById.get(roundId);
+      expect(indexed).toBeTruthy();
+      expect(filtered).not.toBeNull();
+      expect(indexed!.matchCount).toBe(expectedMatchCount);
+      expect(indexed!.pickCount).toBe(expectedMatchCount);
+      // matches / picks は索引経路と filter 経路で deep-equal（同じ要素・同じ並び）。
+      expect(indexed!.matches).toEqual(filtered!.round.matches);
+      expect(indexed!.picks).toEqual(filtered!.round.picks);
+    }
   });
 
   it("does not mutate localStorage while demo mode is active", async () => {
