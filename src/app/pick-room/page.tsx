@@ -506,7 +506,9 @@ function PickRoomPageContent() {
     setActionMessage(null);
 
     try {
-      await refreshCandidateTicketsForRound({ roundId: data.round.id });
+      // 読み込み済み workspace を渡し、生成前の全状態再フェッチ（GET /api/state?round=）を省く。
+      // 自動更新パスと同形。直後の refresh() で生成後の候補カードを反映する。
+      await refreshCandidateTicketsForRound({ roundId: data.round.id, workspace: data });
       await refresh();
       setActionMessage("候補カードを最新データから更新しました。");
     } catch (nextError) {
