@@ -573,33 +573,40 @@ export default function DashboardPage() {
           100,
       )
     : null;
-  const upcomingMatches = data
-    ? inventoryRounds
-        .flatMap((round) =>
-          round.matches
-            .filter((match) => {
-              if (!match.kickoffTime) {
-                return false;
-              }
+  // 全ラウンド試合の flatMap + Date parse + sort は毎レンダ走ると無駄
+  // （controlled 入力の setState ごとに再計算）。data / inventoryRounds が
+  // 変わったときだけ再計算する（直後の memberUsageMap 等と同じ deps）。
+  const upcomingMatches = useMemo(
+    () =>
+      data
+        ? inventoryRounds
+            .flatMap((round) =>
+              round.matches
+                .filter((match) => {
+                  if (!match.kickoffTime) {
+                    return false;
+                  }
 
-              return new Date(match.kickoffTime).getTime() >= Date.now();
+                  return new Date(match.kickoffTime).getTime() >= Date.now();
+                })
+                .map((match) => ({
+                  round,
+                  match,
+                })),
+            )
+            .sort((left, right) => {
+              const leftTime = left.match.kickoffTime
+                ? new Date(left.match.kickoffTime).getTime()
+                : Number.POSITIVE_INFINITY;
+              const rightTime = right.match.kickoffTime
+                ? new Date(right.match.kickoffTime).getTime()
+                : Number.POSITIVE_INFINITY;
+              return leftTime - rightTime;
             })
-            .map((match) => ({
-              round,
-              match,
-            })),
-        )
-        .sort((left, right) => {
-          const leftTime = left.match.kickoffTime
-            ? new Date(left.match.kickoffTime).getTime()
-            : Number.POSITIVE_INFINITY;
-          const rightTime = right.match.kickoffTime
-            ? new Date(right.match.kickoffTime).getTime()
-            : Number.POSITIVE_INFINITY;
-          return leftTime - rightTime;
-        })
-        .slice(0, 8)
-    : [];
+            .slice(0, 8)
+        : [],
+    [data, inventoryRounds],
+  );
   const memberUsageMap = useMemo(() => {
     if (!data) {
       return new Map();
