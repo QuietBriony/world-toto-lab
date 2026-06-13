@@ -53,6 +53,11 @@ import {
   roundEstimateStatusBanner,
 } from "@/lib/round-mode";
 import { useRoundWorkspace } from "@/lib/use-app-data";
+import {
+  READ_ONLY_ROUND_MESSAGE,
+  useCanEditRound,
+} from "@/lib/use-round-edit-access";
+import { useDataMode } from "@/components/app/data-mode-provider";
 import { resolveWorldTotoProductLabel } from "@/lib/world-toto";
 import type { CandidateVoteValue } from "@/lib/types";
 
@@ -86,6 +91,10 @@ function PlayPageContent() {
   const roundId = getSingleSearchParam(searchParams.get("round"));
   const requestedUserId = getSingleSearchParam(searchParams.get("user"));
   const { data, error, loading, refresh } = useRoundWorkspace(roundId);
+  const dataMode = useDataMode();
+  // 共有D1で投票・コメント・予想保存できるのは editToken を持つ端末だけ。
+  // 閲覧専用端末では書き込みを抑止して案内する（local/demo は常に true）。
+  const canEdit = useCanEditRound(roundId);
   const [draftValues, setDraftValues] = useState<Record<string, PlayDraftValue>>({});
   const [draftIdentity, setDraftIdentity] = useState("empty");
   const [saving, setSaving] = useState(false);
@@ -252,6 +261,10 @@ function PlayPageContent() {
 
   const handleSavePicks = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!canEdit) {
+      setActionError(READ_ONLY_ROUND_MESSAGE);
+      return;
+    }
     setSaving(true);
     setActionError(null);
     setActionMessage(null);
@@ -281,6 +294,10 @@ function PlayPageContent() {
   };
 
   const handleVote = async (candidateId: string, vote: CandidateVoteValue) => {
+    if (!canEdit) {
+      setActionError(READ_ONLY_ROUND_MESSAGE);
+      return;
+    }
     setBusyKey(`${candidateId}:${vote}`);
     setActionError(null);
     setActionMessage(null);
@@ -306,6 +323,10 @@ function PlayPageContent() {
   };
 
   const handleComment = async (candidateId: string) => {
+    if (!canEdit) {
+      setActionError(READ_ONLY_ROUND_MESSAGE);
+      return;
+    }
     const existingVote = data.round.candidateVotes.find(
       (entry) => entry.candidateTicketId === candidateId && entry.userId === activeUser.id,
     );
@@ -365,6 +386,14 @@ function PlayPageContent() {
           title={estimateStatus.title}
           body={estimateStatus.body}
           tone={estimateStatus.tone}
+        />
+      ) : null}
+
+      {dataMode.mode === "cloudflare_d1" && !canEdit ? (
+        <InfoBanner
+          title="この端末は閲覧専用です。"
+          body="共有データは見られますが、この端末では予想の保存・投票・コメントはできません。編集するには作成者の招待リンク（編集権限）が必要です。"
+          tone="amber"
         />
       ) : null}
 
@@ -472,7 +501,11 @@ function PlayPageContent() {
           title="自分の予想を入れる"
           description="各試合を 1 / 0 / 2 でポチポチ入れるだけです。"
           actions={
-            <button type="submit" className={buttonClassName} disabled={saving}>
+            <button
+              type="submit"
+              className={buttonClassName}
+              disabled={saving || !canEdit}
+            >
               {saving ? "保存中..." : "自分の予想を保存"}
             </button>
           }

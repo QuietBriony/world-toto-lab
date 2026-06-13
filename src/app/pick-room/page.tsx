@@ -2,15 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import {
-  Suspense,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   CandidateCard,
@@ -65,10 +57,13 @@ import {
   probabilityReadinessDescription,
   roundEstimateStatusBanner,
 } from "@/lib/round-mode";
-import { getStoredRoundTokens } from "@/lib/storage/d1ApiAdapter";
 import { isWinnerLikeRound } from "@/lib/winner-value";
 import { resolveWorldTotoProductLabel } from "@/lib/world-toto";
 import { useDataMode } from "@/components/app/data-mode-provider";
+import {
+  READ_ONLY_ROUND_MESSAGE,
+  useCanEditRound,
+} from "@/lib/use-round-edit-access";
 import { useRoundWorkspace } from "@/lib/use-app-data";
 import type { CandidateVoteValue, RoundSource } from "@/lib/types";
 
@@ -95,10 +90,6 @@ const groupPlayCallTone: Record<GroupPlayCall, "amber" | "rose" | "teal"> = {
 };
 
 const groupPlayOutcomeOrder = ["1", "0", "2"] as const;
-
-// localStorage のラウンドトークンは client 専用の外部値。ページ滞在中に変わる導線は
-// 無いので購読は no-op（useSyncExternalStore の server snapshot は false = 書き込み不可扱い）。
-const roundTokenSubscribe = () => () => {};
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "不明なエラーです。";
@@ -276,23 +267,9 @@ function PickRoomPageContent() {
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const autoRefreshIdentityRef = useRef<string | null>(null);
 
-  // 共有D1の候補カード生成は editToken を持つ端末だけができる（Worker が 403 を返す）。
-  // 閲覧専用の端末では自動生成を試みず、エラーの代わりに案内を出すための判定。
-  const getCanWriteCandidates = useCallback(() => {
-    if (dataMode.mode !== "cloudflare_d1") {
-      return true;
-    }
-    if (!roundId) {
-      return false;
-    }
-    const tokens = getStoredRoundTokens(roundId);
-    return Boolean(tokens?.editToken || tokens?.adminToken);
-  }, [dataMode.mode, roundId]);
-  const canWriteCandidates = useSyncExternalStore(
-    roundTokenSubscribe,
-    getCanWriteCandidates,
-    () => false,
-  );
+  // 共有D1の書き込み（候補生成・投票・コメント）は editToken を持つ端末だけができる
+  // （Worker が 403 を返す）。閲覧専用端末では書き込みを抑止して案内する。
+  const canEdit = useCanEditRound(roundId);
 
   const activeUser =
     data?.users.find((user) => user.id === requestedUserId) ??
@@ -365,7 +342,7 @@ function PickRoomPageContent() {
       : null;
 
   useEffect(() => {
-    if (!data || !roundId || !dataQualitySummary || !candidateIdentity || !canWriteCandidates) {
+    if (!data || !roundId || !dataQualitySummary || !candidateIdentity || !canEdit) {
       return;
     }
 
@@ -399,7 +376,7 @@ function PickRoomPageContent() {
         setBusyKey(null);
       }
     })();
-  }, [candidateIdentity, canWriteCandidates, data, dataQualitySummary, refresh, roundId]);
+  }, [candidateIdentity, canEdit, data, dataQualitySummary, refresh, roundId]);
 
   if (!roundId) {
     return <RoundRequiredNotice />;
@@ -451,6 +428,10 @@ function PickRoomPageContent() {
       setActionError("投票するメンバーを選んでください。");
       return;
     }
+    if (!canEdit) {
+      setActionError(READ_ONLY_ROUND_MESSAGE);
+      return;
+    }
 
     setBusyKey(`${candidateId}:${vote}`);
     setActionError(null);
@@ -479,6 +460,10 @@ function PickRoomPageContent() {
   const handleComment = async (candidateId: string) => {
     if (!activeUser) {
       setActionError("コメントするメンバーを選んでください。");
+      return;
+    }
+    if (!canEdit) {
+      setActionError(READ_ONLY_ROUND_MESSAGE);
       return;
     }
 
@@ -560,11 +545,27 @@ function PickRoomPageContent() {
         ]}
       />
 
-      <InfoBanner
-        title="この画面はローカル保存モードです。"
-        body="他の人の投票はリアルタイム共有されません。JSONまたはスクショで共有してください。"
-        tone="amber"
-      />
+      {dataMode.mode === "cloudflare_d1" ? (
+        canEdit ? (
+          <InfoBanner
+            title="この画面は共有保存（みんなで同じ）です。"
+            body="投票・コメントは共有D1に保存され、ほかの人の画面にも反映されます。"
+            tone="teal"
+          />
+        ) : (
+          <InfoBanner
+            title="この端末は閲覧専用です。"
+            body="共有データは見られますが、この端末では投票・コメント・候補生成はできません。編集するには作成者の招待リンク（編集権限）が必要です。"
+            tone="amber"
+          />
+        )
+      ) : (
+        <InfoBanner
+          title="この画面はローカル保存モードです。"
+          body="他の人の投票はリアルタイム共有されません。JSONまたはスクショで共有してください。"
+          tone="amber"
+        />
+      )}
 
       {estimateStatus ? (
         <InfoBanner
@@ -641,7 +642,7 @@ function PickRoomPageContent() {
                 {evModeLabel}
               </Badge>
             </div>
-            {canWriteCandidates ? (
+            {canEdit ? (
               <>
                 <p className="mt-3 text-sm leading-6 text-slate-600">
                   まだ候補カードがありません。試合データが入っていれば、この場で王道・公式人気・人力推し・Proxy候補を再生成できます。
