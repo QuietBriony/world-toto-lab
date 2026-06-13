@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { handleApiRequest, type D1Like, type Env } from "./handler";
+import { sha256Hex } from "./tokens";
 
 type DbHandlers = {
   first?: (sql: string) => unknown;
@@ -16,6 +17,23 @@ function makeDb(handlers: DbHandlers = {}): D1Like {
     run: async () => ({ success: true }),
   });
   return { prepare: (sql: string) => prepared(sql) } as unknown as D1Like;
+}
+
+// bind 値を捕捉するフェイク D1（書き込み内容を検証するテスト用）。
+type CapturedRun = { sql: string; args: unknown[] };
+function makeCapturingDb(handlers: DbHandlers = {}) {
+  const runs: CapturedRun[] = [];
+  const prepared = (sql: string, boundArgs: unknown[] = []) => ({
+    bind: (...args: unknown[]) => prepared(sql, args),
+    first: async () => (handlers.first ? handlers.first(sql) : null),
+    all: async () => (handlers.all ? handlers.all(sql) : { results: [] }),
+    run: async () => {
+      runs.push({ sql, args: boundArgs });
+      return { success: true };
+    },
+  });
+  const db = { prepare: (sql: string) => prepared(sql) } as unknown as D1Like;
+  return { db, runs };
 }
 
 const ALLOWED = "https://quietbriony.github.io";
@@ -212,5 +230,74 @@ describe("handleApiRequest", () => {
     expect(body.state.matches).toHaveLength(1);
     expect(body.state.matches[0].roundId).toBe("r1");
     expect(body.state.picks).toHaveLength(1);
+  });
+
+  it("advances match updated_at on partial upsert (candidate staleness)", async () => {
+    const OLD = "2020-01-01T00:00:00.000Z";
+    const token = "edit-secret";
+    const editHash = await sha256Hex(token);
+    const { db, runs } = makeCapturingDb({
+      first: (sql) => {
+        if (sql.includes("FROM rounds WHERE id")) {
+          return {
+            id: "r1",
+            title: "R",
+            status: "analyzing",
+            edit_token_hash: editHash,
+            admin_token_hash: null,
+            data: "{}",
+            created_at: OLD,
+            updated_at: OLD,
+          };
+        }
+        if (sql.includes("FROM matches WHERE round_id")) {
+          // 既存の試合行（古い updatedAt とフルのチーム名を保持）。
+          return {
+            id: "m1",
+            round_id: "r1",
+            data: JSON.stringify({
+              matchNo: 1,
+              homeTeam: "A",
+              awayTeam: "B",
+              modelProb1: null,
+              updatedAt: OLD,
+            }),
+            created_at: OLD,
+            updated_at: OLD,
+          };
+        }
+        return null;
+      },
+    });
+    const env: Env = { DB: db, ALLOWED_ORIGINS: ALLOWED };
+
+    // estimateRoundAiModel/saveResults と同じく updatedAt を含まない部分行。
+    const res = await handleApiRequest(
+      request("POST", "/api/rounds/r1/matches", {
+        origin: ALLOWED,
+        headers: { "X-Edit-Token": token },
+        body: { matches: [{ matchNo: 1, modelProb1: 0.55 }] },
+      }),
+      env,
+    );
+    expect(res.status).toBe(200);
+
+    const insert = runs.find((run) =>
+      run.sql.includes("INSERT OR REPLACE INTO matches"),
+    );
+    expect(insert).toBeTruthy();
+    const args = insert!.args;
+    const updatedAtColumn = args[args.length - 1] as string;
+    const storedJson = args[args.length - 3] as string;
+    const stored = JSON.parse(storedJson) as Record<string, unknown>;
+
+    // updated_at カラムと JSON 内 updatedAt が前進している（OLD のままでない）。
+    expect(updatedAtColumn).not.toBe(OLD);
+    expect(stored.updatedAt).toBe(updatedAtColumn);
+    // createdAt と既存フィールド（チーム名）は保持される。
+    expect(stored.createdAt).toBe(OLD);
+    expect(stored.homeTeam).toBe("A");
+    expect(stored.awayTeam).toBe("B");
+    expect(stored.modelProb1).toBe(0.55);
   });
 });
