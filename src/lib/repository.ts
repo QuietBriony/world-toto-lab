@@ -730,5 +730,8 @@ export async function importRoundJson(
   bundle: localRepository.LocalRoundBundle,
   strategy: "copy" | "overwrite",
 ) {
+  if (isCloudflareD1Mode()) {
+    return d1Repository.importRoundBundle(bundle, strategy);
+  }
   return localRepository.localImportRoundBundle(bundle, strategy);
 }

@@ -14,6 +14,7 @@ import {
   estimateModelUpdatesForMatches,
   summaryFromWorkspace,
   workspaceFromState,
+  type LocalRoundBundle,
   type LocalState,
 } from "@/lib/local-repository";
 import {
@@ -394,4 +395,35 @@ export async function saveRoundEvAssumption(
     roundId: input.roundId,
     write: true,
   });
+}
+
+export async function importRoundBundle(
+  bundle: LocalRoundBundle,
+  strategy: "copy" | "overwrite",
+): Promise<string> {
+  // copy = 新規ラウンドとして取り込み（Worker が新トークン発行、認証不要）。
+  // overwrite = 既存ラウンドの上書き（Worker 側で admin トークンを要求するため、
+  //   対象 round の roundId を渡して保存済みトークンを添付する）。
+  const isOverwrite = strategy === "overwrite";
+  const data = await req<{
+    roundId: string;
+    shareCode?: string;
+    editToken?: string;
+    adminToken?: string;
+  }>("POST", "/api/import", {
+    body: { bundle, strategy },
+    roundId: isOverwrite ? String(bundle.round.id) : undefined,
+    write: true,
+  });
+
+  // copy / 新規作成時は新トークンを保存。overwrite（既存）は端末が既にトークンを
+  // 保持しているため Worker は平文を返さない → 既存の保存トークンを維持する。
+  if (data.roundId && data.editToken) {
+    storeRoundTokens(data.roundId, {
+      shareCode: data.shareCode ?? "",
+      editToken: data.editToken,
+      adminToken: data.adminToken,
+    });
+  }
+  return data.roundId;
 }

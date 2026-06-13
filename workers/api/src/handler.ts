@@ -715,11 +715,39 @@ async function handleImport(
   const sourceRound = (bundle.round as AnyRecord) ?? {};
 
   const roundId = copy ? newId() : String(sourceRound.id ?? newId());
-  const tokens = generateRoundTokens();
   const timestamp = nowIso();
 
+  // トークンの決定と認可。
+  // - copy / 既存しない id の overwrite（=新規作成）: 新トークンを発行して返す。
+  // - 既存 round の overwrite: 子レコード全削除＋本文上書きの破壊的操作なので
+  //   admin トークン必須。既存のトークン/shareCode は再生成せず保持する
+  //   （所有者の招待リンクや他端末の編集権を無効化しない）。round 削除 API を
+  //   adminToken 必須で塞いだのと同じ保護を /api/import にも適用する。
+  let shareCode: string;
+  let editTokenHash: string;
+  let adminTokenHash: string;
+  let issuedEditToken: string | undefined;
+  let issuedAdminToken: string | undefined;
+
   if (!copy) {
-    // overwrite: 既存の子レコードを掃除（round 自体は INSERT OR REPLACE で上書き）
+    const existing = await getRoundRow(env, roundId);
+    if (existing) {
+      if (!(await isAuthorized(request, existing, "admin"))) {
+        return errorResponse("上書き取り込みには管理トークンが必要です。", 403, cors);
+      }
+      shareCode = existing.share_code ?? "";
+      editTokenHash = existing.edit_token_hash ?? "";
+      adminTokenHash = existing.admin_token_hash ?? "";
+    } else {
+      const tokens = generateRoundTokens();
+      shareCode = tokens.shareCode;
+      editTokenHash = await sha256Hex(tokens.editToken);
+      adminTokenHash = await sha256Hex(tokens.adminToken);
+      issuedEditToken = tokens.editToken;
+      issuedAdminToken = tokens.adminToken;
+    }
+
+    // overwrite: 既存の子レコードを掃除（認可後に実行）
     for (const table of [
       "matches",
       "picks",
@@ -735,6 +763,13 @@ async function handleImport(
         .bind(roundId)
         .run();
     }
+  } else {
+    const tokens = generateRoundTokens();
+    shareCode = tokens.shareCode;
+    editTokenHash = await sha256Hex(tokens.editToken);
+    adminTokenHash = await sha256Hex(tokens.adminToken);
+    issuedEditToken = tokens.editToken;
+    issuedAdminToken = tokens.adminToken;
   }
 
   const round = {
@@ -756,9 +791,9 @@ async function handleImport(
       roundId,
       String(round.title ?? "Round"),
       String(round.status ?? "draft"),
-      tokens.shareCode,
-      await sha256Hex(tokens.editToken),
-      await sha256Hex(tokens.adminToken),
+      shareCode,
+      editTokenHash,
+      adminTokenHash,
       JSON.stringify({ ...round, __extras: extras }),
       round.createdAt,
       round.updatedAt,
@@ -900,7 +935,7 @@ async function handleImport(
   }
 
   return jsonResponse(
-    { roundId, shareCode: tokens.shareCode, editToken: tokens.editToken, adminToken: tokens.adminToken },
+    { roundId, shareCode, editToken: issuedEditToken, adminToken: issuedAdminToken },
     201,
     cors,
   );
