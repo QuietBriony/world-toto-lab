@@ -300,4 +300,104 @@ describe("handleApiRequest", () => {
     expect(stored.awayTeam).toBe("B");
     expect(stored.modelProb1).toBe(0.55);
   });
+
+  it("imports a round as a copy with a fresh id and fresh tokens", async () => {
+    const res = await handleApiRequest(
+      request("POST", "/api/import", {
+        origin: ALLOWED,
+        body: { strategy: "copy", bundle: { round: { id: "source-id", title: "Copy" } } },
+      }),
+      makeEnv(),
+    );
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as {
+      roundId: string;
+      shareCode: string;
+      editToken: string;
+      adminToken: string;
+    };
+    expect(body.roundId).toBeTruthy();
+    expect(body.roundId).not.toBe("source-id");
+    expect(body.editToken).toBeTruthy();
+    expect(body.adminToken).toBeTruthy();
+    expect(body.shareCode).toBeTruthy();
+  });
+
+  it("rejects overwrite import of an existing round without an admin token (403)", async () => {
+    const env = makeEnv({
+      first: (sql) =>
+        sql.includes("FROM rounds WHERE id")
+          ? {
+              id: "r1",
+              title: "R",
+              status: "draft",
+              share_code: "sc",
+              edit_token_hash: "edithash",
+              admin_token_hash: "adminhash",
+              data: "{}",
+              created_at: "x",
+              updated_at: "x",
+            }
+          : null,
+    });
+    const res = await handleApiRequest(
+      request("POST", "/api/import", {
+        origin: ALLOWED,
+        body: { strategy: "overwrite", bundle: { round: { id: "r1", title: "Hacked" } } },
+      }),
+      env,
+    );
+    expect(res.status).toBe(403);
+  });
+
+  it("allows overwrite with the admin token and preserves the existing tokens", async () => {
+    const adminToken = "admin-secret";
+    const adminHash = await sha256Hex(adminToken);
+    const { db, runs } = makeCapturingDb({
+      first: (sql) =>
+        sql.includes("FROM rounds WHERE id")
+          ? {
+              id: "r1",
+              title: "R",
+              status: "draft",
+              share_code: "SC-keep",
+              edit_token_hash: "EDIT-keep",
+              admin_token_hash: adminHash,
+              data: "{}",
+              created_at: "x",
+              updated_at: "x",
+            }
+          : null,
+    });
+    const env: Env = { DB: db, ALLOWED_ORIGINS: ALLOWED };
+    const res = await handleApiRequest(
+      request("POST", "/api/import", {
+        origin: ALLOWED,
+        headers: { "X-Admin-Token": adminToken },
+        body: { strategy: "overwrite", bundle: { round: { id: "r1", title: "New" } } },
+      }),
+      env,
+    );
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as {
+      roundId: string;
+      shareCode: string;
+      editToken?: string;
+      adminToken?: string;
+    };
+    expect(body.roundId).toBe("r1");
+    // 既存トークンを再生成しない（平文を返さない）。
+    expect(body.editToken).toBeUndefined();
+    expect(body.adminToken).toBeUndefined();
+    expect(body.shareCode).toBe("SC-keep");
+    // rounds の上書きは既存の share_code / token hash を保持する。
+    const roundsInsert = runs.find((run) =>
+      run.sql.includes("INSERT OR REPLACE INTO rounds"),
+    );
+    expect(roundsInsert).toBeTruthy();
+    // bind 順: id, title, status, share_code, edit_token_hash, admin_token_hash, data, created_at, updated_at
+    expect(roundsInsert!.args[3]).toBe("SC-keep");
+    expect(roundsInsert!.args[4]).toBe("EDIT-keep");
+    expect(roundsInsert!.args[5]).toBe(adminHash);
+  });
 });
