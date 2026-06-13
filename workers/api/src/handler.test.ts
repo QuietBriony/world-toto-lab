@@ -236,38 +236,40 @@ describe("handleApiRequest", () => {
     const OLD = "2020-01-01T00:00:00.000Z";
     const token = "edit-secret";
     const editHash = await sha256Hex(token);
+    // 既存の試合行（古い updatedAt とフルのチーム名を保持）。
+    const existingMatchRow = {
+      id: "m1",
+      round_id: "r1",
+      match_no: 1,
+      data: JSON.stringify({
+        matchNo: 1,
+        homeTeam: "A",
+        awayTeam: "B",
+        modelProb1: null,
+        updatedAt: OLD,
+      }),
+      created_at: OLD,
+      updated_at: OLD,
+    };
     const { db, runs } = makeCapturingDb({
-      first: (sql) => {
-        if (sql.includes("FROM rounds WHERE id")) {
-          return {
-            id: "r1",
-            title: "R",
-            status: "analyzing",
-            edit_token_hash: editHash,
-            admin_token_hash: null,
-            data: "{}",
-            created_at: OLD,
-            updated_at: OLD,
-          };
-        }
-        if (sql.includes("FROM matches WHERE round_id")) {
-          // 既存の試合行（古い updatedAt とフルのチーム名を保持）。
-          return {
-            id: "m1",
-            round_id: "r1",
-            data: JSON.stringify({
-              matchNo: 1,
-              homeTeam: "A",
-              awayTeam: "B",
-              modelProb1: null,
-              updatedAt: OLD,
-            }),
-            created_at: OLD,
-            updated_at: OLD,
-          };
-        }
-        return null;
-      },
+      first: (sql) =>
+        sql.includes("FROM rounds WHERE id")
+          ? {
+              id: "r1",
+              title: "R",
+              status: "analyzing",
+              edit_token_hash: editHash,
+              admin_token_hash: null,
+              data: "{}",
+              created_at: OLD,
+              updated_at: OLD,
+            }
+          : null,
+      // 既存 matches は round 一括 SELECT（.all）で取得するようになった。
+      all: (sql) =>
+        sql.includes("FROM matches WHERE round_id")
+          ? { results: [existingMatchRow] }
+          : { results: [] },
     });
     const env: Env = { DB: db, ALLOWED_ORIGINS: ALLOWED };
 
@@ -299,6 +301,72 @@ describe("handleApiRequest", () => {
     expect(stored.homeTeam).toBe("A");
     expect(stored.awayTeam).toBe("B");
     expect(stored.modelProb1).toBe(0.55);
+  });
+
+  it("bulk-fetches existing matches once and merges each incoming row by match_no", async () => {
+    const token = "edit-secret";
+    const editHash = await sha256Hex(token);
+    const existing = [
+      {
+        id: "m1",
+        round_id: "r1",
+        match_no: 1,
+        data: JSON.stringify({ matchNo: 1, homeTeam: "Home1", awayTeam: "Away1" }),
+        created_at: "x",
+        updated_at: "x",
+      },
+      {
+        id: "m2",
+        round_id: "r1",
+        match_no: 2,
+        data: JSON.stringify({ matchNo: 2, homeTeam: "Home2", awayTeam: "Away2" }),
+        created_at: "x",
+        updated_at: "x",
+      },
+    ];
+    const { db, runs } = makeCapturingDb({
+      first: (sql) =>
+        sql.includes("FROM rounds WHERE id")
+          ? {
+              id: "r1",
+              title: "R",
+              status: "draft",
+              edit_token_hash: editHash,
+              admin_token_hash: null,
+              data: "{}",
+              created_at: "x",
+              updated_at: "x",
+            }
+          : null,
+      all: (sql) =>
+        sql.includes("FROM matches WHERE round_id") ? { results: existing } : { results: [] },
+    });
+    const env: Env = { DB: db, ALLOWED_ORIGINS: ALLOWED };
+
+    // 2試合ぶんの部分行を1リクエストで（順序を入れ替えて）送る。
+    const res = await handleApiRequest(
+      request("POST", "/api/rounds/r1/matches", {
+        origin: ALLOWED,
+        headers: { "X-Edit-Token": token },
+        body: { matches: [{ matchNo: 2, modelProb1: 0.4 }, { matchNo: 1, modelProb1: 0.6 }] },
+      }),
+      env,
+    );
+    expect(res.status).toBe(200);
+
+    const inserts = runs.filter((run) =>
+      run.sql.includes("INSERT OR REPLACE INTO matches"),
+    );
+    expect(inserts).toHaveLength(2);
+    // 各 upsert が match_no で正しい既存行（id・チーム名）にマージされている。
+    const byId = new Map(
+      inserts.map((ins) => [
+        ins.args[0] as string,
+        JSON.parse(ins.args[ins.args.length - 3] as string) as Record<string, unknown>,
+      ]),
+    );
+    expect(byId.get("m1")).toMatchObject({ homeTeam: "Home1", modelProb1: 0.6 });
+    expect(byId.get("m2")).toMatchObject({ homeTeam: "Home2", modelProb1: 0.4 });
   });
 
   it("imports a round as a copy with a fresh id and fresh tokens", async () => {
