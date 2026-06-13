@@ -100,6 +100,7 @@ import {
   featuredWorldTotoSnapshotLabel,
 } from "@/lib/featured-world-toto";
 import { createFeaturedWorldTotoRoundInD1 } from "@/lib/featured-world-toto-d1";
+import { getStoredRoundTokens } from "@/lib/storage/d1ApiAdapter";
 import {
   filterPredictors,
   isPredictorRole,
@@ -420,6 +421,18 @@ export default function DashboardPage() {
         officialRoundNumber !== null
           ? existingRoundsByNumber.get(officialRoundNumber) ?? null
           : null;
+      // 共有D1で既存ラウンドを上書き再利用するには editToken/adminToken が要る。
+      // この端末がトークンを持たない（＝閲覧専用）既存回は再利用せず null を返し、
+      // 新しい編集可能コピーを作る。これで bulkUpdateRoundMatches/replacePicks の
+      // 403 を回避し、/hazi の「編集セットを作り直す」(forceNew) と同じ挙動に揃える。
+      const resolveEditableExistingRoundId = (officialRoundNumber: number | null) => {
+        const existingId = resolveExistingRoundId(officialRoundNumber);
+        if (!existingId) {
+          return null;
+        }
+        const tokens = getStoredRoundTokens(existingId);
+        return tokens?.editToken || tokens?.adminToken ? existingId : null;
+      };
       const payloads = buildFeaturedWorldTotoImportPayloads();
       const roundRefs: Array<{ haziUserId: string | null; roundId: string }> = [];
 
@@ -429,7 +442,7 @@ export default function DashboardPage() {
         const refs = await Promise.all(
           payloads.map(async (payload) => {
             const { roundId } = await createFeaturedWorldTotoRoundInD1({
-              existingRoundId: resolveExistingRoundId(payload.officialRoundNumber),
+              existingRoundId: resolveEditableExistingRoundId(payload.officialRoundNumber),
               participantIds: haziParticipantIds,
               payload: { ...payload, notes: `${payload.notes}${haziNoteSuffix}` },
             });
