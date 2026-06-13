@@ -21,6 +21,7 @@ import {
   CollapsibleSectionCard,
   cx,
   fieldClassName,
+  InfoBanner,
   PageHeader,
   SectionCard,
   secondaryButtonClassName,
@@ -58,6 +59,7 @@ import {
   type TicketPayload,
 } from "@/lib/tickets";
 import type { RoundWorkspace, TicketMode } from "@/lib/types";
+import { useDataMode } from "@/components/app/data-mode-provider";
 import { useRoundWorkspace } from "@/lib/use-app-data";
 import { resolveWorldTotoProductLabel } from "@/lib/world-toto";
 
@@ -224,6 +226,10 @@ function TicketGeneratorPageContent() {
     getSingleSearchParam(searchParams.get("mode")) ?? "balanced",
   );
   const { data, error, loading, refresh } = useRoundWorkspace(roundId);
+  const dataMode = useDataMode();
+  // 注目配分（generatedTickets）は共有D1に保存先が無く端末ローカル専用。
+  // 共有D1モードでは保存が明示エラーになり表示も常に空になるため、生成を抑止して案内する。
+  const localOnlyGenerator = dataMode.mode === "cloudflare_d1";
   const [saving, setSaving] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -332,7 +338,7 @@ function TicketGeneratorPageContent() {
   const handleGenerate = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!data) {
+    if (!data || localOnlyGenerator) {
       return;
     }
 
@@ -773,8 +779,21 @@ function TicketGeneratorPageContent() {
                 </select>
               </label>
 
+              {localOnlyGenerator ? (
+                <div className="md:col-span-2 lg:col-span-5">
+                  <InfoBanner
+                    tone="amber"
+                    title="共有保存では使えません"
+                    body="この「注目配分ジェネレーター」は端末ローカル専用の管理ツールで、共有保存（Cloudflare D1）には対応していません。みんなで共有する候補は「候補カード」をご利用ください。ローカル保存モードに切り替えるとこの画面で試算・保存できます。"
+                  />
+                </div>
+              ) : null}
               <div className="flex justify-end md:col-span-2 lg:col-span-5">
-                <button type="submit" className={buttonClassName} disabled={saving}>
+                <button
+                  type="submit"
+                  className={buttonClassName}
+                  disabled={saving || localOnlyGenerator}
+                >
                   {saving ? "生成中..." : "配分案を更新"}
                 </button>
               </div>
