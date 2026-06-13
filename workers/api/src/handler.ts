@@ -334,15 +334,26 @@ async function handleUpsertMatches(
   const body = (await request.json().catch(() => ({}))) as AnyRecord;
   const matches = Array.isArray(body.matches) ? (body.matches as AnyRecord[]) : [];
 
+  // 既存 matches をループ前に1回だけ取得し match_no で引けるようにする（N+1 読み取り解消）。
+  // (round_id, match_no) は UNIQUE（matches_round_no_idx）なので、per-match の
+  // SELECT ... WHERE round_id=? AND match_no=? と同じ行を返す。saveResults /
+  // estimateRoundAiModel / bulkUpdateRoundMatches は round 内全 match を1リクエストで
+  // 送るため、13試合なら SELECT を 13→1 に削減できる。
+  const existingResult = await env.DB.prepare(
+    "SELECT * FROM matches WHERE round_id = ?",
+  )
+    .bind(roundId)
+    .all<EntityRow & { match_no: number }>();
+  const existingByMatchNo = new Map<number, EntityRow>();
+  for (const row of existingResult.results ?? []) {
+    existingByMatchNo.set(Number(row.match_no), row);
+  }
+
   for (const incoming of matches) {
     const matchNo = Number(incoming.matchNo);
     if (!Number.isFinite(matchNo)) continue;
 
-    const existing = await env.DB.prepare(
-      "SELECT * FROM matches WHERE round_id = ? AND match_no = ?",
-    )
-      .bind(roundId, matchNo)
-      .first<EntityRow>();
+    const existing = existingByMatchNo.get(matchNo);
 
     const base = existing ? entityRowToDomain(existing) : { matchNo, roundId };
     // incoming が全フィールドを持つ場合（updateMatch）は全て反映。
