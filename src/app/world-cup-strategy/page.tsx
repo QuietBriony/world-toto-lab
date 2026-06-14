@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useMemo, type ReactNode } from "react";
 
+import { useDataMode } from "@/components/app/data-mode-provider";
 import { ErrorNotice, LoadingNotice } from "@/components/app/states";
 import {
   Badge,
@@ -21,10 +22,14 @@ import { resolveArtAsset } from "@/lib/ui-art";
 import { useDashboardData } from "@/lib/use-app-data";
 import {
   buildWorldCupStrategyDashboard,
+  type WorldCupEvSourceRow,
   type WorldCupFinalSnapshotSummary,
   type WorldCupPortfolioPlan,
   type WorldCupPositiveEvCombo,
+  type WorldCupOutcomePolicy,
+  type WorldCupPredictionLogicRow,
   type WorldCupRoundStrategy,
+  type WorldCupSourceStatus,
   type WorldCupTimingChecklistItem,
   type WorldCupRoundWindowStatus,
   type WorldCupStrategyLine,
@@ -66,6 +71,12 @@ function formatPayoutRange(plan: WorldCupPortfolioPlan) {
   return `${formatCurrency(plan.minPayoutIfHitYen)} - ${formatCurrency(plan.maxPayoutIfHitYen)}`;
 }
 
+function formatPrizeTierExpectedReturn(
+  tiers: readonly { expectedReturnYen: number | null; label: string }[],
+) {
+  return tiers.map((tier) => `${tier.label} ${formatCurrency(tier.expectedReturnYen)}`).join(" / ");
+}
+
 function pickSignature(picks: WorldCupStrategyPick[]) {
   return [...picks]
     .sort((left, right) => left.matchNo - right.matchNo)
@@ -94,6 +105,42 @@ function commandTone(round: WorldCupRoundStrategy) {
   }
 
   return "slate" as const;
+}
+
+function policyTone(policy: WorldCupOutcomePolicy) {
+  if (policy.kind === "actual_fixed" || policy.kind === "model_lock") {
+    return "positive" as const;
+  }
+
+  if (policy.kind === "spread" || policy.kind === "value_fade") {
+    return "amber" as const;
+  }
+
+  return "slate" as const;
+}
+
+function sourceStatusTone(status: WorldCupSourceStatus) {
+  if (status === "fixed") {
+    return "positive" as const;
+  }
+
+  if (status === "live" || status === "model") {
+    return "teal" as const;
+  }
+
+  if (status === "research") {
+    return "sky" as const;
+  }
+
+  return "amber" as const;
+}
+
+function sourceStatusLabel(status: WorldCupSourceStatus) {
+  if (status === "fixed") return "確定";
+  if (status === "live") return "取得";
+  if (status === "model") return "モデル";
+  if (status === "research") return "研究";
+  return "不足";
 }
 
 function MiniFact({ label, value, hint }: { label: string; value: string; hint: string }) {
@@ -127,6 +174,162 @@ function PlainNotice({
       <p className="font-semibold">{title}</p>
       <div className="mt-2 text-sm leading-6 opacity-85">{children}</div>
     </div>
+  );
+}
+
+function StorageModeNotice({
+  isChecking,
+  mode,
+}: {
+  isChecking: boolean;
+  mode: "cloudflare_d1" | "demo" | "local";
+}) {
+  const isShared = mode === "cloudflare_d1";
+
+  return (
+    <PlainNotice tone={isShared ? "teal" : "amber"} title="保存と友人の編集履歴">
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge tone={isShared ? "teal" : "amber"}>
+          {isChecking ? "確認中" : isShared ? "共有D1保存" : mode === "demo" ? "デモ" : "ローカル保存"}
+        </Badge>
+        <span>
+          {isShared
+            ? "このラウンドは共有保存です。友人の編集やメモは同じ共有データに残ります。"
+            : "この画面はこのブラウザ内の保存です。友人が別PC/別ブラウザで触った内容はここには出ません。JSON共有か共有D1リンクが必要です。"}
+        </span>
+      </div>
+    </PlainNotice>
+  );
+}
+
+function SourceLink({ row }: { row: Pick<WorldCupEvSourceRow | WorldCupPredictionLogicRow, "sourceLabel" | "sourceUrl"> }) {
+  if (!row.sourceUrl) {
+    return <span>{row.sourceLabel}</span>;
+  }
+
+  return (
+    <a
+      className="font-semibold text-emerald-800 underline decoration-emerald-300 underline-offset-4 hover:text-emerald-950"
+      href={row.sourceUrl}
+      rel="noreferrer"
+      target="_blank"
+    >
+      {row.sourceLabel}
+    </a>
+  );
+}
+
+function EvSourceTable({ rows }: { rows: WorldCupEvSourceRow[] }) {
+  return (
+    <div className="overflow-x-auto pb-2">
+      <table className="min-w-[920px] border-separate border-spacing-0 text-left text-sm">
+        <thead>
+          <tr className="text-xs uppercase tracking-[0.16em] text-slate-500">
+            <th className="rounded-l-2xl bg-slate-100 px-3 py-3">材料</th>
+            <th className="bg-slate-100 px-3 py-3">状態</th>
+            <th className="bg-slate-100 px-3 py-3">今の値</th>
+            <th className="bg-slate-100 px-3 py-3">ソース</th>
+            <th className="rounded-r-2xl bg-slate-100 px-3 py-3">読み方</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.label}>
+              <td className="px-3 py-3 font-semibold text-slate-950">{row.label}</td>
+              <td className="px-3 py-3">
+                <Badge tone={sourceStatusTone(row.status)}>{sourceStatusLabel(row.status)}</Badge>
+              </td>
+              <td className="px-3 py-3 font-semibold text-slate-900">{row.value}</td>
+              <td className="px-3 py-3 text-slate-700">
+                <SourceLink row={row} />
+              </td>
+              <td className="px-3 py-3 leading-6 text-slate-600">{row.detail}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function PredictionLogicGrid({ rows }: { rows: WorldCupPredictionLogicRow[] }) {
+  return (
+    <div className="grid gap-3 lg:grid-cols-2">
+      {rows.map((row) => (
+        <div key={row.label} className="rounded-[22px] border border-slate-200 bg-white/84 px-4 py-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3 className="text-base font-semibold text-slate-950">{row.label}</h3>
+            <Badge tone={sourceStatusTone(row.status)}>{sourceStatusLabel(row.status)}</Badge>
+          </div>
+          <p className="mt-3 text-sm font-semibold leading-6 text-slate-800">{row.currentUse}</p>
+          <p className="mt-2 text-sm leading-6 text-slate-600">{row.whyItMatters}</p>
+          <div className="mt-3 rounded-[18px] border border-emerald-100 bg-emerald-50/72 px-3 py-3 text-sm leading-6 text-emerald-950">
+            <p className="font-semibold">次に詰めること</p>
+            <p className="mt-1">{row.nextRefinement}</p>
+          </div>
+          <p className="mt-3 text-xs leading-5 text-slate-500">
+            参考: <SourceLink row={row} />
+          </p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function LogicWorkbenchPanel({ round }: { round: WorldCupRoundStrategy }) {
+  return (
+    <SectionCard
+      title="期待値ソースとガチ予想ロジック"
+      description="何を公式データとして固定し、どこを人間の予想で詰めるかを分けて見ます。感想戦では、この表に沿ってメモを残します。"
+      actions={
+        <div className="flex flex-wrap gap-2">
+          <Badge tone="teal">EV材料</Badge>
+          <Badge tone="sky">予想ロジック</Badge>
+          <Badge tone="amber">感想戦</Badge>
+        </div>
+      }
+    >
+      <div className="grid gap-4 xl:grid-cols-[1.06fr_0.94fr]">
+        <div className="space-y-3">
+          <div>
+            <h3 className="text-base font-semibold text-slate-950">期待値ソース</h3>
+            <p className="mt-1 text-sm leading-6 text-slate-600">
+              公式ルール、売上、投票率、モデル確率、結果固定、ポートフォリオを分けて確認します。
+            </p>
+          </div>
+          <EvSourceTable rows={round.evSourceRows} />
+        </div>
+
+        <div className="space-y-3">
+          <div>
+            <h3 className="text-base font-semibold text-slate-950">感想戦で拾う問い</h3>
+            <p className="mt-1 text-sm leading-6 text-slate-600">
+              ボイスメモはこの問いに沿って話すと、次回のrepo改善プロンプトに蒸留しやすくなります。
+            </p>
+          </div>
+          <div className="grid gap-2">
+            {round.postMortemPrompts.map((prompt, index) => (
+              <div key={prompt} className="flex gap-3 rounded-[18px] border border-slate-200 bg-white/84 px-3 py-3">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-900 text-xs font-semibold text-white">
+                  {index + 1}
+                </span>
+                <p className="text-sm leading-6 text-slate-700">{prompt}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-5 space-y-3">
+        <div>
+          <h3 className="text-base font-semibold text-slate-950">予想ロジックの改善レーン</h3>
+          <p className="mt-1 text-sm leading-6 text-slate-600">
+            今すぐ使っているルールと、web調査で拾った次の強化候補を同じ場所に置きます。
+          </p>
+        </div>
+        <PredictionLogicGrid rows={round.predictionLogicRows} />
+      </div>
+    </SectionCard>
   );
 }
 
@@ -232,9 +435,10 @@ function PortfolioAnswerCard({ plan }: { plan: WorldCupPortfolioPlan }) {
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <MiniFact label="購入額" value={formatCurrency(plan.costYen)} hint={`${plan.lineCount}口 x ${formatCurrency(plan.stakeYen)}`} />
-        <MiniFact label="期待回収" value={formatCurrency(plan.expectedReturnYen)} hint={`期待損益 ${formatSignedCurrency(plan.expectedProfitYen)}`} />
+        <MiniFact label="1〜3等EV" value={formatCurrency(plan.expectedReturnYen)} hint={`期待損益 ${formatSignedCurrency(plan.expectedProfitYen)}`} />
         <MiniFact label="13試合当たったら" value={formatPayoutRange(plan)} hint="選んだ出目ごとに払戻見込みは変わる" />
-        <MiniFact label="100円が期待値で" value={formatCurrency(plan.expectedReturnYen / plan.lineCount)} hint={`EV ${formatMultiple(plan.evMultiple)}`} />
+        <MiniFact label="払戻圏内" value={formatPercent(plan.cashProbabilityUpperBound, 4)} hint="1等/2等/3等の合計目安" />
+        <MiniFact label="100円が期待値で" value={formatCurrency(plan.expectedReturnYen / plan.lineCount)} hint={`EV ${formatMultiple(plan.evMultiple)} / 1等分 ${formatCurrency(plan.firstPrizeExpectedReturnYen / plan.lineCount)}`} />
       </div>
 
       <p className="mt-4 text-sm leading-6 text-slate-700">{plan.description}</p>
@@ -293,7 +497,7 @@ function FirstAnswerPanel({ round, reportHref }: { reportHref: string; round: Wo
               </div>
               <p className="mt-2 text-sm leading-6 text-slate-600">
                 上位{plan1000.lineCount}通りを1口ずつ。購入額{formatCurrency(plan1000.costYen)}に対して、
-                期待損益は{formatSignedCurrency(plan1000.expectedProfitYen)}です。
+                1〜3等込みの期待損益は{formatSignedCurrency(plan1000.expectedProfitYen)}です。
               </p>
             </div>
           ) : null}
@@ -355,6 +559,67 @@ function FinalSnapshotPanel({ snapshot }: { snapshot: WorldCupFinalSnapshotSumma
   );
 }
 
+function OutcomePolicyPanel({ policies }: { policies: WorldCupOutcomePolicy[] }) {
+  const fixedCount = policies.filter((policy) => policy.kind === "actual_fixed").length;
+  const spreadCount = policies.filter((policy) => policy.kind === "spread").length;
+  const lockCount = policies.filter((policy) => policy.kind === "model_lock").length;
+
+  return (
+    <div className="rounded-[22px] border border-slate-200 bg-white/86 px-4 py-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h3 className="text-base font-semibold text-slate-950">購入候補の絞り込み</h3>
+          <p className="mt-1 text-sm leading-6 text-slate-600">
+            確定済みは固定、70%以上はロック、割れ試合は分散。候補探索はこの出目だけで回します。
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Badge tone="positive">固定 {fixedCount}</Badge>
+          <Badge tone="positive">70%+ {lockCount}</Badge>
+          <Badge tone="amber">分散 {spreadCount}</Badge>
+        </div>
+      </div>
+
+      <div className="mt-4 overflow-x-auto pb-2">
+        <table className="min-w-[900px] border-separate border-spacing-0 text-left text-sm">
+          <thead>
+            <tr className="text-xs uppercase tracking-[0.16em] text-slate-500">
+              <th className="rounded-l-2xl bg-slate-100 px-3 py-3">No</th>
+              <th className="bg-slate-100 px-3 py-3">試合</th>
+              <th className="bg-slate-100 px-3 py-3">判定</th>
+              <th className="bg-slate-100 px-3 py-3">残す出目</th>
+              <th className="bg-slate-100 px-3 py-3">モデル本命</th>
+              <th className="bg-slate-100 px-3 py-3">公式人気</th>
+              <th className="rounded-r-2xl bg-slate-100 px-3 py-3">理由</th>
+            </tr>
+          </thead>
+          <tbody>
+            {policies.map((policy) => (
+              <tr key={policy.matchNo}>
+                <td className="px-3 py-3 font-semibold text-slate-500">{policy.matchNo}</td>
+                <td className="px-3 py-3 font-semibold text-slate-900">{policy.fixture}</td>
+                <td className="px-3 py-3">
+                  <Badge tone={policyTone(policy)}>{policy.label}</Badge>
+                </td>
+                <td className="px-3 py-3 font-mono font-semibold tracking-normal text-slate-950">
+                  {policy.allowedOutcomes.join(" / ")}
+                </td>
+                <td className="px-3 py-3">
+                  {policy.modelFavorite ?? "-"} {formatPercent(policy.modelFavoriteProbability, 1)}
+                </td>
+                <td className="px-3 py-3">
+                  {policy.officialFavorite ?? "-"} {formatPercent(policy.officialFavoriteProbability, 1)}
+                </td>
+                <td className="px-3 py-3 text-slate-600">{policy.reason}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 function StrategyLineCard({ line }: { line: WorldCupStrategyLine }) {
   return (
     <div className="rounded-[22px] border border-slate-200 bg-white/82 px-4 py-4">
@@ -372,6 +637,8 @@ function StrategyLineCard({ line }: { line: WorldCupStrategyLine }) {
       <div className="mt-3 grid gap-2 text-sm leading-6 text-slate-600">
         <p>13試合当たったら: {formatCurrency(line.estimatedPayoutYen)}</p>
         <p>1口あたり期待回収: {formatCurrency(line.expectedReturnYen)}</p>
+        <p>1〜3等EV内訳: {formatPrizeTierExpectedReturn(line.prizeTiers)}</p>
+        <p>払戻圏内: {formatPercent(line.cashProbability, 4)}</p>
         <p>的中率見込み: {formatPercent(line.hitProbability, 4)}</p>
         <p>公式人気順からのズレ: {line.deviationCount}試合</p>
       </div>
@@ -421,7 +688,10 @@ function TicketsTable({
                 </td>
                 <td className="px-3 py-3">1口 / 100円</td>
                 <td className="px-3 py-3 font-semibold text-emerald-700">
-                  {formatCurrency(row.expectedReturnYen)}
+                  <p>{formatCurrency(row.expectedReturnYen)}</p>
+                  <p className="mt-1 text-[11px] font-medium leading-4 text-slate-500">
+                    {formatPrizeTierExpectedReturn(row.prizeTiers)}
+                  </p>
                 </td>
                 <td className="px-3 py-3">{formatCurrency(row.expectedReturnYen)}</td>
                 <td className="px-3 py-3">{formatCurrency(row.estimatedPayoutYen)}</td>
@@ -492,6 +762,10 @@ function RoundStrategyCard({
           </PlainNotice>
 
           {round.finalSnapshot ? <FinalSnapshotPanel snapshot={round.finalSnapshot} /> : null}
+
+          {round.outcomePolicies.length > 0 ? (
+            <OutcomePolicyPanel policies={round.outcomePolicies} />
+          ) : null}
 
           <div className="rounded-[22px] border border-slate-200 bg-white/82 px-4 py-4">
             <div className="grid gap-2 text-sm leading-6 text-slate-700">
@@ -597,6 +871,7 @@ function RoundStrategyCard({
 
 export default function WorldCupStrategyPage() {
   const pathname = usePathname();
+  const dataMode = useDataMode();
   const { data, error, loading, refresh } = useDashboardData();
   const strategy = useMemo(() => {
     if (!data) {
@@ -646,7 +921,11 @@ export default function WorldCupStrategyPage() {
         }
       />
 
+      <StorageModeNotice isChecking={dataMode.isChecking} mode={dataMode.mode} />
+
       <FirstAnswerPanel round={primaryRound} reportHref={reportHref} />
+
+      <LogicWorkbenchPanel round={primaryRound} />
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard
@@ -678,7 +957,8 @@ export default function WorldCupStrategyPage() {
       <PlainNotice tone="amber" title="読み方">
         <p>
           「期待回収」は平均的に何円戻る見込みかです。実際の利益を保証しません。
-          今回は1等、つまり13試合すべて的中した場合だけで見ています。2等・3等はまだ足していません。
+          この画面では、toto13の1口100円に対して、1等・2等・3等の推定払戻を足したEVを表示します。
+          13試合すべて当てる1等分は、内訳として別に出しています。
         </p>
       </PlainNotice>
 

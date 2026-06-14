@@ -31,11 +31,25 @@ APP_URL = "https://quietbriony.github.io/world-toto-lab/world-cup-strategy/"
 STAKE_YEN = 100
 TOTAL_SALES_YEN = 289_166_800
 RETURN_RATE = 0.5
-FIRST_PRIZE_SHARE = 0.7
-FIRST_PRIZE_POOL_YEN = TOTAL_SALES_YEN * RETURN_RATE * FIRST_PRIZE_SHARE
 OUTCOMES = ("1", "0", "2")
+OUTCOME_INDEX = {outcome: index for index, outcome in enumerate(OUTCOMES)}
+PRIZE_TIERS = (
+    ("1等", 0, 0.70, True),
+    ("2等", 1, 0.15, False),
+    ("3等", 2, 0.15, False),
+)
+KNOWN_ACTUAL_RESULTS = {
+    1: "0",
+    2: "0",
+    3: "1",
+    4: "0",
+    6: "0",
+    11: "2",
+    12: "1",
+    13: "1",
+}
 
-# Initial snapshot from 2026-06-07. The app uses this as the light model line.
+# Initial snapshot from 2026-06-07. Used for the closing-time drift table.
 INITIAL_VOTES = [
     (0.0792, 0.1223, 0.7985),
     (0.6613, 0.1962, 0.1425),
@@ -51,6 +65,9 @@ INITIAL_VOTES = [
     (0.2264, 0.2788, 0.4948),
     (0.5910, 0.2174, 0.1916),
 ]
+
+# Current app view uses the W杯 fallback prior when no richer scout/model input is present.
+MODEL_VOTES = [(0.36, 0.28, 0.36) for _ in range(13)]
 
 # Final official vote snapshot from 2026-06-12 sales close.
 FINAL_VOTES = [
@@ -87,26 +104,48 @@ FIXTURES = [
 
 
 @dataclass(frozen=True)
+class TierEv:
+    estimated_payout_yen: float
+    expected_return_yen: float
+    hit_probability: float
+    label: str
+
+
+@dataclass(frozen=True)
 class ComboRow:
+    cash_probability: float
     ev_multiple: float
     expected_return_yen: float
+    first_prize_expected_return_yen: float
     hit_probability: float
     payout_if_hit_yen: float
     public_probability: float
     signature: str
+    tier_evs: tuple[TierEv, ...]
 
 
 @dataclass(frozen=True)
 class PlanSummary:
     budget_yen: int
+    cash_probability_upper_bound: float
     cost_yen: int
     ev_multiple: float
     expected_profit_yen: float
     expected_return_yen: float
+    first_prize_expected_return_yen: float
     hit_probability: float
     line_count: int
     max_payout_yen: float
     min_payout_yen: float
+
+
+@dataclass(frozen=True)
+class OutcomePolicy:
+    allowed_outcomes: tuple[str, ...]
+    fixture: str
+    label: str
+    match_no: int
+    reason: str
 
 
 def register_fonts() -> tuple[str, str]:
@@ -157,19 +196,131 @@ def combo_probability(votes: list[tuple[float, float, float]], picks: tuple[int,
     return probability
 
 
-def estimated_payout(public_probability: float) -> float:
+def tier_probability(votes: list[tuple[float, float, float]], picks: tuple[int, ...], miss_count: int) -> float:
+    dp = [0.0 for _ in range(miss_count + 1)]
+    dp[0] = 1.0
+
+    for match_index, pick in enumerate(picks):
+        hit_probability = votes[match_index][pick]
+        miss_probability = 1 - hit_probability
+        for misses in range(miss_count, -1, -1):
+            dp[misses] = dp[misses] * hit_probability + (
+                dp[misses - 1] * miss_probability if misses > 0 else 0
+            )
+
+    return dp[miss_count]
+
+
+def estimated_tier_payout(public_probability: float, pool_share: float) -> float:
     expected_other_winners = (TOTAL_SALES_YEN / STAKE_YEN - 1) * public_probability
-    return FIRST_PRIZE_POOL_YEN / (1 + expected_other_winners)
+    prize_pool = TOTAL_SALES_YEN * RETURN_RATE * pool_share
+    return prize_pool / (1 + expected_other_winners)
+
+
+def prize_tier_evs(picks: tuple[int, ...]) -> tuple[TierEv, ...]:
+    tiers: list[TierEv] = []
+
+    for label, miss_count, pool_share, _carryover_eligible in PRIZE_TIERS:
+        model_probability = tier_probability(MODEL_VOTES, picks, miss_count)
+        public_probability = tier_probability(FINAL_VOTES, picks, miss_count)
+        estimated_payout = estimated_tier_payout(public_probability, pool_share)
+        tiers.append(
+            TierEv(
+                estimated_payout_yen=estimated_payout,
+                expected_return_yen=model_probability * estimated_payout,
+                hit_probability=model_probability,
+                label=label,
+            )
+        )
+
+    return tuple(tiers)
+
+
+def probability_rows(votes: tuple[float, float, float]) -> list[tuple[int, float]]:
+    return sorted(enumerate(votes), key=lambda entry: entry[1], reverse=True)
+
+
+def outcome_policy(match_no: int, fixture: str, model_votes: tuple[float, float, float], official_votes: tuple[float, float, float]) -> OutcomePolicy:
+    actual = KNOWN_ACTUAL_RESULTS.get(match_no)
+    model_rows = probability_rows(model_votes)
+    official_rows = probability_rows(official_votes)
+    model_favorite_index, model_favorite_probability = model_rows[0]
+    official_favorite_index, official_favorite_probability = official_rows[0]
+    model_favorite = OUTCOMES[model_favorite_index]
+    official_favorite = OUTCOMES[official_favorite_index]
+
+    if actual:
+        return OutcomePolicy(
+            allowed_outcomes=(actual,),
+            fixture=fixture,
+            label="結果固定",
+            match_no=match_no,
+            reason=f"確定結果 {actual} を反映。ここに反する買い目は除外。",
+        )
+
+    if model_favorite_probability >= 0.70:
+        return OutcomePolicy(
+            allowed_outcomes=(model_favorite,),
+            fixture=fixture,
+            label="70%+ロック",
+            match_no=match_no,
+            reason=f"モデル本命 {model_favorite} が {pct(model_favorite_probability, 1)}。分散せず1点。",
+        )
+
+    top_gap = model_rows[0][1] - model_rows[1][1]
+    official_spread = all(0.25 <= probability <= 0.45 for probability in official_votes)
+
+    if top_gap <= 0.08 or official_spread:
+        allowed = tuple(OUTCOMES[index] for index, probability in model_rows if probability >= 0.22)
+        return OutcomePolicy(
+            allowed_outcomes=allowed or OUTCOMES,
+            fixture=fixture,
+            label="割れ試合分散",
+            match_no=match_no,
+            reason=f"上位差 {top_gap * 100:.1f}pt。30%台で割れる試合として複数出目を残す。",
+        )
+
+    if official_favorite_probability >= 0.70 and official_favorite != model_favorite:
+        allowed_indexes = []
+        for index, _probability in model_rows[:2]:
+            if index not in allowed_indexes:
+                allowed_indexes.append(index)
+        return OutcomePolicy(
+            allowed_outcomes=tuple(OUTCOMES[index] for index in allowed_indexes),
+            fixture=fixture,
+            label="人気過剰外し",
+            match_no=match_no,
+            reason=f"公式人気は {official_favorite} に {pct(official_favorite_probability, 1)} 集中。モデル側を優先。",
+        )
+
+    return OutcomePolicy(
+        allowed_outcomes=OUTCOMES,
+        fixture=fixture,
+        label="EV順で探索",
+        match_no=match_no,
+        reason="明確なロック条件ではないため、EV順の探索に委ねる。",
+    )
+
+
+OUTCOME_POLICIES = tuple(
+    outcome_policy(index, fixture, model_votes, official_votes)
+    for index, (fixture, model_votes, official_votes) in enumerate(zip(FIXTURES, MODEL_VOTES, FINAL_VOTES), start=1)
+)
 
 
 def enumerate_positive_rows() -> list[ComboRow]:
     rows: list[ComboRow] = []
+    allowed_options = [
+        tuple(OUTCOME_INDEX[outcome] for outcome in policy.allowed_outcomes)
+        for policy in OUTCOME_POLICIES
+    ]
 
-    for picks in product(range(3), repeat=13):
-        hit_probability = combo_probability(INITIAL_VOTES, picks)
-        public_probability = combo_probability(FINAL_VOTES, picks)
-        payout = estimated_payout(public_probability)
-        expected_return = hit_probability * payout
+    for picks in product(*allowed_options):
+        hit_probability = tier_probability(MODEL_VOTES, picks, 0)
+        public_probability = tier_probability(FINAL_VOTES, picks, 0)
+        tiers = prize_tier_evs(picks)
+        first_prize = tiers[0]
+        expected_return = sum(tier.expected_return_yen for tier in tiers)
         ev_multiple = expected_return / STAKE_YEN
 
         if ev_multiple <= 1:
@@ -177,12 +328,15 @@ def enumerate_positive_rows() -> list[ComboRow]:
 
         rows.append(
             ComboRow(
+                cash_probability=sum(tier.hit_probability for tier in tiers),
                 ev_multiple=ev_multiple,
                 expected_return_yen=expected_return,
+                first_prize_expected_return_yen=first_prize.expected_return_yen,
                 hit_probability=hit_probability,
-                payout_if_hit_yen=payout,
+                payout_if_hit_yen=first_prize.estimated_payout_yen,
                 public_probability=public_probability,
                 signature="".join(OUTCOMES[pick] for pick in picks),
+                tier_evs=tiers,
             )
         )
 
@@ -202,15 +356,18 @@ def build_plan(rows: list[ComboRow], budget_yen: int) -> PlanSummary:
     line_count = min(len(rows), budget_yen // STAKE_YEN)
     selected = rows[:line_count]
     expected_return = sum(row.expected_return_yen for row in selected)
+    first_prize_expected_return = sum(row.first_prize_expected_return_yen for row in selected)
     cost = line_count * STAKE_YEN
     payouts = [row.payout_if_hit_yen for row in selected]
 
     return PlanSummary(
         budget_yen=budget_yen,
+        cash_probability_upper_bound=sum(row.cash_probability for row in selected),
         cost_yen=cost,
         ev_multiple=expected_return / cost,
         expected_profit_yen=expected_return - cost,
         expected_return_yen=expected_return,
+        first_prize_expected_return_yen=first_prize_expected_return,
         hit_probability=sum(row.hit_probability for row in selected),
         line_count=line_count,
         max_payout_yen=max(payouts),
@@ -352,7 +509,7 @@ def add_page_one(story):
     story.append(p("W杯toto 買い方・期待回収レポート", "title"))
     story.append(
         p(
-            "第1634回 toto。1口いくらか、10口と1万円ならどう買うか、期待回収が購入額を超えるかを先にまとめます。",
+            "第1634回 toto。1口いくらか、10口と1万円ならどう買うか、1等・2等・3等込みで期待回収が購入額を超えるかを先にまとめます。",
             "subtitle",
         )
     )
@@ -362,8 +519,8 @@ def add_page_one(story):
         [
             [
                 metric_card("一口", yen(STAKE_YEN), "1通りを買う金額"),
-                metric_card("10口", yen(PLAN_10.cost_yen), f"期待回収 {yen(PLAN_10.expected_return_yen)}"),
-                metric_card("1万円", f"{PLAN_100.line_count}口", f"期待回収 {yen(PLAN_100.expected_return_yen)}"),
+                metric_card("10口", yen(PLAN_10.cost_yen), f"1〜3等EV {yen(PLAN_10.expected_return_yen)}"),
+                metric_card("1万円", f"{PLAN_100.line_count}口", f"1〜3等EV {yen(PLAN_100.expected_return_yen)}"),
                 metric_card("判定", "購入額以上", f"期待損益 {signed_yen(PLAN_100.expected_profit_yen)}"),
             ]
         ],
@@ -385,9 +542,9 @@ def add_page_one(story):
     conclusion_rows = [
         [p("問い", "cell_bold"), p("答え", "cell_bold")],
         [p("一口いくら?", "cell"), p(f"{yen(STAKE_YEN)}です。10口なら{yen(PLAN_10.cost_yen)}、1万円なら100口です。", "cell")],
-        [p("1万円で1万円以上戻る期待値はある?", "cell"), p(f"あります。今回の1万円プランは期待回収{yen(PLAN_100.expected_return_yen)}、期待損益{signed_yen(PLAN_100.expected_profit_yen)}です。", "cell_bold")],
+        [p("1万円で1万円以上戻る期待値はある?", "cell"), p(f"あります。今回の候補だけに絞ると、購入額{yen(PLAN_100.cost_yen)}に対して1〜3等EVは{yen(PLAN_100.expected_return_yen)}、期待損益は{signed_yen(PLAN_100.expected_profit_yen)}です。余った予算は無理に使いません。", "cell_bold")],
         [p("買うならどう買う?", "cell"), p(f"上位{PLAN_100.line_count}通りを1口ずつ。最上位の出目は {POSITIVE_ROWS[0].signature} です。", "cell")],
-        [p("当たったらいくら戻る?", "cell"), p(f"1万円プラン内では、13試合的中時の推定払戻は {yen(PLAN_100.min_payout_yen)} - {yen(PLAN_100.max_payout_yen)} です。出目ごとに変わります。", "cell")],
+        [p("当たったらいくら戻る?", "cell"), p(f"1等なら、選んだ出目ごとの推定払戻は {yen(PLAN_100.min_payout_yen)} - {yen(PLAN_100.max_payout_yen)}。2等・3等は下位払戻として期待値に足しています。", "cell")],
         [p("友人に見せて大丈夫?", "cell"), p("この資料とアプリは購入履歴ではなく試算です。誰が何を買ったか、決済情報、購入済み履歴は扱いません。", "cell")],
     ]
     story.append(make_table(conclusion_rows, [48 * mm, 197 * mm], standard_grid_style()))
@@ -395,16 +552,16 @@ def add_page_one(story):
 
     story.append(p("予算別サマリー", "section"))
     plan_rows = [
-        [p("予算", "cell_bold"), p("口数", "cell_bold"), p("期待回収", "cell_bold"), p("期待損益", "cell_bold"), p("EV", "cell_bold"), p("13試合当たったら", "cell_bold")],
-        [p("1口", "cell"), p(f"{PLAN_1.line_count}口", "cell"), p(yen(PLAN_1.expected_return_yen), "cell_bold"), p(signed_yen(PLAN_1.expected_profit_yen), "cell"), p(multiple(PLAN_1.ev_multiple), "cell"), p(yen(PLAN_1.max_payout_yen), "cell")],
-        [p("10口", "cell"), p(f"{PLAN_10.line_count}口", "cell"), p(yen(PLAN_10.expected_return_yen), "cell_bold"), p(signed_yen(PLAN_10.expected_profit_yen), "cell"), p(multiple(PLAN_10.ev_multiple), "cell"), p(f"{yen(PLAN_10.min_payout_yen)} - {yen(PLAN_10.max_payout_yen)}", "cell")],
-        [p("1万円", "cell"), p(f"{PLAN_100.line_count}口", "cell"), p(yen(PLAN_100.expected_return_yen), "cell_bold"), p(signed_yen(PLAN_100.expected_profit_yen), "cell_bold"), p(multiple(PLAN_100.ev_multiple), "cell_bold"), p(f"{yen(PLAN_100.min_payout_yen)} - {yen(PLAN_100.max_payout_yen)}", "cell")],
+        [p("予算", "cell_bold"), p("口数", "cell_bold"), p("1〜3等EV", "cell_bold"), p("1等分", "cell_bold"), p("期待損益", "cell_bold"), p("EV", "cell_bold"), p("払戻圏内", "cell_bold")],
+        [p("1口", "cell"), p(f"{PLAN_1.line_count}口", "cell"), p(yen(PLAN_1.expected_return_yen), "cell_bold"), p(yen(PLAN_1.first_prize_expected_return_yen), "cell"), p(signed_yen(PLAN_1.expected_profit_yen), "cell"), p(multiple(PLAN_1.ev_multiple), "cell"), p(pct(PLAN_1.cash_probability_upper_bound, 4), "cell")],
+        [p("10口", "cell"), p(f"{PLAN_10.line_count}口", "cell"), p(yen(PLAN_10.expected_return_yen), "cell_bold"), p(yen(PLAN_10.first_prize_expected_return_yen), "cell"), p(signed_yen(PLAN_10.expected_profit_yen), "cell"), p(multiple(PLAN_10.ev_multiple), "cell"), p(pct(PLAN_10.cash_probability_upper_bound, 4), "cell")],
+        [p("1万円", "cell"), p(f"{PLAN_100.line_count}口", "cell"), p(yen(PLAN_100.expected_return_yen), "cell_bold"), p(yen(PLAN_100.first_prize_expected_return_yen), "cell"), p(signed_yen(PLAN_100.expected_profit_yen), "cell_bold"), p(multiple(PLAN_100.ev_multiple), "cell_bold"), p(pct(PLAN_100.cash_probability_upper_bound, 4), "cell")],
     ]
-    story.append(make_table(plan_rows, [28 * mm, 25 * mm, 42 * mm, 42 * mm, 28 * mm, 80 * mm], standard_grid_style()))
+    story.append(make_table(plan_rows, [25 * mm, 22 * mm, 38 * mm, 34 * mm, 34 * mm, 24 * mm, 38 * mm], standard_grid_style()))
     story.append(Spacer(1, 4 * mm))
     story.append(
         p(
-            "注意: これは1等、つまり13試合すべて的中した場合だけの期待値です。2等・3等は含めていません。期待値がプラスでも単発では外れる可能性が高く、利益保証ではありません。",
+            "注意: 期待回収は平均的な戻りの試算で、利益保証ではありません。今回は1等(13/13)、2等(12/13)、3等(11/13)の推定払戻を足しています。払戻圏内は複数口の合算上限目安です。",
             "small",
         )
     )
@@ -414,46 +571,46 @@ def add_ticket_table(story):
     story.append(p("買うならこの順 - 上位20通り", "title"))
     story.append(
         p(
-            "1万円プランでは上位100通りを1口ずつ買う前提です。PDFでは読みやすさ優先で上位20通りを載せ、アプリには100通りを表示します。",
+            f"購入額より期待回収が高い候補だけを、1口ずつバラで買う前提です。今回は{PLAN_100.line_count}通りまでで止め、PDFでは上位20通りを載せます。",
             "subtitle",
         )
     )
     story.append(Spacer(1, 4 * mm))
 
-    rows = [[p("順", "cell_bold"), p("出目", "cell_bold"), p("期待回収/口", "cell_bold"), p("EV", "cell_bold"), p("13試合当たったら", "cell_bold"), p("的中率", "cell_bold"), p("人気重複", "cell_bold")]]
+    rows = [[p("順", "cell_bold"), p("出目", "cell_bold"), p("1〜3等EV/口", "cell_bold"), p("1等分/口", "cell_bold"), p("EV", "cell_bold"), p("1等なら", "cell_bold"), p("払戻圏内", "cell_bold")]]
     for rank, row in enumerate(POSITIVE_ROWS[:20], start=1):
         rows.append(
             [
                 p(str(rank), "center_cell"),
                 p(row.signature, "cell_bold"),
                 p(yen(row.expected_return_yen), "cell_bold"),
+                p(yen(row.first_prize_expected_return_yen), "cell"),
                 p(multiple(row.ev_multiple), "cell"),
                 p(yen(row.payout_if_hit_yen), "cell"),
-                p(pct(row.hit_probability, 5), "cell"),
-                p(pct(row.public_probability, 5), "cell"),
+                p(pct(row.cash_probability, 4), "cell"),
             ]
         )
 
-    story.append(make_table(rows, [14 * mm, 42 * mm, 34 * mm, 26 * mm, 48 * mm, 40 * mm, 40 * mm], standard_grid_style(), repeat_rows=1))
+    story.append(make_table(rows, [14 * mm, 42 * mm, 34 * mm, 34 * mm, 24 * mm, 48 * mm, 36 * mm], standard_grid_style(), repeat_rows=1))
     story.append(Spacer(1, 5 * mm))
 
     story.append(PageBreak())
-    story.append(p("王道で勝った場合", "title"))
-    story.append(p("公式人気どおりに13試合すべて当てた場合の見え方です。", "subtitle"))
+    story.append(p("王道で買った場合", "title"))
+    story.append(p("公式人気どおりに買った場合も、1〜3等込みで見ます。人気側は当たった時の1等払戻が薄くなりやすい点に注意します。", "subtitle"))
     story.append(Spacer(1, 4 * mm))
     orthodox_signature = "".join(OUTCOMES[max(range(3), key=lambda index: votes[index])] for votes in FINAL_VOTES)
-    orthodox_hit = combo_probability(INITIAL_VOTES, tuple(OUTCOMES.index(char) for char in orthodox_signature))
-    orthodox_public = combo_probability(FINAL_VOTES, tuple(OUTCOMES.index(char) for char in orthodox_signature))
-    orthodox_payout = estimated_payout(orthodox_public)
-    orthodox_expected = orthodox_hit * orthodox_payout
+    orthodox_picks = tuple(OUTCOMES.index(char) for char in orthodox_signature)
+    orthodox_tiers = prize_tier_evs(orthodox_picks)
+    orthodox_expected = sum(tier.expected_return_yen for tier in orthodox_tiers)
+    orthodox_cash_probability = sum(tier.hit_probability for tier in orthodox_tiers)
     orthodox_rows = [
-        [p("出目", "cell_bold"), p("13試合当たったら", "cell_bold"), p("1口期待回収", "cell_bold"), p("EV", "cell_bold")],
-        [p(orthodox_signature, "cell_bold"), p(yen(orthodox_payout), "cell"), p(yen(orthodox_expected), "cell"), p(multiple(orthodox_expected / STAKE_YEN), "cell")],
+        [p("出目", "cell_bold"), p("1等なら", "cell_bold"), p("1〜3等EV/口", "cell_bold"), p("1等分/口", "cell_bold"), p("EV", "cell_bold"), p("払戻圏内", "cell_bold")],
+        [p(orthodox_signature, "cell_bold"), p(yen(orthodox_tiers[0].estimated_payout_yen), "cell"), p(yen(orthodox_expected), "cell"), p(yen(orthodox_tiers[0].expected_return_yen), "cell"), p(multiple(orthodox_expected / STAKE_YEN), "cell"), p(pct(orthodox_cash_probability, 4), "cell")],
     ]
-    story.append(make_table(orthodox_rows, [64 * mm, 58 * mm, 58 * mm, 34 * mm], standard_grid_style()))
+    story.append(make_table(orthodox_rows, [48 * mm, 48 * mm, 42 * mm, 38 * mm, 28 * mm, 38 * mm], standard_grid_style()))
     story.append(
         p(
-            "公式人気どおりの王道出目は、当たった場合の払戻が小さくなりやすいため、今回の1等期待回収は100円未満です。",
+            "王道は安心感がありますが、同じ出目を買う人も多くなります。期待値が100円を下回るなら、厚く買う対象から外して上位候補に寄せます。",
             "small",
         )
     )
@@ -466,14 +623,30 @@ def add_method_page(story):
 
     method_rows = [
         [p("項目", "cell_bold"), p("今回の扱い", "cell_bold")],
-        [p("モデル確率", "cell"), p("2026-06-07 08:48-08:56時点の公式投票率を軽量モデル線として使用。", "cell")],
+        [p("モデル確率", "cell"), p("現状はW杯フォールバック prior を軽量モデル線として使用。Haziの感想戦・ボイスメモで今後ここを強化します。", "cell")],
         [p("人気確率", "cell"), p("2026-06-12販売終了時点の確定公式投票率を使用。", "cell")],
         [p("売上", "cell"), p(f"確定売上 {yen(TOTAL_SALES_YEN)} を使用。1口100円なので推定総口数は {TOTAL_SALES_YEN // STAKE_YEN:,}口。", "cell")],
-        [p("払戻", "cell"), p("売上 x 50% x 1等配分70%を1等原資とし、同じ出目の推定他当選口数で割ります。", "cell")],
-        [p("期待回収", "cell"), p("モデル的中率 x 13試合的中時の推定払戻。100円を超える出目だけを購入候補にします。", "cell")],
-        [p("含めていないもの", "cell"), p("2等・3等、税、実際の購入締切差、販売サイト側の最終確定配当、購入操作。", "cell")],
+        [p("払戻", "cell"), p("売上 x 50%を原資に、1等70%、2等15%、3等15%へ配分。同じ等級に入る推定他当選口数で割ります。", "cell")],
+        [p("期待回収", "cell"), p("1等・2等・3等それぞれのモデル当せん確率 x 推定払戻を足します。100円を超える出目だけを購入候補にします。", "cell")],
+        [p("候補の絞り込み", "cell"), p("確定済みは結果固定。モデル70%以上は本命だけ。割れている試合は複数出目。公式人気が過剰ならモデル側を優先します。", "cell")],
+        [p("含めていないもの", "cell"), p("税、実際の購入締切差、販売サイト側の最終確定配当、購入操作、購入済み履歴。", "cell")],
     ]
     story.append(make_table(method_rows, [42 * mm, 203 * mm], standard_grid_style()))
+    story.append(Spacer(1, 5 * mm))
+
+    story.append(p("購入候補の絞り込み", "section"))
+    policy_rows = [[p("No", "cell_bold"), p("試合", "cell_bold"), p("判定", "cell_bold"), p("残す出目", "cell_bold"), p("理由", "cell_bold")]]
+    for policy in OUTCOME_POLICIES:
+        policy_rows.append(
+            [
+                p(str(policy.match_no), "center_cell"),
+                p(policy.fixture, "cell"),
+                p(policy.label, "cell_bold"),
+                p(" / ".join(policy.allowed_outcomes), "cell_bold"),
+                p(policy.reason, "cell"),
+            ]
+        )
+    story.append(make_table(policy_rows, [12 * mm, 70 * mm, 30 * mm, 30 * mm, 103 * mm], standard_grid_style(), repeat_rows=1))
     story.append(Spacer(1, 5 * mm))
 
     story.append(p("締切前スナップショットとの差分", "section"))
@@ -507,7 +680,7 @@ def draw_page(canvas, doc):
     canvas.drawString(16 * mm, PAGE_H - 6.5 * mm, "World Toto Lab buying report")
     canvas.setFillColor(MUTED)
     canvas.setFont(FONT, 7.5)
-    canvas.drawRightString(PAGE_W - 14 * mm, 8 * mm, f"Page {doc.page} / Generated 2026-06-14 JST")
+    canvas.drawRightString(PAGE_W - 14 * mm, 8 * mm, f"Page {doc.page} / Generated 2026-06-15 JST")
     canvas.restoreState()
 
 
