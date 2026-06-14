@@ -210,9 +210,9 @@ describe("world cup strategy", () => {
   it("builds practical budget plans for 10 tickets and 100 tickets", () => {
     const valueMatches = Array.from({ length: 13 }, (_value, index) =>
       buildMatch(index + 1, {
-        modelProb0: 0.1,
-        modelProb1: 0.1,
-        modelProb2: 0.8,
+        modelProb0: 0.18,
+        modelProb1: 0.18,
+        modelProb2: 0.64,
         officialVote0: 0.05,
         officialVote1: 0.9,
         officialVote2: 0.05,
@@ -236,15 +236,17 @@ describe("world cup strategy", () => {
     expect(plan10000?.lineCount).toBe(100);
     expect(plan10000?.costYen).toBe(10000);
     expect(plan10000?.expectedReturnYen).toBeGreaterThan(10000);
+    expect(plan10000?.firstPrizeExpectedReturnYen).toBeLessThan(plan10000?.expectedReturnYen ?? 0);
+    expect(plan10000?.cashProbabilityUpperBound).toBeGreaterThan(plan10000?.hitProbabilityUpperBound ?? 0);
     expect(round1634.primaryPortfolioPlan?.budgetYen).toBe(10000);
   });
 
   it("keeps practical budget plans when the positive EV table is omitted", () => {
     const valueMatches = Array.from({ length: 13 }, (_value, index) =>
       buildMatch(index + 1, {
-        modelProb0: 0.1,
-        modelProb1: 0.1,
-        modelProb2: 0.8,
+        modelProb0: 0.18,
+        modelProb1: 0.18,
+        modelProb2: 0.64,
         officialVote0: 0.05,
         officialVote1: 0.9,
         officialVote2: 0.05,
@@ -293,6 +295,74 @@ describe("world cup strategy", () => {
     expect(result.totalPositiveCount).toBeGreaterThan(0);
     expect(result.rows[0].signature).toBe("22");
     expect(result.rows[0].evMultiple).toBeGreaterThan(result.rows[1].evMultiple);
+    expect(result.rows[0].prizeTiers).toHaveLength(1);
+  });
+
+  it("includes second and third prize tiers in 13-match positive EV rows", () => {
+    const valueMatches = Array.from({ length: 13 }, (_value, index) =>
+      buildMatch(index + 1, {
+        modelProb0: 0.18,
+        modelProb1: 0.18,
+        modelProb2: 0.64,
+        officialVote0: 0.05,
+        officialVote1: 0.9,
+        officialVote2: 0.05,
+      }),
+    );
+    const result = enumeratePositiveEvCombos({
+      assumption: buildAssumption(),
+      limit: 1,
+      matches: valueMatches,
+    });
+
+    expect(result.rows[0]?.prizeTiers.map((tier) => tier.label)).toEqual(["1等", "2等", "3等"]);
+    expect(result.rows[0]?.expectedReturnYen).toBeGreaterThan(
+      result.rows[0]?.firstPrizeExpectedReturnYen ?? 0,
+    );
+    expect(result.rows[0]?.cashProbability).toBeGreaterThan(result.rows[0]?.hitProbability ?? 0);
+  });
+
+  it("fixes known actual results and locks 70 percent model favorites in portfolio search", () => {
+    const actualByMatchNo = new Map<number, "1" | "0" | "2">([
+      [1, "0"],
+      [2, "0"],
+      [3, "1"],
+      [4, "0"],
+      [6, "0"],
+      [11, "2"],
+      [12, "1"],
+      [13, "1"],
+    ]);
+    const matches = Array.from({ length: 13 }, (_value, index) => {
+      const matchNo = index + 1;
+      const target = actualByMatchNo.get(matchNo) ?? "2";
+
+      return buildMatch(matchNo, {
+        modelProb0: target === "0" ? 0.8 : 0.1,
+        modelProb1: target === "1" ? 0.8 : 0.1,
+        modelProb2: target === "2" ? 0.8 : 0.1,
+        officialVote0: target === "0" ? 0.05 : target === "1" ? 0.9 : 0.05,
+        officialVote1: target === "1" ? 0.05 : target === "2" ? 0.9 : 0.05,
+        officialVote2: target === "2" ? 0.05 : target === "0" ? 0.9 : 0.05,
+      });
+    });
+    const strategy = buildWorldCupStrategyDashboard({
+      includePositiveCombos: true,
+      now: new Date("2026-06-14T00:00:00+09:00"),
+      positiveComboLimit: 3,
+      rounds: [buildRound(matches)],
+    });
+    const round1634 = strategy.rounds[0];
+
+    expect(round1634.outcomePolicies.find((policy) => policy.matchNo === 1)?.kind).toBe("actual_fixed");
+    expect(round1634.outcomePolicies.find((policy) => policy.matchNo === 1)?.allowedOutcomes).toEqual(["0"]);
+    expect(round1634.outcomePolicies.find((policy) => policy.matchNo === 5)?.kind).toBe("model_lock");
+    expect(round1634.positiveEv.evaluatedCount).toBe(1);
+    expect(round1634.positiveEv.rows[0]?.picks.find((pick) => pick.matchNo === 1)?.pick).toBe("0");
+    expect(round1634.positiveEv.rows[0]?.picks.find((pick) => pick.matchNo === 11)?.pick).toBe("2");
+    expect(round1634.evSourceRows.map((row) => row.label)).toContain("EV式");
+    expect(round1634.predictionLogicRows.map((row) => row.label)).toContain("Poisson / Dixon-Colesでドローを詰める");
+    expect(round1634.postMortemPrompts.length).toBeGreaterThan(0);
   });
 
   it("explains missing strict EV inputs for unpublished future rounds", () => {

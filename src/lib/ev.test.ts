@@ -1,10 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  DEFAULT_TOTO_PRIZE_TIERS,
   calculateEstimatedPayout,
   calculateExpectedOtherWinners,
   calculateProxyScore,
   calculateTicketEv,
+  calculateTierProbability,
+  calculateTotoPrizeTierEvs,
+  sumTotoPrizeTierExpectedReturn,
 } from "@/lib/ev";
 import type { RoundEvAssumption } from "@/lib/types";
 
@@ -46,6 +50,29 @@ describe("ev", () => {
     });
 
     expect(expectedOtherWinners).toBeCloseTo(999.99, 2);
+  });
+
+  it("calculates exact miss-count probabilities for lower prize tiers", () => {
+    expect(calculateTierProbability([0.5, 0.5, 0.5], 0)).toBeCloseTo(0.125);
+    expect(calculateTierProbability([0.5, 0.5, 0.5], 1)).toBeCloseTo(0.375);
+    expect(calculateTierProbability([0.5, 0.5, 0.5], 2)).toBeCloseTo(0.375);
+  });
+
+  it("adds toto second and third prize expected value separately from first prize", () => {
+    const tiers = calculateTotoPrizeTierEvs({
+      assumption: buildAssumption(),
+      selectedModelProbabilities: Array.from({ length: 13 }, () => 0.8),
+      selectedOfficialProbabilities: Array.from({ length: 13 }, () => 0.1),
+      tiers: DEFAULT_TOTO_PRIZE_TIERS,
+    });
+    const totalExpectedReturnYen = sumTotoPrizeTierExpectedReturn(tiers);
+
+    expect(tiers).toHaveLength(3);
+    expect(tiers[0]?.label).toBe("1等");
+    expect(tiers[1]?.hitCondition).toBe("12/13");
+    expect(tiers[2]?.hitCondition).toBe("11/13");
+    expect(totalExpectedReturnYen).not.toBeNull();
+    expect(totalExpectedReturnYen!).toBeGreaterThan(tiers[0]!.expectedReturnYen!);
   });
 
   it("reflects carryover in payout", () => {

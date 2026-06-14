@@ -1,12 +1,23 @@
 import {
   OUTCOME_VALUES,
+  enumToOutcome,
   favoriteOutcomeForBucket,
   formatDateTime,
   getProbability,
   type MatchLike,
   type OutcomeValue,
 } from "@/lib/domain";
-import { calculateEstimatedPayout, calculateTicketEv } from "@/lib/ev";
+import {
+  DEFAULT_TOTO_PRIZE_TIERS,
+  calculateEstimatedPayout,
+  calculateEstimatedTierPayout,
+  calculateTicketEv,
+  calculateTotoPrizeTierEvs,
+  sumTotoPrizeTierExpectedReturn,
+  sumTotoPrizeTierHitProbability,
+  type TotoPrizeTierDefinition,
+  type TotoPrizeTierEv,
+} from "@/lib/ev";
 import {
   featuredWorldTotoVoteUrl,
   featuredWorldTotoRounds,
@@ -34,26 +45,51 @@ export type WorldCupStrategyPick = {
 
 export type WorldCupStrategyLineKey = "ai" | "orthodox" | "value";
 
+export type WorldCupOutcomePolicyKind = "actual_fixed" | "model_lock" | "spread" | "value_fade" | "open";
+
+export type WorldCupOutcomePolicy = {
+  allowedOutcomes: OutcomeValue[];
+  fixture: string;
+  kind: WorldCupOutcomePolicyKind;
+  label: string;
+  matchNo: number;
+  modelFavorite: OutcomeValue | null;
+  modelFavoriteProbability: number | null;
+  officialFavorite: OutcomeValue | null;
+  officialFavoriteProbability: number | null;
+  reason: string;
+};
+
 export type WorldCupStrategyLine = {
+  cashProbability: number | null;
   deviationCount: number;
   estimatedPayoutYen: number | null;
   evMultiple: number | null;
   expectedReturnYen: number | null;
+  firstPrizeEvMultiple: number | null;
+  firstPrizeExpectedReturnYen: number | null;
   hitProbability: number | null;
   key: WorldCupStrategyLineKey;
   label: string;
   picks: WorldCupStrategyPick[];
+  prizeTiers: TotoPrizeTierEv[];
   publicProbability: number | null;
   strictEvReady: boolean;
+  totalEvMultiple: number | null;
+  totalExpectedReturnYen: number | null;
 };
 
 export type WorldCupPositiveEvCombo = {
+  cashProbability: number;
   deviationCount: number;
   estimatedPayoutYen: number;
   evMultiple: number;
   expectedReturnYen: number;
+  firstPrizeEvMultiple: number;
+  firstPrizeExpectedReturnYen: number;
   hitProbability: number;
   picks: WorldCupStrategyPick[];
+  prizeTiers: TotoPrizeTierEv[];
   publicProbability: number;
   signature: string;
 };
@@ -68,11 +104,13 @@ export type WorldCupPositiveEvResult = {
 
 export type WorldCupPortfolioPlan = {
   budgetYen: number;
+  cashProbabilityUpperBound: number;
   costYen: number;
   description: string;
   evMultiple: number;
   expectedProfitYen: number;
   expectedReturnYen: number;
+  firstPrizeExpectedReturnYen: number;
   hitProbabilityUpperBound: number;
   label: string;
   lineCount: number;
@@ -108,6 +146,27 @@ export type WorldCupFinalSnapshotSummary = {
   voteDriftRows: WorldCupVoteDriftRow[];
 };
 
+export type WorldCupSourceStatus = "fixed" | "live" | "model" | "research" | "missing";
+
+export type WorldCupEvSourceRow = {
+  detail: string;
+  label: string;
+  sourceLabel: string;
+  sourceUrl: string | null;
+  status: WorldCupSourceStatus;
+  value: string;
+};
+
+export type WorldCupPredictionLogicRow = {
+  currentUse: string;
+  label: string;
+  nextRefinement: string;
+  sourceLabel: string;
+  sourceUrl: string | null;
+  status: WorldCupSourceStatus;
+  whyItMatters: string;
+};
+
 export type WorldCupTimingChecklistItem = {
   actionLabel: string;
   enabled: boolean;
@@ -122,6 +181,7 @@ export type WorldCupRoundStrategy = {
   driftDetail: string;
   driftLabel: string;
   evAssumption: RoundEvAssumption | null;
+  evSourceRows: WorldCupEvSourceRow[];
   featured: {
     roundNumber: number;
     salesEndAt: string;
@@ -140,8 +200,11 @@ export type WorldCupRoundStrategy = {
   orthodoxLine: WorldCupStrategyLine | null;
   orthodoxDecisionDetail: string;
   orthodoxDecisionLabel: string;
+  outcomePolicies: WorldCupOutcomePolicy[];
   portfolioPlans: WorldCupPortfolioPlan[];
   positiveEv: WorldCupPositiveEvResult;
+  postMortemPrompts: string[];
+  predictionLogicRows: WorldCupPredictionLogicRow[];
   primaryPortfolioPlan: WorldCupPortfolioPlan | null;
   recommendedActionDetail: string;
   recommendedActionLabel: string;
@@ -180,6 +243,14 @@ type KnownFinalSnapshot = {
   }>;
 };
 
+type KnownActualResultSnapshot = {
+  sourceAsOfLabel: string;
+  resultRows: Array<{
+    actualResult: NonNullable<Match["actualResult"]>;
+    matchNo: number;
+  }>;
+};
+
 const knownFinalSnapshotsByRound = new Map<number, KnownFinalSnapshot>([
   [
     1634,
@@ -206,6 +277,25 @@ const knownFinalSnapshotsByRound = new Map<number, KnownFinalSnapshot>([
   ],
 ]);
 
+const knownActualResultsByRound = new Map<number, KnownActualResultSnapshot>([
+  [
+    1634,
+    {
+      sourceAsOfLabel: "2026-06-15 08:00 JST partial confirmed results",
+      resultRows: [
+        { matchNo: 1, actualResult: "DRAW" },
+        { matchNo: 2, actualResult: "DRAW" },
+        { matchNo: 3, actualResult: "ONE" },
+        { matchNo: 4, actualResult: "DRAW" },
+        { matchNo: 6, actualResult: "DRAW" },
+        { matchNo: 11, actualResult: "TWO" },
+        { matchNo: 12, actualResult: "ONE" },
+        { matchNo: 13, actualResult: "ONE" },
+      ],
+    },
+  ],
+]);
+
 export const worldCupPortfolioBudgets = [
   {
     budgetYen: 100,
@@ -224,8 +314,102 @@ export const worldCupPortfolioBudgets = [
   },
 ] as const;
 
+const officialTotoRuleUrl = "https://www.toto-dream.com/toto/about/index.html";
+const dixonColesSourceUrl = "https://rss.onlinelibrary.wiley.com/doi/abs/10.1111/1467-9876.00065";
+const sportsForecastingSourceUrl = "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2479770";
+const eloWorldCupSourceUrl = "https://www.math.tugraz.at/~gilch/person/WC2018-Forecast.pdf";
+const favoriteLongshotSourceUrl = "https://journals.sagepub.com/doi/10.1177/155862351100600404";
+
 function isKnownNumber(value: number | null | undefined): value is number {
   return typeof value === "number" && Number.isFinite(value);
+}
+
+function totoPrizeTiersForMatchCount(matchCount: number): readonly TotoPrizeTierDefinition[] {
+  return matchCount === 13 ? DEFAULT_TOTO_PRIZE_TIERS : DEFAULT_TOTO_PRIZE_TIERS.slice(0, 1);
+}
+
+function totalEvMultiple(expectedReturnYen: number | null, assumption: RoundEvAssumption | null) {
+  return expectedReturnYen !== null && assumption && assumption.stakeYen > 0
+    ? expectedReturnYen / assumption.stakeYen
+    : null;
+}
+
+function missProbabilityFromMoments(input: {
+  exactHitProbability: number;
+  missCount: number;
+  missHitRatioSquareSum: number;
+  missHitRatioSum: number;
+}) {
+  if (input.missCount === 0) {
+    return input.exactHitProbability;
+  }
+
+  if (input.missCount === 1) {
+    return input.exactHitProbability * input.missHitRatioSum;
+  }
+
+  if (input.missCount === 2) {
+    const pairRatioSum =
+      (input.missHitRatioSum * input.missHitRatioSum - input.missHitRatioSquareSum) / 2;
+    return input.exactHitProbability * pairRatioSum;
+  }
+
+  return null;
+}
+
+function buildPrizeTiersFromMoments(input: {
+  assumption: RoundEvAssumption;
+  modelHitProbability: number;
+  modelMissHitRatioSquareSum: number;
+  modelMissHitRatioSum: number;
+  publicHitProbability: number;
+  publicMissHitRatioSquareSum: number;
+  publicMissHitRatioSum: number;
+  tiers: readonly TotoPrizeTierDefinition[];
+}) {
+  return input.tiers.map((tier) => {
+    const poolShare = tier.key === "first" ? input.assumption.firstPrizeShare : tier.poolShare;
+    const pModelTier = missProbabilityFromMoments({
+      exactHitProbability: input.modelHitProbability,
+      missCount: tier.missCount,
+      missHitRatioSquareSum: input.modelMissHitRatioSquareSum,
+      missHitRatioSum: input.modelMissHitRatioSum,
+    });
+    const pPublicTier = missProbabilityFromMoments({
+      exactHitProbability: input.publicHitProbability,
+      missCount: tier.missCount,
+      missHitRatioSquareSum: input.publicMissHitRatioSquareSum,
+      missHitRatioSum: input.publicMissHitRatioSum,
+    });
+    const estimatedPayoutYen = calculateEstimatedTierPayout({
+      assumption: input.assumption,
+      carryoverEligible: tier.carryoverEligible,
+      pPublicTier,
+      poolShare,
+    });
+    const expectedReturnYen =
+      isKnownNumber(pModelTier) && isKnownNumber(estimatedPayoutYen)
+        ? pModelTier * estimatedPayoutYen
+        : null;
+    const evMultiple =
+      expectedReturnYen !== null && input.assumption.stakeYen > 0
+        ? expectedReturnYen / input.assumption.stakeYen
+        : null;
+
+    return {
+      estimatedPayoutYen,
+      evMultiple,
+      expectedReturnYen,
+      hitCondition: tier.hitCondition,
+      key: tier.key,
+      label: tier.label,
+      missCount: tier.missCount,
+      pModelTier,
+      pPublicTier,
+      poolShare,
+      strictAvailable: isKnownNumber(pModelTier) && isKnownNumber(estimatedPayoutYen),
+    } satisfies TotoPrizeTierEv;
+  });
 }
 
 function minutesBetween(left: Date, right: Date) {
@@ -533,6 +717,25 @@ function applyFinalSnapshotToMatches(
   });
 }
 
+function applyKnownActualResultsToMatches(
+  matches: Match[],
+  featured: FeaturedRound,
+  status: WorldCupRoundWindowStatus,
+) {
+  const knownResults = knownActualResultsByRound.get(featured.roundNumber);
+
+  if (status !== "closed" || !knownResults) {
+    return matches;
+  }
+
+  const resultByMatchNo = new Map(knownResults.resultRows.map((row) => [row.matchNo, row.actualResult]));
+
+  return matches.map((match) => ({
+    ...match,
+    actualResult: resultByMatchNo.get(match.matchNo) ?? match.actualResult,
+  }));
+}
+
 function buildFeaturedEvAssumption(input: {
   featured: FeaturedRound;
   finalSnapshot: WorldCupFinalSnapshotSummary | null;
@@ -581,6 +784,317 @@ export function resolveFeaturedWorldTotoRoundNumber(input: {
 
 function sortedMatches(matches: Match[]) {
   return [...matches].sort((left, right) => left.matchNo - right.matchNo);
+}
+
+function probabilityRows(match: MatchLike, bucket: ProbabilityBucket) {
+  return OUTCOME_VALUES.map((outcome) => ({
+    outcome,
+    probability: getProbability(match, bucket, outcome),
+  })).sort((left, right) => (right.probability ?? -1) - (left.probability ?? -1));
+}
+
+function outcomePolicyFor(match: Match): WorldCupOutcomePolicy {
+  const actualOutcome = enumToOutcome(match.actualResult);
+  const modelRows = probabilityRows(match, "model");
+  const officialRows = probabilityRows(match, "official");
+  const modelFavorite = modelRows[0]?.outcome ?? null;
+  const modelFavoriteProbability = modelRows[0]?.probability ?? null;
+  const modelSecondProbability = modelRows[1]?.probability ?? null;
+  const officialFavorite = officialRows[0]?.outcome ?? null;
+  const officialFavoriteProbability = officialRows[0]?.probability ?? null;
+  const fixture = `${match.homeTeam} - ${match.awayTeam}`;
+
+  if (actualOutcome) {
+    return {
+      allowedOutcomes: [actualOutcome],
+      fixture,
+      kind: "actual_fixed",
+      label: "結果固定",
+      matchNo: match.matchNo,
+      modelFavorite,
+      modelFavoriteProbability,
+      officialFavorite,
+      officialFavoriteProbability,
+      reason: `確定結果 ${actualOutcome} を反映。ここに反する買い目は除外。`,
+    };
+  }
+
+  if (isKnownNumber(modelFavoriteProbability) && modelFavoriteProbability >= 0.7 && modelFavorite) {
+    return {
+      allowedOutcomes: [modelFavorite],
+      fixture,
+      kind: "model_lock",
+      label: "70%以上ロック",
+      matchNo: match.matchNo,
+      modelFavorite,
+      modelFavoriteProbability,
+      officialFavorite,
+      officialFavoriteProbability,
+      reason: `モデル本命が ${(modelFavoriteProbability * 100).toFixed(1)}%。分散せず ${modelFavorite} だけ残す。`,
+    };
+  }
+
+  const topGap =
+    isKnownNumber(modelFavoriteProbability) && isKnownNumber(modelSecondProbability)
+      ? modelFavoriteProbability - modelSecondProbability
+      : null;
+    const officialSpread = officialRows.every(
+      (row) =>
+        isKnownNumber(row.probability) &&
+        row.probability >= 0.25 &&
+        row.probability <= 0.45,
+    );
+
+  if ((isKnownNumber(topGap) && topGap <= 0.08) || officialSpread) {
+    const allowedOutcomes = modelRows
+      .filter((row) => isKnownNumber(row.probability) && row.probability >= 0.22)
+      .map((row) => row.outcome);
+
+    return {
+      allowedOutcomes: allowedOutcomes.length > 0 ? allowedOutcomes : OUTCOME_VALUES.map((outcome) => outcome),
+      fixture,
+      kind: "spread",
+      label: "割れ試合分散",
+      matchNo: match.matchNo,
+      modelFavorite,
+      modelFavoriteProbability,
+      officialFavorite,
+      officialFavoriteProbability,
+      reason: isKnownNumber(topGap)
+        ? `上位差 ${(topGap * 100).toFixed(1)}pt。30%台で割れる試合として複数出目を残す。`
+        : "公式人気が割れているため複数出目を残す。",
+    };
+  }
+
+  if (
+    officialFavorite &&
+    modelFavorite &&
+    officialFavorite !== modelFavorite &&
+    isKnownNumber(officialFavoriteProbability) &&
+    officialFavoriteProbability >= 0.7
+  ) {
+    const allowed = Array.from(new Set([modelFavorite, modelRows[1]?.outcome].filter(Boolean))) as OutcomeValue[];
+
+    return {
+      allowedOutcomes: allowed.length > 0 ? allowed : [modelFavorite],
+      fixture,
+      kind: "value_fade",
+      label: "人気過剰外し",
+      matchNo: match.matchNo,
+      modelFavorite,
+      modelFavoriteProbability,
+      officialFavorite,
+      officialFavoriteProbability,
+      reason: `公式人気は ${officialFavorite} に ${(officialFavoriteProbability * 100).toFixed(1)}% 集中、モデル本命は ${modelFavorite}。人気側を厚く買わない。`,
+    };
+  }
+
+  return {
+    allowedOutcomes: OUTCOME_VALUES.map((outcome) => outcome),
+    fixture,
+    kind: "open",
+    label: "EV順で探索",
+    matchNo: match.matchNo,
+    modelFavorite,
+    modelFavoriteProbability,
+    officialFavorite,
+    officialFavoriteProbability,
+    reason: "明確なロック条件ではないため、EV順の探索に委ねる。",
+  };
+}
+
+function buildOutcomePolicies(matches: Match[]) {
+  return sortedMatches(matches).map(outcomePolicyFor);
+}
+
+function yenLabel(value: number | null | undefined) {
+  return isKnownNumber(value) ? `${Math.round(value).toLocaleString("ja-JP")}円` : "未確定";
+}
+
+function isWorldCupFallbackLike(match: MatchLike) {
+  const prob1 = getProbability(match, "model", "1");
+  const prob0 = getProbability(match, "model", "0");
+  const prob2 = getProbability(match, "model", "2");
+
+  return (
+    isKnownNumber(prob1) &&
+    isKnownNumber(prob0) &&
+    isKnownNumber(prob2) &&
+    Math.abs(prob1 - 0.36) <= 0.005 &&
+    Math.abs(prob0 - 0.28) <= 0.005 &&
+    Math.abs(prob2 - 0.36) <= 0.005
+  );
+}
+
+function modelSourceSummary(matches: Match[], usingFeaturedFallback: boolean) {
+  if (matches.length === 0) {
+    return "モデル未入力";
+  }
+
+  const fallbackLikeCount = matches.filter(isWorldCupFallbackLike).length;
+  const readyCount = matches.filter((match) => hasCompleteBucket(match, "model")).length;
+
+  if (fallbackLikeCount >= Math.ceil(matches.length * 0.6)) {
+    return `W杯fallback prior中心 (${fallbackLikeCount}/${matches.length})`;
+  }
+
+  if (usingFeaturedFallback) {
+    return "内蔵W杯プリセットの軽量モデル";
+  }
+
+  return `保存済みRoundモデル (${readyCount}/${matches.length})`;
+}
+
+function buildEvSourceRows(input: {
+  evAssumption: RoundEvAssumption | null;
+  featured: FeaturedRound;
+  finalSnapshot: WorldCupFinalSnapshotSummary | null;
+  matches: Match[];
+  modelReadyCount: number;
+  primaryPlan: WorldCupPortfolioPlan | null;
+  usingFeaturedFallback: boolean;
+}) {
+  const knownResults = knownActualResultsByRound.get(input.featured.roundNumber);
+  const actualFixedCount = input.matches.filter((match) => enumToOutcome(match.actualResult)).length;
+  const modelSummary = modelSourceSummary(input.matches, input.usingFeaturedFallback);
+
+  return [
+    {
+      detail: "公式ルールの購入単価と当せん等級。toto13は1等=全的中、2等=1試合外し、3等=2試合外しで計算します。",
+      label: "くじルール",
+      sourceLabel: "toto公式ルール",
+      sourceUrl: officialTotoRuleUrl,
+      status: "fixed",
+      value: "1口100円 / 1等70%・2等15%・3等15%",
+    },
+    {
+      detail: input.finalSnapshot
+        ? "締切後の確定売上と確定投票率を、他の当せん口数を推定する crowd 側の分布として使います。"
+        : "締切前は保存済みの売上・投票率で暫定計算します。買う直前ほどここを取り直す価値があります。",
+      label: "売上・公式投票率",
+      sourceLabel: input.finalSnapshot?.sourceAsOfLabel ?? featuredWorldTotoSnapshotLabel,
+      sourceUrl: input.finalSnapshot?.sourceUrl ?? input.featured.sourceUrl,
+      status: input.finalSnapshot ? "fixed" : "live",
+      value: yenLabel(input.evAssumption?.totalSalesYen),
+    },
+    {
+      detail: "勝率側の分布です。ここが一番ガチ予想で詰める余地があります。fallback中心なら、感想戦メモからチーム差・ドロー条件・欠場を足します。",
+      label: "モデル確率",
+      sourceLabel: modelSummary,
+      sourceUrl: null,
+      status: input.modelReadyCount >= input.matches.length && input.matches.length > 0 ? "model" : "missing",
+      value: `${input.modelReadyCount}/${input.matches.length || input.featured.matches.length}`,
+    },
+    {
+      detail: knownResults
+        ? `${knownResults.sourceAsOfLabel} の既知結果は固定し、反する買い目を候補から除外します。`
+        : "試合後の感想戦では結果を固定して、買える時点の予想とどれだけズレたかを見ます。",
+      label: "確定結果",
+      sourceLabel: knownResults?.sourceAsOfLabel ?? "未確定",
+      sourceUrl: null,
+      status: actualFixedCount > 0 ? "fixed" : "missing",
+      value: `${actualFixedCount}/${input.matches.length || input.featured.matches.length}試合`,
+    },
+    {
+      detail: "各等級ごとに p_model(当せん) × 推定払戻を計算します。推定払戻は売上原資と p_public(同じ等級に来る crowd 口数) で割ります。",
+      label: "EV式",
+      sourceLabel: "World Toto Lab",
+      sourceUrl: null,
+      status: "model",
+      value: "1〜3等EV合算",
+    },
+    {
+      detail: "購入額より期待回収が高い組み合わせだけを、1通り1口で積みます。プラス候補が足りない場合、余った予算は使いません。",
+      label: "ポートフォリオ",
+      sourceLabel: "positive EV only",
+      sourceUrl: null,
+      status: input.primaryPlan ? "model" : "missing",
+      value: input.primaryPlan
+        ? `${input.primaryPlan.lineCount}口 / ${yenLabel(input.primaryPlan.costYen)}`
+        : "未確定",
+    },
+  ] satisfies WorldCupEvSourceRow[];
+}
+
+function buildPredictionLogicRows(input: {
+  matches: Match[];
+  usingFeaturedFallback: boolean;
+}) {
+  const modelSummary = modelSourceSummary(input.matches, input.usingFeaturedFallback);
+
+  return [
+    {
+      currentUse:
+        "公式投票率は、真の勝率ではなく払戻を薄める crowd 側として使用。外部ブックメーカー締切オッズは未入力。",
+      label: "市場/締切オッズを基準線にする",
+      nextRefinement:
+        "買える直前にブックメーカー odds を取り込み、overround 除去後の確率を model/crowd の比較軸にする。",
+      sourceLabel: "Spann & Skiera 2009",
+      sourceUrl: sportsForecastingSourceUrl,
+      status: "research",
+      whyItMatters:
+        "予測市場や賭けオッズは、単独の予想屋より強いベースラインになりやすい。まず市場に勝てるズレだけを探します。",
+    },
+    {
+      currentUse: `${modelSummary}。現状の第1634回では、説明可能な強度差よりも軽量モデル線が中心です。`,
+      label: "Elo/チーム強度で土台を作る",
+      nextRefinement:
+        "FIFA/Elo、直近試合、開催地、移動、ローテを入れて、fallback 36/28/36 から試合別の分布へ寄せる。",
+      sourceLabel: "Gilch & Mueller WC2018 forecast",
+      sourceUrl: eloWorldCupSourceUrl,
+      status: "model",
+      whyItMatters:
+        "人間の会話を入れる前の土台。国別強度がないと、人気票に逆らう理由が説明しづらくなります。",
+    },
+    {
+      currentUse:
+        "今は得点期待モデルとしては未実装。割れ試合分散ルールでドローを落としすぎないようにしています。",
+      label: "Poisson / Dixon-Colesでドローを詰める",
+      nextRefinement:
+        "攻撃力・守備力・低得点相関から 1/0/2 を出し、特に0-0/1-1寄りの試合をドロー候補として強める。",
+      sourceLabel: "Dixon & Coles 1997",
+      sourceUrl: dixonColesSourceUrl,
+      status: "research",
+      whyItMatters:
+        "サッカーは引き分けの扱いがEVを大きく変えます。得点分布から見ると、感想戦の論点が具体化します。",
+    },
+    {
+      currentUse:
+        "公式人気が70%以上でモデル本命とズレる場合は、人気側を厚く買わない value_fade ルールを表示。",
+      label: "人気過剰・大穴バイアスを見る",
+      nextRefinement:
+        "過去回で、公式人気70%超・30%台割れ・大穴側のどこに過剰投票が出るかをバックテストする。",
+      sourceLabel: "Favorite-longshot bias literature",
+      sourceUrl: favoriteLongshotSourceUrl,
+      status: "model",
+      whyItMatters:
+        "totoは当てるだけでなく、同じ出目を買う人が多いほど払戻が薄くなります。人気の歪みはEVの源泉です。",
+    },
+    {
+      currentUse:
+        "確定結果を固定し、買える時点のモデル/公式人気/最終投票との差分を同じ画面で確認。",
+      label: "感想戦で校正する",
+      nextRefinement:
+        "Brier/log loss、外した理由タグ、Haziメモの反映有無を残し、次回の予想重みを調整する。",
+      sourceLabel: "World Toto Lab review loop",
+      sourceUrl: null,
+      status: "model",
+      whyItMatters:
+        "単発の当たり外れではなく、モデルが何を過大評価したかを蓄積することで次回の買い方が良くなります。",
+    },
+  ] satisfies WorldCupPredictionLogicRow[];
+}
+
+function buildPostMortemPrompts(primaryPlan: WorldCupPortfolioPlan | null) {
+  return [
+    "この試合、勝ち/負け/ドローのどれを人間なら削れたか。理由は戦力、日程、モチベ、相性、怪我のどれか。",
+    "公式人気が70%を超えた試合で、本当に一本ロックで良かったか。逆張りするなら何が根拠だったか。",
+    "30%台で割れた試合は、分散で良かったか。それとも片側に寄せられる材料があったか。",
+    "締切前スナップショットから最終投票率が動いた試合は、情報だったか、ただの人気流入だったか。",
+    primaryPlan
+      ? `${primaryPlan.lineCount}口に絞った判断は妥当だったか。余った予算を使うべき根拠があったか。`
+      : "プラス候補がない時に見送れるか。買いたい気持ちを抑える条件は何か。",
+  ];
 }
 
 function fallbackOutcome(match: MatchLike) {
@@ -635,18 +1149,33 @@ function buildLine(input: {
     selectedModelProbabilities,
     selectedOfficialProbabilities,
   });
+  const prizeTiers = calculateTotoPrizeTierEvs({
+    assumption: input.assumption,
+    selectedModelProbabilities,
+    selectedOfficialProbabilities,
+    tiers: totoPrizeTiersForMatchCount(input.matches.length),
+  });
+  const totalExpectedReturn = sumTotoPrizeTierExpectedReturn(prizeTiers);
+  const cashProbability = sumTotoPrizeTierHitProbability(prizeTiers);
+  const totalMultiple = totalEvMultiple(totalExpectedReturn, input.assumption);
 
   return {
+    cashProbability,
     deviationCount: deviationCount(input.picks, input.orthodoxPicks),
     estimatedPayoutYen: ev.estimatedPayoutYen,
-    evMultiple: ev.evMultiple,
-    expectedReturnYen: ev.grossEvYen,
+    evMultiple: totalMultiple ?? ev.evMultiple,
+    expectedReturnYen: totalExpectedReturn ?? ev.grossEvYen,
+    firstPrizeEvMultiple: ev.evMultiple,
+    firstPrizeExpectedReturnYen: ev.grossEvYen,
     hitProbability: ev.pModelCombo,
     key: input.key,
     label: input.label,
     picks: input.picks,
+    prizeTiers,
     publicProbability: ev.pPublicCombo,
-    strictEvReady: ev.strictAvailable,
+    strictEvReady: prizeTiers.every((tier) => tier.strictAvailable),
+    totalEvMultiple: totalMultiple,
+    totalExpectedReturnYen: totalExpectedReturn,
   };
 }
 
@@ -763,23 +1292,27 @@ export function enumeratePositiveEvCombos(input: {
   limit?: number;
   matches: Match[];
   orthodoxPicks?: WorldCupStrategyPick[];
+  outcomePolicies?: WorldCupOutcomePolicy[];
 }): WorldCupPositiveEvResult {
   const limit = Math.max(1, input.limit ?? 120);
   const matches = sortedMatches(input.matches);
+  const policyByMatchNo = new Map((input.outcomePolicies ?? []).map((policy) => [policy.matchNo, policy]));
   const orthodoxPicks =
     input.orthodoxPicks ??
     matches.map((match) => ({
       matchNo: match.matchNo,
       pick: orthodoxPick(match),
     }));
-  const options = matches.map((match) =>
-    OUTCOME_VALUES.map((outcome) => ({
+  const options = matches.map((match) => {
+    const allowed = policyByMatchNo.get(match.matchNo)?.allowedOutcomes ?? OUTCOME_VALUES;
+
+    return allowed.map((outcome) => ({
       matchNo: match.matchNo,
       modelProbability: getProbability(match, "model", outcome),
       officialProbability: getProbability(match, "official", outcome),
       outcome,
-    })),
-  );
+    }));
+  });
   const ready =
     Boolean(input.assumption) &&
     isKnownNumber(input.assumption?.totalSalesYen) &&
@@ -802,11 +1335,23 @@ export function enumeratePositiveEvCombos(input: {
 
   const assumption = input.assumption;
   const currentPicks = new Array<WorldCupStrategyPick>(matches.length);
+  const currentModelProbabilities = new Array<number | null>(matches.length);
+  const currentOfficialProbabilities = new Array<number | null>(matches.length);
   const topRows: WorldCupPositiveEvCombo[] = [];
   let evaluatedCount = 0;
   let totalPositiveCount = 0;
+  const prizeTiers = totoPrizeTiersForMatchCount(matches.length);
 
-  const visit = (index: number, hitProbability: number, publicProbability: number) => {
+  const visit = (
+    index: number,
+    hitProbability: number,
+    publicProbability: number,
+    modelMissHitRatioSum: number,
+    modelMissHitRatioSquareSum: number,
+    publicMissHitRatioSum: number,
+    publicMissHitRatioSquareSum: number,
+    momentsReady: boolean,
+  ) => {
     if (index === matches.length) {
       evaluatedCount += 1;
 
@@ -819,7 +1364,28 @@ export function enumeratePositiveEvCombos(input: {
         return;
       }
 
-      const expectedReturnYen = hitProbability * estimatedPayoutYen;
+      const firstPrizeExpectedReturnYen = hitProbability * estimatedPayoutYen;
+      const firstPrizeEvMultiple = firstPrizeExpectedReturnYen / assumption.stakeYen;
+      const tierEvs = momentsReady
+        ? buildPrizeTiersFromMoments({
+            assumption,
+            modelHitProbability: hitProbability,
+            modelMissHitRatioSquareSum,
+            modelMissHitRatioSum,
+            publicHitProbability: publicProbability,
+            publicMissHitRatioSquareSum,
+            publicMissHitRatioSum,
+            tiers: prizeTiers,
+          })
+        : calculateTotoPrizeTierEvs({
+            assumption,
+            selectedModelProbabilities: currentModelProbabilities,
+            selectedOfficialProbabilities: currentOfficialProbabilities,
+            tiers: prizeTiers,
+          });
+      const totalExpectedReturnYen = sumTotoPrizeTierExpectedReturn(tierEvs);
+      const cashProbability = sumTotoPrizeTierHitProbability(tierEvs);
+      const expectedReturnYen = totalExpectedReturnYen ?? firstPrizeExpectedReturnYen;
       const evMultiple = expectedReturnYen / assumption.stakeYen;
 
       if (evMultiple <= 1) {
@@ -831,12 +1397,16 @@ export function enumeratePositiveEvCombos(input: {
       insertTopCombo(
         topRows,
         {
+          cashProbability: cashProbability ?? hitProbability,
           deviationCount: deviationCount(picks, orthodoxPicks),
           estimatedPayoutYen,
           evMultiple,
           expectedReturnYen,
+          firstPrizeEvMultiple,
+          firstPrizeExpectedReturnYen,
           hitProbability,
           picks,
+          prizeTiers: tierEvs,
           publicProbability,
           signature: lineSignature(picks),
         },
@@ -850,15 +1420,27 @@ export function enumeratePositiveEvCombos(input: {
         matchNo: option.matchNo,
         pick: option.outcome,
       };
+      currentModelProbabilities[index] = option.modelProbability;
+      currentOfficialProbabilities[index] = option.officialProbability;
+      const modelProbability = option.modelProbability ?? 0;
+      const officialProbability = option.officialProbability ?? 0;
+      const modelRatio = modelProbability > 0 ? (1 - modelProbability) / modelProbability : 0;
+      const publicRatio = officialProbability > 0 ? (1 - officialProbability) / officialProbability : 0;
+
       visit(
         index + 1,
-        hitProbability * (option.modelProbability ?? 0),
-        publicProbability * (option.officialProbability ?? 0),
+        hitProbability * modelProbability,
+        publicProbability * officialProbability,
+        modelMissHitRatioSum + modelRatio,
+        modelMissHitRatioSquareSum + modelRatio * modelRatio,
+        publicMissHitRatioSum + publicRatio,
+        publicMissHitRatioSquareSum + publicRatio * publicRatio,
+        momentsReady && modelProbability > 0 && officialProbability > 0,
       );
     });
   };
 
-  visit(0, 1, 1);
+  visit(0, 1, 1, 0, 0, 0, 0, true);
 
   return {
     evaluatedCount,
@@ -884,20 +1466,30 @@ function buildPortfolioPlan(
   }
 
   const expectedReturnYen = selectedRows.reduce((sum, row) => sum + row.expectedReturnYen, 0);
+  const firstPrizeExpectedReturnYen = selectedRows.reduce(
+    (sum, row) => sum + row.firstPrizeExpectedReturnYen,
+    0,
+  );
   const costYen = selectedRows.length * stakeYen;
   const hitProbabilityUpperBound = Math.min(
     1,
     selectedRows.reduce((sum, row) => sum + row.hitProbability, 0),
   );
+  const cashProbabilityUpperBound = Math.min(
+    1,
+    selectedRows.reduce((sum, row) => sum + row.cashProbability, 0),
+  );
   const payouts = selectedRows.map((row) => row.estimatedPayoutYen);
 
   return {
     budgetYen,
+    cashProbabilityUpperBound,
     costYen,
     description,
     evMultiple: expectedReturnYen / costYen,
     expectedProfitYen: expectedReturnYen - costYen,
     expectedReturnYen,
+    firstPrizeExpectedReturnYen,
     hitProbabilityUpperBound,
     label,
     lineCount: selectedRows.length,
@@ -1135,9 +1727,14 @@ function buildRoundStrategy(input: {
     ? sortedMatches(input.round.matches)
     : buildModeledFeaturedMatches(input.featured);
   const matches = sortedMatches(
-    applyFinalSnapshotToMatches(sourceMatches, finalSnapshot, input.featured, status),
+    applyKnownActualResultsToMatches(
+      applyFinalSnapshotToMatches(sourceMatches, finalSnapshot, input.featured, status),
+      input.featured,
+      status,
+    ),
   );
   const matchCount = matches.length || input.round?.matchCount || input.featured.matches.length;
+  const outcomePolicies = buildOutcomePolicies(matches);
   const officialReadyCount = matches.filter((match) => hasCompleteBucket(match, "official")).length;
   const modelReadyCount = matches.filter((match) => hasCompleteBucket(match, "model")).length;
   const evAssumption = buildFeaturedEvAssumption({
@@ -1198,6 +1795,7 @@ function buildRoundStrategy(input: {
           limit: Math.max(input.positiveComboLimit, portfolioComboLimit),
           matches,
           orthodoxPicks,
+          outcomePolicies,
         })
       : {
           evaluatedCount: null,
@@ -1214,6 +1812,7 @@ function buildRoundStrategy(input: {
           limit: portfolioComboLimit,
           matches,
           orthodoxPicks,
+          outcomePolicies,
         });
   const portfolioPlans = buildPortfolioPlans(portfolioPositiveEv, stakeYen);
   const drift = buildDriftText({
@@ -1231,6 +1830,19 @@ function buildRoundStrategy(input: {
     primaryPlan: primaryPortfolioPlan,
     status,
   });
+  const evSourceRows = buildEvSourceRows({
+    evAssumption,
+    featured: input.featured,
+    finalSnapshot,
+    matches,
+    modelReadyCount,
+    primaryPlan: primaryPortfolioPlan,
+    usingFeaturedFallback,
+  });
+  const predictionLogicRows = buildPredictionLogicRows({
+    matches,
+    usingFeaturedFallback,
+  });
 
   return {
     calculationSourceLabel: input.round
@@ -1241,6 +1853,7 @@ function buildRoundStrategy(input: {
     driftDetail: drift.detail,
     driftLabel: drift.label,
     evAssumption,
+    evSourceRows,
     featured: {
       roundNumber: input.featured.roundNumber,
       salesEndAt: input.featured.salesEndAt,
@@ -1259,8 +1872,11 @@ function buildRoundStrategy(input: {
     orthodoxDecisionDetail: orthodoxDecision.detail,
     orthodoxDecisionLabel: orthodoxDecision.label,
     orthodoxLine,
+    outcomePolicies,
     portfolioPlans,
     positiveEv,
+    postMortemPrompts: buildPostMortemPrompts(primaryPortfolioPlan),
+    predictionLogicRows,
     primaryPortfolioPlan,
     recommendedActionDetail: commandStatus.recommendedActionDetail,
     recommendedActionLabel: commandStatus.recommendedActionLabel,
