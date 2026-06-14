@@ -561,6 +561,13 @@ export default function DashboardPage() {
   const worldCupBuyableRound = worldCupStrategy.rounds.find((round) => round.windowStatus === "selling") ?? null;
   const worldCupFinalSnapshotRound =
     worldCupStrategy.rounds.find((round) => round.finalSnapshot) ?? null;
+  const worldCupPrimaryRound =
+    worldCupStrategy.rounds.find((round) => round.featured.roundNumber === 1634) ??
+    worldCupStrictReadyRound;
+  const worldCupPrimaryPlan =
+    worldCupPrimaryRound?.portfolioPlans.find((plan) => plan.budgetYen === 10000) ??
+    worldCupPrimaryRound?.primaryPortfolioPlan ??
+    null;
   const latestPlayHref = latestRound
     ? buildRoundHref(appRoute.play, latestRound.id, {
         user: latestPrimaryUserId,
@@ -924,8 +931,8 @@ export default function DashboardPage() {
 
           <SectionCard
             id="world-cup-strategy"
-            title="W杯締切EV戦略"
-            description="第1634〜1637回totoの販売期限、保存時点から締切までのズレ余地、王道で勝った場合の推定払戻をまとめます。"
+            title="W杯toto 買い方メモ"
+            description="一口100円、1万円なら100口。買うならどの出目を上から買うか、期待回収が購入額を超えるかを先に見ます。"
             actions={
               <div className="flex flex-wrap gap-2">
                 <Badge tone={worldCupStrategy.createdCount === 4 ? "teal" : "amber"}>
@@ -935,7 +942,7 @@ export default function DashboardPage() {
                   買える回 {worldCupStrategy.buyableCount}
                 </Badge>
                 <Badge tone={worldCupStrategy.strictReadyCount > 0 ? "positive" : "slate"}>
-                  厳密EV {worldCupStrategy.strictReadyCount}
+                  計算可 {worldCupStrategy.strictReadyCount}
                 </Badge>
               </div>
             }
@@ -943,51 +950,56 @@ export default function DashboardPage() {
             <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
               <div className="rounded-[24px] border border-teal-200 bg-teal-50/80 px-5 py-5">
                 <div className="flex flex-wrap gap-2">
-                  <Badge tone="teal">締切直前チェック</Badge>
+                  <Badge tone="teal">まず答え</Badge>
                   <Badge tone="slate">{worldCupStrategy.snapshotLabel}</Badge>
                 </div>
                 <h3 className="mt-4 text-xl font-semibold tracking-tight text-slate-950">
-                  {worldCupBuyableRound
-                    ? `今見るべき回は第${worldCupBuyableRound.featured.roundNumber}回`
-                    : worldCupFinalSnapshotRound
-                      ? `第${worldCupFinalSnapshotRound.featured.roundNumber}回は確定値取得可`
-                    : "次は最終スナップショットを待つ"}
+                  {worldCupPrimaryPlan
+                    ? `1万円プランは期待回収 ${formatCurrency(worldCupPrimaryPlan.expectedReturnYen)}`
+                    : worldCupBuyableRound
+                      ? `今見るべき回は第${worldCupBuyableRound.featured.roundNumber}回`
+                      : worldCupFinalSnapshotRound
+                        ? `第${worldCupFinalSnapshotRound.featured.roundNumber}回は確定値で確認できます`
+                        : "買い方試算は公式データ待ち"}
                 </h3>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
-                  {worldCupBuyableRound
-                    ? `販売期限は ${worldCupBuyableRound.lastBuyableAtLabel}。締切前に公式人気と売上を取り直すと、買える時点のEVに近づきます。`
-                    : worldCupFinalSnapshotRound?.finalSnapshot
-                      ? `確定売上は ${formatCurrency(worldCupFinalSnapshotRound.finalSnapshot.totalSalesYen)}。初期比 ${worldCupFinalSnapshotRound.finalSnapshot.salesMultiple?.toFixed(2) ?? "—"}x まで伸びています。`
-                    : "販売終了済みの回は、締切後の最終公式人気・売上を取り込むと保存時点との差分を検証できます。"}
+                  {worldCupPrimaryPlan
+                    ? `購入額 ${formatCurrency(worldCupPrimaryPlan.costYen)} に対して、期待損益は ${formatCurrency(worldCupPrimaryPlan.expectedProfitYen)}。買うなら上位${worldCupPrimaryPlan.lineCount}通りを1口ずつです。`
+                    : "このカードは購入履歴ではなく、公開投票率とモデル確率からの試算です。誰が何を買ったかは扱いません。"}
                 </p>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   <div className="rounded-[20px] border border-white/70 bg-white/78 px-4 py-4">
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-700">
-                      王道1等推定払戻
+                      一口
                     </p>
                     <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
-                      {formatCurrency(worldCupStrictReadyRound?.orthodoxLine?.estimatedPayoutYen)}
+                      {formatCurrency(worldCupPrimaryRound?.stakeYen ?? 100)}
                     </p>
                     <p className="mt-1 text-sm text-slate-500">
-                      第{worldCupStrictReadyRound?.featured.roundNumber ?? "—"}回の保存済み前提
+                      1通りを買う金額
                     </p>
                   </div>
                   <div className="rounded-[20px] border border-white/70 bg-white/78 px-4 py-4">
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-700">
-                      王道EV倍率
+                      1万円判定
                     </p>
                     <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
-                      {worldCupStrictReadyRound?.orthodoxLine?.evMultiple !== null &&
-                      worldCupStrictReadyRound?.orthodoxLine?.evMultiple !== undefined
-                        ? `${worldCupStrictReadyRound.orthodoxLine.evMultiple.toFixed(2)}x`
-                        : "—"}
+                      {worldCupPrimaryPlan
+                        ? worldCupPrimaryPlan.meetsBudget
+                          ? "上回る"
+                          : "未達"
+                        : "未計算"}
                     </p>
-                    <p className="mt-1 text-sm text-slate-500">購入100円あたりの1等EV</p>
+                    <p className="mt-1 text-sm text-slate-500">
+                      {worldCupPrimaryPlan
+                        ? `EV ${worldCupPrimaryPlan.evMultiple.toFixed(2)}倍`
+                        : "売上・投票率待ち"}
+                    </p>
                   </div>
                 </div>
                 <div className="mt-5 flex flex-wrap gap-2">
                   <Link href={appRoute.worldCupStrategy} className={buttonClassName}>
-                    EV戦略を開く
+                    買い方を見る
                   </Link>
                   <Link href={appRoute.hazi} className={secondaryButtonClassName}>
                     Haziレビュー
@@ -1026,8 +1038,8 @@ export default function DashboardPage() {
                         買える期限: {round.lastBuyableAtLabel}
                       </p>
                       <p className="mt-1 text-sm leading-6 text-slate-600">
-                        {round.strictEvReady
-                          ? `王道 ${round.orthodoxLine?.picks.map((pick) => pick.pick).join("-") ?? "—"}`
+                        {round.primaryPortfolioPlan
+                          ? `${round.primaryPortfolioPlan.label}: 期待回収 ${formatCurrency(round.primaryPortfolioPlan.expectedReturnYen)} / ${round.primaryPortfolioPlan.lineCount}口`
                           : round.strictEvMissingReasons.join(" / ")}
                       </p>
                     </div>

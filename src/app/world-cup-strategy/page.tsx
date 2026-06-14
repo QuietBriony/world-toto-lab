@@ -2,34 +2,35 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 
 import { ErrorNotice, LoadingNotice } from "@/components/app/states";
 import {
-  ArtBannerPanel,
   Badge,
   buttonClassName,
-  HorizontalScrollTable,
-  InfoBanner,
   PageHeader,
   SectionCard,
   secondaryButtonClassName,
   StatCard,
+  cx,
 } from "@/components/ui";
 import { isDemoRoundTitle } from "@/lib/demo-data";
 import { formatCurrency, formatPercent } from "@/lib/domain";
 import { appRoute, buildOfficialRoundImportHref, buildRoundHref } from "@/lib/round-links";
-import { candidateStrategyArt, resolveArtAsset } from "@/lib/ui-art";
+import { resolveArtAsset } from "@/lib/ui-art";
 import { useDashboardData } from "@/lib/use-app-data";
 import {
   buildWorldCupStrategyDashboard,
   type WorldCupFinalSnapshotSummary,
+  type WorldCupPortfolioPlan,
   type WorldCupPositiveEvCombo,
   type WorldCupRoundStrategy,
   type WorldCupRoundWindowStatus,
   type WorldCupStrategyLine,
   type WorldCupStrategyPick,
 } from "@/lib/world-cup-strategy";
+
+const reportFileName = "world-cup-toto-1634-close-report.pdf";
 
 function statusTone(status: WorldCupRoundWindowStatus) {
   if (status === "selling") {
@@ -43,20 +44,25 @@ function statusTone(status: WorldCupRoundWindowStatus) {
   return "slate" as const;
 }
 
-function evTone(value: number | null) {
-  return value !== null && value > 1 ? "positive" : "slate";
-}
-
 function formatMultiple(value: number | null | undefined) {
-  return value === null || value === undefined ? "—" : `${value.toFixed(2)}x`;
+  return value === null || value === undefined ? "-" : `${value.toFixed(2)}倍`;
 }
 
 function formatCount(value: number | null | undefined) {
   return value === null || value === undefined ? "未確定" : value.toLocaleString("ja-JP");
 }
 
-function formatSignedPt(value: number) {
-  return `${value >= 0 ? "+" : ""}${value.toFixed(2)}pt`;
+function formatSignedCurrency(value: number) {
+  const sign = value >= 0 ? "+" : "";
+  return `${sign}${formatCurrency(value)}`;
+}
+
+function formatPayoutRange(plan: WorldCupPortfolioPlan) {
+  if (plan.minPayoutIfHitYen === plan.maxPayoutIfHitYen) {
+    return formatCurrency(plan.maxPayoutIfHitYen);
+  }
+
+  return `${formatCurrency(plan.minPayoutIfHitYen)} - ${formatCurrency(plan.maxPayoutIfHitYen)}`;
 }
 
 function pickSignature(picks: WorldCupStrategyPick[]) {
@@ -66,12 +72,137 @@ function pickSignature(picks: WorldCupStrategyPick[]) {
     .join("-");
 }
 
-function lineHint(line: WorldCupStrategyLine) {
-  if (!line.strictEvReady) {
-    return "厳密EV待ち";
-  }
+function pickDetail(picks: WorldCupStrategyPick[]) {
+  return [...picks]
+    .sort((left, right) => left.matchNo - right.matchNo)
+    .map((pick) => `${pick.matchNo}:${pick.pick}`)
+    .join(" ");
+}
 
-  return `的中率 ${formatPercent(line.hitProbability, 4)} / 人気重複 ${formatPercent(line.publicProbability, 4)}`;
+function selectedPlan(round: WorldCupRoundStrategy, budgetYen: number) {
+  return round.portfolioPlans.find((plan) => plan.budgetYen === budgetYen) ?? null;
+}
+
+function MiniFact({ label, value, hint }: { label: string; value: string; hint: string }) {
+  return (
+    <div className="rounded-[18px] border border-slate-200 bg-white/86 px-4 py-3">
+      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">{label}</p>
+      <p className="mt-1 text-xl font-semibold tracking-normal text-slate-950">{value}</p>
+      <p className="mt-1 text-xs leading-5 text-slate-500">{hint}</p>
+    </div>
+  );
+}
+
+function PlainNotice({
+  tone = "slate",
+  title,
+  children,
+}: {
+  children: ReactNode;
+  title: string;
+  tone?: "amber" | "slate" | "teal";
+}) {
+  const className =
+    tone === "teal"
+      ? "border-emerald-200 bg-emerald-50/82 text-emerald-950"
+      : tone === "amber"
+        ? "border-amber-200 bg-amber-50/82 text-amber-950"
+        : "border-slate-200 bg-slate-50/88 text-slate-800";
+
+  return (
+    <div className={cx("rounded-[22px] border px-5 py-4", className)}>
+      <p className="font-semibold">{title}</p>
+      <div className="mt-2 text-sm leading-6 opacity-85">{children}</div>
+    </div>
+  );
+}
+
+function PortfolioAnswerCard({ plan }: { plan: WorldCupPortfolioPlan }) {
+  return (
+    <div className="rounded-[24px] border border-emerald-200 bg-emerald-50/82 px-5 py-4 shadow-[0_20px_54px_-38px_rgba(15,23,42,0.34)]">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
+            {plan.label}の答え
+          </p>
+          <h3 className="mt-1 text-lg font-semibold text-slate-950">
+            {plan.lineCount}通りを1口ずつ買う
+          </h3>
+        </div>
+        <Badge tone={plan.meetsBudget ? "positive" : "warning"}>
+          {plan.meetsBudget ? "購入額以上" : "購入額未満"}
+        </Badge>
+      </div>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <MiniFact label="購入額" value={formatCurrency(plan.costYen)} hint={`${plan.lineCount}口 x ${formatCurrency(plan.stakeYen)}`} />
+        <MiniFact label="期待回収" value={formatCurrency(plan.expectedReturnYen)} hint={`期待損益 ${formatSignedCurrency(plan.expectedProfitYen)}`} />
+        <MiniFact label="13試合当たったら" value={formatPayoutRange(plan)} hint="選んだ出目ごとに払戻見込みは変わる" />
+        <MiniFact label="100円が期待値で" value={formatCurrency(plan.expectedReturnYen / plan.lineCount)} hint={`EV ${formatMultiple(plan.evMultiple)}`} />
+      </div>
+
+      <p className="mt-4 text-sm leading-6 text-slate-700">{plan.description}</p>
+      {plan.unallocatedBudgetYen > 0 ? (
+        <p className="mt-2 text-sm leading-6 text-amber-900">
+          プラス期待値候補だけに絞るため、{formatCurrency(plan.unallocatedBudgetYen)}は無理に使いません。
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function FirstAnswerPanel({ round, reportHref }: { reportHref: string; round: WorldCupRoundStrategy }) {
+  const plan1000 = selectedPlan(round, 1000);
+  const plan10000 = selectedPlan(round, 10000);
+
+  return (
+    <SectionCard
+      title="まず答え"
+      description="このページは購入履歴ではなく、公開データからの買い方試算です。誰が何を買ったか、決済情報、購入済み履歴は扱いません。"
+      actions={
+        <div className="flex flex-wrap gap-2">
+          <a href={reportHref} className={buttonClassName}>
+            PDFを見る
+          </a>
+          <a href={round.finalSnapshot?.sourceUrl ?? round.featured.sourceUrl} className={secondaryButtonClassName} target="_blank" rel="noreferrer">
+            公式データ
+          </a>
+        </div>
+      }
+    >
+      <div className="grid gap-4 lg:grid-cols-[0.92fr_1.08fr]">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+          <MiniFact label="一口" value={formatCurrency(round.stakeYen)} hint="toto13の1通りあたりの購入額" />
+          <MiniFact label="10口" value={formatCurrency(round.stakeYen * 10)} hint="10通りを1口ずつ買う" />
+          <MiniFact label="1万円" value={`${Math.floor(10000 / round.stakeYen)}口`} hint="100通りを1口ずつ買える" />
+          <MiniFact label="買えた最後" value={round.lastBuyableAtLabel} hint={round.windowStatusLabel} />
+        </div>
+
+        <div className="space-y-4">
+          {plan10000 ? <PortfolioAnswerCard plan={plan10000} /> : (
+            <PlainNotice tone="amber" title="1万円プランはまだ出せません">
+              <p>{round.strictEvMissingReasons.length > 0 ? round.strictEvMissingReasons.join(" / ") : "購入額を超える期待値候補がありません。"}</p>
+            </PlainNotice>
+          )}
+
+          {plan1000 ? (
+            <div className="rounded-[22px] border border-slate-200 bg-white/86 px-4 py-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="text-sm font-semibold text-slate-950">10口なら</h3>
+                <Badge tone={plan1000.meetsBudget ? "positive" : "warning"}>
+                  期待回収 {formatCurrency(plan1000.expectedReturnYen)}
+                </Badge>
+              </div>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                上位{plan1000.lineCount}通りを1口ずつ。購入額{formatCurrency(plan1000.costYen)}に対して、
+                期待損益は{formatSignedCurrency(plan1000.expectedProfitYen)}です。
+              </p>
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </SectionCard>
+  );
 }
 
 function FinalSnapshotPanel({ snapshot }: { snapshot: WorldCupFinalSnapshotSummary }) {
@@ -82,65 +213,45 @@ function FinalSnapshotPanel({ snapshot }: { snapshot: WorldCupFinalSnapshotSumma
   return (
     <div className="rounded-[22px] border border-teal-200 bg-teal-50/78 px-4 py-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <Badge tone="teal">公式確定値</Badge>
+        <Badge tone="teal">確定値あり</Badge>
         <Badge tone="slate">{snapshot.sourceAsOfLabel}</Badge>
       </div>
       <div className="mt-3 grid gap-3 md:grid-cols-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-700">確定売上</p>
-          <p className="mt-1 text-lg font-semibold text-slate-950">
-            {formatCurrency(snapshot.totalSalesYen)}
-          </p>
-        </div>
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-700">初期比</p>
-          <p className="mt-1 text-lg font-semibold text-slate-950">
-            {snapshot.salesMultiple ? `${snapshot.salesMultiple.toFixed(2)}x` : "—"}
-          </p>
-        </div>
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-700">最大人気ズレ</p>
-          <p className="mt-1 text-lg font-semibold text-slate-950">
-            {snapshot.maxAbsVoteShareDeltaPt.toFixed(2)}pt
-          </p>
-        </div>
+        <MiniFact label="確定売上" value={formatCurrency(snapshot.totalSalesYen)} hint="1等払戻推定の土台" />
+        <MiniFact label="初期比" value={snapshot.salesMultiple ? `${snapshot.salesMultiple.toFixed(2)}倍` : "-"} hint="保存時点からの売上増加" />
+        <MiniFact label="最大ズレ" value={`${snapshot.maxAbsVoteShareDeltaPt.toFixed(2)}pt`} hint="公式人気率の変化" />
       </div>
-      <div className="mt-4">
-        <HorizontalScrollTable hint="初期スナップショットから販売終了時点までの代表ズレです。">
-          <table className="min-w-[760px] border-separate border-spacing-0 text-left text-sm">
-            <thead>
-              <tr className="text-xs uppercase tracking-[0.16em] text-slate-500">
-                <th className="rounded-l-2xl bg-white/85 px-3 py-3">No</th>
-                <th className="bg-white/85 px-3 py-3">試合</th>
-                <th className="bg-white/85 px-3 py-3">初期本命</th>
-                <th className="bg-white/85 px-3 py-3">確定本命</th>
-                <th className="bg-white/85 px-3 py-3">最大ズレ</th>
-                <th className="rounded-r-2xl bg-white/85 px-3 py-3">比率</th>
+
+      <div className="mt-4 overflow-x-auto pb-2">
+        <table className="min-w-[760px] border-separate border-spacing-0 text-left text-sm">
+          <thead>
+            <tr className="text-xs uppercase tracking-[0.16em] text-slate-500">
+              <th className="rounded-l-2xl bg-white/85 px-3 py-3">No</th>
+              <th className="bg-white/85 px-3 py-3">試合</th>
+              <th className="bg-white/85 px-3 py-3">初期本命</th>
+              <th className="bg-white/85 px-3 py-3">確定本命</th>
+              <th className="bg-white/85 px-3 py-3">最大ズレ</th>
+              <th className="rounded-r-2xl bg-white/85 px-3 py-3">比率</th>
+            </tr>
+          </thead>
+          <tbody>
+            {topRows.map((row) => (
+              <tr key={row.matchNo}>
+                <td className="px-3 py-3 font-semibold text-slate-500">{row.matchNo}</td>
+                <td className="px-3 py-3 font-semibold text-slate-900">{row.fixture}</td>
+                <td className="px-3 py-3">{row.initialFavorite}</td>
+                <td className="px-3 py-3">{row.finalFavorite}</td>
+                <td className="px-3 py-3 font-semibold text-teal-700">
+                  {row.maxDeltaOutcome} {row.maxDeltaPt >= 0 ? "+" : ""}
+                  {row.maxDeltaPt.toFixed(2)}pt
+                </td>
+                <td className="px-3 py-3">
+                  {formatPercent(row.initialShare, 2)} - {formatPercent(row.finalShare, 2)}
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {topRows.map((row) => (
-                <tr key={row.matchNo}>
-                  <td className="px-3 py-3 font-semibold text-slate-500">{row.matchNo}</td>
-                  <td className="px-3 py-3 font-semibold text-slate-900">{row.fixture}</td>
-                  <td className="px-3 py-3">{row.initialFavorite}</td>
-                  <td className="px-3 py-3">{row.finalFavorite}</td>
-                  <td className="px-3 py-3 font-semibold text-teal-700">
-                    {row.maxDeltaOutcome} {formatSignedPt(row.maxDeltaPt)}
-                  </td>
-                  <td className="px-3 py-3">
-                    {formatPercent(row.initialShare, 2)} → {formatPercent(row.finalShare, 2)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </HorizontalScrollTable>
-      </div>
-      <div className="mt-3 flex flex-wrap gap-2">
-        <a href={snapshot.sourceUrl} className={secondaryButtonClassName} target="_blank" rel="noreferrer">
-          確定ページ
-        </a>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );
@@ -153,82 +264,84 @@ function StrategyLineCard({ line }: { line: WorldCupStrategyLine }) {
         <Badge tone={line.key === "value" ? "teal" : line.key === "orthodox" ? "amber" : "sky"}>
           {line.label}
         </Badge>
-        <Badge tone={evTone(line.evMultiple)}>{formatMultiple(line.evMultiple)}</Badge>
+        <Badge tone={line.evMultiple !== null && line.evMultiple >= 1 ? "positive" : "slate"}>
+          {formatMultiple(line.evMultiple)}
+        </Badge>
       </div>
       <p className="mt-3 font-mono text-sm font-semibold tracking-normal text-slate-950">
         {pickSignature(line.picks)}
       </p>
       <div className="mt-3 grid gap-2 text-sm leading-6 text-slate-600">
-        <p>1等推定払戻: {formatCurrency(line.estimatedPayoutYen)}</p>
-        <p>100円あたり期待値: {formatCurrency(line.expectedReturnYen)}</p>
-        <p>{lineHint(line)}</p>
-        <p>王道からのズレ: {line.deviationCount}試合</p>
+        <p>13試合当たったら: {formatCurrency(line.estimatedPayoutYen)}</p>
+        <p>1口あたり期待回収: {formatCurrency(line.expectedReturnYen)}</p>
+        <p>的中率見込み: {formatPercent(line.hitProbability, 4)}</p>
+        <p>公式人気順からのズレ: {line.deviationCount}試合</p>
       </div>
     </div>
   );
 }
 
-function PortfolioPlanCard({ plan }: { plan: WorldCupRoundStrategy["portfolioPlans"][number] }) {
-  return (
-    <div className="rounded-[22px] border border-emerald-200 bg-emerald-50/75 px-4 py-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h4 className="text-sm font-semibold text-slate-950">{plan.label}</h4>
-        <Badge tone="teal">{formatMultiple(plan.evMultiple)}</Badge>
-      </div>
-      <p className="mt-2 text-sm leading-6 text-slate-600">{plan.description}</p>
-      <div className="mt-3 grid gap-2 text-sm leading-6 text-slate-700">
-        <p>
-          {plan.lineCount}口 / コスト {formatCurrency(plan.costYen)}
-        </p>
-        <p>期待回収: {formatCurrency(plan.expectedReturnYen)}</p>
-        <p>的中率上限: {formatPercent(plan.hitProbabilityUpperBound, 4)}</p>
-      </div>
-    </div>
-  );
-}
+function TicketsTable({
+  maxRows,
+  rows,
+}: {
+  maxRows?: number;
+  rows: WorldCupPositiveEvCombo[];
+}) {
+  const visibleRows = maxRows ? rows.slice(0, maxRows) : rows;
 
-function PositiveComboTable({ rows }: { rows: WorldCupPositiveEvCombo[] }) {
   return (
-    <HorizontalScrollTable hint="スマホでは横にスワイプすると、払戻・的中率・王道差分まで続けて確認できます。">
-      <table className="min-w-[980px] border-separate border-spacing-0 text-left text-sm">
-        <thead>
-          <tr className="text-xs uppercase tracking-[0.16em] text-slate-500">
-            <th className="rounded-l-2xl bg-slate-100 px-3 py-3">#</th>
-            <th className="bg-slate-100 px-3 py-3">組み合わせ</th>
-            <th className="bg-slate-100 px-3 py-3">EV倍率</th>
-            <th className="bg-slate-100 px-3 py-3">100円期待値</th>
-            <th className="bg-slate-100 px-3 py-3">1等推定払戻</th>
-            <th className="bg-slate-100 px-3 py-3">的中率</th>
-            <th className="bg-slate-100 px-3 py-3">公式人気重複</th>
-            <th className="rounded-r-2xl bg-slate-100 px-3 py-3">王道差分</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, index) => (
-            <tr key={row.signature} className="border-b border-slate-100">
-              <td className="px-3 py-3 font-semibold text-slate-500">{index + 1}</td>
-              <td className="px-3 py-3 font-mono font-semibold tracking-normal text-slate-950">
-                {pickSignature(row.picks)}
-              </td>
-              <td className="px-3 py-3 font-semibold text-emerald-700">
-                {formatMultiple(row.evMultiple)}
-              </td>
-              <td className="px-3 py-3">{formatCurrency(row.expectedReturnYen)}</td>
-              <td className="px-3 py-3">{formatCurrency(row.estimatedPayoutYen)}</td>
-              <td className="px-3 py-3">{formatPercent(row.hitProbability, 5)}</td>
-              <td className="px-3 py-3">{formatPercent(row.publicProbability, 5)}</td>
-              <td className="px-3 py-3">{row.deviationCount}試合</td>
+    <div className="space-y-3">
+      <p className="text-xs leading-5 text-slate-500">
+        横に長い場合はスクロールできます。出目はNo.1からNo.13までの順です。
+      </p>
+      <div className="overflow-x-auto pb-2">
+        <table className="min-w-[1040px] border-separate border-spacing-0 text-left text-sm">
+          <thead>
+            <tr className="text-xs uppercase tracking-[0.16em] text-slate-500">
+              <th className="rounded-l-2xl bg-slate-100 px-3 py-3">順</th>
+              <th className="bg-slate-100 px-3 py-3">出目</th>
+              <th className="bg-slate-100 px-3 py-3">買い方</th>
+              <th className="bg-slate-100 px-3 py-3">期待回収</th>
+              <th className="bg-slate-100 px-3 py-3">100円が期待値で</th>
+              <th className="bg-slate-100 px-3 py-3">13試合当たったら</th>
+              <th className="bg-slate-100 px-3 py-3">的中率</th>
+              <th className="rounded-r-2xl bg-slate-100 px-3 py-3">人気重複</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </HorizontalScrollTable>
+          </thead>
+          <tbody>
+            {visibleRows.map((row, index) => (
+              <tr key={row.signature} className="border-b border-slate-100">
+                <td className="px-3 py-3 font-semibold text-slate-500">{index + 1}</td>
+                <td className="px-3 py-3">
+                  <p className="font-mono font-semibold tracking-normal text-slate-950">
+                    {pickSignature(row.picks)}
+                  </p>
+                  <p className="mt-1 font-mono text-xs tracking-normal text-slate-500">
+                    {pickDetail(row.picks)}
+                  </p>
+                </td>
+                <td className="px-3 py-3">1口 / 100円</td>
+                <td className="px-3 py-3 font-semibold text-emerald-700">
+                  {formatCurrency(row.expectedReturnYen)}
+                </td>
+                <td className="px-3 py-3">{formatCurrency(row.expectedReturnYen)}</td>
+                <td className="px-3 py-3">{formatCurrency(row.estimatedPayoutYen)}</td>
+                <td className="px-3 py-3">{formatPercent(row.hitProbability, 5)}</td>
+                <td className="px-3 py-3">{formatPercent(row.publicProbability, 5)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
 
 function RoundStrategyCard({ round }: { round: WorldCupRoundStrategy }) {
   const roundHref = round.roundId ? buildRoundHref(appRoute.workspace, round.roundId) : null;
   const positiveCount = round.positiveEv.totalPositiveCount;
+  const plan10000 = selectedPlan(round, 10000);
 
   return (
     <SectionCard
@@ -237,61 +350,55 @@ function RoundStrategyCard({ round }: { round: WorldCupRoundStrategy }) {
       actions={
         <div className="flex flex-wrap gap-2">
           <Badge tone={statusTone(round.windowStatus)}>{round.windowStatusLabel}</Badge>
-          <Badge tone={round.isCreated ? "teal" : "amber"}>
-            {round.isCreated ? "作成済み" : "未作成"}
-          </Badge>
           <Badge tone={round.strictEvReady ? "positive" : "slate"}>
-            {round.strictEvReady ? "厳密EV可" : "EV待ち"}
+            {round.strictEvReady ? "計算可" : "計算待ち"}
+          </Badge>
+          <Badge tone={round.usingFeaturedFallback ? "amber" : "teal"}>
+            {round.calculationSourceLabel}
           </Badge>
         </div>
       }
     >
-      <div className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
+      <div className="grid gap-4 lg:grid-cols-[0.92fr_1.08fr]">
         <div className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2">
             <StatCard
               compact
-              label="いつまで買えたか"
+              label="買えた最後"
               value={round.lastBuyableAtLabel}
-              hint={`販売開始 ${round.featured.salesStartAt.slice(5, 16).replace("T", " ")}`}
+              hint={`発売 ${round.featured.salesStartAt.slice(5, 16).replace("T", " ")}`}
               tone={round.windowStatus === "closed" ? "default" : "positive"}
             />
             <StatCard
               compact
-              label="EV>100%候補"
+              label="購入額超え候補"
               value={formatCount(positiveCount)}
               hint={round.positiveEv.ready ? `${formatCount(round.positiveEv.evaluatedCount)}通り評価` : "未評価"}
               tone={positiveCount && positiveCount > 0 ? "positive" : "warning"}
             />
           </div>
 
-          <InfoBanner
-            tone={round.windowStatus === "closed" ? "slate" : "teal"}
-            title={round.driftLabel}
-            body={
-              <div className="space-y-2">
-                <p>{round.driftDetail}</p>
-                <p>
-                  保存時点: {round.snapshotLabel} / {round.snapshotGapToCloseLabel}
-                </p>
-              </div>
-            }
-          />
+          <PlainNotice tone={round.windowStatus === "closed" ? "slate" : "teal"} title={round.driftLabel}>
+            <p>{round.driftDetail}</p>
+            <p className="mt-1">
+              保存時点: {round.snapshotLabel} / {round.snapshotGapToCloseLabel}
+            </p>
+          </PlainNotice>
 
           {round.finalSnapshot ? <FinalSnapshotPanel snapshot={round.finalSnapshot} /> : null}
 
           <div className="rounded-[22px] border border-slate-200 bg-white/82 px-4 py-4">
             <div className="grid gap-2 text-sm leading-6 text-slate-700">
               <p>試合数: {round.matchCount}/13</p>
-              <p>公式人気: {round.officialReadyCount}/{round.matchCount}</p>
+              <p>公式投票率: {round.officialReadyCount}/{round.matchCount}</p>
               <p>モデル確率: {round.modelReadyCount}/{round.matchCount}</p>
-              <p>売上総額: {formatCurrency(round.featured.totalSalesYen)}</p>
-              <p>候補チケット保存数: {round.candidateTicketCount}</p>
+              <p>EV計算売上: {formatCurrency(round.evAssumption?.totalSalesYen)}</p>
+              <p>1口: {formatCurrency(round.stakeYen)}</p>
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
               {roundHref ? (
                 <Link href={roundHref} className={secondaryButtonClassName}>
-                  ラウンド詳細
+                  Roundを見る
                 </Link>
               ) : (
                 <Link
@@ -317,18 +424,26 @@ function RoundStrategyCard({ round }: { round: WorldCupRoundStrategy }) {
         </div>
 
         <div className="space-y-4">
+          {plan10000 ? (
+            <PortfolioAnswerCard plan={plan10000} />
+          ) : (
+            <PlainNotice tone="amber" title="買う候補はまだ出せません">
+              <p>{round.strictEvMissingReasons.join(" / ") || "購入額を上回る候補がありません。"}</p>
+            </PlainNotice>
+          )}
+
           {round.orthodoxLine ? (
             <div className="rounded-[24px] border border-amber-200 bg-amber-50/75 px-5 py-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <Badge tone="amber">王道で勝った場合</Badge>
-                <Badge tone={evTone(round.orthodoxLine.evMultiple)}>
+                <Badge tone="amber">公式人気順で全部当たった場合</Badge>
+                <Badge tone={round.orthodoxLine.evMultiple !== null && round.orthodoxLine.evMultiple >= 1 ? "positive" : "slate"}>
                   {formatMultiple(round.orthodoxLine.evMultiple)}
                 </Badge>
               </div>
               <div className="mt-3 grid gap-2 text-sm leading-6 text-slate-700">
-                <p>1等推定払戻: {formatCurrency(round.orthodoxLine.estimatedPayoutYen)}</p>
-                <p>購入100円あたり期待値: {formatCurrency(round.orthodoxLine.expectedReturnYen)}</p>
-                <p>組み合わせ: {pickSignature(round.orthodoxLine.picks)}</p>
+                <p>13試合当たったら: {formatCurrency(round.orthodoxLine.estimatedPayoutYen)}</p>
+                <p>1口あたり期待回収: {formatCurrency(round.orthodoxLine.expectedReturnYen)}</p>
+                <p>出目: {pickSignature(round.orthodoxLine.picks)}</p>
               </div>
             </div>
           ) : null}
@@ -340,12 +455,9 @@ function RoundStrategyCard({ round }: { round: WorldCupRoundStrategy }) {
           </div>
 
           {round.strictEvMissingReasons.length > 0 ? (
-            <div className="rounded-[22px] border border-amber-200 bg-amber-50/75 px-4 py-4">
-              <Badge tone="amber">厳密EVの不足</Badge>
-              <p className="mt-3 text-sm leading-6 text-amber-950">
-                {round.strictEvMissingReasons.join(" / ")}
-              </p>
-            </div>
+            <PlainNotice tone="amber" title="足りない入力">
+              <p>{round.strictEvMissingReasons.join(" / ")}</p>
+            </PlainNotice>
           ) : null}
         </div>
       </div>
@@ -353,30 +465,25 @@ function RoundStrategyCard({ round }: { round: WorldCupRoundStrategy }) {
       {round.portfolioPlans.length > 0 ? (
         <div className="grid gap-3 lg:grid-cols-3">
           {round.portfolioPlans.map((plan) => (
-            <PortfolioPlanCard key={plan.label} plan={plan} />
+            <PortfolioAnswerCard key={plan.label} plan={plan} />
           ))}
         </div>
       ) : null}
 
-      {round.positiveEv.rows.length > 0 ? (
+      {round.primaryPortfolioPlan ? (
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge tone="positive">購入額超え候補</Badge>
+            <Badge tone="positive">買うならこの順</Badge>
             <p className="text-sm text-slate-600">
-              {round.positiveEv.truncated
-                ? `上位${round.positiveEv.rows.length}件を表示`
-                : "該当候補を表示"}
+              {round.primaryPortfolioPlan.label}プランの{round.primaryPortfolioPlan.lineCount}通り。すべて1口ずつです。
             </p>
           </div>
-          <PositiveComboTable rows={round.positiveEv.rows} />
+          <TicketsTable rows={round.primaryPortfolioPlan.rows} />
         </div>
       ) : round.positiveEv.ready ? (
-        <div className="rounded-[22px] border border-slate-200 bg-white/82 px-4 py-4">
-          <Badge tone="slate">購入額超え候補なし</Badge>
-          <p className="mt-3 text-sm leading-6 text-slate-600">
-            この前提では、1等EVが100円を超える組み合わせは見つかっていません。
-          </p>
-        </div>
+        <PlainNotice tone="slate" title="購入額を超える候補なし">
+          <p>この前提では、1口100円を期待回収で上回る組み合わせは見つかっていません。</p>
+        </PlainNotice>
       ) : null}
     </SectionCard>
   );
@@ -392,13 +499,13 @@ export default function WorldCupStrategyPage() {
 
     return buildWorldCupStrategyDashboard({
       includePositiveCombos: true,
-      positiveComboLimit: 80,
+      positiveComboLimit: 120,
       rounds: data.rounds.filter((round) => !isDemoRoundTitle(round.title)),
     });
   }, [data]);
 
   if (loading && !data) {
-    return <LoadingNotice title="W杯締切EV戦略を読み込み中" />;
+    return <LoadingNotice title="W杯totoの買い方試算を読み込み中" />;
   }
 
   if (error && !data) {
@@ -406,15 +513,18 @@ export default function WorldCupStrategyPage() {
   }
 
   if (!strategy) {
-    return <LoadingNotice title="W杯締切EV戦略を準備中" />;
+    return <LoadingNotice title="W杯totoの買い方試算を準備中" />;
   }
+
+  const primaryRound = strategy.rounds.find((round) => round.featured.roundNumber === 1634) ?? strategy.rounds[0];
+  const reportHref = resolveArtAsset(pathname, `/reports/${reportFileName}`);
 
   return (
     <div className="space-y-8">
       <PageHeader
         eyebrow="World Cup Toto"
-        title="W杯締切EV戦略"
-        description="第1634〜1637回totoの買える期限、保存時点から締切までのズレ余地、王道ラインの推定払戻、購入100円を超えるEV候補を同じ画面で見ます。"
+        title="W杯toto 買い方メモ"
+        description="一口いくらか、当たったらいくら戻る見込みか、10口や1万円ならどの出目を買うかを先に見ます。EVの細かい表は下に置いています。"
         actions={
           <div className="flex flex-wrap gap-3">
             <Link href={appRoute.dashboard} className={secondaryButtonClassName}>
@@ -423,25 +533,20 @@ export default function WorldCupStrategyPage() {
             <Link href={appRoute.hazi} className={secondaryButtonClassName}>
               Haziレビュー
             </Link>
-            <Link href={`${appRoute.dashboard}#world-cup-strategy`} className={buttonClassName}>
-              W杯カードへ
-            </Link>
+            <a href={reportHref} className={buttonClassName}>
+              PDF
+            </a>
           </div>
         }
       />
 
-      <ArtBannerPanel
-        badge={<Badge tone="teal">{candidateStrategyArt.ev_hunter.accentLabel}</Badge>}
-        description="締切直前に近い公式人気と売上を使い、王道で勝った場合と期待値狙いの候補を分けて確認します。"
-        imageSrc={resolveArtAsset(pathname, candidateStrategyArt.ev_hunter.src)}
-        title="買える時間の最後に近い情報で比べる"
-      />
+      <FirstAnswerPanel round={primaryRound} reportHref={reportHref} />
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard
           label="W杯回作成"
           value={`${strategy.createdCount}/4`}
-          hint="第1634〜1637回の作成状態"
+          hint="保存済みRound数。未作成でも内蔵プリセットで第1634回は試算します。"
           tone={strategy.createdCount === 4 ? "positive" : "warning"}
         />
         <StatCard
@@ -451,24 +556,25 @@ export default function WorldCupStrategyPage() {
           tone={strategy.buyableCount > 0 ? "positive" : "default"}
         />
         <StatCard
-          label="厳密EV可能"
+          label="厳密EV可"
           value={strategy.strictReadyCount}
-          hint="売上・公式人気・モデル確率が揃った回"
+          hint="売上・公式投票率・モデル確率が揃った回"
           tone={strategy.strictReadyCount > 0 ? "positive" : "warning"}
         />
         <StatCard
-          label="EV>100%候補"
+          label="購入額超え候補"
           value={formatCount(strategy.positiveEvComboCount)}
           hint={`保存時点 ${strategy.snapshotLabel}`}
           tone={strategy.positiveEvComboCount && strategy.positiveEvComboCount > 0 ? "positive" : "warning"}
         />
       </section>
 
-      <InfoBanner
-        tone="amber"
-        title="購入・精算は扱いません"
-        body="このページは期待値の研究用です。締切後の最終公式人気や最終売上が未保存の回は、保存時点から締切までの差分を未確定として表示します。"
-      />
+      <PlainNotice tone="amber" title="読み方">
+        <p>
+          「期待回収」は平均的に何円戻る見込みかです。実際の利益を保証しません。
+          今回は1等、つまり13試合すべて的中した場合だけで見ています。2等・3等はまだ足していません。
+        </p>
+      </PlainNotice>
 
       <div className="space-y-6">
         {strategy.rounds.map((round) => (

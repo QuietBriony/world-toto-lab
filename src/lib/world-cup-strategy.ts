@@ -13,10 +13,13 @@ import {
   featuredWorldTotoRoundNumbers,
   featuredWorldTotoSnapshotLabel,
 } from "@/lib/featured-world-toto";
-import type { DashboardRoundSummary, Match, RoundEvAssumption } from "@/lib/types";
+import { calculateModelProbabilities } from "@/lib/probability/engine";
+import type { DashboardRoundSummary, Match, RoundEvAssumption, TotoOfficialRoundLibraryMatch } from "@/lib/types";
+import { modelSeed } from "@/lib/world-toto-strength";
 
 const featuredSnapshotCapturedAt = "2026-06-07T08:56:00+09:00";
 const valueLineSpotCount = 4;
+const defaultStakeYen = 100;
 
 type FeaturedRound = (typeof featuredWorldTotoRounds)[number];
 
@@ -64,14 +67,22 @@ export type WorldCupPositiveEvResult = {
 };
 
 export type WorldCupPortfolioPlan = {
+  budgetYen: number;
   costYen: number;
   description: string;
-  expectedReturnYen: number;
   evMultiple: number;
+  expectedProfitYen: number;
+  expectedReturnYen: number;
   hitProbabilityUpperBound: number;
   label: string;
   lineCount: number;
+  maxPayoutIfHitYen: number;
+  meetsBudget: boolean;
+  minPayoutIfHitYen: number;
+  requestedLineCount: number;
   rows: WorldCupPositiveEvCombo[];
+  stakeYen: number;
+  unallocatedBudgetYen: number;
 };
 
 export type WorldCupVoteDriftRow = {
@@ -98,6 +109,7 @@ export type WorldCupFinalSnapshotSummary = {
 };
 
 export type WorldCupRoundStrategy = {
+  calculationSourceLabel: string;
   candidateTicketCount: number;
   driftDetail: string;
   driftLabel: string;
@@ -120,12 +132,15 @@ export type WorldCupRoundStrategy = {
   orthodoxLine: WorldCupStrategyLine | null;
   portfolioPlans: WorldCupPortfolioPlan[];
   positiveEv: WorldCupPositiveEvResult;
+  primaryPortfolioPlan: WorldCupPortfolioPlan | null;
   roundId: string | null;
   roundTitle: string;
   snapshotGapToCloseLabel: string;
   snapshotLabel: string;
+  stakeYen: number;
   strictEvMissingReasons: string[];
   strictEvReady: boolean;
+  usingFeaturedFallback: boolean;
   windowStatus: WorldCupRoundWindowStatus;
   windowStatusLabel: string;
 };
@@ -139,10 +154,6 @@ export type WorldCupStrategyDashboard = {
   snapshotLabel: string;
   strictReadyCount: number;
 };
-
-function isKnownNumber(value: number | null | undefined): value is number {
-  return typeof value === "number" && Number.isFinite(value);
-}
 
 type KnownFinalSnapshot = {
   sourceAsOfLabel: string;
@@ -181,6 +192,28 @@ const knownFinalSnapshotsByRound = new Map<number, KnownFinalSnapshot>([
     },
   ],
 ]);
+
+export const worldCupPortfolioBudgets = [
+  {
+    budgetYen: 100,
+    description: "まず1口だけ。期待回収が最も高い出目を見る。",
+    label: "1口",
+  },
+  {
+    budgetYen: 1000,
+    description: "10口分。買うなら上から10通りを1口ずつ。",
+    label: "10口",
+  },
+  {
+    budgetYen: 10000,
+    description: "1万円分。100通りまで、期待回収の高い順に1口ずつ。",
+    label: "1万円",
+  },
+] as const;
+
+function isKnownNumber(value: number | null | undefined): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
 
 function minutesBetween(left: Date, right: Date) {
   return Math.round((right.getTime() - left.getTime()) / 60000);
@@ -235,26 +268,6 @@ function hasCompleteBucket(match: MatchLike, bucket: ProbabilityBucket) {
   return OUTCOME_VALUES.every((outcome) => isKnownNumber(getProbability(match, bucket, outcome)));
 }
 
-function buildFeaturedEvAssumption(featured: FeaturedRound, roundId: string | null): RoundEvAssumption | null {
-  if (!isKnownNumber(featured.totalSalesYen)) {
-    return null;
-  }
-
-  return {
-    carryoverYen: 0,
-    createdAt: featuredSnapshotCapturedAt,
-    firstPrizeShare: 0.7,
-    id: `world-cup-featured-${featured.roundNumber}`,
-    note: `W杯toto 第${featured.roundNumber}回プリセットの売上・還元率から作った締切EV試算用前提。購入や精算は扱いません。`,
-    payoutCapYen: null,
-    returnRate: 0.5,
-    roundId: roundId ?? `featured-world-toto-${featured.roundNumber}`,
-    stakeYen: 100,
-    totalSalesYen: featured.totalSalesYen,
-    updatedAt: featuredSnapshotCapturedAt,
-  };
-}
-
 function outcomeShare(
   row: Pick<KnownFinalSnapshot["voteRows"][number], "officialVote0" | "officialVote1" | "officialVote2">,
   outcome: OutcomeValue,
@@ -290,29 +303,32 @@ function buildFinalSnapshotSummary(featured: FeaturedRound): WorldCupFinalSnapsh
     const finalFav = finalFavorite(row);
     const initialFav =
       initialMatch && initialMatch.officialVote1 !== null
-        ? favoriteOutcomeForBucket({
-            actualResult: null,
-            awayTeam: initialMatch.awayTeam,
-            category: null,
-            confidence: null,
-            consensusCall: null,
-            consensusD: null,
-            consensusF: null,
-            disagreementScore: null,
-            exceptionCount: null,
-            homeTeam: initialMatch.homeTeam,
-            marketProb0: null,
-            marketProb1: null,
-            marketProb2: null,
-            matchNo: row.matchNo,
-            modelProb0: null,
-            modelProb1: null,
-            modelProb2: null,
-            officialVote0: initialMatch.officialVote0,
-            officialVote1: initialMatch.officialVote1,
-            officialVote2: initialMatch.officialVote2,
-            recommendedOutcomes: null,
-          }, "official") ?? finalFav
+        ? favoriteOutcomeForBucket(
+            {
+              actualResult: null,
+              awayTeam: initialMatch.awayTeam,
+              category: null,
+              confidence: null,
+              consensusCall: null,
+              consensusD: null,
+              consensusF: null,
+              disagreementScore: null,
+              exceptionCount: null,
+              homeTeam: initialMatch.homeTeam,
+              marketProb0: null,
+              marketProb1: null,
+              marketProb2: null,
+              matchNo: row.matchNo,
+              modelProb0: null,
+              modelProb1: null,
+              modelProb2: null,
+              officialVote0: initialMatch.officialVote0,
+              officialVote1: initialMatch.officialVote1,
+              officialVote2: initialMatch.officialVote2,
+              recommendedOutcomes: null,
+            },
+            "official",
+          ) ?? finalFav
         : finalFav;
     const drift = OUTCOME_VALUES.map((outcome) => {
       const initialShare =
@@ -365,11 +381,184 @@ function buildFinalSnapshotSummary(featured: FeaturedRound): WorldCupFinalSnapsh
   };
 }
 
+function recommendedOutcomesFrom(modelProb1: number, modelProb0: number, modelProb2: number) {
+  return [modelProb1, modelProb0, modelProb2]
+    .map((value, index) => ({ index, value }))
+    .sort((left, right) => right.value - left.value)
+    .slice(0, 2)
+    .map((entry) => (entry.index === 0 ? "1" : entry.index === 1 ? "0" : "2"))
+    .join(",");
+}
+
+function buildBaseMatch(roundId: string, row: TotoOfficialRoundLibraryMatch, index: number): Match {
+  return {
+    actualResult: row.actualResult,
+    adminAdjust0: null,
+    adminAdjust1: null,
+    adminAdjust2: null,
+    adminNote: null,
+    altitudeHumidityAdjust: null,
+    availabilityAdjust: null,
+    availabilityInfo: null,
+    awayStrengthAdjust: null,
+    awayTeam: row.awayTeam,
+    category: null,
+    conditionsAdjust: null,
+    conditionsInfo: null,
+    confidence: null,
+    consensusCall: null,
+    consensusD: null,
+    consensusF: null,
+    createdAt: featuredSnapshotCapturedAt,
+    disagreementScore: null,
+    exceptionCount: null,
+    fixtureMasterId: row.fixtureMasterId,
+    groupStandingMotivationAdjust: null,
+    homeAdvantageAdjust: null,
+    homeStrengthAdjust: null,
+    homeTeam: row.homeTeam,
+    id: `${roundId}-match-${row.officialMatchNo ?? index + 1}`,
+    injuryNote: null,
+    injurySuspensionAdjust: null,
+    kickoffTime: row.kickoffTime,
+    leagueTableMotivationAdjust: null,
+    marketProb0: null,
+    marketProb1: null,
+    marketProb2: null,
+    matchNo: index + 1,
+    modelProb0: null,
+    modelProb1: null,
+    modelProb2: null,
+    motivationAdjust: null,
+    motivationNote: null,
+    officialMatchNo: row.officialMatchNo,
+    officialVote0: row.officialVote0,
+    officialVote1: row.officialVote1,
+    officialVote2: row.officialVote2,
+    recentFormNote: null,
+    recommendedOutcomes: null,
+    restDaysAdjust: null,
+    rotationRiskAdjust: null,
+    roundId,
+    squadDepthAdjust: null,
+    stage: row.stage,
+    tacticalAdjust: null,
+    tacticalNote: null,
+    tournamentPressureAdjust: null,
+    travelAdjust: null,
+    travelClimateAdjust: null,
+    updatedAt: featuredSnapshotCapturedAt,
+    venue: row.venue,
+  };
+}
+
+function buildModeledFeaturedMatches(featured: FeaturedRound): Match[] {
+  const roundId = `featured-world-toto-${featured.roundNumber}`;
+
+  return featured.matches.map((row, index) => {
+    const base = buildBaseMatch(roundId, row, index);
+    const seed = modelSeed({
+      awayTeam: base.awayTeam,
+      homeTeam: base.homeTeam,
+      officialVote0: base.officialVote0,
+      officialVote1: base.officialVote1,
+      officialVote2: base.officialVote2,
+    });
+    const estimated = calculateModelProbabilities({
+      ...base,
+      marketProb0: seed.marketProb0,
+      marketProb1: seed.marketProb1,
+      marketProb2: seed.marketProb2,
+      competitionType: "world_cup",
+      dataProfile: "manual_light",
+    });
+
+    return {
+      ...base,
+      marketProb0: seed.marketProb0,
+      marketProb1: seed.marketProb1,
+      marketProb2: seed.marketProb2,
+      modelProb0: estimated.modelProb0,
+      modelProb1: estimated.modelProb1,
+      modelProb2: estimated.modelProb2,
+      recommendedOutcomes: recommendedOutcomesFrom(
+        estimated.modelProb1,
+        estimated.modelProb0,
+        estimated.modelProb2,
+      ),
+    };
+  });
+}
+
+function applyFinalSnapshotToMatches(
+  matches: Match[],
+  finalSnapshot: WorldCupFinalSnapshotSummary | null,
+  featured: FeaturedRound,
+  status: WorldCupRoundWindowStatus,
+) {
+  const knownSnapshot = knownFinalSnapshotsByRound.get(featured.roundNumber);
+
+  if (status !== "closed" || !finalSnapshot || !knownSnapshot) {
+    return matches;
+  }
+
+  const finalByMatchNo = new Map(knownSnapshot.voteRows.map((row) => [row.matchNo, row]));
+
+  return matches.map((match) => {
+    const finalRow = finalByMatchNo.get(match.matchNo);
+
+    if (!finalRow) {
+      return match;
+    }
+
+    return {
+      ...match,
+      officialVote0: finalRow.officialVote0,
+      officialVote1: finalRow.officialVote1,
+      officialVote2: finalRow.officialVote2,
+    };
+  });
+}
+
+function buildFeaturedEvAssumption(input: {
+  featured: FeaturedRound;
+  finalSnapshot: WorldCupFinalSnapshotSummary | null;
+  roundId: string | null;
+  status: WorldCupRoundWindowStatus;
+}): RoundEvAssumption | null {
+  const totalSalesYen =
+    input.status === "closed" && input.finalSnapshot
+      ? input.finalSnapshot.totalSalesYen
+      : input.featured.totalSalesYen;
+
+  if (!isKnownNumber(totalSalesYen)) {
+    return null;
+  }
+
+  return {
+    carryoverYen: 0,
+    createdAt: featuredSnapshotCapturedAt,
+    firstPrizeShare: 0.7,
+    id: `world-cup-featured-${input.featured.roundNumber}`,
+    note:
+      input.status === "closed" && input.finalSnapshot
+        ? `W杯toto 第${input.featured.roundNumber}回の販売終了時点の売上・投票率から作った1等EV試算。購入や精算は扱いません。`
+        : `W杯toto 第${input.featured.roundNumber}回の保存スナップショットから作った1等EV試算。購入や精算は扱いません。`,
+    payoutCapYen: null,
+    returnRate: 0.5,
+    roundId: input.roundId ?? `featured-world-toto-${input.featured.roundNumber}`,
+    stakeYen: defaultStakeYen,
+    totalSalesYen,
+    updatedAt: featuredSnapshotCapturedAt,
+  };
+}
+
 export function resolveFeaturedWorldTotoRoundNumber(input: {
   sourceNote: string | null;
   title: string;
 }) {
-  const matched = `${input.title} ${input.sourceNote ?? ""}`.match(/第(163[4-7])回/);
+  const haystack = `${input.title} ${input.sourceNote ?? ""}`;
+  const matched = haystack.match(/(?:第|隨ｬ)(163[4-7])(?:回|蝗)/);
   const roundNumber = matched ? Number(matched[1]) : null;
 
   return featuredWorldTotoRoundNumbers.includes(roundNumber as (typeof featuredWorldTotoRoundNumbers)[number])
@@ -510,28 +699,23 @@ function strictEvMissingReasons(input: {
   matchCount: number;
   modelReadyCount: number;
   officialReadyCount: number;
-  round: DashboardRoundSummary | null;
 }) {
   const reasons: string[] = [];
-
-  if (!input.round) {
-    reasons.push("W杯toto回が未作成");
-  }
 
   if (input.matchCount < 13) {
     reasons.push("13試合が未作成");
   }
 
   if (!isKnownNumber(input.assumption?.totalSalesYen)) {
-    reasons.push("売上総額が未公表");
+    reasons.push("売上総額が未確定");
   }
 
   if (input.officialReadyCount < input.matchCount || input.matchCount === 0) {
-    reasons.push("公式人気が未公表");
+    reasons.push("公式投票率が不足");
   }
 
   if (input.modelReadyCount < input.matchCount || input.matchCount === 0) {
-    reasons.push("モデル確率が未作成");
+    reasons.push("モデル確率が不足");
   }
 
   return reasons;
@@ -567,7 +751,7 @@ export function enumeratePositiveEvCombos(input: {
   matches: Match[];
   orthodoxPicks?: WorldCupStrategyPick[];
 }): WorldCupPositiveEvResult {
-  const limit = Math.max(1, input.limit ?? 80);
+  const limit = Math.max(1, input.limit ?? 120);
   const matches = sortedMatches(input.matches);
   const orthodoxPicks =
     input.orthodoxPicks ??
@@ -675,29 +859,42 @@ export function enumeratePositiveEvCombos(input: {
 function buildPortfolioPlan(
   label: string,
   description: string,
+  budgetYen: number,
   rows: WorldCupPositiveEvCombo[],
   stakeYen: number,
 ): WorldCupPortfolioPlan | null {
-  if (rows.length === 0) {
+  const requestedLineCount = Math.max(1, Math.floor(budgetYen / stakeYen));
+  const selectedRows = rows.slice(0, requestedLineCount);
+
+  if (selectedRows.length === 0) {
     return null;
   }
 
-  const expectedReturnYen = rows.reduce((sum, row) => sum + row.expectedReturnYen, 0);
-  const costYen = rows.length * stakeYen;
+  const expectedReturnYen = selectedRows.reduce((sum, row) => sum + row.expectedReturnYen, 0);
+  const costYen = selectedRows.length * stakeYen;
   const hitProbabilityUpperBound = Math.min(
     1,
-    rows.reduce((sum, row) => sum + row.hitProbability, 0),
+    selectedRows.reduce((sum, row) => sum + row.hitProbability, 0),
   );
+  const payouts = selectedRows.map((row) => row.estimatedPayoutYen);
 
   return {
+    budgetYen,
     costYen,
     description,
     evMultiple: expectedReturnYen / costYen,
+    expectedProfitYen: expectedReturnYen - costYen,
     expectedReturnYen,
     hitProbabilityUpperBound,
     label,
-    lineCount: rows.length,
-    rows,
+    lineCount: selectedRows.length,
+    maxPayoutIfHitYen: Math.max(...payouts),
+    meetsBudget: expectedReturnYen >= costYen,
+    minPayoutIfHitYen: Math.min(...payouts),
+    requestedLineCount,
+    rows: selectedRows,
+    stakeYen,
+    unallocatedBudgetYen: Math.max(0, budgetYen - costYen),
   };
 }
 
@@ -706,26 +903,23 @@ function buildPortfolioPlans(positiveEv: WorldCupPositiveEvResult, stakeYen: num
     return [];
   }
 
-  return [
-    buildPortfolioPlan(
-      "最小EV",
-      "100円だけ買うなら、厳密EV上位の1口に寄せる。",
-      positiveEv.rows.slice(0, 1),
-      stakeYen,
-    ),
-    buildPortfolioPlan(
-      "標準EV",
-      "買える直前の情報で、上位5口までを等金額で持つ。",
-      positiveEv.rows.slice(0, 5),
-      stakeYen,
-    ),
-    buildPortfolioPlan(
-      "分散EV",
-      "上位10口まで広げ、王道からのズレを許容して期待値を取りに行く。",
-      positiveEv.rows.slice(0, 10),
-      stakeYen,
-    ),
-  ].filter((plan): plan is WorldCupPortfolioPlan => Boolean(plan));
+  return worldCupPortfolioBudgets
+    .map((plan) =>
+      buildPortfolioPlan(
+        plan.label,
+        plan.description,
+        plan.budgetYen,
+        positiveEv.rows,
+        stakeYen,
+      ),
+    )
+    .filter((plan): plan is WorldCupPortfolioPlan => Boolean(plan));
+}
+
+function portfolioComboLimitFor(stakeYen: number) {
+  return Math.max(
+    ...worldCupPortfolioBudgets.map((plan) => Math.max(1, Math.floor(plan.budgetYen / stakeYen))),
+  );
 }
 
 function buildDriftText(input: {
@@ -736,21 +930,21 @@ function buildDriftText(input: {
   const snapshotAt = new Date(featuredSnapshotCapturedAt);
   const closedAt = new Date(input.featured.salesEndAt);
   const gapMinutes = minutesBetween(snapshotAt, closedAt);
-  const gapLabel = `保存済みスナップショットから締切まで${formatDuration(gapMinutes)}`;
+  const gapLabel = `保存スナップショットから締切まで${formatDuration(gapMinutes)}`;
 
   if (input.status === "closed") {
     if (input.finalSnapshot) {
       return {
         detail:
-          "公式投票結果ページで販売終了時点の投票率・売上を取得できます。今はアプリ内の履歴保存までは未接続ですが、初期スナップショットとの二点差分はこの画面で確認できます。",
-        label: "確定値取得可",
+          "公式の販売終了時点データを保存済みです。買えた最後の時点は締切時刻までで、この画面の購入候補は確定売上・確定投票率で再計算しています。",
+        label: "確定値で再計算",
         snapshotGapToCloseLabel: gapLabel,
       };
     }
 
     return {
       detail:
-        "締切後の最終公式人気・売上スナップショットはまだ保存されていないため、保存時点との差分は未確定です。最終値を取り込むと、人気率と売上のズレを試合別に出せます。",
+        "販売は終了していますが、最終投票率と最終売上の保存がまだありません。保存時点との差分は未確定として扱います。",
       label: "最終差分は未保存",
       snapshotGapToCloseLabel: gapLabel,
     };
@@ -759,18 +953,22 @@ function buildDriftText(input: {
   if (input.status === "selling") {
     return {
       detail:
-        "まだ買える時間帯なので、締切直前に公式人気と売上を再取り込みすると、この画面のEV候補を買える時点の最終近似として更新できます。",
-      label: "締切直前の再取得待ち",
+        "まだ買える時間帯です。締切直前に公式投票率と売上を再取得すると、買えるタイミングでの期待値精度が上がります。",
+      label: "締切前の再取得待ち",
       snapshotGapToCloseLabel: gapLabel,
     };
   }
 
   return {
     detail:
-      "発売前のため、公式人気と売上が揃ってからEVの精度が上がります。販売開始後、締切直前の再取り込みを基準に比較します。",
+      "発売前です。公式投票率と売上が出てから、買う候補と予算別の期待回収を計算できます。",
     label: "発売前",
     snapshotGapToCloseLabel: gapLabel,
   };
+}
+
+function primaryPlanFrom(plans: WorldCupPortfolioPlan[]) {
+  return plans.find((plan) => plan.budgetYen === 10000) ?? plans[plans.length - 1] ?? null;
 }
 
 function buildRoundStrategy(input: {
@@ -785,12 +983,22 @@ function buildRoundStrategy(input: {
     salesEndAt: input.featured.salesEndAt,
     salesStartAt: input.featured.salesStartAt,
   });
-  const matches = input.round ? sortedMatches(input.round.matches) : [];
-  const matchCount = input.round?.matchCount ?? input.featured.matches.length;
+  const finalSnapshot = buildFinalSnapshotSummary(input.featured);
+  const sourceMatches = input.round
+    ? sortedMatches(input.round.matches)
+    : buildModeledFeaturedMatches(input.featured);
+  const matches = sortedMatches(
+    applyFinalSnapshotToMatches(sourceMatches, finalSnapshot, input.featured, status),
+  );
+  const matchCount = matches.length || input.round?.matchCount || input.featured.matches.length;
   const officialReadyCount = matches.filter((match) => hasCompleteBucket(match, "official")).length;
   const modelReadyCount = matches.filter((match) => hasCompleteBucket(match, "model")).length;
-  const evAssumption = buildFeaturedEvAssumption(input.featured, input.round?.id ?? null);
-  const finalSnapshot = buildFinalSnapshotSummary(input.featured);
+  const evAssumption = buildFeaturedEvAssumption({
+    featured: input.featured,
+    finalSnapshot,
+    roundId: input.round?.id ?? null,
+    status,
+  });
   const orthodoxPicks = matches.map((match) => ({
     matchNo: match.matchNo,
     pick: orthodoxPick(match),
@@ -801,7 +1009,7 @@ function buildRoundStrategy(input: {
           buildLine({
             assumption: evAssumption,
             key: "orthodox",
-            label: "王道",
+            label: "公式人気順",
             matches,
             orthodoxPicks,
             picks: orthodoxPicks,
@@ -809,7 +1017,7 @@ function buildRoundStrategy(input: {
           buildLine({
             assumption: evAssumption,
             key: "value",
-            label: "期待値",
+            label: "期待回収重視",
             matches,
             orthodoxPicks,
             picks: buildValuePicks(matches, orthodoxPicks),
@@ -817,7 +1025,7 @@ function buildRoundStrategy(input: {
           buildLine({
             assumption: evAssumption,
             key: "ai",
-            label: "AI",
+            label: "モデル本命",
             matches,
             orthodoxPicks,
             picks: matches.map((match) => ({
@@ -832,30 +1040,46 @@ function buildRoundStrategy(input: {
     matchCount,
     modelReadyCount,
     officialReadyCount,
-    round: input.round,
   });
+  const canEnumeratePositiveEv = missingReasons.length === 0;
+  const stakeYen = evAssumption?.stakeYen ?? defaultStakeYen;
+  const portfolioComboLimit = portfolioComboLimitFor(stakeYen);
   const positiveEv =
-    input.includePositiveCombos && missingReasons.length === 0
+    input.includePositiveCombos && canEnumeratePositiveEv
       ? enumeratePositiveEvCombos({
           assumption: evAssumption,
-          limit: input.positiveComboLimit,
+          limit: Math.max(input.positiveComboLimit, portfolioComboLimit),
           matches,
           orthodoxPicks,
         })
       : {
           evaluatedCount: null,
-          ready: missingReasons.length === 0,
+          ready: canEnumeratePositiveEv,
           rows: [],
           totalPositiveCount: null,
           truncated: false,
         };
+  const portfolioPositiveEv =
+    positiveEv.rows.length > 0 || !canEnumeratePositiveEv
+      ? positiveEv
+      : enumeratePositiveEvCombos({
+          assumption: evAssumption,
+          limit: portfolioComboLimit,
+          matches,
+          orthodoxPicks,
+        });
+  const portfolioPlans = buildPortfolioPlans(portfolioPositiveEv, stakeYen);
   const drift = buildDriftText({
     finalSnapshot,
     featured: input.featured,
     status,
   });
+  const usingFeaturedFallback = !input.round && matches.length > 0;
 
   return {
+    calculationSourceLabel: input.round
+      ? "保存済みRound + 公式投票率"
+      : "内蔵W杯プリセット + 公式投票率",
     candidateTicketCount: input.round?.candidateTicketCount ?? 0,
     driftDetail: drift.detail,
     driftLabel: drift.label,
@@ -876,14 +1100,17 @@ function buildRoundStrategy(input: {
     modelReadyCount,
     officialReadyCount,
     orthodoxLine: lines.find((line) => line.key === "orthodox") ?? null,
-    portfolioPlans: buildPortfolioPlans(positiveEv, evAssumption?.stakeYen ?? 100),
+    portfolioPlans,
     positiveEv,
+    primaryPortfolioPlan: primaryPlanFrom(portfolioPlans),
     roundId: input.round?.id ?? null,
     roundTitle: input.round?.title ?? input.featured.title,
     snapshotGapToCloseLabel: drift.snapshotGapToCloseLabel,
     snapshotLabel: featuredWorldTotoSnapshotLabel,
+    stakeYen,
     strictEvMissingReasons: missingReasons,
     strictEvReady: missingReasons.length === 0,
+    usingFeaturedFallback,
     windowStatus: status,
     windowStatusLabel: windowStatusLabel(status),
   };
@@ -897,7 +1124,7 @@ export function buildWorldCupStrategyDashboard(input: {
 }): WorldCupStrategyDashboard {
   const now = input.now ?? new Date();
   const includePositiveCombos = input.includePositiveCombos ?? false;
-  const positiveComboLimit = input.positiveComboLimit ?? 80;
+  const positiveComboLimit = input.positiveComboLimit ?? 120;
   const roundByNumber = new Map<number, DashboardRoundSummary>();
 
   input.rounds.forEach((round) => {
@@ -917,17 +1144,16 @@ export function buildWorldCupStrategyDashboard(input: {
       round: roundByNumber.get(featured.roundNumber) ?? null,
     }),
   );
-  const positiveCounts = rounds.map((round) => round.positiveEv.totalPositiveCount);
-  const knownPositiveCounts = positiveCounts.filter(isKnownNumber);
+  const positiveCounts = rounds
+    .map((round) => round.positiveEv.totalPositiveCount)
+    .filter(isKnownNumber);
 
   return {
     buyableCount: rounds.filter((round) => round.windowStatus === "selling").length,
     closedCount: rounds.filter((round) => round.windowStatus === "closed").length,
     createdCount: rounds.filter((round) => round.isCreated).length,
     positiveEvComboCount:
-      knownPositiveCounts.length === positiveCounts.length
-        ? knownPositiveCounts.reduce((sum, count) => sum + count, 0)
-        : null,
+      positiveCounts.length > 0 ? positiveCounts.reduce((sum, count) => sum + count, 0) : null,
     rounds,
     snapshotLabel: featuredWorldTotoSnapshotLabel,
     strictReadyCount: rounds.filter((round) => round.strictEvReady).length,

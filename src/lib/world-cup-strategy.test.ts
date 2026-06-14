@@ -169,6 +169,75 @@ describe("world cup strategy", () => {
     expect(round1634.orthodoxLine?.estimatedPayoutYen).toBeGreaterThan(0);
   });
 
+  it("uses the final sales snapshot for closed round 1634 EV inputs", () => {
+    const strategy = buildWorldCupStrategyDashboard({
+      now: new Date("2026-06-14T00:00:00+09:00"),
+      rounds: [buildRound(Array.from({ length: 13 }, (_value, index) => buildMatch(index + 1)))],
+    });
+    const round1634 = strategy.rounds[0];
+
+    expect(round1634.strictEvReady).toBe(true);
+    expect(round1634.evAssumption?.totalSalesYen).toBe(289166800);
+    expect(round1634.featured.totalSalesYen).toBe(13958700);
+  });
+
+  it("builds practical budget plans for 10 tickets and 100 tickets", () => {
+    const valueMatches = Array.from({ length: 13 }, (_value, index) =>
+      buildMatch(index + 1, {
+        modelProb0: 0.1,
+        modelProb1: 0.1,
+        modelProb2: 0.8,
+        officialVote0: 0.05,
+        officialVote1: 0.9,
+        officialVote2: 0.05,
+      }),
+    );
+    const strategy = buildWorldCupStrategyDashboard({
+      includePositiveCombos: true,
+      now: new Date("2026-06-11T12:00:00+09:00"),
+      positiveComboLimit: 120,
+      rounds: [buildRound(valueMatches)],
+    });
+    const round1634 = strategy.rounds[0];
+    const plan1000 = round1634.portfolioPlans.find((plan) => plan.budgetYen === 1000);
+    const plan10000 = round1634.portfolioPlans.find((plan) => plan.budgetYen === 10000);
+
+    expect(plan1000?.requestedLineCount).toBe(10);
+    expect(plan1000?.lineCount).toBe(10);
+    expect(plan1000?.costYen).toBe(1000);
+    expect(plan1000?.meetsBudget).toBe(true);
+    expect(plan10000?.requestedLineCount).toBe(100);
+    expect(plan10000?.lineCount).toBe(100);
+    expect(plan10000?.costYen).toBe(10000);
+    expect(plan10000?.expectedReturnYen).toBeGreaterThan(10000);
+    expect(round1634.primaryPortfolioPlan?.budgetYen).toBe(10000);
+  });
+
+  it("keeps practical budget plans when the positive EV table is omitted", () => {
+    const valueMatches = Array.from({ length: 13 }, (_value, index) =>
+      buildMatch(index + 1, {
+        modelProb0: 0.1,
+        modelProb1: 0.1,
+        modelProb2: 0.8,
+        officialVote0: 0.05,
+        officialVote1: 0.9,
+        officialVote2: 0.05,
+      }),
+    );
+    const strategy = buildWorldCupStrategyDashboard({
+      includePositiveCombos: false,
+      now: new Date("2026-06-11T12:00:00+09:00"),
+      rounds: [buildRound(valueMatches)],
+    });
+    const round1634 = strategy.rounds[0];
+    const plan10000 = round1634.portfolioPlans.find((plan) => plan.budgetYen === 10000);
+
+    expect(round1634.positiveEv.rows).toHaveLength(0);
+    expect(plan10000?.lineCount).toBe(100);
+    expect(plan10000?.expectedReturnYen).toBeGreaterThan(10000);
+    expect(round1634.primaryPortfolioPlan?.budgetYen).toBe(10000);
+  });
+
   it("enumerates positive EV combinations in descending EV order", () => {
     const result = enumeratePositiveEvCombos({
       assumption: buildAssumption(),
@@ -208,7 +277,7 @@ describe("world cup strategy", () => {
     const round1635 = strategy.rounds[1];
 
     expect(round1635.strictEvReady).toBe(false);
-    expect(round1635.strictEvMissingReasons).toContain("W杯toto回が未作成");
-    expect(round1635.strictEvMissingReasons).toContain("売上総額が未公表");
+    expect(round1635.strictEvMissingReasons).toContain("売上総額が未確定");
+    expect(round1635.strictEvMissingReasons).toContain("公式投票率が不足");
   });
 });
