@@ -181,6 +181,32 @@ describe("world cup strategy", () => {
     expect(round1634.featured.totalSalesYen).toBe(13958700);
   });
 
+  it("turns a closed final snapshot into a review command", () => {
+    const strategy = buildWorldCupStrategyDashboard({
+      now: new Date("2026-06-14T00:00:00+09:00"),
+      rounds: [buildRound(Array.from({ length: 13 }, (_value, index) => buildMatch(index + 1)))],
+    });
+    const round1634 = strategy.rounds[0];
+
+    expect(round1634.commandStatusLabel).toBe("締切後の感想戦");
+    expect(round1634.recommendedActionLabel).toBe("確定値で感想戦");
+    expect(round1634.orthodoxDecisionLabel).toBe("王道は外す候補");
+    expect(round1634.timingChecklist.find((item) => item.actionLabel === "確定値で感想戦")?.enabled).toBe(true);
+  });
+
+  it("asks for official data refresh on a buyable round with missing EV inputs", () => {
+    const strategy = buildWorldCupStrategyDashboard({
+      now: new Date("2026-06-14T00:00:00+09:00"),
+      rounds: [buildRound(Array.from({ length: 13 }, (_value, index) => buildMatch(index + 1)))],
+    });
+    const round1635 = strategy.rounds[1];
+
+    expect(round1635.windowStatus).toBe("selling");
+    expect(round1635.commandStatusLabel).toBe("買える・データ待ち");
+    expect(round1635.recommendedActionLabel).toBe("公式データを再取得");
+    expect(round1635.timingChecklist[0].enabled).toBe(true);
+  });
+
   it("builds practical budget plans for 10 tickets and 100 tickets", () => {
     const valueMatches = Array.from({ length: 13 }, (_value, index) =>
       buildMatch(index + 1, {

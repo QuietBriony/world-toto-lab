@@ -25,6 +25,7 @@ import {
   type WorldCupPortfolioPlan,
   type WorldCupPositiveEvCombo,
   type WorldCupRoundStrategy,
+  type WorldCupTimingChecklistItem,
   type WorldCupRoundWindowStatus,
   type WorldCupStrategyLine,
   type WorldCupStrategyPick,
@@ -83,6 +84,18 @@ function selectedPlan(round: WorldCupRoundStrategy, budgetYen: number) {
   return round.portfolioPlans.find((plan) => plan.budgetYen === budgetYen) ?? null;
 }
 
+function commandTone(round: WorldCupRoundStrategy) {
+  if (round.windowStatus === "selling" && round.strictEvReady) {
+    return "teal" as const;
+  }
+
+  if (round.windowStatus === "selling") {
+    return "amber" as const;
+  }
+
+  return "slate" as const;
+}
+
 function MiniFact({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
     <div className="rounded-[18px] border border-slate-200 bg-white/86 px-4 py-3">
@@ -113,6 +126,89 @@ function PlainNotice({
     <div className={cx("rounded-[22px] border px-5 py-4", className)}>
       <p className="font-semibold">{title}</p>
       <div className="mt-2 text-sm leading-6 opacity-85">{children}</div>
+    </div>
+  );
+}
+
+function TimingChecklist({ items }: { items: WorldCupTimingChecklistItem[] }) {
+  return (
+    <div className="grid gap-3 md:grid-cols-5">
+      {items.map((item) => (
+        <div
+          key={`${item.timingLabel}-${item.actionLabel}`}
+          className={cx(
+            "rounded-[18px] border px-3 py-3",
+            item.enabled
+              ? "border-emerald-300 bg-emerald-50 text-emerald-950"
+              : "border-slate-200 bg-white/78 text-slate-700",
+          )}
+        >
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge tone={item.enabled ? "positive" : "slate"}>
+              {item.enabled ? "今ここ" : item.timingLabel}
+            </Badge>
+          </div>
+          <p className="mt-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+            {item.label}
+          </p>
+          <p className="mt-1 text-sm font-semibold leading-5">{item.actionLabel}</p>
+          {item.enabled ? (
+            <p className="mt-1 text-xs leading-5 opacity-80">{item.timingLabel}</p>
+          ) : null}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function CommandCenterPanel({ round }: { round: WorldCupRoundStrategy }) {
+  const reviewHref = round.roundId ? buildRoundHref(appRoute.review, round.roundId) : null;
+  const memoHref = round.roundId ? buildRoundHref(appRoute.matchEditor, round.roundId) : null;
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 lg:grid-cols-3">
+        <PlainNotice tone={commandTone(round)} title="今の状態">
+          <p className="text-lg font-semibold text-slate-950">{round.commandStatusLabel}</p>
+          <p className="mt-1">{round.recommendedActionDetail}</p>
+        </PlainNotice>
+        <PlainNotice tone={round.orthodoxDecisionLabel.includes("外す") ? "amber" : "slate"} title="王道判断">
+          <p className="text-lg font-semibold text-slate-950">{round.orthodoxDecisionLabel}</p>
+          <p className="mt-1">{round.orthodoxDecisionDetail}</p>
+        </PlainNotice>
+        <PlainNotice tone="teal" title="次にやること">
+          <p className="text-lg font-semibold text-slate-950">{round.recommendedActionLabel}</p>
+          {!memoHref ? (
+            <p className="mt-2 text-sm leading-6">
+              Round作成後、ここからボイスメモ文字起こしを貼って、Haziロジックの材料にできます。
+            </p>
+          ) : null}
+          <div className="mt-3 flex flex-wrap gap-2">
+            {memoHref ? (
+              <Link href={memoHref} className={secondaryButtonClassName}>
+                ボイスメモ文字起こしを貼る
+              </Link>
+            ) : (
+              <Link
+                href={buildOfficialRoundImportHref(null, {
+                  productType: "toto13",
+                  sourcePreset: "sp_toto_1634",
+                })}
+                className={secondaryButtonClassName}
+              >
+                公式回から作る
+              </Link>
+            )}
+            {reviewHref ? (
+              <Link href={reviewHref} className={secondaryButtonClassName}>
+                感想戦を開く
+              </Link>
+            ) : null}
+          </div>
+        </PlainNotice>
+      </div>
+
+      <TimingChecklist items={round.timingChecklist} />
     </div>
   );
 }
@@ -170,6 +266,8 @@ function FirstAnswerPanel({ round, reportHref }: { reportHref: string; round: Wo
         </div>
       }
     >
+      <CommandCenterPanel round={round} />
+
       <div className="grid gap-4 lg:grid-cols-[0.92fr_1.08fr]">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
           <MiniFact label="一口" value={formatCurrency(round.stakeYen)} hint="toto13の1通りあたりの購入額" />
@@ -338,7 +436,13 @@ function TicketsTable({
   );
 }
 
-function RoundStrategyCard({ round }: { round: WorldCupRoundStrategy }) {
+function RoundStrategyCard({
+  round,
+  showCommandCenter = true,
+}: {
+  round: WorldCupRoundStrategy;
+  showCommandCenter?: boolean;
+}) {
   const roundHref = round.roundId ? buildRoundHref(appRoute.workspace, round.roundId) : null;
   const positiveCount = round.positiveEv.totalPositiveCount;
   const plan10000 = selectedPlan(round, 10000);
@@ -359,6 +463,8 @@ function RoundStrategyCard({ round }: { round: WorldCupRoundStrategy }) {
         </div>
       }
     >
+      {showCommandCenter ? <CommandCenterPanel round={round} /> : null}
+
       <div className="grid gap-4 lg:grid-cols-[0.92fr_1.08fr]">
         <div className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2">
@@ -505,7 +611,7 @@ export default function WorldCupStrategyPage() {
   }, [data]);
 
   if (loading && !data) {
-    return <LoadingNotice title="W杯totoの買い方試算を読み込み中" />;
+    return <LoadingNotice title="W杯toto EV司令塔を読み込み中" />;
   }
 
   if (error && !data) {
@@ -513,7 +619,7 @@ export default function WorldCupStrategyPage() {
   }
 
   if (!strategy) {
-    return <LoadingNotice title="W杯totoの買い方試算を準備中" />;
+    return <LoadingNotice title="W杯toto EV司令塔を準備中" />;
   }
 
   const primaryRound = strategy.rounds.find((round) => round.featured.roundNumber === 1634) ?? strategy.rounds[0];
@@ -523,8 +629,8 @@ export default function WorldCupStrategyPage() {
     <div className="space-y-8">
       <PageHeader
         eyebrow="World Cup Toto"
-        title="W杯toto 買い方メモ"
-        description="一口いくらか、当たったらいくら戻る見込みか、10口や1万円ならどの出目を買うかを先に見ます。EVの細かい表は下に置いています。"
+        title="W杯toto EV司令塔"
+        description="いつまで買えるか、どのタイミングで公式データを取り直すか、王道を外すか、10口や1万円ならどう置くかを先に見ます。"
         actions={
           <div className="flex flex-wrap gap-3">
             <Link href={appRoute.dashboard} className={secondaryButtonClassName}>
@@ -556,7 +662,7 @@ export default function WorldCupStrategyPage() {
           tone={strategy.buyableCount > 0 ? "positive" : "default"}
         />
         <StatCard
-          label="厳密EV可"
+          label="EV計算可"
           value={strategy.strictReadyCount}
           hint="売上・公式投票率・モデル確率が揃った回"
           tone={strategy.strictReadyCount > 0 ? "positive" : "warning"}
@@ -578,7 +684,11 @@ export default function WorldCupStrategyPage() {
 
       <div className="space-y-6">
         {strategy.rounds.map((round) => (
-          <RoundStrategyCard key={round.featured.roundNumber} round={round} />
+          <RoundStrategyCard
+            key={round.featured.roundNumber}
+            round={round}
+            showCommandCenter={round.featured.roundNumber !== primaryRound.featured.roundNumber}
+          />
         ))}
       </div>
     </div>

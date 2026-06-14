@@ -931,8 +931,8 @@ export default function DashboardPage() {
 
           <SectionCard
             id="world-cup-strategy"
-            title="W杯toto 買い方メモ"
-            description="一口100円、1万円なら100口。買うならどの出目を上から買うか、期待回収が購入額を超えるかを先に見ます。"
+            title="W杯toto EV司令塔"
+            description="一口100円、1万円なら100口。買える期限、公式データを取り直すタイミング、王道を外すか、買うならどの出目を上から買うかを先に見ます。"
             actions={
               <div className="flex flex-wrap gap-2">
                 <Badge tone={worldCupStrategy.createdCount === 4 ? "teal" : "amber"}>
@@ -950,7 +950,7 @@ export default function DashboardPage() {
             <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
               <div className="rounded-[24px] border border-teal-200 bg-teal-50/80 px-5 py-5">
                 <div className="flex flex-wrap gap-2">
-                  <Badge tone="teal">まず答え</Badge>
+                  <Badge tone="teal">まず判断</Badge>
                   <Badge tone="slate">{worldCupStrategy.snapshotLabel}</Badge>
                 </div>
                 <h3 className="mt-4 text-xl font-semibold tracking-tight text-slate-950">
@@ -967,7 +967,7 @@ export default function DashboardPage() {
                     ? `購入額 ${formatCurrency(worldCupPrimaryPlan.costYen)} に対して、期待損益は ${formatCurrency(worldCupPrimaryPlan.expectedProfitYen)}。買うなら上位${worldCupPrimaryPlan.lineCount}通りを1口ずつです。`
                     : "このカードは購入履歴ではなく、公開投票率とモデル確率からの試算です。誰が何を買ったかは扱いません。"}
                 </p>
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                   <div className="rounded-[20px] border border-white/70 bg-white/78 px-4 py-4">
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-700">
                       一口
@@ -996,10 +996,32 @@ export default function DashboardPage() {
                         : "売上・投票率待ち"}
                     </p>
                   </div>
+                  <div className="rounded-[20px] border border-white/70 bg-white/78 px-4 py-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-700">
+                      次にやること
+                    </p>
+                    <p className="mt-2 text-base font-semibold leading-6 text-slate-950">
+                      {worldCupPrimaryRound?.recommendedActionLabel ?? "公式データ待ち"}
+                    </p>
+                    <p className="mt-1 text-sm text-slate-500">
+                      {worldCupPrimaryRound?.commandStatusLabel ?? "未計算"}
+                    </p>
+                  </div>
+                  <div className="rounded-[20px] border border-white/70 bg-white/78 px-4 py-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-700">
+                      王道判断
+                    </p>
+                    <p className="mt-2 text-base font-semibold leading-6 text-slate-950">
+                      {worldCupPrimaryRound?.orthodoxDecisionLabel ?? "王道EV待ち"}
+                    </p>
+                    <p className="mt-1 text-sm text-slate-500">
+                      公式人気順だけで買うか
+                    </p>
+                  </div>
                 </div>
                 <div className="mt-5 flex flex-wrap gap-2">
                   <Link href={appRoute.worldCupStrategy} className={buttonClassName}>
-                    買い方を見る
+                    EV司令塔を開く
                   </Link>
                   <Link href={appRoute.hazi} className={secondaryButtonClassName}>
                     Haziレビュー
@@ -1041,6 +1063,9 @@ export default function DashboardPage() {
                         {round.primaryPortfolioPlan
                           ? `${round.primaryPortfolioPlan.label}: 期待回収 ${formatCurrency(round.primaryPortfolioPlan.expectedReturnYen)} / ${round.primaryPortfolioPlan.lineCount}口`
                           : round.strictEvMissingReasons.join(" / ")}
+                      </p>
+                      <p className="mt-1 text-xs leading-5 text-slate-500">
+                        次: {round.recommendedActionLabel} / 王道: {round.orthodoxDecisionLabel}
                       </p>
                     </div>
                     {round.roundId ? (

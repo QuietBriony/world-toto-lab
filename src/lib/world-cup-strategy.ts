@@ -108,9 +108,17 @@ export type WorldCupFinalSnapshotSummary = {
   voteDriftRows: WorldCupVoteDriftRow[];
 };
 
+export type WorldCupTimingChecklistItem = {
+  actionLabel: string;
+  enabled: boolean;
+  label: string;
+  timingLabel: string;
+};
+
 export type WorldCupRoundStrategy = {
   calculationSourceLabel: string;
   candidateTicketCount: number;
+  commandStatusLabel: string;
   driftDetail: string;
   driftLabel: string;
   evAssumption: RoundEvAssumption | null;
@@ -130,9 +138,13 @@ export type WorldCupRoundStrategy = {
   modelReadyCount: number;
   officialReadyCount: number;
   orthodoxLine: WorldCupStrategyLine | null;
+  orthodoxDecisionDetail: string;
+  orthodoxDecisionLabel: string;
   portfolioPlans: WorldCupPortfolioPlan[];
   positiveEv: WorldCupPositiveEvResult;
   primaryPortfolioPlan: WorldCupPortfolioPlan | null;
+  recommendedActionDetail: string;
+  recommendedActionLabel: string;
   roundId: string | null;
   roundTitle: string;
   snapshotGapToCloseLabel: string;
@@ -140,6 +152,7 @@ export type WorldCupRoundStrategy = {
   stakeYen: number;
   strictEvMissingReasons: string[];
   strictEvReady: boolean;
+  timingChecklist: WorldCupTimingChecklistItem[];
   usingFeaturedFallback: boolean;
   windowStatus: WorldCupRoundWindowStatus;
   windowStatusLabel: string;
@@ -971,6 +984,140 @@ function primaryPlanFrom(plans: WorldCupPortfolioPlan[]) {
   return plans.find((plan) => plan.budgetYen === 10000) ?? plans[plans.length - 1] ?? null;
 }
 
+function buildTimingChecklist(input: {
+  featured: FeaturedRound;
+  now: Date;
+  status: WorldCupRoundWindowStatus;
+}): WorldCupTimingChecklistItem[] {
+  const salesEndAt = new Date(input.featured.salesEndAt);
+  const minutesToClose = minutesBetween(input.now, salesEndAt);
+  const activeIndex =
+    input.status === "closed"
+      ? 4
+      : input.status === "upcoming"
+        ? -1
+        : minutesToClose > 240
+          ? 0
+          : minutesToClose > 60
+            ? 0
+            : minutesToClose > 30
+              ? 1
+              : minutesToClose > 10
+                ? 2
+                : 3;
+
+  return [
+    {
+      actionLabel: "公式売上・投票率を再取得",
+      enabled: activeIndex === 0,
+      label: "データを厚くする",
+      timingLabel: "締切4時間前まで",
+    },
+    {
+      actionLabel: "EVを再計算",
+      enabled: activeIndex === 1,
+      label: "ズレを確認",
+      timingLabel: "締切1時間前",
+    },
+    {
+      actionLabel: "1万円/10口プランを確認",
+      enabled: activeIndex === 2,
+      label: "買い方を固定",
+      timingLabel: "締切30分前",
+    },
+    {
+      actionLabel: "買うなら最終判断",
+      enabled: activeIndex === 3,
+      label: "購入直前",
+      timingLabel: "締切10分前",
+    },
+    {
+      actionLabel: "確定値で感想戦",
+      enabled: activeIndex === 4,
+      label: "ナレッジ化",
+      timingLabel: "締切後",
+    },
+  ];
+}
+
+function buildOrthodoxDecision(line: WorldCupStrategyLine | null) {
+  if (!line?.strictEvReady || line.evMultiple === null || line.expectedReturnYen === null) {
+    return {
+      detail: "売上・公式投票率・モデル確率が揃うまで、公式人気順を買う/外す判断は保留します。",
+      label: "王道EV待ち",
+    };
+  }
+
+  if (line.evMultiple < 1) {
+    return {
+      detail: `公式人気順は1口あたり期待回収 ${Math.round(line.expectedReturnYen).toLocaleString("ja-JP")}円、EV ${line.evMultiple.toFixed(2)}倍です。購入額を下回るため、今回は王道だけを厚く買うより、期待回収順の候補へずらす判断です。`,
+      label: "王道は外す候補",
+    };
+  }
+
+  return {
+    detail: `公式人気順でも1口あたり期待回収 ${Math.round(line.expectedReturnYen).toLocaleString("ja-JP")}円、EV ${line.evMultiple.toFixed(2)}倍です。候補から外さず、他の期待回収候補と比較します。`,
+    label: "王道も検討可",
+  };
+}
+
+function buildCommandStatus(input: {
+  finalSnapshot: WorldCupFinalSnapshotSummary | null;
+  missingReasons: string[];
+  primaryPlan: WorldCupPortfolioPlan | null;
+  status: WorldCupRoundWindowStatus;
+}) {
+  if (input.status === "closed") {
+    if (input.finalSnapshot) {
+      return {
+        commandStatusLabel: "締切後の感想戦",
+        recommendedActionDetail:
+          "もう買えない回です。確定売上・確定投票率で、王道EV、買い方候補、保存時点からのズレを振り返ります。",
+        recommendedActionLabel: "確定値で感想戦",
+      };
+    }
+
+    return {
+      commandStatusLabel: "締切後・確定値待ち",
+      recommendedActionDetail:
+        "販売は終了しています。公式の投票結果ページから最終売上と最終投票率を保存すると、感想戦に使えます。",
+      recommendedActionLabel: "最終公式データを保存",
+    };
+  }
+
+  if (input.status === "upcoming") {
+    return {
+      commandStatusLabel: "発売前",
+      recommendedActionDetail:
+        "発売後に公式投票率と売上が出てから、王道EVと1万円ポートフォリオを計算します。",
+      recommendedActionLabel: "発売後に公式データ取得",
+    };
+  }
+
+  if (input.missingReasons.length > 0) {
+    return {
+      commandStatusLabel: "買える・データ待ち",
+      recommendedActionDetail: `${input.missingReasons.join(" / ")}。締切に近いほど購入データが揃うため、公式データを再取得してからEVを見ます。`,
+      recommendedActionLabel: "公式データを再取得",
+    };
+  }
+
+  if (input.primaryPlan?.meetsBudget) {
+    return {
+      commandStatusLabel: "買える・候補あり",
+      recommendedActionDetail: `1万円プランは期待回収 ${Math.round(input.primaryPlan.expectedReturnYen).toLocaleString("ja-JP")}円です。買うなら上位${input.primaryPlan.lineCount}通りを1口ずつ置きます。`,
+      recommendedActionLabel: "買い方を最終確認",
+    };
+  }
+
+  return {
+    commandStatusLabel: "買える・見送り候補",
+    recommendedActionDetail:
+      "厳密EVは計算できますが、購入額を上回る候補が弱い状態です。無理に買わず、次の公式データ更新を待ちます。",
+    recommendedActionLabel: "見送り/再取得",
+  };
+}
+
 function buildRoundStrategy(input: {
   featured: FeaturedRound;
   includePositiveCombos: boolean;
@@ -1075,12 +1222,22 @@ function buildRoundStrategy(input: {
     status,
   });
   const usingFeaturedFallback = !input.round && matches.length > 0;
+  const orthodoxLine = lines.find((line) => line.key === "orthodox") ?? null;
+  const primaryPortfolioPlan = primaryPlanFrom(portfolioPlans);
+  const orthodoxDecision = buildOrthodoxDecision(orthodoxLine);
+  const commandStatus = buildCommandStatus({
+    finalSnapshot,
+    missingReasons,
+    primaryPlan: primaryPortfolioPlan,
+    status,
+  });
 
   return {
     calculationSourceLabel: input.round
       ? "保存済みRound + 公式投票率"
       : "内蔵W杯プリセット + 公式投票率",
     candidateTicketCount: input.round?.candidateTicketCount ?? 0,
+    commandStatusLabel: commandStatus.commandStatusLabel,
     driftDetail: drift.detail,
     driftLabel: drift.label,
     evAssumption,
@@ -1099,10 +1256,14 @@ function buildRoundStrategy(input: {
     matchCount,
     modelReadyCount,
     officialReadyCount,
-    orthodoxLine: lines.find((line) => line.key === "orthodox") ?? null,
+    orthodoxDecisionDetail: orthodoxDecision.detail,
+    orthodoxDecisionLabel: orthodoxDecision.label,
+    orthodoxLine,
     portfolioPlans,
     positiveEv,
-    primaryPortfolioPlan: primaryPlanFrom(portfolioPlans),
+    primaryPortfolioPlan,
+    recommendedActionDetail: commandStatus.recommendedActionDetail,
+    recommendedActionLabel: commandStatus.recommendedActionLabel,
     roundId: input.round?.id ?? null,
     roundTitle: input.round?.title ?? input.featured.title,
     snapshotGapToCloseLabel: drift.snapshotGapToCloseLabel,
@@ -1110,6 +1271,11 @@ function buildRoundStrategy(input: {
     stakeYen,
     strictEvMissingReasons: missingReasons,
     strictEvReady: missingReasons.length === 0,
+    timingChecklist: buildTimingChecklist({
+      featured: input.featured,
+      now: input.now,
+      status,
+    }),
     usingFeaturedFallback,
     windowStatus: status,
     windowStatusLabel: windowStatusLabel(status),
