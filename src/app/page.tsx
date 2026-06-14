@@ -99,6 +99,7 @@ import {
   featuredWorldTotoRoundNumbers,
   featuredWorldTotoSnapshotLabel,
 } from "@/lib/featured-world-toto";
+import { buildWorldCupStrategyDashboard } from "@/lib/world-cup-strategy";
 import { createFeaturedWorldTotoRoundInD1 } from "@/lib/featured-world-toto-d1";
 import { getStoredRoundTokens } from "@/lib/storage/d1ApiAdapter";
 import {
@@ -548,6 +549,18 @@ export default function DashboardPage() {
         user: haziWorldTotoUser?.id,
       })
     : null;
+  const worldCupStrategy = useMemo(
+    () =>
+      buildWorldCupStrategyDashboard({
+        includePositiveCombos: false,
+        rounds: inventoryRounds,
+      }),
+    [inventoryRounds],
+  );
+  const worldCupStrictReadyRound = worldCupStrategy.rounds.find((round) => round.strictEvReady) ?? null;
+  const worldCupBuyableRound = worldCupStrategy.rounds.find((round) => round.windowStatus === "selling") ?? null;
+  const worldCupFinalSnapshotRound =
+    worldCupStrategy.rounds.find((round) => round.finalSnapshot) ?? null;
   const latestPlayHref = latestRound
     ? buildRoundHref(appRoute.play, latestRound.id, {
         user: latestPrimaryUserId,
@@ -903,6 +916,131 @@ export default function DashboardPage() {
                     </p>
                     <h3 className="mt-2 text-sm font-semibold text-slate-950">{title}</h3>
                     <p className="mt-1 text-sm leading-6 text-slate-600">{body}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </SectionCard>
+
+          <SectionCard
+            id="world-cup-strategy"
+            title="W杯締切EV戦略"
+            description="第1634〜1637回totoの販売期限、保存時点から締切までのズレ余地、王道で勝った場合の推定払戻をまとめます。"
+            actions={
+              <div className="flex flex-wrap gap-2">
+                <Badge tone={worldCupStrategy.createdCount === 4 ? "teal" : "amber"}>
+                  {worldCupStrategy.createdCount}/4回作成済み
+                </Badge>
+                <Badge tone={worldCupStrategy.buyableCount > 0 ? "positive" : "slate"}>
+                  買える回 {worldCupStrategy.buyableCount}
+                </Badge>
+                <Badge tone={worldCupStrategy.strictReadyCount > 0 ? "positive" : "slate"}>
+                  厳密EV {worldCupStrategy.strictReadyCount}
+                </Badge>
+              </div>
+            }
+          >
+            <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
+              <div className="rounded-[24px] border border-teal-200 bg-teal-50/80 px-5 py-5">
+                <div className="flex flex-wrap gap-2">
+                  <Badge tone="teal">締切直前チェック</Badge>
+                  <Badge tone="slate">{worldCupStrategy.snapshotLabel}</Badge>
+                </div>
+                <h3 className="mt-4 text-xl font-semibold tracking-tight text-slate-950">
+                  {worldCupBuyableRound
+                    ? `今見るべき回は第${worldCupBuyableRound.featured.roundNumber}回`
+                    : worldCupFinalSnapshotRound
+                      ? `第${worldCupFinalSnapshotRound.featured.roundNumber}回は確定値取得可`
+                    : "次は最終スナップショットを待つ"}
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  {worldCupBuyableRound
+                    ? `販売期限は ${worldCupBuyableRound.lastBuyableAtLabel}。締切前に公式人気と売上を取り直すと、買える時点のEVに近づきます。`
+                    : worldCupFinalSnapshotRound?.finalSnapshot
+                      ? `確定売上は ${formatCurrency(worldCupFinalSnapshotRound.finalSnapshot.totalSalesYen)}。初期比 ${worldCupFinalSnapshotRound.finalSnapshot.salesMultiple?.toFixed(2) ?? "—"}x まで伸びています。`
+                    : "販売終了済みの回は、締切後の最終公式人気・売上を取り込むと保存時点との差分を検証できます。"}
+                </p>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-[20px] border border-white/70 bg-white/78 px-4 py-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-700">
+                      王道1等推定払戻
+                    </p>
+                    <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
+                      {formatCurrency(worldCupStrictReadyRound?.orthodoxLine?.estimatedPayoutYen)}
+                    </p>
+                    <p className="mt-1 text-sm text-slate-500">
+                      第{worldCupStrictReadyRound?.featured.roundNumber ?? "—"}回の保存済み前提
+                    </p>
+                  </div>
+                  <div className="rounded-[20px] border border-white/70 bg-white/78 px-4 py-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-700">
+                      王道EV倍率
+                    </p>
+                    <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
+                      {worldCupStrictReadyRound?.orthodoxLine?.evMultiple !== null &&
+                      worldCupStrictReadyRound?.orthodoxLine?.evMultiple !== undefined
+                        ? `${worldCupStrictReadyRound.orthodoxLine.evMultiple.toFixed(2)}x`
+                        : "—"}
+                    </p>
+                    <p className="mt-1 text-sm text-slate-500">購入100円あたりの1等EV</p>
+                  </div>
+                </div>
+                <div className="mt-5 flex flex-wrap gap-2">
+                  <Link href={appRoute.worldCupStrategy} className={buttonClassName}>
+                    EV戦略を開く
+                  </Link>
+                  <Link href={appRoute.hazi} className={secondaryButtonClassName}>
+                    Haziレビュー
+                  </Link>
+                </div>
+              </div>
+
+              <div className="divide-y divide-slate-200 overflow-hidden rounded-[24px] border border-slate-200 bg-white/82">
+                {worldCupStrategy.rounds.map((round) => (
+                  <div
+                    key={round.featured.roundNumber}
+                    className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge tone="info">第{round.featured.roundNumber}回</Badge>
+                        <Badge
+                          tone={
+                            round.windowStatus === "selling"
+                              ? "positive"
+                              : round.windowStatus === "upcoming"
+                                ? "sky"
+                                : "slate"
+                          }
+                        >
+                          {round.windowStatusLabel}
+                        </Badge>
+                        <Badge tone={round.strictEvReady ? "positive" : "slate"}>
+                          {round.strictEvReady ? "EV可" : "EV待ち"}
+                        </Badge>
+                        {round.finalSnapshot ? (
+                          <Badge tone="teal">確定値あり</Badge>
+                        ) : null}
+                      </div>
+                      <p className="mt-2 text-sm font-semibold text-slate-950">
+                        買える期限: {round.lastBuyableAtLabel}
+                      </p>
+                      <p className="mt-1 text-sm leading-6 text-slate-600">
+                        {round.strictEvReady
+                          ? `王道 ${round.orthodoxLine?.picks.map((pick) => pick.pick).join("-") ?? "—"}`
+                          : round.strictEvMissingReasons.join(" / ")}
+                      </p>
+                    </div>
+                    {round.roundId ? (
+                      <Link
+                        href={buildRoundHref(appRoute.workspace, round.roundId)}
+                        className="text-sm font-semibold text-teal-700 hover:text-teal-900"
+                      >
+                        詳細
+                      </Link>
+                    ) : (
+                      <span className="text-sm font-semibold text-slate-400">未作成</span>
+                    )}
                   </div>
                 ))}
               </div>

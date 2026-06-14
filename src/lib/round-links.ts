@@ -61,6 +61,7 @@ export const appRoute = {
   simpleView: "/simple-view",
   pickRoom: "/pick-room",
   winnerValue: "/winner-value",
+  worldCupStrategy: "/world-cup-strategy",
   play: "/play",
   practiceLab: "/practice-lab",
   hazi: "/hazi",
