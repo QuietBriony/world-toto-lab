@@ -568,6 +568,11 @@ export default function DashboardPage() {
     worldCupPrimaryRound?.portfolioPlans.find((plan) => plan.budgetYen === 10000) ??
     worldCupPrimaryRound?.primaryPortfolioPlan ??
     null;
+  const worldCupPrimaryRoundIsClosed = worldCupPrimaryRound?.windowStatus === "closed";
+  const worldCupCloseReportHref = resolveArtAsset(
+    pathname,
+    "/reports/world-cup-toto-1634-close-report.pdf",
+  );
   const latestPlayHref = latestRound
     ? buildRoundHref(appRoute.play, latestRound.id, {
         user: latestPrimaryUserId,
@@ -932,7 +937,7 @@ export default function DashboardPage() {
           <SectionCard
             id="world-cup-strategy"
             title="W杯toto EV司令塔"
-            description="一口100円、1万円なら100口。買える期限、公式データを取り直すタイミング、王道を外すか、買うならどの出目を上から買うかを先に見ます。"
+            description="一口100円、1万円なら100口。期待回収、2等カバー率、最新PDF、買い目をまとめて見ながら議論します。"
             actions={
               <div className="flex flex-wrap gap-2">
                 <Badge tone={worldCupStrategy.createdCount === 4 ? "teal" : "amber"}>
@@ -955,7 +960,9 @@ export default function DashboardPage() {
                 </div>
                 <h3 className="mt-4 text-xl font-semibold tracking-tight text-slate-950">
                   {worldCupPrimaryPlan
-                    ? `1万円プランは期待回収 ${formatCurrency(worldCupPrimaryPlan.expectedReturnYen)}`
+                    ? worldCupPrimaryRoundIsClosed
+                      ? `締切後の感想戦値は期待回収 ${formatCurrency(worldCupPrimaryPlan.expectedReturnYen)}`
+                      : `1万円プランは期待回収 ${formatCurrency(worldCupPrimaryPlan.expectedReturnYen)}`
                     : worldCupBuyableRound
                       ? `今見るべき回は第${worldCupBuyableRound.featured.roundNumber}回`
                       : worldCupFinalSnapshotRound
@@ -964,7 +971,9 @@ export default function DashboardPage() {
                 </h3>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
                   {worldCupPrimaryPlan
-                    ? `購入額 ${formatCurrency(worldCupPrimaryPlan.costYen)} に対して、期待損益は ${formatCurrency(worldCupPrimaryPlan.expectedProfitYen)}。買うなら上位${worldCupPrimaryPlan.lineCount}通りを1口ずつです。`
+                    ? worldCupPrimaryRoundIsClosed
+                      ? `締切後なので今は買えません。確定試合込みの候補${worldCupPrimaryPlan.lineCount}通りを1口ずつ置いた場合の、感想戦用の条件付き試算です。`
+                      : `購入額 ${formatCurrency(worldCupPrimaryPlan.costYen)} に対して、期待損益は ${formatCurrency(worldCupPrimaryPlan.expectedProfitYen)}。買うなら上位${worldCupPrimaryPlan.lineCount}通りを1口ずつです。`
                     : "このカードは購入履歴ではなく、公開投票率とモデル確率からの試算です。誰が何を買ったかは扱いません。"}
                 </p>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -998,13 +1007,17 @@ export default function DashboardPage() {
                   </div>
                   <div className="rounded-[20px] border border-white/70 bg-white/78 px-4 py-4">
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-700">
-                      次にやること
+                      2等カバー
                     </p>
                     <p className="mt-2 text-base font-semibold leading-6 text-slate-950">
-                      {worldCupPrimaryRound?.recommendedActionLabel ?? "公式データ待ち"}
+                      {worldCupPrimaryPlan?.secondPrizeCoverage.ready
+                        ? formatPercent(worldCupPrimaryPlan.secondPrizeCoverage.secondPrizeCoverageRate, 1)
+                        : "未計算"}
                     </p>
                     <p className="mt-1 text-sm text-slate-500">
-                      {worldCupPrimaryRound?.commandStatusLabel ?? "未計算"}
+                      {worldCupPrimaryPlan?.secondPrizeCoverage.guaranteedSecondPrize
+                        ? "候補宇宙内2等保証"
+                        : "距離1以内の面"}
                     </p>
                   </div>
                   <div className="rounded-[20px] border border-white/70 bg-white/78 px-4 py-4">
@@ -1026,6 +1039,9 @@ export default function DashboardPage() {
                   <Link href={appRoute.hazi} className={secondaryButtonClassName}>
                     Haziレビュー
                   </Link>
+                  <a href={worldCupCloseReportHref} className={secondaryButtonClassName}>
+                    最新PDF
+                  </a>
                 </div>
               </div>
 

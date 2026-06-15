@@ -31,6 +31,7 @@ import { modelSeed } from "@/lib/world-toto-strength";
 const featuredSnapshotCapturedAt = "2026-06-07T08:56:00+09:00";
 const valueLineSpotCount = 4;
 const defaultStakeYen = 100;
+const coverageUniverseLimit = 20000;
 
 type FeaturedRound = (typeof featuredWorldTotoRounds)[number];
 
@@ -82,6 +83,7 @@ export type WorldCupStrategyLine = {
 export type WorldCupPositiveEvCombo = {
   cashProbability: number;
   deviationCount: number;
+  disclosureLabel: string;
   estimatedPayoutYen: number;
   evMultiple: number;
   expectedReturnYen: number;
@@ -92,6 +94,8 @@ export type WorldCupPositiveEvCombo = {
   prizeTiers: TotoPrizeTierEv[];
   publicProbability: number;
   signature: string;
+  strategyBucket: string;
+  strategyDetail: string;
 };
 
 export type WorldCupPositiveEvResult = {
@@ -100,6 +104,23 @@ export type WorldCupPositiveEvResult = {
   rows: WorldCupPositiveEvCombo[];
   totalPositiveCount: number | null;
   truncated: boolean;
+};
+
+export type WorldCupSecondPrizeCoverage = {
+  evaluatedUniverseCount: number;
+  exactCoverageRate: number;
+  exactCoveredCount: number;
+  guaranteedSecondPrize: boolean;
+  label: string;
+  ready: boolean;
+  secondPrizeCoverageRate: number;
+  secondPrizeCoveredCount: number;
+  skippedReason: string | null;
+  thirdPrizeCoverageRate: number;
+  thirdPrizeCoveredCount: number;
+  uncoveredSecondPrizeCount: number;
+  universeCount: number;
+  worstDistanceToPortfolio: number | null;
 };
 
 export type WorldCupPortfolioPlan = {
@@ -119,6 +140,7 @@ export type WorldCupPortfolioPlan = {
   minPayoutIfHitYen: number;
   requestedLineCount: number;
   rows: WorldCupPositiveEvCombo[];
+  secondPrizeCoverage: WorldCupSecondPrizeCoverage;
   stakeYen: number;
   unallocatedBudgetYen: number;
 };
@@ -315,6 +337,8 @@ export const worldCupPortfolioBudgets = [
 ] as const;
 
 const officialTotoRuleUrl = "https://www.toto-dream.com/toto/about/index.html";
+const totoSecondPrizeGuaranteeSourceUrl = "https://toto.cam/news/news_2019052001.php";
+const totoBaraSourceUrl = "https://totobara.com/";
 const dixonColesSourceUrl = "https://rss.onlinelibrary.wiley.com/doi/abs/10.1111/1467-9876.00065";
 const sportsForecastingSourceUrl = "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2479770";
 const eloWorldCupSourceUrl = "https://www.math.tugraz.at/~gilch/person/WC2018-Forecast.pdf";
@@ -730,10 +754,24 @@ function applyKnownActualResultsToMatches(
 
   const resultByMatchNo = new Map(knownResults.resultRows.map((row) => [row.matchNo, row.actualResult]));
 
-  return matches.map((match) => ({
-    ...match,
-    actualResult: resultByMatchNo.get(match.matchNo) ?? match.actualResult,
-  }));
+  return matches.map((match) => {
+    const actualResult = resultByMatchNo.get(match.matchNo);
+    const actualOutcome = enumToOutcome(actualResult);
+
+    if (!actualResult || !actualOutcome) {
+      return match;
+    }
+
+    // Treat already-known results as conditional facts for post-close review.
+    // Official vote shares stay unchanged because they still estimate crowd dilution.
+    return {
+      ...match,
+      actualResult,
+      modelProb0: actualOutcome === "0" ? 1 : 0,
+      modelProb1: actualOutcome === "1" ? 1 : 0,
+      modelProb2: actualOutcome === "2" ? 1 : 0,
+    };
+  });
 }
 
 function buildFeaturedEvAssumption(input: {
@@ -1004,6 +1042,17 @@ function buildEvSourceRows(input: {
       value: "1〜3等EV合算",
     },
     {
+      detail:
+        "バラ買いの口数削減発想を、候補宇宙内で距離1以内に入る割合として表示します。100%の時だけ2等保証と呼び、それ以外は2等カバー率として扱います。",
+      label: "2等カバー",
+      sourceLabel: "totomo 2等保証 / トトバラ",
+      sourceUrl: totoSecondPrizeGuaranteeSourceUrl,
+      status: input.primaryPlan?.secondPrizeCoverage.ready ? "model" : "research",
+      value: input.primaryPlan?.secondPrizeCoverage.ready
+        ? `${(input.primaryPlan.secondPrizeCoverage.secondPrizeCoverageRate * 100).toFixed(1)}%`
+        : "未計算",
+    },
+    {
       detail: "購入額より期待回収が高い組み合わせだけを、1通り1口で積みます。プラス候補が足りない場合、余った予算は使いません。",
       label: "ポートフォリオ",
       sourceLabel: "positive EV only",
@@ -1072,6 +1121,18 @@ function buildPredictionLogicRows(input: {
     },
     {
       currentUse:
+        "候補宇宙に対する距離1以内カバー率を表示。買い目は議論できるように表示し、Hazi側の未共有ロジックは別メモとして扱います。",
+      label: "バラ買い2等保証/口数削減",
+      nextRefinement:
+        "Haziの予想軸で候補宇宙を絞ったうえで、2等カバー100%に近づける最小口数探索を次回実装する。",
+      sourceLabel: "totomo / トトバラ",
+      sourceUrl: totoBaraSourceUrl,
+      status: "research",
+      whyItMatters:
+        "totoはみんなとズラすゲームなので、出目そのものと、どの面をどれだけカバーしているかを並べると議論しやすい。",
+    },
+    {
+      currentUse:
         "確定結果を固定し、買える時点のモデル/公式人気/最終投票との差分を同じ画面で確認。",
       label: "感想戦で校正する",
       nextRefinement:
@@ -1090,6 +1151,7 @@ function buildPostMortemPrompts(primaryPlan: WorldCupPortfolioPlan | null) {
     "この試合、勝ち/負け/ドローのどれを人間なら削れたか。理由は戦力、日程、モチベ、相性、怪我のどれか。",
     "公式人気が70%を超えた試合で、本当に一本ロックで良かったか。逆張りするなら何が根拠だったか。",
     "30%台で割れた試合は、分散で良かったか。それとも片側に寄せられる材料があったか。",
+    "2等カバーを増やすために、1等狙いから外してもよい試合はどれだったか。",
     "締切前スナップショットから最終投票率が動いた試合は、情報だったか、ただの人気流入だったか。",
     primaryPlan
       ? `${primaryPlan.lineCount}口に絞った判断は妥当だったか。余った予算を使うべき根拠があったか。`
@@ -1129,9 +1191,183 @@ function lineSignature(picks: WorldCupStrategyPick[]) {
     .join("");
 }
 
+export function hammingDistance(left: string, right: string) {
+  const length = Math.max(left.length, right.length);
+  let distance = 0;
+
+  for (let index = 0; index < length; index += 1) {
+    if (left[index] !== right[index]) {
+      distance += 1;
+    }
+  }
+
+  return distance;
+}
+
 function deviationCount(picks: WorldCupStrategyPick[], orthodoxPicks: WorldCupStrategyPick[]) {
   const orthodoxByMatchNo = new Map(orthodoxPicks.map((pick) => [pick.matchNo, pick.pick]));
   return picks.filter((pick) => orthodoxByMatchNo.get(pick.matchNo) !== pick.pick).length;
+}
+
+function buildTicketDisclosure(input: {
+  cashProbability: number;
+  deviationCount: number;
+  evMultiple: number;
+  publicProbability: number;
+}) {
+  if (input.deviationCount <= 1) {
+    return {
+      disclosureLabel: "議論用に表示",
+      strategyBucket: "王道寄り",
+      strategyDetail: "公式人気順に近い。払戻は薄くなりやすいので、EVが残る時だけ採用。",
+    };
+  }
+
+  if (input.publicProbability <= 0.000001 && input.deviationCount >= 4) {
+    return {
+      disclosureLabel: "議論用に表示",
+      strategyBucket: "ズラし強め",
+      strategyDetail: "crowd が薄い側へ寄せる候補。モデル根拠が弱い場合は感想戦で落とす。",
+    };
+  }
+
+  if (input.cashProbability >= 0.01) {
+    return {
+      disclosureLabel: "議論用に表示",
+      strategyBucket: "2等カバー補助",
+      strategyDetail: "1等一本よりも12/13圏内の面を増やすためのバラ買い補助枠。",
+    };
+  }
+
+  if (input.evMultiple >= 2) {
+    return {
+      disclosureLabel: "議論用に表示",
+      strategyBucket: "高EV薄め",
+      strategyDetail: "期待回収は高いが当せん確率は薄い。上限口数を決めて積む候補。",
+    };
+  }
+
+  return {
+    disclosureLabel: "議論用に表示",
+    strategyBucket: "分散補助",
+    strategyDetail: "上位候補と重ねすぎず、購入額を超える範囲でだけ置く候補。",
+  };
+}
+
+function outcomeUniverseCount(
+  outcomePolicies: readonly { allowedOutcomes: readonly OutcomeValue[] }[],
+) {
+  return outcomePolicies.reduce((count, policy) => count * policy.allowedOutcomes.length, 1);
+}
+
+export function calculateWorldCupSecondPrizeCoverage(input: {
+  outcomePolicies: readonly { allowedOutcomes: readonly OutcomeValue[] }[];
+  rows: readonly Pick<WorldCupPositiveEvCombo, "signature">[];
+  universeLimit?: number;
+}): WorldCupSecondPrizeCoverage {
+  const universeCount = outcomeUniverseCount(input.outcomePolicies);
+  const universeLimit = input.universeLimit ?? coverageUniverseLimit;
+  const portfolioSignatures = Array.from(new Set(input.rows.map((row) => row.signature)));
+
+  if (portfolioSignatures.length === 0) {
+    return {
+      evaluatedUniverseCount: 0,
+      exactCoverageRate: 0,
+      exactCoveredCount: 0,
+      guaranteedSecondPrize: false,
+      label: "2等カバー未計算",
+      ready: false,
+      secondPrizeCoverageRate: 0,
+      secondPrizeCoveredCount: 0,
+      skippedReason: "購入候補がありません",
+      thirdPrizeCoverageRate: 0,
+      thirdPrizeCoveredCount: 0,
+      uncoveredSecondPrizeCount: universeCount,
+      universeCount,
+      worstDistanceToPortfolio: null,
+    };
+  }
+
+  if (universeCount > universeLimit) {
+    return {
+      evaluatedUniverseCount: 0,
+      exactCoverageRate: 0,
+      exactCoveredCount: 0,
+      guaranteedSecondPrize: false,
+      label: "2等カバー未計算",
+      ready: false,
+      secondPrizeCoverageRate: 0,
+      secondPrizeCoveredCount: 0,
+      skippedReason: `候補宇宙が大きすぎます (${universeCount.toLocaleString("ja-JP")}通り)`,
+      thirdPrizeCoverageRate: 0,
+      thirdPrizeCoveredCount: 0,
+      uncoveredSecondPrizeCount: universeCount,
+      universeCount,
+      worstDistanceToPortfolio: null,
+    };
+  }
+
+  let exactCoveredCount = 0;
+  let secondPrizeCoveredCount = 0;
+  let thirdPrizeCoveredCount = 0;
+  let evaluatedUniverseCount = 0;
+  let worstDistanceToPortfolio = 0;
+  const current = new Array<OutcomeValue>(input.outcomePolicies.length);
+
+  const visit = (index: number) => {
+    if (index === input.outcomePolicies.length) {
+      evaluatedUniverseCount += 1;
+      const signature = current.join("");
+      const distance = Math.min(
+        ...portfolioSignatures.map((portfolioSignature) =>
+          hammingDistance(signature, portfolioSignature),
+        ),
+      );
+
+      worstDistanceToPortfolio = Math.max(worstDistanceToPortfolio, distance);
+
+      if (distance === 0) {
+        exactCoveredCount += 1;
+      }
+
+      if (distance <= 1) {
+        secondPrizeCoveredCount += 1;
+      }
+
+      if (distance <= 2) {
+        thirdPrizeCoveredCount += 1;
+      }
+
+      return;
+    }
+
+    input.outcomePolicies[index].allowedOutcomes.forEach((outcome) => {
+      current[index] = outcome;
+      visit(index + 1);
+    });
+  };
+
+  visit(0);
+
+  const guaranteedSecondPrize = secondPrizeCoveredCount === universeCount;
+  const ratio = (count: number) => (universeCount > 0 ? count / universeCount : 0);
+
+  return {
+    evaluatedUniverseCount,
+    exactCoverageRate: ratio(exactCoveredCount),
+    exactCoveredCount,
+    guaranteedSecondPrize,
+    label: guaranteedSecondPrize ? "候補宇宙内2等保証" : "2等カバー率",
+    ready: true,
+    secondPrizeCoverageRate: ratio(secondPrizeCoveredCount),
+    secondPrizeCoveredCount,
+    skippedReason: null,
+    thirdPrizeCoverageRate: ratio(thirdPrizeCoveredCount),
+    thirdPrizeCoveredCount,
+    uncoveredSecondPrizeCount: Math.max(0, universeCount - secondPrizeCoveredCount),
+    universeCount,
+    worstDistanceToPortfolio,
+  };
 }
 
 function buildLine(input: {
@@ -1393,12 +1629,22 @@ export function enumeratePositiveEvCombos(input: {
       }
 
       const picks = currentPicks.map((pick) => ({ ...pick }));
+      const nextDeviationCount = deviationCount(picks, orthodoxPicks);
+      const signature = lineSignature(picks);
+      const disclosure = buildTicketDisclosure({
+        cashProbability: cashProbability ?? hitProbability,
+        deviationCount: nextDeviationCount,
+        evMultiple,
+        publicProbability,
+      });
+
       totalPositiveCount += 1;
       insertTopCombo(
         topRows,
         {
           cashProbability: cashProbability ?? hitProbability,
-          deviationCount: deviationCount(picks, orthodoxPicks),
+          deviationCount: nextDeviationCount,
+          disclosureLabel: disclosure.disclosureLabel,
           estimatedPayoutYen,
           evMultiple,
           expectedReturnYen,
@@ -1408,7 +1654,9 @@ export function enumeratePositiveEvCombos(input: {
           picks,
           prizeTiers: tierEvs,
           publicProbability,
-          signature: lineSignature(picks),
+          signature,
+          strategyBucket: disclosure.strategyBucket,
+          strategyDetail: disclosure.strategyDetail,
         },
         limit,
       );
@@ -1455,6 +1703,7 @@ function buildPortfolioPlan(
   label: string,
   description: string,
   budgetYen: number,
+  outcomePolicies: WorldCupOutcomePolicy[],
   rows: WorldCupPositiveEvCombo[],
   stakeYen: number,
 ): WorldCupPortfolioPlan | null {
@@ -1480,6 +1729,10 @@ function buildPortfolioPlan(
     selectedRows.reduce((sum, row) => sum + row.cashProbability, 0),
   );
   const payouts = selectedRows.map((row) => row.estimatedPayoutYen);
+  const secondPrizeCoverage = calculateWorldCupSecondPrizeCoverage({
+    outcomePolicies,
+    rows: selectedRows,
+  });
 
   return {
     budgetYen,
@@ -1498,12 +1751,17 @@ function buildPortfolioPlan(
     minPayoutIfHitYen: Math.min(...payouts),
     requestedLineCount,
     rows: selectedRows,
+    secondPrizeCoverage,
     stakeYen,
     unallocatedBudgetYen: Math.max(0, budgetYen - costYen),
   };
 }
 
-function buildPortfolioPlans(positiveEv: WorldCupPositiveEvResult, stakeYen: number) {
+function buildPortfolioPlans(
+  positiveEv: WorldCupPositiveEvResult,
+  outcomePolicies: WorldCupOutcomePolicy[],
+  stakeYen: number,
+) {
   if (!positiveEv.ready || positiveEv.rows.length === 0) {
     return [];
   }
@@ -1514,6 +1772,7 @@ function buildPortfolioPlans(positiveEv: WorldCupPositiveEvResult, stakeYen: num
         plan.label,
         plan.description,
         plan.budgetYen,
+        outcomePolicies,
         positiveEv.rows,
         stakeYen,
       ),
@@ -1814,7 +2073,7 @@ function buildRoundStrategy(input: {
           orthodoxPicks,
           outcomePolicies,
         });
-  const portfolioPlans = buildPortfolioPlans(portfolioPositiveEv, stakeYen);
+  const portfolioPlans = buildPortfolioPlans(portfolioPositiveEv, outcomePolicies, stakeYen);
   const drift = buildDriftText({
     finalSnapshot,
     featured: input.featured,

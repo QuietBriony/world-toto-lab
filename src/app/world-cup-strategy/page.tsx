@@ -29,6 +29,7 @@ import {
   type WorldCupOutcomePolicy,
   type WorldCupPredictionLogicRow,
   type WorldCupRoundStrategy,
+  type WorldCupSecondPrizeCoverage,
   type WorldCupSourceStatus,
   type WorldCupTimingChecklistItem,
   type WorldCupRoundWindowStatus,
@@ -149,6 +150,66 @@ function MiniFact({ label, value, hint }: { label: string; value: string; hint: 
       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">{label}</p>
       <p className="mt-1 text-xl font-semibold tracking-normal text-slate-950">{value}</p>
       <p className="mt-1 text-xs leading-5 text-slate-500">{hint}</p>
+    </div>
+  );
+}
+
+function coverageDistanceLabel(coverage: WorldCupSecondPrizeCoverage) {
+  if (!coverage.ready) {
+    return coverage.skippedReason ?? "未計算";
+  }
+
+  return coverage.worstDistanceToPortfolio === null
+    ? "未計算"
+    : `${coverage.worstDistanceToPortfolio}試合差以内`;
+}
+
+function SecondPrizeCoveragePanel({ coverage }: { coverage: WorldCupSecondPrizeCoverage }) {
+  return (
+    <div className="rounded-[24px] border border-cyan-200 bg-cyan-50/80 px-5 py-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-800">
+            バラ買い2等保証チェック
+          </p>
+          <h3 className="mt-1 text-lg font-semibold text-slate-950">{coverage.label}</h3>
+        </div>
+        <Badge tone={coverage.guaranteedSecondPrize ? "positive" : "sky"}>
+          {coverage.guaranteedSecondPrize ? "2等保証" : "カバー率"}
+        </Badge>
+      </div>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <MiniFact
+          label="2等カバー"
+          value={coverage.ready ? formatPercent(coverage.secondPrizeCoverageRate, 1) : "未計算"}
+          hint={
+            coverage.ready
+              ? `${coverage.secondPrizeCoveredCount}/${coverage.universeCount}通りが距離1以内`
+              : coverage.skippedReason ?? "候補不足"
+          }
+        />
+        <MiniFact
+          label="3等圏内"
+          value={coverage.ready ? formatPercent(coverage.thirdPrizeCoverageRate, 1) : "未計算"}
+          hint="距離2以内まで含めた面の広さ"
+        />
+        <MiniFact
+          label="候補宇宙"
+          value={coverage.ready ? `${coverage.universeCount.toLocaleString("ja-JP")}通り` : "未計算"}
+          hint="結果固定/ロック/分散後の探索範囲"
+        />
+        <MiniFact
+          label="最大ズレ"
+          value={coverageDistanceLabel(coverage)}
+          hint="100%なら候補宇宙内で最低2等"
+        />
+      </div>
+
+      <p className="mt-4 text-sm leading-6 text-cyan-950/85">
+        これは全3^13通りの万能保証ではなく、この画面で宣言した候補宇宙に対するカバー率です。
+        買い目と合わせて、どの面を広げるべきかを感想戦で議論します。
+      </p>
     </div>
   );
 }
@@ -438,6 +499,11 @@ function PortfolioAnswerCard({ plan }: { plan: WorldCupPortfolioPlan }) {
         <MiniFact label="1〜3等EV" value={formatCurrency(plan.expectedReturnYen)} hint={`期待損益 ${formatSignedCurrency(plan.expectedProfitYen)}`} />
         <MiniFact label="13試合当たったら" value={formatPayoutRange(plan)} hint="選んだ出目ごとに払戻見込みは変わる" />
         <MiniFact label="払戻圏内" value={formatPercent(plan.cashProbabilityUpperBound, 4)} hint="1等/2等/3等の合計目安" />
+        <MiniFact
+          label="2等カバー"
+          value={plan.secondPrizeCoverage.ready ? formatPercent(plan.secondPrizeCoverage.secondPrizeCoverageRate, 1) : "未計算"}
+          hint={plan.secondPrizeCoverage.guaranteedSecondPrize ? "候補宇宙内2等保証" : "距離1以内の面"}
+        />
         <MiniFact label="100円が期待値で" value={formatCurrency(plan.expectedReturnYen / plan.lineCount)} hint={`EV ${formatMultiple(plan.evMultiple)} / 1等分 ${formatCurrency(plan.firstPrizeExpectedReturnYen / plan.lineCount)}`} />
       </div>
 
@@ -486,6 +552,8 @@ function FirstAnswerPanel({ round, reportHref }: { reportHref: string; round: Wo
               <p>{round.strictEvMissingReasons.length > 0 ? round.strictEvMissingReasons.join(" / ") : "購入額を超える期待値候補がありません。"}</p>
             </PlainNotice>
           )}
+
+          {plan10000 ? <SecondPrizeCoveragePanel coverage={plan10000.secondPrizeCoverage} /> : null}
 
           {plan1000 ? (
             <div className="rounded-[22px] border border-slate-200 bg-white/86 px-4 py-4">
@@ -631,7 +699,7 @@ function StrategyLineCard({ line }: { line: WorldCupStrategyLine }) {
           {formatMultiple(line.evMultiple)}
         </Badge>
       </div>
-      <p className="mt-3 font-mono text-sm font-semibold tracking-normal text-slate-950">
+      <p className="mt-3 rounded-[14px] border border-slate-200 bg-slate-50 px-3 py-2 font-mono text-sm font-semibold tracking-normal text-slate-950">
         {pickSignature(line.picks)}
       </p>
       <div className="mt-3 grid gap-2 text-sm leading-6 text-slate-600">
@@ -666,6 +734,7 @@ function TicketsTable({
             <tr className="text-xs uppercase tracking-[0.16em] text-slate-500">
               <th className="rounded-l-2xl bg-slate-100 px-3 py-3">順</th>
               <th className="bg-slate-100 px-3 py-3">出目</th>
+              <th className="bg-slate-100 px-3 py-3">戦略バケット</th>
               <th className="bg-slate-100 px-3 py-3">買い方</th>
               <th className="bg-slate-100 px-3 py-3">期待回収</th>
               <th className="bg-slate-100 px-3 py-3">100円が期待値で</th>
@@ -685,6 +754,10 @@ function TicketsTable({
                   <p className="mt-1 font-mono text-xs tracking-normal text-slate-500">
                     {pickDetail(row.picks)}
                   </p>
+                </td>
+                <td className="px-3 py-3">
+                  <p className="font-semibold text-slate-950">{row.strategyBucket}</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">{row.strategyDetail}</p>
                 </td>
                 <td className="px-3 py-3">1口 / 100円</td>
                 <td className="px-3 py-3 font-semibold text-emerald-700">
@@ -852,10 +925,15 @@ function RoundStrategyCard({
 
       {round.primaryPortfolioPlan ? (
         <div className="space-y-3">
+          <SecondPrizeCoveragePanel coverage={round.primaryPortfolioPlan.secondPrizeCoverage} />
           <div className="flex flex-wrap items-center gap-2">
-            <Badge tone="positive">買うならこの順</Badge>
+            <Badge tone={round.windowStatus === "closed" ? "slate" : "positive"}>
+              {round.windowStatus === "closed" ? "感想戦用の候補" : "買うならこの順"}
+            </Badge>
             <p className="text-sm text-slate-600">
-              {round.primaryPortfolioPlan.label}プランの{round.primaryPortfolioPlan.lineCount}通り。すべて1口ずつです。
+              {round.windowStatus === "closed"
+                ? `${round.primaryPortfolioPlan.label}プランの${round.primaryPortfolioPlan.lineCount}通り。締切後なので購入指示ではなく、確定試合込みの条件付き試算です。`
+                : `${round.primaryPortfolioPlan.label}プランの${round.primaryPortfolioPlan.lineCount}通り。すべて1口ずつです。`}
             </p>
           </div>
           <TicketsTable rows={round.primaryPortfolioPlan.rows} />

@@ -28,6 +28,8 @@ SOURCE_URL = (
 )
 APP_URL = "https://world-toto-lab.pages.dev/world-cup-strategy/"
 TOTO_RULE_URL = "https://www.toto-dream.com/toto/about/index.html"
+TOTO_SECOND_GUARANTEE_URL = "https://toto.cam/news/news_2019052001.php"
+TOTO_BARA_URL = "https://totobara.com/"
 DIXON_COLES_URL = "https://rss.onlinelibrary.wiley.com/doi/abs/10.1111/1467-9876.00065"
 MARKET_ODDS_URL = "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2479770"
 ELO_FORECAST_URL = "https://www.math.tugraz.at/~gilch/person/WC2018-Forecast.pdf"
@@ -71,8 +73,21 @@ INITIAL_VOTES = [
     (0.5910, 0.2174, 0.1916),
 ]
 
-# Current app view uses the W杯 fallback prior when no richer scout/model input is present.
-MODEL_VOTES = [(0.36, 0.28, 0.36) for _ in range(13)]
+def build_conditional_model_votes() -> list[tuple[float, float, float]]:
+    rows: list[tuple[float, float, float]] = []
+    for match_no, initial_votes in enumerate(INITIAL_VOTES, start=1):
+        actual = KNOWN_ACTUAL_RESULTS.get(match_no)
+        if not actual:
+            rows.append(initial_votes)
+            continue
+
+        rows.append(tuple(1.0 if outcome == actual else 0.0 for outcome in OUTCOMES))
+    return rows
+
+
+# Match the app's close-report view: initial model line, with already-known results
+# treated as conditional facts for post-close discussion.
+MODEL_VOTES = build_conditional_model_votes()
 
 # Final official vote snapshot from 2026-06-12 sales close.
 FINAL_VOTES = [
@@ -126,7 +141,20 @@ class ComboRow:
     payout_if_hit_yen: float
     public_probability: float
     signature: str
+    strategy_bucket: str
+    strategy_detail: str
     tier_evs: tuple[TierEv, ...]
+
+
+@dataclass(frozen=True)
+class CoverageSummary:
+    exact_covered_count: int
+    second_prize_coverage_rate: float
+    second_prize_covered_count: int
+    third_prize_coverage_rate: float
+    third_prize_covered_count: int
+    universe_count: int
+    worst_distance_to_portfolio: int
 
 
 @dataclass(frozen=True)
@@ -142,6 +170,7 @@ class PlanSummary:
     line_count: int
     max_payout_yen: float
     min_payout_yen: float
+    second_prize_coverage: CoverageSummary
 
 
 @dataclass(frozen=True)
@@ -192,6 +221,45 @@ def multiple(value: float) -> str:
 def signed_yen(value: float) -> str:
     sign = "+" if value >= 0 else ""
     return f"{sign}{yen(value)}"
+
+
+def hamming_distance(left: str, right: str) -> int:
+    length = max(len(left), len(right))
+    return sum((left[index] if index < len(left) else None) != (right[index] if index < len(right) else None) for index in range(length))
+
+
+def ticket_strategy_bucket(ev_multiple: float, cash_probability: float, public_probability: float, signature: str) -> tuple[str, str]:
+    orthodox_signature = "".join(OUTCOMES[max(range(3), key=lambda index: votes[index])] for votes in FINAL_VOTES)
+    deviation_count = hamming_distance(signature, orthodox_signature)
+
+    if deviation_count <= 1:
+        return (
+            "王道寄り",
+            "公式人気順に近い。払戻は薄くなりやすいので、EVが残る時だけ採用。",
+        )
+
+    if public_probability <= 0.000001 and deviation_count >= 4:
+        return (
+            "ズラし強め",
+            "crowdが薄い側へ寄せる候補。モデル根拠が弱い場合は感想戦で落とす。",
+        )
+
+    if cash_probability >= 0.01:
+        return (
+            "2等カバー補助",
+            "1等一本より12/13圏内の面を増やすためのバラ買い補助枠。",
+        )
+
+    if ev_multiple >= 2:
+        return (
+            "高EV薄め",
+            "期待回収は高いが当せん確率は薄い。上限口数を決めて積む候補。",
+        )
+
+    return (
+        "分散補助",
+        "上位候補と重ねすぎず、購入額を超える範囲でだけ置く候補。",
+    )
 
 
 def combo_probability(votes: list[tuple[float, float, float]], picks: tuple[int, ...]) -> float:
@@ -331,6 +399,13 @@ def enumerate_positive_rows() -> list[ComboRow]:
         if ev_multiple <= 1:
             continue
 
+        signature = "".join(OUTCOMES[pick] for pick in picks)
+        strategy_bucket, strategy_detail = ticket_strategy_bucket(
+            ev_multiple,
+            sum(tier.hit_probability for tier in tiers),
+            public_probability,
+            signature,
+        )
         rows.append(
             ComboRow(
                 cash_probability=sum(tier.hit_probability for tier in tiers),
@@ -340,7 +415,9 @@ def enumerate_positive_rows() -> list[ComboRow]:
                 hit_probability=hit_probability,
                 payout_if_hit_yen=first_prize.estimated_payout_yen,
                 public_probability=public_probability,
-                signature="".join(OUTCOMES[pick] for pick in picks),
+                signature=signature,
+                strategy_bucket=strategy_bucket,
+                strategy_detail=strategy_detail,
                 tier_evs=tiers,
             )
         )
@@ -354,6 +431,41 @@ def enumerate_positive_rows() -> list[ComboRow]:
             row.signature,
         ),
         reverse=True,
+    )
+
+
+def build_coverage_summary(rows: list[ComboRow]) -> CoverageSummary:
+    selected_signatures = [row.signature for row in rows]
+    allowed_options = [policy.allowed_outcomes for policy in OUTCOME_POLICIES]
+    exact_covered_count = 0
+    second_prize_covered_count = 0
+    third_prize_covered_count = 0
+    universe_count = 0
+    worst_distance_to_portfolio = 0
+
+    for outcome_tuple in product(*allowed_options):
+        universe_count += 1
+        signature = "".join(outcome_tuple)
+        distance = min(hamming_distance(signature, selected_signature) for selected_signature in selected_signatures)
+        worst_distance_to_portfolio = max(worst_distance_to_portfolio, distance)
+
+        if distance == 0:
+            exact_covered_count += 1
+
+        if distance <= 1:
+            second_prize_covered_count += 1
+
+        if distance <= 2:
+            third_prize_covered_count += 1
+
+    return CoverageSummary(
+        exact_covered_count=exact_covered_count,
+        second_prize_coverage_rate=second_prize_covered_count / universe_count,
+        second_prize_covered_count=second_prize_covered_count,
+        third_prize_coverage_rate=third_prize_covered_count / universe_count,
+        third_prize_covered_count=third_prize_covered_count,
+        universe_count=universe_count,
+        worst_distance_to_portfolio=worst_distance_to_portfolio,
     )
 
 
@@ -377,6 +489,7 @@ def build_plan(rows: list[ComboRow], budget_yen: int) -> PlanSummary:
         line_count=line_count,
         max_payout_yen=max(payouts),
         min_payout_yen=min(payouts),
+        second_prize_coverage=build_coverage_summary(selected),
     )
 
 
@@ -541,6 +654,14 @@ def add_talk_board(story):
             p("資金を使い切るより、100円EVを割る候補を切れるかが大事。", "cell"),
         ],
         [
+            p("2等保証", "cell_bold"),
+            p(
+                f"候補宇宙{PLAN_100.second_prize_coverage.universe_count}通りに対して、1万円プランの2等カバー率は{pct(PLAN_100.second_prize_coverage.second_prize_coverage_rate, 1)}。",
+                "cell",
+            ),
+            p("100%なら2等保証。未満なら保証ではなく、どの面を追加するかの議論に使います。", "cell"),
+        ],
+        [
             p("モデルの弱点", "cell_bold"),
             p("現状はW杯fallback priorが強く、Haziの肌感・外部オッズ・Elo・得点期待がまだ薄い。", "cell"),
             p("ここを詰めないと、表示EVが高くても本当の優位とは言い切れない。", "cell"),
@@ -555,8 +676,9 @@ def add_talk_board(story):
         [p("1", "center_cell"), p("この試合、人間なら1/0/2のどれを削れたか。理由は地力、日程、怪我、相性、モチベのどれか。", "cell"), p("strength / schedule / injury / matchup / motivation", "cell")],
         [p("2", "center_cell"), p("70%以上人気の試合は、本当に一本で良かったか。逆張りするなら何が根拠だったか。", "cell"), p("lock / fade / overbet", "cell")],
         [p("3", "center_cell"), p("30%台で割れた試合は、分散で良かったか。それとも片側に寄せる材料があったか。", "cell"), p("spread / draw / conviction", "cell")],
-        [p("4", "center_cell"), p("締切前から最終投票率が動いた試合は、情報だったか、ただの人気流入だったか。", "cell"), p("closing move / info / crowd", "cell")],
-        [p("5", "center_cell"), p("余った予算を使わない判断は妥当だったか。買いたい気持ちを止める条件は何か。", "cell"), p("budget discipline / threshold", "cell")],
+        [p("4", "center_cell"), p("2等カバーを増やすために、1等狙いから外してもよい試合はどれだったか。", "cell"), p("second prize / coverage / reduction", "cell")],
+        [p("5", "center_cell"), p("締切前から最終投票率が動いた試合は、情報だったか、ただの人気流入だったか。", "cell"), p("closing move / info / crowd", "cell")],
+        [p("6", "center_cell"), p("余った予算を使わない判断は妥当だったか。買いたい気持ちを止める条件は何か。", "cell"), p("budget discipline / threshold", "cell")],
     ]
     story.append(make_table(prompt_rows, [14 * mm, 158 * mm, 72 * mm], standard_grid_style(), repeat_rows=1))
     story.append(PageBreak())
@@ -575,6 +697,7 @@ def add_talk_board(story):
         [p("Elo/チーム強度", "cell_bold"), p("試合別の勝率土台。fallback 36/28/36 から脱出するための最初の柱。", "cell"), p(f"参考: {ELO_FORECAST_URL}", "small")],
         [p("Poisson/Dixon-Coles", "cell_bold"), p("得点期待からドローを詰める。低得点相関を見ると0の扱いが改善しやすい。", "cell"), p(f"参考: {DIXON_COLES_URL}", "small")],
         [p("人気過剰バイアス", "cell_bold"), p("totoは当たるだけでなく、同じ等級に何口いるかが払戻を決める。人気の歪みがEV源泉。", "cell"), p(f"参考: {FAVORITE_LONGSHOT_URL}", "small")],
+        [p("バラ買い2等保証", "cell_bold"), p("買い目と候補宇宙内の12/13以上カバーを並べて見ます。Hazi側の未共有ロジックは別メモ扱い。", "cell"), p(f"参考: {TOTO_SECOND_GUARANTEE_URL} / {TOTO_BARA_URL}", "small")],
     ]
     story.append(make_table(logic_rows, [42 * mm, 108 * mm, 94 * mm], standard_grid_style(), repeat_rows=1))
 
@@ -583,7 +706,7 @@ def add_page_one(story):
     story.append(p("W杯toto ネタ話・期待回収レポート", "title"))
     story.append(
         p(
-            "第1634回 toto。1口いくらか、10口と1万円ならどう買うか、1等・2等・3等込みで期待回収が購入額を超えるか、感想戦の論点までまとめます。",
+            "第1634回 toto。締切後の確定試合込みで、1口いくらか、候補を何口置くか、1等・2等・3等込みで期待回収が購入額を超えるか、感想戦の論点までまとめます。",
             "subtitle",
         )
     )
@@ -593,9 +716,9 @@ def add_page_one(story):
         [
             [
                 metric_card("一口", yen(STAKE_YEN), "1通りを買う金額"),
-                metric_card("10口", yen(PLAN_10.cost_yen), f"1〜3等EV {yen(PLAN_10.expected_return_yen)}"),
-                metric_card("1万円", f"{PLAN_100.line_count}口", f"1〜3等EV {yen(PLAN_100.expected_return_yen)}"),
-                metric_card("判定", "購入額以上", f"期待損益 {signed_yen(PLAN_100.expected_profit_yen)}"),
+                metric_card("10口枠", f"{PLAN_10.line_count}口", f"1〜3等EV {yen(PLAN_10.expected_return_yen)}"),
+                metric_card("1万円枠", f"{PLAN_100.line_count}口", f"1〜3等EV {yen(PLAN_100.expected_return_yen)}"),
+                metric_card("2等カバー", pct(PLAN_100.second_prize_coverage.second_prize_coverage_rate, 1), f"期待損益 {signed_yen(PLAN_100.expected_profit_yen)}"),
             ]
         ],
         [61 * mm, 61 * mm, 61 * mm, 61 * mm],
@@ -615,9 +738,10 @@ def add_page_one(story):
     story.append(p("結論", "section"))
     conclusion_rows = [
         [p("問い", "cell_bold"), p("答え", "cell_bold")],
-        [p("一口いくら?", "cell"), p(f"{yen(STAKE_YEN)}です。10口なら{yen(PLAN_10.cost_yen)}、1万円なら100口です。", "cell")],
-        [p("1万円で1万円以上戻る期待値はある?", "cell"), p(f"あります。今回の候補だけに絞ると、購入額{yen(PLAN_100.cost_yen)}に対して1〜3等EVは{yen(PLAN_100.expected_return_yen)}、期待損益は{signed_yen(PLAN_100.expected_profit_yen)}です。余った予算は無理に使いません。", "cell_bold")],
-        [p("買うならどう買う?", "cell"), p(f"上位{PLAN_100.line_count}通りを1口ずつ。最上位の出目は {POSITIVE_ROWS[0].signature} です。", "cell")],
+        [p("一口いくら?", "cell"), p(f"{yen(STAKE_YEN)}です。今回はプラス候補が{PLAN_100.line_count}口だけなので、10口枠でも1万円枠でも{yen(PLAN_100.cost_yen)}までしか使いません。", "cell")],
+        [p("1万円で1万円以上戻る期待値はある?", "cell"), p(f"締切後の感想戦値ではあります。今回の候補だけに絞ると、購入額{yen(PLAN_100.cost_yen)}に対して1〜3等EVは{yen(PLAN_100.expected_return_yen)}、期待損益は{signed_yen(PLAN_100.expected_profit_yen)}です。買える時点の再現性は別途検証します。", "cell_bold")],
+        [p("買うならどう買う?", "cell"), p(f"締切後なので購入指示ではありません。感想戦では上位{PLAN_100.line_count}通りを1口ずつ置いた前提で、どこが妥当かを議論します。", "cell")],
+        [p("2等保証は織り込んでる?", "cell"), p(f"織り込みました。候補宇宙{PLAN_100.second_prize_coverage.universe_count}通りのうち、距離1以内の2等カバーは{PLAN_100.second_prize_coverage.second_prize_covered_count}通り、カバー率{pct(PLAN_100.second_prize_coverage.second_prize_coverage_rate, 1)}です。100%なら候補宇宙内2等保証、未満ならカバー率表示です。", "cell_bold")],
         [p("当たったらいくら戻る?", "cell"), p(f"1等なら、選んだ出目ごとの推定払戻は {yen(PLAN_100.min_payout_yen)} - {yen(PLAN_100.max_payout_yen)}。2等・3等は下位払戻として期待値に足しています。", "cell")],
         [p("友人に見せて大丈夫?", "cell"), p("この資料とアプリは購入履歴ではなく試算です。誰が何を買ったか、決済情報、購入済み履歴は扱いません。", "cell")],
     ]
@@ -626,10 +750,10 @@ def add_page_one(story):
 
     story.append(p("予算別サマリー", "section"))
     plan_rows = [
-        [p("予算", "cell_bold"), p("口数", "cell_bold"), p("1〜3等EV", "cell_bold"), p("1等分", "cell_bold"), p("期待損益", "cell_bold"), p("EV", "cell_bold"), p("払戻圏内", "cell_bold")],
-        [p("1口", "cell"), p(f"{PLAN_1.line_count}口", "cell"), p(yen(PLAN_1.expected_return_yen), "cell_bold"), p(yen(PLAN_1.first_prize_expected_return_yen), "cell"), p(signed_yen(PLAN_1.expected_profit_yen), "cell"), p(multiple(PLAN_1.ev_multiple), "cell"), p(pct(PLAN_1.cash_probability_upper_bound, 4), "cell")],
-        [p("10口", "cell"), p(f"{PLAN_10.line_count}口", "cell"), p(yen(PLAN_10.expected_return_yen), "cell_bold"), p(yen(PLAN_10.first_prize_expected_return_yen), "cell"), p(signed_yen(PLAN_10.expected_profit_yen), "cell"), p(multiple(PLAN_10.ev_multiple), "cell"), p(pct(PLAN_10.cash_probability_upper_bound, 4), "cell")],
-        [p("1万円", "cell"), p(f"{PLAN_100.line_count}口", "cell"), p(yen(PLAN_100.expected_return_yen), "cell_bold"), p(yen(PLAN_100.first_prize_expected_return_yen), "cell"), p(signed_yen(PLAN_100.expected_profit_yen), "cell_bold"), p(multiple(PLAN_100.ev_multiple), "cell_bold"), p(pct(PLAN_100.cash_probability_upper_bound, 4), "cell")],
+        [p("予算", "cell_bold"), p("口数", "cell_bold"), p("1〜3等EV", "cell_bold"), p("1等分", "cell_bold"), p("期待損益", "cell_bold"), p("EV", "cell_bold"), p("2等カバー", "cell_bold")],
+        [p("1口", "cell"), p(f"{PLAN_1.line_count}口", "cell"), p(yen(PLAN_1.expected_return_yen), "cell_bold"), p(yen(PLAN_1.first_prize_expected_return_yen), "cell"), p(signed_yen(PLAN_1.expected_profit_yen), "cell"), p(multiple(PLAN_1.ev_multiple), "cell"), p(pct(PLAN_1.second_prize_coverage.second_prize_coverage_rate, 1), "cell")],
+        [p("10口枠", "cell"), p(f"{PLAN_10.line_count}口", "cell"), p(yen(PLAN_10.expected_return_yen), "cell_bold"), p(yen(PLAN_10.first_prize_expected_return_yen), "cell"), p(signed_yen(PLAN_10.expected_profit_yen), "cell"), p(multiple(PLAN_10.ev_multiple), "cell"), p(pct(PLAN_10.second_prize_coverage.second_prize_coverage_rate, 1), "cell")],
+        [p("1万円枠", "cell"), p(f"{PLAN_100.line_count}口", "cell"), p(yen(PLAN_100.expected_return_yen), "cell_bold"), p(yen(PLAN_100.first_prize_expected_return_yen), "cell"), p(signed_yen(PLAN_100.expected_profit_yen), "cell_bold"), p(multiple(PLAN_100.ev_multiple), "cell_bold"), p(pct(PLAN_100.second_prize_coverage.second_prize_coverage_rate, 1), "cell_bold")],
     ]
     story.append(make_table(plan_rows, [25 * mm, 22 * mm, 38 * mm, 34 * mm, 34 * mm, 24 * mm, 38 * mm], standard_grid_style()))
     story.append(Spacer(1, 4 * mm))
@@ -651,21 +775,30 @@ def add_ticket_table(story):
     )
     story.append(Spacer(1, 4 * mm))
 
-    rows = [[p("順", "cell_bold"), p("出目", "cell_bold"), p("1〜3等EV/口", "cell_bold"), p("1等分/口", "cell_bold"), p("EV", "cell_bold"), p("1等なら", "cell_bold"), p("払戻圏内", "cell_bold")]]
+    coverage = PLAN_100.second_prize_coverage
+    story.append(
+        p(
+            f"1万円プランの2等カバー率は{pct(coverage.second_prize_coverage_rate, 1)}。候補宇宙{coverage.universe_count}通りのうち{coverage.second_prize_covered_count}通りが、購入ポートフォリオのどれかと1試合差以内です。",
+            "small",
+        )
+    )
+    story.append(Spacer(1, 3 * mm))
+
+    rows = [[p("順", "cell_bold"), p("出目", "cell_bold"), p("戦略", "cell_bold"), p("1〜3等EV/口", "cell_bold"), p("EV", "cell_bold"), p("1等なら", "cell_bold"), p("払戻圏内", "cell_bold")]]
     for rank, row in enumerate(POSITIVE_ROWS[:20], start=1):
         rows.append(
             [
                 p(str(rank), "center_cell"),
                 p(row.signature, "cell_bold"),
+                p(f"{row.strategy_bucket}<br/>{row.strategy_detail}", "cell"),
                 p(yen(row.expected_return_yen), "cell_bold"),
-                p(yen(row.first_prize_expected_return_yen), "cell"),
                 p(multiple(row.ev_multiple), "cell"),
                 p(yen(row.payout_if_hit_yen), "cell"),
                 p(pct(row.cash_probability, 4), "cell"),
             ]
         )
 
-    story.append(make_table(rows, [14 * mm, 42 * mm, 34 * mm, 34 * mm, 24 * mm, 48 * mm, 36 * mm], standard_grid_style(), repeat_rows=1))
+    story.append(make_table(rows, [12 * mm, 33 * mm, 70 * mm, 34 * mm, 22 * mm, 39 * mm, 32 * mm], standard_grid_style(), repeat_rows=1))
     story.append(Spacer(1, 5 * mm))
 
     story.append(PageBreak())
