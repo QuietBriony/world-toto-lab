@@ -26,7 +26,12 @@ SOURCE_URL = (
     "PGSSIN02501ForwardVotetotoSP.form?holdCntId=1634&commodityId=01"
     "&gameAssortment=A&fromId=SSIN026"
 )
-APP_URL = "https://quietbriony.github.io/world-toto-lab/world-cup-strategy/"
+APP_URL = "https://world-toto-lab.pages.dev/world-cup-strategy/"
+TOTO_RULE_URL = "https://www.toto-dream.com/toto/about/index.html"
+DIXON_COLES_URL = "https://rss.onlinelibrary.wiley.com/doi/abs/10.1111/1467-9876.00065"
+MARKET_ODDS_URL = "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2479770"
+ELO_FORECAST_URL = "https://www.math.tugraz.at/~gilch/person/WC2018-Forecast.pdf"
+FAVORITE_LONGSHOT_URL = "https://journals.sagepub.com/doi/10.1177/155862351100600404"
 
 STAKE_YEN = 100
 TOTAL_SALES_YEN = 289_166_800
@@ -505,11 +510,80 @@ def metric_card(label: str, value: str, note: str):
     return [p(label, "metric_label"), p(value, "metric_value"), p(note, "small")]
 
 
-def add_page_one(story):
-    story.append(p("W杯toto 買い方・期待回収レポート", "title"))
+def add_talk_board(story):
+    story.append(p("ネタ話検討ボード", "title"))
     story.append(
         p(
-            "第1634回 toto。1口いくらか、10口と1万円ならどう買うか、1等・2等・3等込みで期待回収が購入額を超えるかを先にまとめます。",
+            "飲みながら見るなら、まず数字の面白さと、どこがまだ仮説かを分けます。ボイスメモはこの順で話すと、次の改善プロンプトにしやすいです。",
+            "subtitle",
+        )
+    )
+    story.append(Spacer(1, 4 * mm))
+
+    talk_rows = [
+        [p("話題", "cell_bold"), p("今言えること", "cell_bold"), p("ツッコミどころ", "cell_bold")],
+        [
+            p("ネタの芯", "cell_bold"),
+            p(
+                f"1万円枠でも、プラス候補だけに絞ると{PLAN_100.line_count}口、購入額{yen(PLAN_100.cost_yen)}。1〜3等EVは{yen(PLAN_100.expected_return_yen)}。",
+                "cell",
+            ),
+            p("ただし締切後・一部結果固定込みの感想戦です。買える時点の再現性が本題。", "cell"),
+        ],
+        [
+            p("王道外し", "cell_bold"),
+            p("公式人気順は安心感がある一方、同じ出目に票が寄るため1等払戻が薄くなりやすい。", "cell"),
+            p("人気を外す根拠がモデルにあるか。単なる逆張りなら危険。", "cell"),
+        ],
+        [
+            p("バラ買い", "cell_bold"),
+            p("買うなら基本は1通り1口。期待値が高い候補を広く置き、同じ組み合わせを厚くしません。", "cell"),
+            p("資金を使い切るより、100円EVを割る候補を切れるかが大事。", "cell"),
+        ],
+        [
+            p("モデルの弱点", "cell_bold"),
+            p("現状はW杯fallback priorが強く、Haziの肌感・外部オッズ・Elo・得点期待がまだ薄い。", "cell"),
+            p("ここを詰めないと、表示EVが高くても本当の優位とは言い切れない。", "cell"),
+        ],
+    ]
+    story.append(make_table(talk_rows, [36 * mm, 108 * mm, 100 * mm], standard_grid_style(), repeat_rows=1))
+    story.append(Spacer(1, 5 * mm))
+
+    story.append(p("ボイスメモで拾う問い", "section"))
+    prompt_rows = [
+        [p("No", "cell_bold"), p("問い", "cell_bold"), p("蒸留するときのタグ", "cell_bold")],
+        [p("1", "center_cell"), p("この試合、人間なら1/0/2のどれを削れたか。理由は地力、日程、怪我、相性、モチベのどれか。", "cell"), p("strength / schedule / injury / matchup / motivation", "cell")],
+        [p("2", "center_cell"), p("70%以上人気の試合は、本当に一本で良かったか。逆張りするなら何が根拠だったか。", "cell"), p("lock / fade / overbet", "cell")],
+        [p("3", "center_cell"), p("30%台で割れた試合は、分散で良かったか。それとも片側に寄せる材料があったか。", "cell"), p("spread / draw / conviction", "cell")],
+        [p("4", "center_cell"), p("締切前から最終投票率が動いた試合は、情報だったか、ただの人気流入だったか。", "cell"), p("closing move / info / crowd", "cell")],
+        [p("5", "center_cell"), p("余った予算を使わない判断は妥当だったか。買いたい気持ちを止める条件は何か。", "cell"), p("budget discipline / threshold", "cell")],
+    ]
+    story.append(make_table(prompt_rows, [14 * mm, 158 * mm, 72 * mm], standard_grid_style(), repeat_rows=1))
+    story.append(PageBreak())
+
+    story.append(p("次に拾うとEVが現実に近づくロジック", "section"))
+    story.append(
+        p(
+            "このページは実装予定メモです。今のPDFではまだモデル確率へ全自動では混ぜていません。感想戦で根拠が出たものから順番に入れます。",
+            "subtitle",
+        )
+    )
+    story.append(Spacer(1, 4 * mm))
+    logic_rows = [
+        [p("レーン", "cell_bold"), p("入れる理由", "cell_bold"), p("次の実装メモ", "cell_bold")],
+        [p("市場/締切オッズ", "cell_bold"), p("予測市場や賭けオッズは強い基準線になりやすい。公式人気との差を見る軸にする。", "cell"), p(f"参考: {MARKET_ODDS_URL}", "small")],
+        [p("Elo/チーム強度", "cell_bold"), p("試合別の勝率土台。fallback 36/28/36 から脱出するための最初の柱。", "cell"), p(f"参考: {ELO_FORECAST_URL}", "small")],
+        [p("Poisson/Dixon-Coles", "cell_bold"), p("得点期待からドローを詰める。低得点相関を見ると0の扱いが改善しやすい。", "cell"), p(f"参考: {DIXON_COLES_URL}", "small")],
+        [p("人気過剰バイアス", "cell_bold"), p("totoは当たるだけでなく、同じ等級に何口いるかが払戻を決める。人気の歪みがEV源泉。", "cell"), p(f"参考: {FAVORITE_LONGSHOT_URL}", "small")],
+    ]
+    story.append(make_table(logic_rows, [42 * mm, 108 * mm, 94 * mm], standard_grid_style(), repeat_rows=1))
+
+
+def add_page_one(story):
+    story.append(p("W杯toto ネタ話・期待回収レポート", "title"))
+    story.append(
+        p(
+            "第1634回 toto。1口いくらか、10口と1万円ならどう買うか、1等・2等・3等込みで期待回収が購入額を超えるか、感想戦の論点までまとめます。",
             "subtitle",
         )
     )
@@ -630,6 +704,7 @@ def add_method_page(story):
         [p("期待回収", "cell"), p("1等・2等・3等それぞれのモデル当せん確率 x 推定払戻を足します。100円を超える出目だけを購入候補にします。", "cell")],
         [p("候補の絞り込み", "cell"), p("確定済みは結果固定。モデル70%以上は本命だけ。割れている試合は複数出目。公式人気が過剰ならモデル側を優先します。", "cell")],
         [p("含めていないもの", "cell"), p("税、実際の購入締切差、販売サイト側の最終確定配当、購入操作、購入済み履歴。", "cell")],
+        [p("公式ルール", "cell"), p(f"1口100円、1等/2等/3等の等級と配分は公式説明を参照。{TOTO_RULE_URL}", "small")],
     ]
     story.append(make_table(method_rows, [42 * mm, 203 * mm], standard_grid_style()))
     story.append(Spacer(1, 5 * mm))
@@ -669,6 +744,7 @@ def add_method_page(story):
     story.append(Spacer(1, 4 * mm))
     story.append(p(f"アプリ: {APP_URL}", "small"))
     story.append(p(f"公式確定値ソース: {SOURCE_URL}", "small"))
+    story.append(p(f"toto公式ルール: {TOTO_RULE_URL}", "small"))
 
 
 def draw_page(canvas, doc):
@@ -677,7 +753,7 @@ def draw_page(canvas, doc):
     canvas.rect(0, PAGE_H - 10 * mm, PAGE_W, 10 * mm, fill=1, stroke=0)
     canvas.setFillColor(colors.white)
     canvas.setFont(FONT_BOLD, 8)
-    canvas.drawString(16 * mm, PAGE_H - 6.5 * mm, "World Toto Lab buying report")
+    canvas.drawString(16 * mm, PAGE_H - 6.5 * mm, "World Toto Lab discussion report")
     canvas.setFillColor(MUTED)
     canvas.setFont(FONT, 7.5)
     canvas.drawRightString(PAGE_W - 14 * mm, 8 * mm, f"Page {doc.page} / Generated 2026-06-15 JST")
@@ -694,6 +770,8 @@ def build_pdf():
     story = []
     add_page_one(story)
     story.append(PageBreak())
+    add_talk_board(story)
+    story.append(PageBreak())
     add_ticket_table(story)
     story.append(PageBreak())
     add_method_page(story)
@@ -705,7 +783,7 @@ def build_pdf():
         leftMargin=14 * mm,
         topMargin=18 * mm,
         bottomMargin=15 * mm,
-        title="World Toto Lab W杯toto 買い方・期待回収レポート",
+        title="World Toto Lab W杯toto ネタ話・期待回収レポート",
         author="World Toto Lab",
     )
     doc.build(story, onFirstPage=draw_page, onLaterPages=draw_page)
