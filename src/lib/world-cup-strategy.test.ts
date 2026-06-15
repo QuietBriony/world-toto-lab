@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest";
 import type { DashboardRoundSummary, Match, RoundEvAssumption } from "@/lib/types";
 import {
   buildWorldCupStrategyDashboard,
+  calculateWorldCupSecondPrizeCoverage,
   enumeratePositiveEvCombos,
+  hammingDistance,
   resolveFeaturedWorldTotoRoundNumber,
 } from "@/lib/world-cup-strategy";
 
@@ -122,6 +124,38 @@ function buildAssumption(): RoundEvAssumption {
 }
 
 describe("world cup strategy", () => {
+  it("calculates signature distance for prize coverage", () => {
+    expect(hammingDistance("102", "102")).toBe(0);
+    expect(hammingDistance("102", "112")).toBe(1);
+    expect(hammingDistance("102", "220")).toBe(3);
+  });
+
+  it("marks second prize guarantee only when the declared universe is fully covered", () => {
+    const guaranteed = calculateWorldCupSecondPrizeCoverage({
+      outcomePolicies: [
+        { allowedOutcomes: ["1", "0"] },
+        { allowedOutcomes: ["1", "0"] },
+      ],
+      rows: [{ signature: "11" }, { signature: "00" }],
+    });
+    const partial = calculateWorldCupSecondPrizeCoverage({
+      outcomePolicies: [
+        { allowedOutcomes: ["1", "0"] },
+        { allowedOutcomes: ["1", "0"] },
+        { allowedOutcomes: ["1", "0"] },
+      ],
+      rows: [{ signature: "111" }],
+    });
+
+    expect(guaranteed.ready).toBe(true);
+    expect(guaranteed.guaranteedSecondPrize).toBe(true);
+    expect(guaranteed.secondPrizeCoverageRate).toBe(1);
+    expect(guaranteed.exactCoveredCount).toBe(2);
+    expect(partial.ready).toBe(true);
+    expect(partial.guaranteedSecondPrize).toBe(false);
+    expect(partial.secondPrizeCoverageRate).toBe(0.5);
+  });
+
   it("recognizes the featured World Toto round", () => {
     expect(
       resolveFeaturedWorldTotoRoundNumber({
@@ -181,6 +215,27 @@ describe("world cup strategy", () => {
     expect(round1634.featured.totalSalesYen).toBe(13958700);
   });
 
+  it("builds visible portfolio picks from the built-in closed round 1634 snapshot", () => {
+    const strategy = buildWorldCupStrategyDashboard({
+      includePositiveCombos: true,
+      now: new Date("2026-06-15T12:00:00+09:00"),
+      positiveComboLimit: 120,
+      rounds: [],
+    });
+    const round1634 = strategy.rounds[0];
+    const plan10000 = round1634.portfolioPlans.find((plan) => plan.budgetYen === 10000);
+
+    expect(round1634.strictEvReady).toBe(true);
+    expect(round1634.strictEvMissingReasons).toEqual([]);
+    expect(round1634.positiveEv.rows.length).toBeGreaterThan(0);
+    expect(plan10000?.lineCount).toBe(9);
+    expect(plan10000?.costYen).toBe(900);
+    expect(plan10000?.expectedReturnYen).toBeCloseTo(1583894.13, 2);
+    expect(plan10000?.secondPrizeCoverage.ready).toBe(true);
+    expect(plan10000?.secondPrizeCoverage.secondPrizeCoverageRate).toBe(1);
+    expect(plan10000?.rows[0]?.strategyBucket).toBeTruthy();
+  });
+
   it("turns a closed final snapshot into a review command", () => {
     const strategy = buildWorldCupStrategyDashboard({
       now: new Date("2026-06-14T00:00:00+09:00"),
@@ -238,6 +293,9 @@ describe("world cup strategy", () => {
     expect(plan10000?.expectedReturnYen).toBeGreaterThan(10000);
     expect(plan10000?.firstPrizeExpectedReturnYen).toBeLessThan(plan10000?.expectedReturnYen ?? 0);
     expect(plan10000?.cashProbabilityUpperBound).toBeGreaterThan(plan10000?.hitProbabilityUpperBound ?? 0);
+    expect(plan10000?.secondPrizeCoverage.ready).toBe(true);
+    expect(plan10000?.secondPrizeCoverage.universeCount).toBeGreaterThan(0);
+    expect(plan10000?.secondPrizeCoverage.secondPrizeCoverageRate).toBeGreaterThan(0);
     expect(round1634.primaryPortfolioPlan?.budgetYen).toBe(10000);
   });
 
