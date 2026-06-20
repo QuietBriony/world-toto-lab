@@ -1,10 +1,14 @@
 import type { OutcomeValue } from "@/lib/domain";
 
 export const worldCupTotoLatestReportFileName =
-  "world-cup-toto-1635-review-1636-plan.pdf";
+  "world-cup-toto-1634-1636-evolved-plan.pdf";
 export const worldCupTotoNextPurchaseSheetFileName =
-  "world-cup-toto-1636-20000-plan.csv";
+  "world-cup-toto-1636-hot10-20000-plan.csv";
 
+export const worldCupTotoOfficialResult1634Url =
+  "https://sp.toto-dream.com/dcs/subos/screen/si04/ssin007/PGSSIN00701FwdLotDetailRslttoto.form?holdCntId=1634&commodityId=01&meetingFiscalYear=2026";
+export const worldCupTotoOfficialVote1634Url =
+  "https://sp.toto-dream.com/dcs/subos/screen/si01/ssin025/PGSSIN02501ForwardVotetotoSP.form?holdCntId=1634&commodityId=01&gameAssortment=A&fromId=SSIN026";
 export const worldCupTotoOfficialResult1635Url =
   "https://sp.toto-dream.com/dcs/subos/screen/si04/ssin007/PGSSIN00701FwdLotDetailRslttoto.form?holdCntId=1635&commodityId=01&meetingFiscalYear=2026";
 export const worldCupTotoOfficialVote1635Url =
@@ -38,11 +42,12 @@ export type TotoNextPlanMatch = {
 
 export type TotoPurchaseRow = {
   amountCumulativeYen: number;
-  bucket: "core" | "hedge";
+  bucket: "core" | "hedge" | "hot";
   note: string;
   picks: OutcomeValue[];
   rank: number;
   signature: string;
+  unitCount: number;
 };
 
 type PrizeResult = {
@@ -129,6 +134,55 @@ export function randomTicketHitProbability(ticketCount: number, maxMisses: numbe
   const perTicket = waysWithAtMostMisses(13, maxMisses) / TOTO13_OUTCOME_COUNT;
   return 1 - (1 - perTicket) ** ticketCount;
 }
+
+export const worldCupToto1634Matches: TotoRoundReviewMatch[] = [
+  { matchNo: 1, home: "Qatar", away: "Switzerland", score: "1-1", actual: "0", votes: { "1": 0.0512, "0": 0.1062, "2": 0.8426 } },
+  { matchNo: 2, home: "Brazil", away: "Morocco", score: "1-1", actual: "0", votes: { "1": 0.557, "0": 0.2589, "2": 0.1841 } },
+  { matchNo: 3, home: "Germany", away: "Curacao", score: "7-1", actual: "1", votes: { "1": 0.9526, "0": 0.0296, "2": 0.0178 } },
+  { matchNo: 4, home: "Netherlands", away: "Japan", score: "2-2", actual: "0", votes: { "1": 0.3679, "0": 0.3095, "2": 0.3226 } },
+  { matchNo: 5, home: "Belgium", away: "Egypt", score: "1-1", actual: "0", votes: { "1": 0.7275, "0": 0.1731, "2": 0.0994 } },
+  { matchNo: 6, home: "Canada", away: "Bosnia and Herzegovina", score: "1-1", actual: "0", votes: { "1": 0.505, "0": 0.3012, "2": 0.1938 } },
+  { matchNo: 7, home: "Cote d'Ivoire", away: "Ecuador", score: "1-0", actual: "1", votes: { "1": 0.2711, "0": 0.3158, "2": 0.4131 } },
+  { matchNo: 8, home: "Spain", away: "Cape Verde", score: "0-0", actual: "0", votes: { "1": 0.94, "0": 0.0406, "2": 0.0194 } },
+  { matchNo: 9, home: "Saudi Arabia", away: "Uruguay", score: "1-1", actual: "0", votes: { "1": 0.0782, "0": 0.1557, "2": 0.7661 } },
+  { matchNo: 10, home: "Sweden", away: "Tunisia", score: "5-1", actual: "1", votes: { "1": 0.5296, "0": 0.2895, "2": 0.1809 } },
+  { matchNo: 11, home: "Haiti", away: "Scotland", score: "0-1", actual: "2", votes: { "1": 0.0712, "0": 0.113, "2": 0.8158 } },
+  { matchNo: 12, home: "Australia", away: "Turkey", score: "2-0", actual: "1", votes: { "1": 0.1962, "0": 0.2893, "2": 0.5145 } },
+  { matchNo: 13, home: "United States", away: "Paraguay", score: "4-1", actual: "1", votes: { "1": 0.5591, "0": 0.262, "2": 0.1789 } },
+];
+
+const actual1634Signature = signatureFromMatches(worldCupToto1634Matches);
+const publicFavorite1634Signature = publicFavoriteSignature(worldCupToto1634Matches);
+const publicFavorite1634Misses = missCount(actual1634Signature, publicFavorite1634Signature);
+
+export const worldCupToto1634Review = {
+  actualSignature: actual1634Signature,
+  publicFavoriteSignature: publicFavorite1634Signature,
+  publicFavoriteMisses: publicFavorite1634Misses,
+  publicFavoritePrize: { label: "miss" as const, payoutYen: 0 },
+  previousReportPositiveLineCount: 9,
+  previousReportBestDistance: 3,
+  previousReportTopRows: [
+    { rank: 1, signature: "0010102122211", misses: 5, evMultiple: 1932.66 },
+    { rank: 2, signature: "0010102121211", misses: 4, evMultiple: 1849.37 },
+    { rank: 3, signature: "0010102120211", misses: 5, evMultiple: 1836.32 },
+    { rank: 4, signature: "0010101122211", misses: 4, evMultiple: 1821.56 },
+    { rank: 5, signature: "0010101121211", misses: 3, evMultiple: 1764.55 },
+    { rank: 6, signature: "0010101120211", misses: 4, evMultiple: 1742.71 },
+    { rank: 7, signature: "0010100122211", misses: 5, evMultiple: 1676.63 },
+    { rank: 8, signature: "0010100121211", misses: 4, evMultiple: 1615.67 },
+    { rank: 9, signature: "0010100120211", misses: 5, evMultiple: 1599.45 },
+  ],
+  resultAnnouncedAt: "2026-06-16",
+  salesClosedAt: "2026-06-12 19:00 JST",
+  totalSalesYen: 289_166_800,
+  payoutByTier: {
+    first: 0,
+    second: 7_229_170,
+    third: 219_060,
+  },
+  carryoverYen: 127_916_600,
+};
 
 export const worldCupToto1635Matches: TotoRoundReviewMatch[] = [
   { matchNo: 1, home: "France", away: "Senegal", score: "3-1", actual: "1", votes: { "1": 0.6976, "0": 0.2124, "2": 0.09 } },
@@ -241,6 +295,7 @@ function buildHedgeRows(coreRows: OutcomeValue[][]) {
 export function buildWorldCupToto1636PurchaseRows(limit = 200): TotoPurchaseRow[] {
   const coreRows = buildCoreRows();
   const coreSignatures = new Set(coreRows.map(signatureFromOutcomes));
+  let cumulativeUnits = 0;
 
   return buildHedgeRows(coreRows)
     .sort((left, right) => {
@@ -255,35 +310,55 @@ export function buildWorldCupToto1636PurchaseRows(limit = 200): TotoPurchaseRow[
         leftSignature.localeCompare(rightSignature)
       );
     })
-    .slice(0, limit)
-    .map((picks, index) => {
-      const signature = signatureFromOutcomes(picks);
-      const bucket = coreSignatures.has(signature) ? "core" : "hedge";
+    .reduce<TotoPurchaseRow[]>((rows, picks, index) => {
+      if (cumulativeUnits >= limit) {
+        return rows;
+      }
 
-      return {
-        amountCumulativeYen: (index + 1) * TOTO13_STAKE_YEN,
+      const signature = signatureFromOutcomes(picks);
+      const isHot = index < 10;
+      const unitCount = isHot ? 2 : 1;
+
+      if (cumulativeUnits + unitCount > limit) {
+        return rows;
+      }
+
+      cumulativeUnits += unitCount;
+
+      const bucket = isHot ? "hot" : coreSignatures.has(signature) ? "core" : "hedge";
+
+      rows.push({
+        amountCumulativeYen: cumulativeUnits * TOTO13_STAKE_YEN,
         bucket,
         note:
-          bucket === "core"
-            ? "Core recommendation. Buy one unit each through the 36-line core."
+          bucket === "hot"
+            ? "Hot double cap. Buy two units at most; this raises variance and does not widen coverage."
+            : bucket === "core"
+              ? "Core recommendation. Buy one unit each after the hot double rows."
             : "Extra hedge row for discussion. Do not buy full 20,000 yen unless budget is approved.",
         picks,
         rank: index + 1,
         signature,
-      };
-    });
+        unitCount,
+      });
+
+      return rows;
+    }, []);
 }
 
 export const worldCupToto1636PurchaseRows = buildWorldCupToto1636PurchaseRows();
 
 export const worldCupToto1636NextPlan = {
   coreLineCount: buildCoreRows().length,
+  baseCoreBudgetYen: buildCoreRows().length * TOTO13_STAKE_YEN,
+  hotDoublePatternCount: 10,
+  recommendedUnitCount: buildCoreRows().length + 10,
   discussionSheetLineCount: worldCupToto1636PurchaseRows.length,
   maxDiscussionBudgetYen: 20_000,
   purchaseDeadlineLabel: "2026-06-20 19:00 JST",
-  recommendedBudgetYen: buildCoreRows().length * TOTO13_STAKE_YEN,
+  recommendedBudgetYen: (buildCoreRows().length + 10) * TOTO13_STAKE_YEN,
   salesAsOfLabel: "2026-06-20 14:51 JST",
   totalSalesYen: 193_558_900,
   summary:
-    "Recommended core is 36 lines / 3,600 yen. The 20,000 yen CSV is a discussion cap, not an all-in recommendation, because positive EV is not proven.",
+    "Recommended evolved core is 46 units / 4,600 yen: 36 unique core rows, with the top 10 hot rows bought twice. The 20,000 yen CSV is a discussion cap, not an all-in recommendation, because positive EV is not proven.",
 };

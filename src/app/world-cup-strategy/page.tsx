@@ -327,10 +327,10 @@ function LatestWorldCupTotoPanel({
         />
         <MiniFact
           label="1636回 推奨"
-          value={`${worldCupToto1636NextPlan.coreLineCount}口 / ${formatCurrency(
+          value={`${worldCupToto1636NextPlan.recommendedUnitCount}口 / ${formatCurrency(
             worldCupToto1636NextPlan.recommendedBudgetYen,
           )}`}
-          hint={`締切 ${worldCupToto1636NextPlan.purchaseDeadlineLabel}、20,000円CSVは議論用上限`}
+          hint={`36買い目 + 激アツ${worldCupToto1636NextPlan.hotDoublePatternCount}本だけ2口。締切 ${worldCupToto1636NextPlan.purchaseDeadlineLabel}`}
         />
       </div>
 
@@ -341,6 +341,7 @@ function LatestWorldCupTotoPanel({
               <tr>
                 <th className="px-3 py-3">順位</th>
                 <th className="px-3 py-3">買い目</th>
+                <th className="px-3 py-3">口数</th>
                 <th className="px-3 py-3">区分</th>
                 <th className="px-3 py-3">累計</th>
               </tr>
@@ -350,9 +351,10 @@ function LatestWorldCupTotoPanel({
                 <tr key={row.signature} className="border-t border-slate-100">
                   <td className="px-3 py-3 font-semibold text-slate-950">{row.rank}</td>
                   <td className="px-3 py-3 font-mono text-sm text-slate-900">{row.signature}</td>
+                  <td className="px-3 py-3 font-semibold text-slate-900">{row.unitCount}</td>
                   <td className="px-3 py-3">
-                    <Badge tone={row.bucket === "core" ? "positive" : "slate"}>
-                      {row.bucket === "core" ? "推奨コア" : "追加ヘッジ"}
+                    <Badge tone={row.bucket === "hot" || row.bucket === "core" ? "positive" : "slate"}>
+                      {row.bucket === "hot" ? "激アツ2口" : row.bucket === "core" ? "推奨コア" : "追加ヘッジ"}
                     </Badge>
                   </td>
                   <td className="px-3 py-3 font-semibold text-slate-900">
