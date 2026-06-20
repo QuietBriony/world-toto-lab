@@ -6,23 +6,23 @@ export const worldCupTotoNextPurchaseSheetFileName =
   "world-cup-toto-latest-purchase-sheet.csv";
 
 export const worldCupTotoVersionedReportFileName =
-  "world-cup-toto-1634-1636-evolved-plan-20260620-v4.pdf";
+  "world-cup-toto-1634-1636-evolved-plan-20260620-v5.pdf";
 export const worldCupTotoVersionedPurchaseSheetFileName =
-  "world-cup-toto-1636-hot10-20000-plan-20260620-v4.csv";
+  "world-cup-toto-1636-hot10-20000-plan-20260620-v5.csv";
 export const worldCupTotoLegacyReportFileName =
   "world-cup-toto-1634-1636-evolved-plan.pdf";
 export const worldCupTotoLegacyPurchaseSheetFileName =
   "world-cup-toto-1636-hot10-20000-plan.csv";
 
 export const worldCupTotoReportVersion = {
-  csvSha256: "CE328835C0F2DF417285D218A470A6059C14ADCAAD3D046DE0B5C0698DC21831",
-  label: "2026-06-20 v4",
+  csvSha256: "C9F5FC8E991115BFD5D5561B9ED07E6B10692E1A195F321F97EBC5012071BBA3",
+  label: "2026-06-20 v5",
   latestCsvFileName: worldCupTotoNextPurchaseSheetFileName,
   latestPdfFileName: worldCupTotoLatestReportFileName,
   legacyCsvFileName: worldCupTotoLegacyPurchaseSheetFileName,
   legacyPdfFileName: worldCupTotoLegacyReportFileName,
-  pdfSha256: "E0F4462E776FA38265AAB3BD4DF20079D196B7929EB37E48749AD09EE7DA606E",
-  publishedAtLabel: "2026-06-20 17:32 JST",
+  pdfSha256: "84F774703D789C9F47FE6B56DB82EC6D8380B3014A90F94BD5591971E9BC0290",
+  publishedAtLabel: "2026-06-20 23:05 JST",
   versionedCsvFileName: worldCupTotoVersionedPurchaseSheetFileName,
   versionedPdfFileName: worldCupTotoVersionedReportFileName,
 };
@@ -87,6 +87,13 @@ type PrizeResult = {
 
 export const TOTO13_OUTCOME_COUNT = 3 ** 13;
 export const TOTO13_STAKE_YEN = 100;
+const WORLD_CUP_TOTO_1636_TOTAL_SALES_YEN = 222_065_900;
+const TOTO_RETURN_RATE = 0.5;
+const TOTO_PRIZE_TIERS = [
+  { carryoverEligible: true, missCount: 0, poolShare: 0.7 },
+  { carryoverEligible: false, missCount: 1, poolShare: 0.15 },
+  { carryoverEligible: false, missCount: 2, poolShare: 0.15 },
+] as const;
 
 function favoriteFromVotes(votes: TotoVoteShare) {
   return (["1", "0", "2"] as const)
@@ -305,11 +312,78 @@ export const worldCupToto1636PhaseDecision = {
     "Haziの読みを採用して、1636は大荒れ前提へ寄せすぎない。強人気は固定し、オランダ戦・ノルウェー戦のように割れる面だけ分散する。",
 };
 
-function probabilityForSignature(signature: string) {
+function normalizeVoteShares(values: number[]) {
+  const clipped = values.map((value) => Math.max(value, 0.01));
+  const total = clipped.reduce((sum, value) => sum + value, 0);
+
+  return {
+    "1": clipped[0] / total,
+    "0": clipped[1] / total,
+    "2": clipped[2] / total,
+  } satisfies TotoVoteShare;
+}
+
+function proxyVotesForMatch(match: TotoNextPlanMatch) {
+  const values = (["1", "0", "2"] as const).map((outcome) => {
+    const boost = match.recommendedOutcomes.includes(outcome)
+      ? match.recommendedOutcomes.length === 1
+        ? 1.08
+        : 1.04
+      : 0.84;
+    const base = match.votes[outcome] * boost;
+
+    return match.recommendedOutcomes.length === 3 ? base * 0.96 + (1 / 3) * 0.04 : base;
+  });
+
+  return normalizeVoteShares(values);
+}
+
+function probabilityForSignatureFrom(signature: string, voteRows: TotoVoteShare[]) {
   return signature.split("").reduce((probability, outcome, index) => {
-    const match = worldCupToto1636Matches[index];
-    return probability * (match?.votes[outcome as OutcomeValue] ?? 0);
+    return probability * (voteRows[index]?.[outcome as OutcomeValue] ?? 0);
   }, 1);
+}
+
+function tierProbability(probabilities: number[], missCount: number) {
+  const dp = Array.from({ length: missCount + 1 }, () => 0);
+  dp[0] = 1;
+
+  probabilities.forEach((hitProbability) => {
+    const missProbability = 1 - hitProbability;
+
+    for (let misses = missCount; misses >= 0; misses -= 1) {
+      dp[misses] =
+        dp[misses] * hitProbability + (misses > 0 ? dp[misses - 1] * missProbability : 0);
+    }
+  });
+
+  return dp[missCount];
+}
+
+function ticketProxyExpectedReturn(signature: string) {
+  const proxyRows = worldCupToto1636Matches.map(proxyVotesForMatch);
+  const publicRows = worldCupToto1636Matches.map((match) => match.votes);
+  const outcomes = signature.split("") as OutcomeValue[];
+  const selectedModel = outcomes.map((outcome, index) => proxyRows[index]?.[outcome] ?? 0);
+  const selectedPublic = outcomes.map((outcome, index) => publicRows[index]?.[outcome] ?? 0);
+
+  return TOTO_PRIZE_TIERS.reduce((expectedReturn, tier) => {
+    const pModel = tierProbability(selectedModel, tier.missCount);
+    const pPublic = tierProbability(selectedPublic, tier.missCount);
+    const expectedOtherWinners = Math.max(
+      0,
+      (WORLD_CUP_TOTO_1636_TOTAL_SALES_YEN / TOTO13_STAKE_YEN - 1) * pPublic,
+    );
+    const prizePool =
+      WORLD_CUP_TOTO_1636_TOTAL_SALES_YEN * TOTO_RETURN_RATE * tier.poolShare +
+      (tier.carryoverEligible ? 0 : 0);
+
+    return expectedReturn + pModel * (prizePool / (1 + expectedOtherWinners));
+  }, 0);
+}
+
+function ticketProxyEvMultiple(signature: string) {
+  return ticketProxyExpectedReturn(signature) / TOTO13_STAKE_YEN;
 }
 
 function buildCoreRows() {
@@ -366,7 +440,15 @@ export function buildWorldCupToto1636PurchaseRows(limit = 200): TotoPurchaseRow[
 
       return (
         rightCore - leftCore ||
-        probabilityForSignature(rightSignature) - probabilityForSignature(leftSignature) ||
+        ticketProxyEvMultiple(rightSignature) - ticketProxyEvMultiple(leftSignature) ||
+        probabilityForSignatureFrom(
+          rightSignature,
+          worldCupToto1636Matches.map(proxyVotesForMatch),
+        ) -
+          probabilityForSignatureFrom(
+            leftSignature,
+            worldCupToto1636Matches.map(proxyVotesForMatch),
+          ) ||
         leftSignature.localeCompare(rightSignature)
       );
     })

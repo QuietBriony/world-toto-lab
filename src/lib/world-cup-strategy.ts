@@ -183,6 +183,33 @@ export type WorldCupEvSourceRow = {
   value: string;
 };
 
+export type WorldCupEvGlossaryRow = {
+  formula: string;
+  plain: string;
+  term: string;
+};
+
+export type WorldCupMarketEvComparisonKey =
+  | "random_baseline"
+  | "public_favorite"
+  | "market_proxy_top"
+  | "market_proxy_portfolio";
+
+export type WorldCupMarketEvComparisonRow = {
+  costYen: number | null;
+  evLiftMultiple: number | null;
+  evMultiple: number | null;
+  expectedProfitYen: number | null;
+  expectedReturnYen: number | null;
+  key: WorldCupMarketEvComparisonKey;
+  label: string;
+  method: string;
+  sourceLabel: string;
+  sourceUrl: string | null;
+  status: WorldCupSourceStatus;
+  verdict: string;
+};
+
 export type WorldCupPredictionLogicRow = {
   currentUse: string;
   label: string;
@@ -220,6 +247,8 @@ export type WorldCupRoundStrategy = {
   isCreated: boolean;
   lastBuyableAtLabel: string;
   lines: WorldCupStrategyLine[];
+  marketEvComparisonRows: WorldCupMarketEvComparisonRow[];
+  marketEvVerdict: string;
   matchCount: number;
   modelReadyCount: number;
   officialReadyCount: number;
@@ -388,9 +417,37 @@ const officialTotoRuleUrl = "https://www.toto-dream.com/toto/about/index.html";
 const totoSecondPrizeGuaranteeSourceUrl = "https://toto.cam/news/news_2019052001.php";
 const totoBaraSourceUrl = "https://totobara.com/";
 const dixonColesSourceUrl = "https://rss.onlinelibrary.wiley.com/doi/abs/10.1111/1467-9876.00065";
-const sportsForecastingSourceUrl = "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2479770";
+const sportsForecastingSourceUrl = "https://onlinelibrary.wiley.com/doi/10.1002/for.1091";
 const eloWorldCupSourceUrl = "https://www.math.tugraz.at/~gilch/person/WC2018-Forecast.pdf";
-const favoriteLongshotSourceUrl = "https://journals.sagepub.com/doi/10.1177/155862351100600404";
+const favoriteLongshotSourceUrl = "https://www.nber.org/papers/w15923";
+
+export const worldCupEvGlossaryRows: WorldCupEvGlossaryRow[] = [
+  {
+    formula: "EV倍率 = 期待回収額 / 購入額",
+    plain: "1口100円を同じ条件で何度も買った時に、平均いくら戻る見込みかを見る数字です。1.00倍が損益分岐です。",
+    term: "EV",
+  },
+  {
+    formula: "p_model = モデルが見た実際の当たりやすさ",
+    plain: "予測市場、外部オッズ、Elo、得点モデル、Hazi補正などから作る勝率です。ここを当てに行きます。",
+    term: "p_model",
+  },
+  {
+    formula: "p_public = 公式投票率から見た混み具合",
+    plain: "totoで他の人がどの出目を買っていそうかです。同じ当たり目に人が多いほど払戻は薄くなります。",
+    term: "p_public",
+  },
+  {
+    formula: "予測市場EV = p_model x 推定払戻",
+    plain: "当たりそうなのに人が少ない出目を探す見方です。実オッズ未接続の間はmarket proxyとして表示します。",
+    term: "予測市場EV",
+  },
+  {
+    formula: "期待損益 = 期待回収額 - 購入額",
+    plain: "プラスなら理論上は購入額を上回る見込み、マイナスなら平均では負ける見込みです。利益保証ではありません。",
+    term: "期待損益",
+  },
+];
 
 function isKnownNumber(value: number | null | undefined): value is number {
   return typeof value === "number" && Number.isFinite(value);
@@ -1828,6 +1885,144 @@ function buildPortfolioPlans(
     .filter((plan): plan is WorldCupPortfolioPlan => Boolean(plan));
 }
 
+function buildComparisonRow(input: {
+  baselineEvMultiple: number | null;
+  costYen: number | null;
+  evMultiple: number | null;
+  expectedReturnYen: number | null;
+  key: WorldCupMarketEvComparisonKey;
+  label: string;
+  method: string;
+  sourceLabel: string;
+  sourceUrl: string | null;
+  status: WorldCupSourceStatus;
+  verdict: string;
+}): WorldCupMarketEvComparisonRow {
+  return {
+    costYen: input.costYen,
+    evLiftMultiple:
+      input.evMultiple !== null && input.baselineEvMultiple !== null
+        ? input.evMultiple - input.baselineEvMultiple
+        : null,
+    evMultiple: input.evMultiple,
+    expectedProfitYen:
+      input.expectedReturnYen !== null && input.costYen !== null
+        ? input.expectedReturnYen - input.costYen
+        : null,
+    expectedReturnYen: input.expectedReturnYen,
+    key: input.key,
+    label: input.label,
+    method: input.method,
+    sourceLabel: input.sourceLabel,
+    sourceUrl: input.sourceUrl,
+    status: input.status,
+    verdict: input.verdict,
+  };
+}
+
+function buildMarketEvComparisonRows(input: {
+  evAssumption: RoundEvAssumption | null;
+  orthodoxLine: WorldCupStrategyLine | null;
+  positiveEv: WorldCupPositiveEvResult;
+  primaryPlan: WorldCupPortfolioPlan | null;
+  stakeYen: number;
+}): WorldCupMarketEvComparisonRow[] {
+  const baselineEvMultiple = input.evAssumption?.returnRate ?? null;
+  const randomExpectedReturnYen =
+    baselineEvMultiple !== null ? input.stakeYen * baselineEvMultiple : null;
+  const topProxy = input.positiveEv.rows[0] ?? null;
+  const orthodoxEvMultiple = input.orthodoxLine?.evMultiple ?? null;
+
+  return [
+    buildComparisonRow({
+      baselineEvMultiple,
+      costYen: input.stakeYen,
+      evMultiple: baselineEvMultiple,
+      expectedReturnYen: randomExpectedReturnYen,
+      key: "random_baseline",
+      label: "総当たり/ランダム基準",
+      method:
+        "情報を使わず全出目を等しく見る基準線。totoの払戻原資は売上の50%なので、キャリーなしなら平均回収は約0.50倍です。",
+      sourceLabel: "toto official rules",
+      sourceUrl: officialTotoRuleUrl,
+      status: baselineEvMultiple !== null ? "fixed" : "missing",
+      verdict: "ここを上回らないなら、予測で買い目を絞る意味は薄いです。",
+    }),
+    buildComparisonRow({
+      baselineEvMultiple,
+      costYen: input.orthodoxLine ? input.stakeYen : null,
+      evMultiple: orthodoxEvMultiple,
+      expectedReturnYen: input.orthodoxLine?.expectedReturnYen ?? null,
+      key: "public_favorite",
+      label: "公式人気ど真ん中",
+      method:
+        "各試合で公式投票率が一番高い出目を選ぶ買い方。的中感はありますが、同じ出目の人が多く払戻が薄くなりやすいです。",
+      sourceLabel: "official vote share",
+      sourceUrl: null,
+      status: input.orthodoxLine ? "model" : "missing",
+      verdict:
+        orthodoxEvMultiple !== null && orthodoxEvMultiple >= 1
+          ? "王道でも購入額を上回る試算です。外さず比較対象に残します。"
+          : "王道だけを厚く買うより、crowdとズレる出目を探す余地があります。",
+    }),
+    buildComparisonRow({
+      baselineEvMultiple,
+      costYen: topProxy ? input.stakeYen : null,
+      evMultiple: topProxy?.evMultiple ?? null,
+      expectedReturnYen: topProxy?.expectedReturnYen ?? null,
+      key: "market_proxy_top",
+      label: "予測市場proxy 上位1口",
+      method:
+        "p_modelをチーム強度/モデル側、p_publicを公式投票率として分離し、p_model > p_publicになりやすい出目をEV順で拾います。",
+      sourceLabel: "market proxy",
+      sourceUrl: sportsForecastingSourceUrl,
+      status: topProxy ? "research" : "missing",
+      verdict:
+        topProxy && baselineEvMultiple !== null && topProxy.evMultiple > baselineEvMultiple
+          ? "理論上はランダム基準より上がっています。ただし実オッズ未接続なのでproxy扱いです。"
+          : "現時点のproxyでは、ランダム基準を明確に上回る上位口を確認できていません。",
+    }),
+    buildComparisonRow({
+      baselineEvMultiple,
+      costYen: input.primaryPlan?.costYen ?? null,
+      evMultiple: input.primaryPlan?.evMultiple ?? null,
+      expectedReturnYen: input.primaryPlan?.expectedReturnYen ?? null,
+      key: "market_proxy_portfolio",
+      label: "proxy EVポートフォリオ",
+      method:
+        "上位EV候補を1口ずつバラで並べ、2等/3等の期待回収も足します。厚張りは範囲を広げないので別管理です。",
+      sourceLabel: "World Toto Lab",
+      sourceUrl: null,
+      status: input.primaryPlan ? "model" : "missing",
+      verdict:
+        input.primaryPlan && input.primaryPlan.evMultiple >= 1
+          ? "購入額を上回る試算です。実オッズやHazi補正でp_modelを検証する価値があります。"
+          : "ポートフォリオ全体ではまだ購入額超えを断言しません。議論用の候補として扱います。",
+    }),
+  ];
+}
+
+function buildMarketEvVerdict(rows: WorldCupMarketEvComparisonRow[]) {
+  const baseline = rows.find((row) => row.key === "random_baseline")?.evMultiple ?? null;
+  const best = rows
+    .filter((row) => row.key !== "random_baseline" && row.evMultiple !== null)
+    .sort((left, right) => (right.evMultiple ?? -Infinity) - (left.evMultiple ?? -Infinity))[0];
+
+  if (!best || baseline === null || best.evMultiple === null) {
+    return "予測市場EVはまだ比較材料が足りません。公式投票率、売上、モデル確率が揃った時だけ判断します。";
+  }
+
+  if (best.evMultiple > baseline) {
+    return `${best.label} はランダム基準 ${baseline.toFixed(2)}倍を上回る ${best.evMultiple.toFixed(
+      2,
+    )}倍です。理論上は出目選定でEVが上がっていますが、実オッズ未接続のためmarket proxyとして読みます。`;
+  }
+
+  return `現時点のproxyでは、ランダム基準 ${baseline.toFixed(
+    2,
+  )}倍を明確に上回っていません。p_modelの質を上げるまで、買い目を広げすぎない判断です。`;
+}
+
 function portfolioComboLimitFor(stakeYen: number) {
   return Math.max(
     ...worldCupPortfolioBudgets.map((plan) => Math.max(1, Math.floor(plan.budgetYen / stakeYen))),
@@ -2130,6 +2325,13 @@ function buildRoundStrategy(input: {
   const usingFeaturedFallback = !input.round && matches.length > 0;
   const orthodoxLine = lines.find((line) => line.key === "orthodox") ?? null;
   const primaryPortfolioPlan = primaryPlanFrom(portfolioPlans);
+  const marketEvComparisonRows = buildMarketEvComparisonRows({
+    evAssumption,
+    orthodoxLine,
+    positiveEv: portfolioPositiveEv,
+    primaryPlan: primaryPortfolioPlan,
+    stakeYen,
+  });
   const orthodoxDecision = buildOrthodoxDecision(orthodoxLine);
   const commandStatus = buildCommandStatus({
     finalSnapshot,
@@ -2173,6 +2375,8 @@ function buildRoundStrategy(input: {
     isCreated: Boolean(input.round),
     lastBuyableAtLabel: formatDateTime(input.featured.salesEndAt),
     lines,
+    marketEvComparisonRows,
+    marketEvVerdict: buildMarketEvVerdict(marketEvComparisonRows),
     matchCount,
     modelReadyCount,
     officialReadyCount,
