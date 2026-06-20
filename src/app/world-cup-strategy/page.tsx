@@ -46,8 +46,14 @@ import {
   worldCupToto1636NextPlan,
   worldCupToto1636PhaseDecision,
   worldCupToto1636PurchaseRows,
+  worldCupToto1637Matches,
+  worldCupToto1637NextPlan,
+  worldCupToto1637PurchaseRows,
   worldCupTotoLatestReportFileName,
+  worldCupTotoLegacyPurchaseSheetFileName,
   worldCupTotoNextPurchaseSheetFileName,
+  worldCupTotoOfficialSales1637Url,
+  worldCupTotoOfficialVote1637Url,
   worldCupTotoPhaseHeuristics,
   worldCupTotoReportVersion,
   worldCupTotoVersionedPurchaseSheetFileName,
@@ -307,6 +313,206 @@ function StorageModeNotice({
   );
 }
 
+function riskBucketLabel(bucket: "flex" | "lock" | "semi" | "spread") {
+  if (bucket === "lock") return "固定";
+  if (bucket === "semi") return "準固定";
+  if (bucket === "spread") return "分散";
+  return "柔軟";
+}
+
+function riskBucketTone(bucket: "flex" | "lock" | "semi" | "spread") {
+  if (bucket === "lock") return "positive" as const;
+  if (bucket === "semi") return "teal" as const;
+  if (bucket === "spread") return "amber" as const;
+  return "sky" as const;
+}
+
+function NextWorldCupToto1637Panel({
+  purchaseSheetHref,
+  reportHref,
+  versionedPurchaseSheetHref,
+  versionedReportHref,
+}: {
+  purchaseSheetHref: string;
+  reportHref: string;
+  versionedPurchaseSheetHref: string;
+  versionedReportHref: string;
+}) {
+  const previewRows = worldCupToto1637PurchaseRows.slice(0, 12);
+
+  return (
+    <SectionCard
+      title="第1637回 いつ買う・何を買う"
+      description="暫定結論は、今すぐ買わずに締切直前で再計算。1万円なら90ユニーク + 激アツ10本だけ2口です。"
+      actions={
+        <div className="flex flex-wrap gap-2">
+          <a href={reportHref} className={buttonClassName}>
+            最新PDF
+          </a>
+          <a href={purchaseSheetHref} className={secondaryButtonClassName}>
+            最新CSV
+          </a>
+          <a href={worldCupTotoOfficialVote1637Url} className={secondaryButtonClassName} rel="noreferrer" target="_blank">
+            公式投票率
+          </a>
+          <a href={worldCupTotoOfficialSales1637Url} className={secondaryButtonClassName} rel="noreferrer" target="_blank">
+            販売期間
+          </a>
+        </div>
+      }
+    >
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
+        <MiniFact
+          label="買う窓"
+          value={worldCupToto1637NextPlan.recommendedPurchaseWindowLabel.replace("2026-06-25 ", "")}
+          hint={`先に${worldCupToto1637NextPlan.purchaseFreezeLabel}で再計算`}
+        />
+        <MiniFact
+          label="締切"
+          value={worldCupToto1637NextPlan.purchaseDeadlineLabel.replace("2026-06-25 ", "")}
+          hint={`${worldCupToto1637NextPlan.hardStopLabel}で操作を止める`}
+        />
+        <MiniFact
+          label="暫定予算"
+          value={`${worldCupToto1637NextPlan.recommendedUnitCount}口 / ${formatCurrency(
+            worldCupToto1637NextPlan.recommendedBudgetYen,
+          )}`}
+          hint={`${worldCupToto1637NextPlan.preliminaryUniqueLineCount}ユニーク + Hot${worldCupToto1637NextPlan.hotDoublePatternCount}`}
+        />
+        <MiniFact
+          label="候補宇宙"
+          value={`${worldCupToto1637NextPlan.coreLineCount.toLocaleString("ja-JP")}通り`}
+          hint="ロック/準固定/分散で絞った後の全候補"
+        />
+        <MiniFact
+          label="現時点売上"
+          value={formatCurrency(worldCupToto1637NextPlan.totalSalesYen)}
+          hint={`${worldCupToto1637NextPlan.salesAsOfLabel}時点`}
+        />
+        <MiniFact
+          label="投票数"
+          value={`${worldCupToto1637NextPlan.voteUnits.toLocaleString("ja-JP")}口`}
+          hint={`${worldCupToto1637NextPlan.voteAsOfLabel}時点`}
+        />
+      </div>
+
+      <PlainNotice tone="teal" title="なぜギリギリまで待つか">
+        <p>
+          totoは固定オッズではなく、同じ出目に何人いるかで払戻が変わります。
+          公式投票率と売上が締切前に動くほど、早い時点のEV推定はズレます。
+          だから 1637 は今のCSVをたたき台にして、6/25夕方に同じロジックで差し替えます。
+        </p>
+      </PlainNotice>
+
+      <div className="mt-5 grid gap-4 xl:grid-cols-[0.85fr_1.15fr]">
+        <div className="min-w-0 overflow-x-auto rounded-[22px] border border-slate-200 bg-white/82">
+          <table className="min-w-[600px] text-left text-sm">
+            <thead className="bg-slate-100 text-xs uppercase tracking-[0.16em] text-slate-500">
+              <tr>
+                <th className="px-3 py-3">時刻</th>
+                <th className="px-3 py-3">やること</th>
+                <th className="px-3 py-3">担当</th>
+              </tr>
+            </thead>
+            <tbody>
+              {worldCupToto1637NextPlan.workflow.map((step) => (
+                <tr key={step.timeLabel} className="border-t border-slate-100">
+                  <td className="whitespace-nowrap px-3 py-3 font-semibold text-slate-950">{step.timeLabel}</td>
+                  <td className="px-3 py-3 text-slate-700">{step.action}</td>
+                  <td className="px-3 py-3">
+                    <Badge tone={step.owner === "system" ? "teal" : "slate"}>{step.owner}</Badge>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="min-w-0 overflow-x-auto rounded-[22px] border border-slate-200 bg-white/82">
+          <table className="min-w-[640px] text-left text-sm">
+            <thead className="bg-slate-100 text-xs uppercase tracking-[0.16em] text-slate-500">
+              <tr>
+                <th className="px-3 py-3">No</th>
+                <th className="px-3 py-3">試合</th>
+                <th className="px-3 py-3">公式 1/0/2</th>
+                <th className="px-3 py-3">残す出目</th>
+                <th className="px-3 py-3">区分</th>
+              </tr>
+            </thead>
+            <tbody>
+              {worldCupToto1637Matches.map((match) => (
+                <tr key={match.matchNo} className="border-t border-slate-100">
+                  <td className="px-3 py-3 font-semibold text-slate-950">{match.matchNo}</td>
+                  <td className="px-3 py-3 text-slate-700">
+                    {match.home} vs {match.away}
+                    <p className="mt-1 text-xs text-slate-500">{match.kickoffLabel} / {match.ruleLabel}</p>
+                  </td>
+                  <td className="px-3 py-3 text-xs text-slate-600">
+                    {formatPercent(match.votes["1"], 1)} / {formatPercent(match.votes["0"], 1)} /{" "}
+                    {formatPercent(match.votes["2"], 1)}
+                  </td>
+                  <td className="px-3 py-3 font-semibold text-slate-900">
+                    {match.recommendedOutcomes.map(outcomeLabel).join(" / ")}
+                  </td>
+                  <td className="px-3 py-3">
+                    <Badge tone={riskBucketTone(match.riskBucket)}>{riskBucketLabel(match.riskBucket)}</Badge>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="mt-5 min-w-0 overflow-x-auto rounded-[22px] border border-slate-200 bg-white/82">
+        <table className="min-w-[760px] text-left text-sm">
+          <thead className="bg-slate-100 text-xs uppercase tracking-[0.16em] text-slate-500">
+            <tr>
+              <th className="px-3 py-3">順位</th>
+              <th className="px-3 py-3">買い目</th>
+              <th className="px-3 py-3">口数</th>
+              <th className="px-3 py-3">区分</th>
+              <th className="px-3 py-3">累計</th>
+              <th className="px-3 py-3">score</th>
+            </tr>
+          </thead>
+          <tbody>
+            {previewRows.map((row) => (
+              <tr key={row.signature} className="border-t border-slate-100">
+                <td className="px-3 py-3 font-semibold text-slate-950">{row.rank}</td>
+                <td className="px-3 py-3 font-mono text-sm text-slate-900">{row.signature}</td>
+                <td className="px-3 py-3 font-semibold text-slate-900">{row.unitCount}</td>
+                <td className="px-3 py-3">
+                  <Badge tone={row.bucket === "hot" ? "positive" : "slate"}>
+                    {row.bucket === "hot" ? "激アツ2口" : "1口"}
+                  </Badge>
+                </td>
+                <td className="px-3 py-3 font-semibold text-slate-900">{formatCurrency(row.amountCumulativeYen)}</td>
+                <td className="px-3 py-3 font-mono text-xs text-slate-600">{row.proxyScore.toFixed(4)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <PlainNotice tone="slate" title="共有リンクの使い分け">
+        <p>
+          友人と見る時は最新PDF/CSVで十分です。資料を磨いたら latest は差し替わります。
+          感想戦で固定版を引用する時だけ{" "}
+          <a className="font-semibold underline underline-offset-4" href={versionedReportHref}>
+            v6固定PDF
+          </a>{" "}
+          /{" "}
+          <a className="font-semibold underline underline-offset-4" href={versionedPurchaseSheetHref}>
+            v6固定CSV
+          </a>{" "}
+          を使います。
+        </p>
+      </PlainNotice>
+    </SectionCard>
+  );
+}
+
 function LatestWorldCupTotoPanel({
   purchaseSheetHref,
   reportHref,
@@ -322,8 +528,8 @@ function LatestWorldCupTotoPanel({
 
   return (
     <SectionCard
-      title="今回の結論"
-      description="1634の反省、1635の確認、1636を買うなら何を何口置くかを先に見ます。"
+      title="1634-1636 感想戦"
+      description="1637へ進む前に、1634の反省、1635の確認、1636の買い方を見直します。"
       actions={
         <div className="flex flex-wrap gap-2">
           <a href={reportHref} className={buttonClassName}>
@@ -333,7 +539,7 @@ function LatestWorldCupTotoPanel({
             固定版PDF
           </a>
           <a href={purchaseSheetHref} className={secondaryButtonClassName}>
-            買い目CSV
+            1636履歴CSV
           </a>
         </div>
       }
@@ -402,7 +608,7 @@ function LatestWorldCupTotoPanel({
       </PlainNotice>
 
       <div className="mt-5 grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-        <div className="overflow-x-auto rounded-[22px] border border-slate-200 bg-white/82">
+        <div className="min-w-0 overflow-x-auto rounded-[22px] border border-slate-200 bg-white/82">
           <table className="min-w-[720px] text-left text-sm">
             <thead className="bg-slate-100 text-xs uppercase tracking-[0.16em] text-slate-500">
               <tr>
@@ -433,7 +639,7 @@ function LatestWorldCupTotoPanel({
           </table>
         </div>
 
-        <div className="overflow-x-auto rounded-[22px] border border-slate-200 bg-white/82">
+        <div className="min-w-0 overflow-x-auto rounded-[22px] border border-slate-200 bg-white/82">
           <table className="min-w-[520px] text-left text-sm">
             <thead className="bg-slate-100 text-xs uppercase tracking-[0.16em] text-slate-500">
               <tr>
@@ -470,9 +676,8 @@ function LatestWorldCupTotoPanel({
 
       <PlainNotice tone="teal" title="PDF/CSVの見分け方">
         <p>
-          友人へ共有する時は <span className="font-semibold">最新PDF</span> と{" "}
-          <span className="font-semibold">買い目CSV</span> を使います。今後さらに磨いたら、このlatest URLは差し替わります。
-          感想戦で「前に見た資料」と比較する時は{" "}
+          友人へ共有する時は上の <span className="font-semibold">第1637回パネル</span> の最新PDF/CSVを使います。
+          今後さらに磨いたら、このlatest URLは差し替わります。感想戦で「前に見た資料」と比較する時は{" "}
           <a className="font-semibold underline underline-offset-4" href={versionedReportHref}>
             固定版PDF
           </a>{" "}
@@ -1294,11 +1499,13 @@ export default function WorldCupStrategyPage() {
   }
 
   const primaryRound =
+    strategy.rounds.find((round) => round.featured.roundNumber === 1637) ??
     strategy.rounds.find((round) => round.featured.roundNumber === 1636) ??
     strategy.rounds.find((round) => round.featured.roundNumber === 1635) ??
     strategy.rounds[0];
   const reportHref = resolveArtAsset(pathname, `/reports/${reportFileName}`);
   const purchaseSheetHref = resolveArtAsset(pathname, `/reports/${worldCupTotoNextPurchaseSheetFileName}`);
+  const legacyPurchaseSheetHref = resolveArtAsset(pathname, `/reports/${worldCupTotoLegacyPurchaseSheetFileName}`);
   const versionedReportHref = resolveArtAsset(pathname, `/reports/${worldCupTotoVersionedReportFileName}`);
   const versionedPurchaseSheetHref = resolveArtAsset(pathname, `/reports/${worldCupTotoVersionedPurchaseSheetFileName}`);
 
@@ -1309,14 +1516,14 @@ export default function WorldCupStrategyPage() {
         title="W杯toto EV司令塔"
         description="いつまで買えるか、どのタイミングで公式データを取り直すか、王道を外すか、10口や1万円ならどう置くかを先に見ます。"
         actions={
-          <div className="flex flex-wrap gap-3">
-            <Link href={appRoute.dashboard} className={secondaryButtonClassName}>
+          <div className="grid grid-cols-1 gap-3 sm:flex sm:flex-wrap">
+            <Link href={appRoute.dashboard} className={cx(secondaryButtonClassName, "justify-center")}>
               ダッシュボードへ
             </Link>
-            <Link href={appRoute.hazi} className={secondaryButtonClassName}>
+            <Link href={appRoute.hazi} className={cx(secondaryButtonClassName, "justify-center")}>
               Haziレビュー
             </Link>
-            <a href={reportHref} className={buttonClassName}>
+            <a href={reportHref} className={cx(buttonClassName, "justify-center")}>
               PDF
             </a>
           </div>
@@ -1325,8 +1532,15 @@ export default function WorldCupStrategyPage() {
 
       <StorageModeNotice isChecking={dataMode.isChecking} mode={dataMode.mode} />
 
-      <LatestWorldCupTotoPanel
+      <NextWorldCupToto1637Panel
         purchaseSheetHref={purchaseSheetHref}
+        reportHref={reportHref}
+        versionedPurchaseSheetHref={versionedPurchaseSheetHref}
+        versionedReportHref={versionedReportHref}
+      />
+
+      <LatestWorldCupTotoPanel
+        purchaseSheetHref={legacyPurchaseSheetHref}
         reportHref={reportHref}
         versionedPurchaseSheetHref={versionedPurchaseSheetHref}
         versionedReportHref={versionedReportHref}

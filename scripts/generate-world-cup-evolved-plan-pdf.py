@@ -3,7 +3,7 @@ from __future__ import annotations
 import csv
 import shutil
 from dataclasses import dataclass
-from math import comb
+from math import comb, log
 from pathlib import Path
 
 from reportlab.lib import colors
@@ -17,8 +17,8 @@ from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer, 
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PDF_NAME = "world-cup-toto-1634-1636-evolved-plan-20260620-v5.pdf"
-CSV_NAME = "world-cup-toto-1636-hot10-20000-plan-20260620-v5.csv"
+PDF_NAME = "world-cup-toto-1634-1637-evolved-plan-20260621-v6.pdf"
+CSV_NAME = "world-cup-toto-1637-preliminary-10000-plan-20260621-v6.csv"
 PDF_ALIASES = (
     PDF_NAME,
     "world-cup-toto-latest.pdf",
@@ -27,7 +27,6 @@ PDF_ALIASES = (
 CSV_ALIASES = (
     CSV_NAME,
     "world-cup-toto-latest-purchase-sheet.csv",
-    "world-cup-toto-1636-hot10-20000-plan.csv",
 )
 OUT_PDF_DIR = ROOT / "output" / "pdf"
 OUT_CSV_DIR = ROOT / "output" / "purchase-sheets"
@@ -38,6 +37,10 @@ OUTCOMES = ("1", "0", "2")
 TOTO13_OUTCOME_COUNT = 3**13
 SNAPSHOT_1636_LABEL = "2026-06-20 17:02 JST"
 TOTAL_SALES_1636_YEN = 222_065_900
+SNAPSHOT_1637_VOTE_LABEL = "2026-06-21 00:12 JST"
+SNAPSHOT_1637_SALES_LABEL = "2026-06-21 01:08 JST"
+TOTAL_SALES_1637_YEN = 7_839_700
+VOTE_UNITS_1637 = 74_072
 RETURN_RATE = 0.5
 TIER_DEFS = (
     ("1等", 0, 0.70, True),
@@ -66,6 +69,14 @@ SOURCE_1636_VOTE_URL = (
     "https://sp.toto-dream.com/dcs/subos/screen/si01/ssin025/"
     "PGSSIN02501ForwardVotetotoSP.form?commodityId=01&fromId=SSIN026&gameAssortment=A&holdCntId=1636"
 )
+SOURCE_1637_SALES_URL = (
+    "https://sp.toto-dream.com/dcs/subos/screen/si01/ssin025/"
+    "PGSSIN02501ForwardSalesTermtotoSP.form?holdCntId=1637"
+)
+SOURCE_1637_VOTE_URL = (
+    "https://sp.toto-dream.com/dcs/subos/screen/si01/ssin025/"
+    "PGSSIN02501ForwardVotetotoSP.form?commodityId=01&fromId=SSIN026&gameAssortment=A&holdCntId=1637"
+)
 
 
 @dataclass(frozen=True)
@@ -87,6 +98,7 @@ class PlanMatch:
     votes: tuple[float, float, float]
     allowed: tuple[str, ...]
     rule: str
+    risk: str = "core"
 
 
 MATCHES_1634 = [
@@ -147,6 +159,22 @@ MATCHES_1636 = [
     PlanMatch(11, "スペイン", "サウジアラビア", "06/22 01:00", (0.8381, 0.1246, 0.0373), ("1",), "80%超は勝ち固定"),
     PlanMatch(12, "イングランド", "ガーナ", "06/24 05:00", (0.8433, 0.1169, 0.0398), ("1",), "80%超は勝ち固定"),
     PlanMatch(13, "エクアドル", "キュラソー", "06/21 09:00", (0.8500, 0.1122, 0.0378), ("1",), "80%超は勝ち固定"),
+]
+
+MATCHES_1637 = [
+    PlanMatch(1, "エクアドル", "ドイツ", "06/26 05:00", (0.0348, 0.1052, 0.8600), ("2",), "85%超アウェイ固定", "lock"),
+    PlanMatch(2, "日本", "スウェーデン", "06/26 08:00", (0.5506, 0.2931, 0.1563), ("1", "0"), "日本勝ち軸 + ドロー", "flex"),
+    PlanMatch(3, "ウルグアイ", "スペイン", "06/27 09:00", (0.0760, 0.1906, 0.7334), ("2", "0"), "スペイン軸 + 条件戦ドロー", "semi"),
+    PlanMatch(4, "コロンビア", "ポルトガル", "06/28 08:30", (0.2717, 0.3002, 0.4281), ("2", "0", "1"), "30%台を全分散", "spread"),
+    PlanMatch(5, "アルジェリア", "オーストリア", "06/28 11:00", (0.1733, 0.2854, 0.5413), ("2", "0"), "オーストリア軸 + ドロー", "flex"),
+    PlanMatch(6, "チュニジア", "オランダ", "06/26 08:00", (0.0216, 0.0562, 0.9222), ("2",), "90%超アウェイ固定", "lock"),
+    PlanMatch(7, "パラグアイ", "オーストラリア", "06/26 11:00", (0.3611, 0.3153, 0.3236), ("1", "0", "2"), "ほぼ三分で全分散", "spread"),
+    PlanMatch(8, "ノルウェー", "フランス", "06/27 04:00", (0.0862, 0.1754, 0.7384), ("2", "0"), "フランス軸 + 条件戦ドロー", "semi"),
+    PlanMatch(9, "パナマ", "イングランド", "06/28 06:00", (0.0149, 0.0320, 0.9531), ("2",), "95%超アウェイ固定", "lock"),
+    PlanMatch(10, "コンゴ民主共和国", "ウズベキスタン", "06/28 08:30", (0.3831, 0.3531, 0.2638), ("1", "0", "2"), "上位差3ptで全分散", "spread"),
+    PlanMatch(11, "ヨルダン", "アルゼンチン", "06/28 11:00", (0.0129, 0.0275, 0.9596), ("2",), "95%超アウェイ固定", "lock"),
+    PlanMatch(12, "ニュージーランド", "ベルギー", "06/27 12:00", (0.0277, 0.0614, 0.9109), ("2",), "90%超アウェイ固定", "lock"),
+    PlanMatch(13, "クロアチア", "ガーナ", "06/28 06:00", (0.7905, 0.1419, 0.0676), ("1", "0"), "クロアチア軸 + 条件戦ドロー", "semi"),
 ]
 
 
@@ -309,6 +337,57 @@ def build_core_rows() -> list[tuple[str, ...]]:
     return rows
 
 
+def build_allowed_rows(matches: list[PlanMatch]) -> list[tuple[str, ...]]:
+    rows: list[tuple[str, ...]] = [()]
+    for match in matches:
+        rows = [row + (outcome,) for row in rows for outcome in match.allowed]
+    return rows
+
+
+def row_proxy_score(row: tuple[str, ...], matches: list[PlanMatch]) -> float:
+    proxy_by_match = [proxy_probs(match) for match in matches]
+    score = 0.0
+    for index, outcome in enumerate(row):
+        match = matches[index]
+        proxy_probability = outcome_probability(outcome, proxy_by_match[index])
+        public_probability = outcome_probability(outcome, match.votes)
+        value_gap = max(0.0, proxy_probability - public_probability)
+        variance_bonus = 0.02 if len(match.allowed) >= 3 else 0.0
+        score += log(proxy_probability) + value_gap * 1.2 + (1 - public_probability) * 0.04 + variance_bonus
+    return score
+
+
+def build_purchase_rows_1637(unique_line_limit: int = 90) -> list[dict[str, object]]:
+    sorted_rows = sorted(
+        build_allowed_rows(MATCHES_1637),
+        key=lambda row: (-row_proxy_score(row, MATCHES_1637), signature(row)),
+    )
+    purchase_rows: list[dict[str, object]] = []
+    cumulative_units = 0
+    for index, row in enumerate(sorted_rows[:unique_line_limit], start=1):
+        units = 2 if index <= 10 else 1
+        cumulative_units += units
+        bucket = "hot" if index <= 10 else "core"
+        note = (
+            "暫定Hot枠。最終再計算後も残ったら最大2口まで。"
+            if bucket == "hot"
+            else "暫定1637枠。最終再計算で残れば1口。"
+        )
+        purchase_rows.append(
+            {
+                "rank": index,
+                "bucket": bucket,
+                "units": units,
+                "amount_cumulative_yen": cumulative_units * STAKE_YEN,
+                "signature": signature(row),
+                "picks": row,
+                "note": note,
+                "proxy_score": row_proxy_score(row, MATCHES_1637),
+            }
+        )
+    return purchase_rows
+
+
 def build_purchase_rows(unit_budget: int = 200) -> list[dict[str, object]]:
     core_rows = build_core_rows()
     core_signatures = {signature(row) for row in core_rows}
@@ -372,11 +451,13 @@ def build_purchase_rows(unit_budget: int = 200) -> list[dict[str, object]]:
 
 
 PURCHASE_ROWS_1636 = build_purchase_rows()
+PURCHASE_ROWS_1637 = build_purchase_rows_1637()
 ACTUAL_1634 = actual_signature(MATCHES_1634)
 FAVORITE_1634 = favorite_signature(MATCHES_1634)
 ACTUAL_1635 = actual_signature(MATCHES_1635)
 FAVORITE_1635 = favorite_signature(MATCHES_1635)
 FAVORITE_1636 = favorite_signature(MATCHES_1636)
+FAVORITE_1637 = favorite_signature(MATCHES_1637)
 
 
 def recommended_entries() -> list[dict[str, object]]:
@@ -481,9 +562,11 @@ def summary_table() -> Table:
     rows = [
         ["質問", "今回の答え"],
         ["1口いくら?", "toto13は1口100円。基本は同じ組み合わせを厚くせず、1口ずつバラで置く。"],
-        ["今回はいくら買う?", f"推奨コアは46口 = {yen(plan['cost_yen'])}。20,000円CSVは議論用の上限で、全買い推奨ではない。"],
+        ["次の1637はいくら?", "暫定は100口 = 10,000円。90ユニーク + Hot10だけ2口。最終再計算までは買わない。"],
+        ["1636はいくらだった?", f"推奨コアは46口 = {yen(plan['cost_yen'])}。20,000円CSVは議論用の上限で、全買い推奨ではない。"],
         ["当たったら?", "1等は選んだ出目の同時当せん口数で変わる。2等/3等も期待値に足す。"],
         ["EVは上がった?", f"market proxy上の46口はEV {multiple(plan['ev_multiple'])}、期待損益 {signed_yen(plan['expected_profit_yen'])}。ただし実オッズ未接続なのでproxy扱い。"],
+        ["いつ買う?", "1637は6/25 18:35-18:50 JSTが目安。18:25に公式投票率/売上を取り直し、18:55で打ち切る。"],
         ["買い方", "Hot10だけ2口まで。それ以外は1口。2口化は戻りを厚くするだけで、的中範囲は広がらない。"],
     ]
     result = table(rows, [38 * mm, 140 * mm])
@@ -562,6 +645,58 @@ def policy_table() -> Table:
     return table(rows, [9 * mm, 54 * mm, 37 * mm, 16 * mm, 44 * mm])
 
 
+def strategy_1637_summary_table() -> Table:
+    rows = [
+        ["項目", "1637の暫定方針"],
+        ["ステータス", f"公式投票率 {SNAPSHOT_1637_VOTE_LABEL}、売上 {SNAPSHOT_1637_SALES_LABEL} 時点。売上は {yen(TOTAL_SALES_1637_YEN)}。"],
+        ["買うタイミング", "今は買わない。6/25 18:25に再取得、18:35-18:50に購入、18:55で打ち切り。ネット販売締切は19:00。"],
+        ["予算", "暫定100口 = 10,000円。90ユニークを1口、上位Hot10だけ2口。"],
+        ["なぜギリ?", "公式投票率と売上は動く。締切直前ほど払戻推定と人気ズレの推定誤差が小さい。"],
+        ["注意", "購入/決済の自動化は対象外。CSVは公式画面へ人が確認して転記するための作業表。"],
+    ]
+    result = table(rows, [34 * mm, 134 * mm])
+    result.setStyle(TableStyle([("BACKGROUND", (0, 1), (0, -1), TEAL_LIGHT)]))
+    return result
+
+
+def operation_1637_table() -> Table:
+    rows = [
+        ["時刻", "やること", "担当"],
+        ["6/25 18:25", "公式投票率と売上を取り直し、PDF/CSVを再生成する。", "system"],
+        ["6/25 18:30", "強人気ロック、条件戦ドロー、30%台分散を目視確認する。", "human"],
+        ["6/25 18:35-18:50", "90ユニークを1口ずつ、Hot10だけ2口まで公式画面へ転記する。", "human"],
+        ["6/25 18:55", "購入確定を止める。締切19:00に食い込まない。", "human"],
+    ]
+    return table(rows, [30 * mm, 104 * mm, 26 * mm])
+
+
+def policy_table_1637() -> Table:
+    rows = [["No", "試合", "公式投票 1/0/2", "残す出目", "区分/ルール"]]
+    for match in MATCHES_1637:
+        rows.append([
+            match.no,
+            f"{match.home} vs {match.away}\n{match.kickoff}",
+            " / ".join(pct(vote, 1) for vote in match.votes),
+            display_outcomes(match.allowed),
+            f"{match.risk}: {match.rule}",
+        ])
+    return table(rows, [9 * mm, 54 * mm, 37 * mm, 16 * mm, 50 * mm])
+
+
+def hot_table_1637() -> Table:
+    rows = [["順", "買い目", "口数", "累計", "score", "区分"]]
+    for row in PURCHASE_ROWS_1637[:20]:
+        rows.append([
+            row["rank"],
+            row["signature"],
+            row["units"],
+            yen(int(row["amount_cumulative_yen"])),
+            f"{float(row['proxy_score']):.4f}",
+            row["bucket"],
+        ])
+    return table(rows, [10 * mm, 50 * mm, 14 * mm, 22 * mm, 24 * mm, 18 * mm])
+
+
 def hot_table() -> Table:
     rows = [["順", "買い目", "口数", "累計", "EV/口", "区分"]]
     for row in PURCHASE_ROWS_1636[:20]:
@@ -591,13 +726,13 @@ def build_pdf() -> Path:
         leftMargin=12 * mm,
         topMargin=12 * mm,
         bottomMargin=10 * mm,
-        title="W杯toto 1634-1636 EV改善メモ v5",
+        title="W杯toto 1634-1637 EV改善メモ v6",
     )
 
     story = [
-        p("W杯toto 1634-1636 EV改善メモ v5", "title"),
+        p("W杯toto 1634-1637 EV改善メモ v6", "title"),
         p("目的はシンプルです。1口いくらか、当たったらどれくらい戻るか、10口や1万円ならどの出目をどう置くか、そしてランダムよりEVが上がっているのかを見ます。"),
-        p(f"1636の公式投票率と売上は {SNAPSHOT_1636_LABEL} 時点。売上は {yen(TOTAL_SALES_1636_YEN)}。latest PDF/CSVはこのv5へ差し替えます。", "small"),
+        p(f"1637の公式投票率は {SNAPSHOT_1637_VOTE_LABEL}、売上は {SNAPSHOT_1637_SALES_LABEL} 時点。現在売上は {yen(TOTAL_SALES_1637_YEN)}、投票数は {VOTE_UNITS_1637:,}口。latest PDF/CSVはこのv6へ差し替えます。", "small"),
         summary_table(),
         Spacer(1, 4 * mm),
         p("EVをわかりやすく", "h2"),
@@ -606,6 +741,21 @@ def build_pdf() -> Path:
         p("総当たりEVより上がったか", "h2"),
         p("結論: proxy上は上がっています。ただし、実ブックメーカーオッズや予測市場価格をまだ接続していないので、ここではmarket proxyとして扱います。真EVと言い切る前に、次回は締切直前の外部オッズをp_modelに入れます。"),
         market_ev_table(),
+        PageBreak(),
+        p("1637の最適戦略", "title"),
+        p("1637は第3戦寄りの条件戦として扱います。現時点の暫定CSVは作りますが、買うのは締切直前に公式投票率と売上を取り直してからです。"),
+        strategy_1637_summary_table(),
+        Spacer(1, 4 * mm),
+        p("当日の回し方", "h2"),
+        operation_1637_table(),
+        Spacer(1, 4 * mm),
+        p("出目を残すルール", "h2"),
+        p(f"公式人気順だけなら {FAVORITE_1637}。ただし第3戦は勝点条件、温存、引き分けOKで人気順からズレる余地があります。"),
+        policy_table_1637(),
+        Spacer(1, 4 * mm),
+        p("暫定Hot10とCSV先頭", "h2"),
+        p("暫定100口のうち、上位10本だけ2口まで。2口化は戻りを厚くするだけで、的中範囲は広がりません。最終再計算で順位が入れ替わったら差し替えます。"),
+        hot_table_1637(),
         Spacer(1, 4 * mm),
         p("根拠として置くロジック", "h2"),
         table(
@@ -647,7 +797,7 @@ def build_pdf() -> Path:
         automation_table(),
         Spacer(1, 4 * mm),
         p("注意: この資料は購入判断メモであり、購入代行、決済、精算、利益保証ではありません。実購入は公式画面で本人が確認して行います。", "small"),
-        p(f"公式/データソース: 1634結果 {SOURCE_1634_RESULT_URL} / 1634投票 {SOURCE_1634_VOTE_URL} / 1635結果 {SOURCE_1635_RESULT_URL} / 1636購入画面 {SOURCE_1636_BUY_URL} / 1636投票 {SOURCE_1636_VOTE_URL}", "small"),
+        p(f"公式/データソース: 1634結果 {SOURCE_1634_RESULT_URL} / 1634投票 {SOURCE_1634_VOTE_URL} / 1635結果 {SOURCE_1635_RESULT_URL} / 1636購入画面 {SOURCE_1636_BUY_URL} / 1636投票 {SOURCE_1636_VOTE_URL} / 1637投票 {SOURCE_1637_VOTE_URL} / 1637販売 {SOURCE_1637_SALES_URL}", "small"),
     ]
     doc.build(story)
     copy_report_aliases(pdf_path, OUT_PDF_DIR, PUBLIC_DIR, PDF_ALIASES)
@@ -667,11 +817,10 @@ def build_csv() -> Path:
             "amount_cumulative_yen",
             "signature",
             *[f"match_{index}" for index in range(1, 14)],
-            "proxy_ev_multiple",
-            "proxy_expected_return_yen",
+            "proxy_score",
             "note",
         ])
-        for row in PURCHASE_ROWS_1636:
+        for row in PURCHASE_ROWS_1637:
             writer.writerow([
                 row["rank"],
                 row["bucket"],
@@ -679,8 +828,7 @@ def build_csv() -> Path:
                 row["amount_cumulative_yen"],
                 row["signature"],
                 *row["picks"],
-                f"{float(row['ev_multiple']):.6f}",
-                f"{float(row['expected_return_yen']):.2f}",
+                f"{float(row['proxy_score']):.6f}",
                 row["note"],
             ])
     copy_report_aliases(csv_path, OUT_CSV_DIR, PUBLIC_DIR, CSV_ALIASES)
@@ -693,6 +841,7 @@ def main() -> None:
     print(f"PDF: {pdf_path}")
     print(f"CSV: {csv_path}")
     print(f"purchase_rows={len(PURCHASE_ROWS_1636)} units={sum(int(row['units']) for row in PURCHASE_ROWS_1636)}")
+    print(f"purchase_rows_1637={len(PURCHASE_ROWS_1637)} units={sum(int(row['units']) for row in PURCHASE_ROWS_1637)}")
     print(f"recommended_units={sum(int(row['units']) for row in recommended_entries())}")
     print(f"recommended_ev={plan_ev_summary(recommended_entries())['ev_multiple']:.4f}")
 

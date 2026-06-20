@@ -6,23 +6,23 @@ export const worldCupTotoNextPurchaseSheetFileName =
   "world-cup-toto-latest-purchase-sheet.csv";
 
 export const worldCupTotoVersionedReportFileName =
-  "world-cup-toto-1634-1636-evolved-plan-20260620-v5.pdf";
+  "world-cup-toto-1634-1637-evolved-plan-20260621-v6.pdf";
 export const worldCupTotoVersionedPurchaseSheetFileName =
-  "world-cup-toto-1636-hot10-20000-plan-20260620-v5.csv";
+  "world-cup-toto-1637-preliminary-10000-plan-20260621-v6.csv";
 export const worldCupTotoLegacyReportFileName =
   "world-cup-toto-1634-1636-evolved-plan.pdf";
 export const worldCupTotoLegacyPurchaseSheetFileName =
   "world-cup-toto-1636-hot10-20000-plan.csv";
 
 export const worldCupTotoReportVersion = {
-  csvSha256: "C1F5B9A3884D8B55645AC50BB3067A92440394671F5BBD5146E44FF5D288BC21",
-  label: "2026-06-20 v5",
+  csvSha256: "28909a5339c77c53617dd0995e7159d84eda08ae2638f8a762809748bd12281f",
+  label: "2026-06-21 v6",
   latestCsvFileName: worldCupTotoNextPurchaseSheetFileName,
   latestPdfFileName: worldCupTotoLatestReportFileName,
   legacyCsvFileName: worldCupTotoLegacyPurchaseSheetFileName,
   legacyPdfFileName: worldCupTotoLegacyReportFileName,
-  pdfSha256: "B504533A9A26AC6F7711CF08C43FAE21582882614621D3FD13985769B9F2CEF4",
-  publishedAtLabel: "2026-06-20 23:05 JST",
+  pdfSha256: "5128eea53264ac6749f5c947a688430d1b688e3a01361e67538aa74974f7d83d",
+  publishedAtLabel: "2026-06-21 01:45 JST",
   versionedCsvFileName: worldCupTotoVersionedPurchaseSheetFileName,
   versionedPdfFileName: worldCupTotoVersionedReportFileName,
 };
@@ -39,6 +39,10 @@ export const worldCupTotoOfficialVote1636Url =
   "https://sp.toto-dream.com/dcs/subos/screen/si01/ssin025/PGSSIN02501ForwardVotetotoSP.form?commodityId=01&fromId=SSIN026&gameAssortment=A&holdCntId=1636";
 export const worldCupTotoOfficialSales1636Url =
   "https://sp.toto-dream.com/dcs/subos/screen/si01/ssin025/PGSSIN02501ForwardSalesTermtotoSP.form?holdCntId=1636";
+export const worldCupTotoOfficialVote1637Url =
+  "https://sp.toto-dream.com/dcs/subos/screen/si01/ssin025/PGSSIN02501ForwardVotetotoSP.form?commodityId=01&fromId=SSIN026&gameAssortment=A&holdCntId=1637";
+export const worldCupTotoOfficialSales1637Url =
+  "https://sp.toto-dream.com/dcs/subos/screen/si01/ssin025/PGSSIN02501ForwardSalesTermtotoSP.form?holdCntId=1637";
 
 export type TotoVoteShare = Record<OutcomeValue, number>;
 
@@ -70,6 +74,23 @@ export type TotoPurchaseRow = {
   rank: number;
   signature: string;
   unitCount: number;
+};
+
+export type Toto1637MatchRiskBucket = "flex" | "lock" | "semi" | "spread";
+
+export type Toto1637PurchaseRow = {
+  amountCumulativeYen: number;
+  bucket: "core" | "hot";
+  note: string;
+  picks: OutcomeValue[];
+  proxyScore: number;
+  rank: number;
+  signature: string;
+  unitCount: number;
+};
+
+export type Toto1637PlanMatch = TotoNextPlanMatch & {
+  riskBucket: Toto1637MatchRiskBucket;
 };
 
 export type WorldCupTotoPhaseHeuristic = {
@@ -282,6 +303,22 @@ export const worldCupToto1636Matches: TotoNextPlanMatch[] = [
   { matchNo: 13, kickoffLabel: "06/21 09:00", home: "Ecuador", away: "Curacao", votes: { "1": 0.85, "0": 0.1122, "2": 0.0378 }, recommendedOutcomes: ["1"], ruleLabel: "lock favorite over 80%", note: "Use as a lock." },
 ];
 
+export const worldCupToto1637Matches: Toto1637PlanMatch[] = [
+  { matchNo: 1, kickoffLabel: "06/26 05:00", home: "Ecuador", away: "Germany", votes: { "1": 0.0348, "0": 0.1052, "2": 0.86 }, recommendedOutcomes: ["2"], ruleLabel: "lock favorite over 85%", note: "Germany is too popular to fade in the preliminary sheet; final group condition can reopen draw.", riskBucket: "lock" },
+  { matchNo: 2, kickoffLabel: "06/26 08:00", home: "Japan", away: "Sweden", votes: { "1": 0.5506, "0": 0.2931, "2": 0.1563 }, recommendedOutcomes: ["1", "0"], ruleLabel: "Japan win plus draw", note: "Keep Japan as main line, but preserve draw because matchday3 incentives can compress risk.", riskBucket: "flex" },
+  { matchNo: 3, kickoffLabel: "06/27 09:00", home: "Uruguay", away: "Spain", votes: { "1": 0.076, "0": 0.1906, "2": 0.7334 }, recommendedOutcomes: ["2", "0"], ruleLabel: "semi lock plus draw", note: "Spain is the main line; matchday3 draw condition stays in the sheet until final standings check.", riskBucket: "semi" },
+  { matchNo: 4, kickoffLabel: "06/28 08:30", home: "Colombia", away: "Portugal", votes: { "1": 0.2717, "0": 0.3002, "2": 0.4281 }, recommendedOutcomes: ["2", "0", "1"], ruleLabel: "full spread", note: "Portugal leads public share, but the match is not a lock. Keep all three outcomes.", riskBucket: "spread" },
+  { matchNo: 5, kickoffLabel: "06/28 11:00", home: "Algeria", away: "Austria", votes: { "1": 0.1733, "0": 0.2854, "2": 0.5413 }, recommendedOutcomes: ["2", "0"], ruleLabel: "away win plus draw", note: "Austria is the main line; draw is material enough to keep.", riskBucket: "flex" },
+  { matchNo: 6, kickoffLabel: "06/26 08:00", home: "Tunisia", away: "Netherlands", votes: { "1": 0.0216, "0": 0.0562, "2": 0.9222 }, recommendedOutcomes: ["2"], ruleLabel: "lock favorite over 90%", note: "Netherlands is a hard lock unless lineup/news changes sharply.", riskBucket: "lock" },
+  { matchNo: 7, kickoffLabel: "06/26 11:00", home: "Paraguay", away: "Australia", votes: { "1": 0.3611, "0": 0.3153, "2": 0.3236 }, recommendedOutcomes: ["1", "0", "2"], ruleLabel: "three-way split", note: "The public is almost flat. This is one of the main coverage slots.", riskBucket: "spread" },
+  { matchNo: 8, kickoffLabel: "06/27 04:00", home: "Norway", away: "France", votes: { "1": 0.0862, "0": 0.1754, "2": 0.7384 }, recommendedOutcomes: ["2", "0"], ruleLabel: "semi lock plus draw", note: "France is the main line; keep draw as the cheap matchday3 hedge.", riskBucket: "semi" },
+  { matchNo: 9, kickoffLabel: "06/28 06:00", home: "Panama", away: "England", votes: { "1": 0.0149, "0": 0.032, "2": 0.9531 }, recommendedOutcomes: ["2"], ruleLabel: "lock favorite over 95%", note: "England is a hard lock in the preliminary sheet.", riskBucket: "lock" },
+  { matchNo: 10, kickoffLabel: "06/28 08:30", home: "Congo DR", away: "Uzbekistan", votes: { "1": 0.3831, "0": 0.3531, "2": 0.2638 }, recommendedOutcomes: ["1", "0", "2"], ruleLabel: "three-way split", note: "Top two outcomes are only 3.0pt apart. Keep all three.", riskBucket: "spread" },
+  { matchNo: 11, kickoffLabel: "06/28 11:00", home: "Jordan", away: "Argentina", votes: { "1": 0.0129, "0": 0.0275, "2": 0.9596 }, recommendedOutcomes: ["2"], ruleLabel: "lock favorite over 95%", note: "Argentina is a hard lock unless group condition means heavy rotation.", riskBucket: "lock" },
+  { matchNo: 12, kickoffLabel: "06/27 12:00", home: "New Zealand", away: "Belgium", votes: { "1": 0.0277, "0": 0.0614, "2": 0.9109 }, recommendedOutcomes: ["2"], ruleLabel: "lock favorite over 90%", note: "Belgium is a hard lock in the preliminary sheet.", riskBucket: "lock" },
+  { matchNo: 13, kickoffLabel: "06/28 06:00", home: "Croatia", away: "Ghana", votes: { "1": 0.7905, "0": 0.1419, "2": 0.0676 }, recommendedOutcomes: ["1", "0"], ruleLabel: "semi lock plus draw", note: "Croatia is the main line; keep draw because matchday3 can turn into a condition game.", riskBucket: "semi" },
+];
+
 export const worldCupTotoPhaseHeuristics: WorldCupTotoPhaseHeuristic[] = [
   {
     action: "強人気でもドロー事故を疑う。初見の守備ブロック、GK上振れ、慎重な入りをメモする。",
@@ -404,6 +441,24 @@ function buildCoreRows() {
   return rows;
 }
 
+function buildAllowedRows(matches: readonly TotoNextPlanMatch[]) {
+  const rows: OutcomeValue[][] = [[]];
+
+  matches.forEach((match) => {
+    const nextRows: OutcomeValue[][] = [];
+
+    rows.forEach((row) => {
+      match.recommendedOutcomes.forEach((outcome) => {
+        nextRows.push([...row, outcome]);
+      });
+    });
+
+    rows.splice(0, rows.length, ...nextRows);
+  });
+
+  return rows;
+}
+
 function buildHedgeRows(coreRows: OutcomeValue[][]) {
   const bySignature = new Map<string, OutcomeValue[]>();
 
@@ -503,4 +558,97 @@ export const worldCupToto1636NextPlan = {
   totalSalesYen: 222_065_900,
   summary:
     "Recommended evolved core is 46 units / 4,600 yen: 36 unique core rows, with the top 10 hot rows bought twice. The 20,000 yen CSV is a discussion cap, not an all-in recommendation, because positive EV is not proven.",
+};
+
+function rowProxyScore(row: readonly OutcomeValue[], matches: readonly TotoNextPlanMatch[]) {
+  const proxyRows = matches.map(proxyVotesForMatch);
+
+  return row.reduce((score, outcome, index) => {
+    const match = matches[index];
+    const proxyProbability = proxyRows[index]?.[outcome] ?? 0.01;
+    const publicProbability = match?.votes[outcome] ?? 0.01;
+    const valueGap = Math.max(0, proxyProbability - publicProbability);
+    const varianceBonus = match && match.recommendedOutcomes.length >= 3 ? 0.02 : 0;
+
+    return score + Math.log(proxyProbability) + valueGap * 1.2 + (1 - publicProbability) * 0.04 + varianceBonus;
+  }, 0);
+}
+
+export function buildWorldCupToto1637PurchaseRows(uniqueLineLimit = 90): Toto1637PurchaseRow[] {
+  const allowedRows = buildAllowedRows(worldCupToto1637Matches);
+  let cumulativeUnits = 0;
+
+  return allowedRows
+    .sort((left, right) => {
+      const rightScore = rowProxyScore(right, worldCupToto1637Matches);
+      const leftScore = rowProxyScore(left, worldCupToto1637Matches);
+
+      return rightScore - leftScore || signatureFromOutcomes(left).localeCompare(signatureFromOutcomes(right));
+    })
+    .slice(0, uniqueLineLimit)
+    .map((picks, index) => {
+      const unitCount = index < 10 ? 2 : 1;
+      cumulativeUnits += unitCount;
+
+      const bucket = index < 10 ? "hot" : "core";
+      const proxyScore = rowProxyScore(picks, worldCupToto1637Matches);
+
+      return {
+        amountCumulativeYen: cumulativeUnits * TOTO13_STAKE_YEN,
+        bucket,
+        note:
+          bucket === "hot"
+            ? "Preliminary hot row. Buy two units at most after final deadline recalculation."
+            : "Preliminary 1637 row. Buy one unit if it survives the final deadline recalculation.",
+        picks,
+        proxyScore,
+        rank: index + 1,
+        signature: signatureFromOutcomes(picks),
+        unitCount,
+      };
+    });
+}
+
+export const worldCupToto1637PurchaseRows = buildWorldCupToto1637PurchaseRows();
+
+export const worldCupToto1637NextPlan = {
+  coreLineCount: buildAllowedRows(worldCupToto1637Matches).length,
+  hardStopLabel: "2026-06-25 18:55 JST",
+  hotDoublePatternCount: 10,
+  preliminaryUniqueLineCount: worldCupToto1637PurchaseRows.length,
+  purchaseDeadlineLabel: "2026-06-25 19:00 JST",
+  purchaseFreezeLabel: "2026-06-25 18:25 JST",
+  recommendedBudgetYen: worldCupToto1637PurchaseRows.reduce((sum, row) => sum + row.unitCount, 0) * TOTO13_STAKE_YEN,
+  recommendedPurchaseWindowLabel: "2026-06-25 18:35-18:50 JST",
+  recommendedUnitCount: worldCupToto1637PurchaseRows.reduce((sum, row) => sum + row.unitCount, 0),
+  salesAsOfLabel: "2026-06-21 01:08 JST",
+  salesSourceUrl: worldCupTotoOfficialSales1637Url,
+  sourceUrl: worldCupTotoOfficialVote1637Url,
+  summary:
+    "1637 is treated as matchday3: do not buy early. Freeze the latest vote/sales snapshot around 18:25, regenerate the sheet, then buy 90 unique lines with the top 10 doubled only if the final sheet still looks sane.",
+  totalSalesYen: 7_839_700,
+  voteAsOfLabel: "2026-06-21 00:12 JST",
+  voteUnits: 74_072,
+  workflow: [
+    {
+      action: "公式投票率と売上を取り直し、締切直前版のCSV/PDFを再生成する。",
+      owner: "system",
+      timeLabel: "2026-06-25 18:25",
+    },
+    {
+      action: "強人気ロック、条件戦ドロー、30%台分散を目視で確認する。",
+      owner: "human",
+      timeLabel: "2026-06-25 18:30",
+    },
+    {
+      action: "CSV上位から90ユニークを1口ずつ、Hot10だけ2口まで公式画面へ転記する。",
+      owner: "human",
+      timeLabel: "2026-06-25 18:35-18:50",
+    },
+    {
+      action: "19:00締切に食い込まないよう購入確定を止める。ログイン、購入、決済の完全自動化は対象外。",
+      owner: "human",
+      timeLabel: "2026-06-25 18:55",
+    },
+  ],
 };

@@ -385,23 +385,23 @@ export function DataModeBadge() {
   const { isChecking, mode, reconnect, requestJsonImport, setMode } = useDataMode();
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto">
       <Badge tone={modeTone(mode)}>
         {isChecking ? "接続確認中" : modeLabel(mode)}
       </Badge>
-      <button type="button" className={secondaryButtonClassName} onClick={() => setMode("local")}>
+      <button type="button" className={cx(secondaryButtonClassName, "max-sm:!hidden")} onClick={() => setMode("local")}>
         ローカル
       </button>
-      <button type="button" className={secondaryButtonClassName} onClick={() => setMode("demo")}>
+      <button type="button" className={cx(secondaryButtonClassName, "max-sm:!hidden")} onClick={() => setMode("demo")}>
         デモ
       </button>
-      <button type="button" className={secondaryButtonClassName} onClick={requestJsonImport}>
+      <button type="button" className={cx(secondaryButtonClassName, "max-sm:!hidden")} onClick={requestJsonImport}>
         JSON
       </button>
-      <button type="button" className={secondaryButtonClassName} onClick={() => void reconnect()}>
+      <button type="button" className={cx(secondaryButtonClassName, "max-sm:!hidden")} onClick={() => void reconnect()}>
         再接続
       </button>
-      <Link href={appRoute.settings} className={secondaryButtonClassName}>
+      <Link href={appRoute.settings} className={cx(secondaryButtonClassName, "max-sm:!hidden")}>
         設定
       </Link>
     </div>
