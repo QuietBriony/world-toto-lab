@@ -6,9 +6,11 @@ import {
   worldCupToto1634Review,
   worldCupToto1635Review,
   worldCupToto1636NextPlan,
+  worldCupToto1636PhaseDecision,
   worldCupToto1636PurchaseRows,
   worldCupTotoLatestReportFileName,
   worldCupTotoNextPurchaseSheetFileName,
+  worldCupTotoPhaseHeuristics,
   worldCupTotoReportVersion,
   worldCupTotoVersionedReportFileName,
 } from "@/lib/world-cup-toto-review-plan";
@@ -58,12 +60,18 @@ describe("world cup toto review plan", () => {
     expect(buildWorldCupToto1636PurchaseRows(46).reduce((sum, row) => sum + row.unitCount, 0)).toBe(46);
   });
 
+  it("keeps Hazi's group-stage phase heuristic separate from the ticket rows", () => {
+    expect(worldCupToto1636PhaseDecision.label).toContain("第2戦");
+    expect(worldCupTotoPhaseHeuristics.map((row) => row.phase)).toEqual(["matchday1", "matchday2", "matchday3"]);
+    expect(worldCupTotoPhaseHeuristics.find((row) => row.phase === "matchday2")?.riskLabel).toBe("順当寄り");
+  });
+
   it("separates mutable latest links from immutable report versions", () => {
     expect(worldCupTotoLatestReportFileName).toBe("world-cup-toto-latest.pdf");
     expect(worldCupTotoNextPurchaseSheetFileName).toBe("world-cup-toto-latest-purchase-sheet.csv");
-    expect(worldCupTotoVersionedReportFileName).toBe("world-cup-toto-1634-1636-evolved-plan-20260620-v3.pdf");
-    expect(worldCupTotoReportVersion.label).toBe("2026-06-20 v3");
-    expect(worldCupTotoReportVersion.publishedAtLabel).toBe("2026-06-20 17:02 JST");
+    expect(worldCupTotoVersionedReportFileName).toBe("world-cup-toto-1634-1636-evolved-plan-20260620-v4.pdf");
+    expect(worldCupTotoReportVersion.label).toBe("2026-06-20 v4");
+    expect(worldCupTotoReportVersion.publishedAtLabel).toBe("2026-06-20 17:32 JST");
     expect(worldCupTotoReportVersion.pdfSha256).toHaveLength(64);
     expect(worldCupTotoReportVersion.csvSha256).toHaveLength(64);
   });
