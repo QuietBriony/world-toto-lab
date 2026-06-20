@@ -4,6 +4,7 @@ import {
   buildFeaturedWorldTotoImportPayload,
   buildFeaturedWorldTotoImportPayloads,
   featuredWorldTotoMatches,
+  featuredWorldTotoRounds,
   featuredWorldTotoRoundNumbers,
 } from "@/lib/featured-world-toto";
 
@@ -37,6 +38,14 @@ describe("featured world toto preset", () => {
       expect(payload.officialRoundNumber).toBeGreaterThanOrEqual(1634);
       expect(payload.officialRoundNumber).toBeLessThanOrEqual(1637);
     });
+  });
+
+  it("keeps the round 1636 preset aligned to the latest official snapshot", () => {
+    const round1636 = featuredWorldTotoRounds.find((round) => round.roundNumber === 1636);
+
+    expect(round1636?.totalSalesYen).toBe(222_065_900);
+    expect(round1636?.matches[0]?.officialVote1).toBeCloseTo(0.7125, 4);
+    expect(round1636?.matches[1]?.officialVote2).toBeCloseTo(0.691, 4);
   });
 
   it("builds an import payload for the current featured round", () => {
