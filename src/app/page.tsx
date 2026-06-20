@@ -100,6 +100,10 @@ import {
   featuredWorldTotoSnapshotLabel,
 } from "@/lib/featured-world-toto";
 import { buildWorldCupStrategyDashboard } from "@/lib/world-cup-strategy";
+import {
+  worldCupTotoLatestReportFileName,
+  worldCupTotoNextPurchaseSheetFileName,
+} from "@/lib/world-cup-toto-review-plan";
 import { createFeaturedWorldTotoRoundInD1 } from "@/lib/featured-world-toto-d1";
 import { getStoredRoundTokens } from "@/lib/storage/d1ApiAdapter";
 import {
@@ -571,7 +575,11 @@ export default function DashboardPage() {
   const worldCupPrimaryRoundIsClosed = worldCupPrimaryRound?.windowStatus === "closed";
   const worldCupCloseReportHref = resolveArtAsset(
     pathname,
-    "/reports/world-cup-toto-1634-close-report.pdf",
+    `/reports/${worldCupTotoLatestReportFileName}`,
+  );
+  const worldCupPurchaseSheetHref = resolveArtAsset(
+    pathname,
+    `/reports/${worldCupTotoNextPurchaseSheetFileName}`,
   );
   const latestPlayHref = latestRound
     ? buildRoundHref(appRoute.play, latestRound.id, {
@@ -1041,6 +1049,9 @@ export default function DashboardPage() {
                   </Link>
                   <a href={worldCupCloseReportHref} className={secondaryButtonClassName}>
                     最新PDF
+                  </a>
+                  <a href={worldCupPurchaseSheetHref} className={secondaryButtonClassName}>
+                    買い目CSV
                   </a>
                 </div>
               </div>

@@ -283,6 +283,8 @@ export function DataModeProvider({ children }: { children: ReactNode }) {
         type="file"
         accept="application/json,.json"
         className="hidden"
+        suppressHydrationWarning
+        style={{ caretColor: "transparent" }}
         onChange={(event) => void handleFileChange(event.currentTarget.files?.[0] ?? null)}
       />
 

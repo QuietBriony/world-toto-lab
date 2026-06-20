@@ -423,15 +423,28 @@ describe("world cup strategy", () => {
     expect(round1634.postMortemPrompts.length).toBeGreaterThan(0);
   });
 
+  it("uses the 1635 final snapshot and result for postmortem analysis", () => {
+    const strategy = buildWorldCupStrategyDashboard({
+      now: new Date("2026-06-20T12:00:00+09:00"),
+      rounds: [buildRound(Array.from({ length: 13 }, (_value, index) => buildMatch(index + 1)))],
+    });
+    const round1635 = strategy.rounds[1];
+
+    expect(round1635.strictEvReady).toBe(true);
+    expect(round1635.finalSnapshot?.totalSalesYen).toBe(252_729_800);
+    expect(round1635.outcomePolicies.find((policy) => policy.matchNo === 8)?.allowedOutcomes).toEqual(["0"]);
+    expect(round1635.outcomePolicies.find((policy) => policy.matchNo === 11)?.allowedOutcomes).toEqual(["0"]);
+  });
+
   it("explains missing strict EV inputs for unpublished future rounds", () => {
     const strategy = buildWorldCupStrategyDashboard({
       now: new Date("2026-06-14T00:00:00+09:00"),
       rounds: [buildRound(Array.from({ length: 13 }, (_value, index) => buildMatch(index + 1)))],
     });
-    const round1635 = strategy.rounds[1];
+    const round1637 = strategy.rounds[3];
 
-    expect(round1635.strictEvReady).toBe(false);
-    expect(round1635.strictEvMissingReasons).toContain("売上総額が未確定");
-    expect(round1635.strictEvMissingReasons).toContain("公式投票率が不足");
+    expect(round1637.strictEvReady).toBe(false);
+    expect(round1637.strictEvMissingReasons).toContain("売上総額が未確定");
+    expect(round1637.strictEvMissingReasons).toContain("公式投票率が不足");
   });
 });

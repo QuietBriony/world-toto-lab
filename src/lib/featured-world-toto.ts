@@ -1,4 +1,5 @@
 import type { TotoOfficialRoundLibraryMatch } from "@/lib/types";
+import { worldCupTotoOfficialSales1636Url } from "@/lib/world-cup-toto-review-plan";
 
 export const featuredWorldTotoSourceUrl =
   "https://sp.toto-dream.com/dcs/subos/screen/si01/ssin025/PGSSIN02501ForwardSalesTermtotoSP.form?holdCntId=1634";
@@ -247,6 +248,25 @@ const featuredWorldToto1635Matches: TotoOfficialRoundLibraryMatch[] = [
   scheduledMatch(13, "スイス", "ボスニア・ヘルツェゴビナ", "2026-06-19T04:00:00+09:00", "第1635回 toto"),
 ];
 
+const featuredWorldToto1636VoteRows = [
+  { officialVote1: 0.7224, officialVote0: 0.2051, officialVote2: 0.0725 },
+  { officialVote1: 0.0783, officialVote0: 0.226, officialVote2: 0.6957 },
+  { officialVote1: 0.766, officialVote0: 0.1774, officialVote2: 0.0566 },
+  { officialVote1: 0.0441, officialVote0: 0.1333, officialVote2: 0.8226 },
+  { officialVote1: 0.7159, officialVote0: 0.2192, officialVote2: 0.0649 },
+  { officialVote1: 0.4994, officialVote0: 0.3155, officialVote2: 0.1851 },
+  { officialVote1: 0.7186, officialVote0: 0.2203, officialVote2: 0.0611 },
+  { officialVote1: 0.4508, officialVote0: 0.2922, officialVote2: 0.257 },
+  { officialVote1: 0.8086, officialVote0: 0.1461, officialVote2: 0.0453 },
+  { officialVote1: 0.1467, officialVote0: 0.3327, officialVote2: 0.5206 },
+  { officialVote1: 0.8364, officialVote0: 0.1233, officialVote2: 0.0403 },
+  { officialVote1: 0.845, officialVote0: 0.1147, officialVote2: 0.0403 },
+  { officialVote1: 0.8444, officialVote0: 0.1148, officialVote2: 0.0408 },
+] satisfies Pick<
+  TotoOfficialRoundLibraryMatch,
+  "officialVote0" | "officialVote1" | "officialVote2"
+>[];
+
 const featuredWorldToto1636Matches: TotoOfficialRoundLibraryMatch[] = [
   scheduledMatch(1, "ドイツ", "コートジボワール", "2026-06-21T05:00:00+09:00", "第1636回 toto"),
   scheduledMatch(2, "チュニジア", "日本", "2026-06-21T13:00:00+09:00", "第1636回 toto"),
@@ -261,7 +281,7 @@ const featuredWorldToto1636Matches: TotoOfficialRoundLibraryMatch[] = [
   scheduledMatch(11, "スペイン", "サウジアラビア", "2026-06-22T01:00:00+09:00", "第1636回 toto"),
   scheduledMatch(12, "イングランド", "ガーナ", "2026-06-24T05:00:00+09:00", "第1636回 toto"),
   scheduledMatch(13, "エクアドル", "キュラソー", "2026-06-21T09:00:00+09:00", "第1636回 toto"),
-];
+].map((match, index) => ({ ...match, ...featuredWorldToto1636VoteRows[index] }));
 
 const featuredWorldToto1637Matches: TotoOfficialRoundLibraryMatch[] = [
   scheduledMatch(1, "エクアドル", "ドイツ", "2026-06-26T05:00:00+09:00", "第1637回 toto"),
@@ -316,14 +336,13 @@ export const featuredWorldTotoRounds: FeaturedWorldTotoRound[] = [
   },
   {
     matches: featuredWorldToto1636Matches,
-    resultStatus: "draft",
+    resultStatus: "selling",
     roundNumber: 1636,
     salesEndAt: "2026-06-20T19:00:00+09:00",
     salesStartAt: "2026-06-12T08:00:00+09:00",
-    sourceUrl:
-      "https://store.toto-dream.com/dcs/subos/screen/pi01/spin000/PGSPIN00001DisptotoLotInfo.form?holdCntId=1636",
+    sourceUrl: worldCupTotoOfficialSales1636Url,
     title: "第1636回 toto W杯本番",
-    totalSalesYen: null,
+    totalSalesYen: 193558900,
   },
   {
     matches: featuredWorldToto1637Matches,
