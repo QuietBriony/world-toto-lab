@@ -38,6 +38,7 @@ import {
 } from "@/lib/world-cup-strategy";
 import {
   TOTO13_STAKE_YEN,
+  worldCupToto1634Review,
   worldCupToto1635Review,
   worldCupToto1636Matches,
   worldCupToto1636NextPlan,
@@ -293,13 +294,12 @@ function LatestWorldCupTotoPanel({
   purchaseSheetHref: string;
   reportHref: string;
 }) {
-  const random200 = worldCupToto1635Review.randomSimulationRows.find((row) => row.lineCount === 200);
   const previewRows = worldCupToto1636PurchaseRows.slice(0, 12);
 
   return (
     <SectionCard
       title="今回の結論"
-      description="1635回の事後検証と、1636回を買うなら何を何口置くかだけを先に見ます。"
+      description="1634の反省、1635の確認、1636を買うなら何を何口置くかを先に見ます。"
       actions={
         <div className="flex flex-wrap gap-2">
           <a href={reportHref} className={buttonClassName}>
@@ -311,8 +311,13 @@ function LatestWorldCupTotoPanel({
         </div>
       }
     >
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
         <MiniFact label="1口" value={formatCurrency(TOTO13_STAKE_YEN)} hint="toto13は1通りを1口ずつバラで置くのが基本" />
+        <MiniFact
+          label="1634前PDF"
+          value={`最良${worldCupToto1634Review.previousReportBestDistance}ズレ`}
+          hint={`前PDFのEV候補${worldCupToto1634Review.previousReportPositiveLineCount}本は払戻圏外。強人気ドロー事故を拾えていない`}
+        />
         <MiniFact
           label="1635回 人気順"
           value={`${prizeTierLabel(worldCupToto1635Review.publicFavoritePrize.label)} / ${formatCurrency(
@@ -321,16 +326,16 @@ function LatestWorldCupTotoPanel({
           hint={`人気順 ${worldCupToto1635Review.publicFavoriteSignature} は実結果から${worldCupToto1635Review.publicFavoriteMisses}試合ズレ`}
         />
         <MiniFact
-          label="200口ランダム"
-          value={random200 ? formatPercent(random200.exactProbability, 4) : "未計算"}
-          hint={random200 ? `1等の概算。3等以上は${formatPercent(random200.thirdOrBetterProbability, 1)}` : "未計算"}
-        />
-        <MiniFact
           label="1636回 推奨"
           value={`${worldCupToto1636NextPlan.recommendedUnitCount}口 / ${formatCurrency(
             worldCupToto1636NextPlan.recommendedBudgetYen,
           )}`}
           hint={`36買い目 + 激アツ${worldCupToto1636NextPlan.hotDoublePatternCount}本だけ2口。締切 ${worldCupToto1636NextPlan.purchaseDeadlineLabel}`}
+        />
+        <MiniFact
+          label="半自動"
+          value="CSV転記"
+          hint="公式ランダムは別戦略。ログイン/購入/決済の自動化はしない"
         />
       </div>
 
@@ -395,8 +400,9 @@ function LatestWorldCupTotoPanel({
 
       <PlainNotice tone="slate" title="買い方メモ">
         <p>
-          CSVは公式へそのまま投げる入稿ファイルではなく、手入力・転記・感想戦用の購入シートです。
-          公式のランダム購入は使えますが、今回の推奨はランダムではなく、強人気を固定して割れる試合だけ分散します。
+          CSVの <span className="font-semibold">unit_count=2</span> だけ同じ買い目を2口、残りは1口で転記します。
+          公式のランダム/らくらく購入は使えますが、この推奨リストとは別物です。
+          ログイン、購入確定、決済の自動化は行いません。
         </p>
       </PlainNotice>
     </SectionCard>
