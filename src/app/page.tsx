@@ -65,6 +65,14 @@ import {
   pickFeaturedGoal3Entry,
 } from "@/lib/goal3";
 import {
+  buildEvOpportunityCards,
+  evOpportunityCategoryLabel,
+  evOpportunityStatusLabel,
+  type EvOpportunityCard,
+  type EvOpportunityCategory,
+  type EvOpportunityStatus,
+} from "@/lib/ev-opportunities";
+import {
   buildBigCarryoverQueryFromOfficialSnapshot,
   buildBigOfficialWatch,
   pickFeaturedBigOfficialSnapshot,
@@ -153,6 +161,92 @@ type MemberRoundActivity = {
   scoutReportCount: number;
   supportRefCount: number;
 };
+
+const homeOpportunityStatusTone: Record<
+  EvOpportunityStatus,
+  "amber" | "positive" | "sky" | "slate" | "teal"
+> = {
+  closed: "slate",
+  data_missing: "amber",
+  hot: "positive",
+  research_only: "sky",
+  watch: "teal",
+};
+
+const homeOpportunityCategoryTone: Record<
+  EvOpportunityCategory,
+  "amber" | "draw" | "sky" | "slate" | "teal"
+> = {
+  big: "amber",
+  goal3: "draw",
+  public_gambling_watch: "slate",
+  toto: "teal",
+  winner: "sky",
+};
+
+function EvOpportunityPreviewPanel({ cards }: { cards: EvOpportunityCard[] }) {
+  const topCards = cards.slice(0, 4);
+  const hotCount = cards.filter((card) => card.status === "hot").length;
+  const watchCount = cards.filter((card) => card.status === "watch").length;
+  const researchCount = cards.filter((card) => card.status === "research_only").length;
+
+  return (
+    <SectionCard
+      title="今日見る順"
+      description="W杯toto、BIG、GOAL3、WINNER、公営ウォッチを、EV/proxyが強い順にまとめます。買い目の自動購入はせず、次に見る画面だけを明確にします。"
+      actions={
+        <div className="flex flex-wrap gap-2">
+          <Badge tone="positive">要確認 {hotCount}</Badge>
+          <Badge tone="teal">監視 {watchCount}</Badge>
+          <Badge tone="sky">研究 {researchCount}</Badge>
+          <Link href={appRoute.evOpportunities} className={secondaryButtonClassName}>
+            EVネタ帳
+          </Link>
+        </div>
+      }
+    >
+      <div className="grid gap-3 lg:grid-cols-4">
+        {topCards.map((card) => (
+          <article
+            key={card.id}
+            className="flex min-h-[220px] flex-col justify-between rounded-[22px] border border-slate-200 bg-white/84 px-4 py-4 shadow-[0_18px_44px_-36px_rgba(15,23,42,0.34)]"
+          >
+            <div>
+              <div className="flex flex-wrap gap-1.5">
+                <Badge tone={homeOpportunityStatusTone[card.status]}>
+                  {evOpportunityStatusLabel[card.status]}
+                </Badge>
+                <Badge tone={homeOpportunityCategoryTone[card.category]}>
+                  {evOpportunityCategoryLabel[card.category]}
+                </Badge>
+              </div>
+              <h3 className="mt-3 text-sm font-semibold leading-6 text-slate-950">
+                {card.title}
+              </h3>
+              <dl className="mt-3 space-y-2 text-sm">
+                <div className="flex items-baseline justify-between gap-3">
+                  <dt className="text-slate-500">EV/proxy</dt>
+                  <dd className="font-semibold text-slate-950">{card.evLabel}</dd>
+                </div>
+                <div className="flex items-baseline justify-between gap-3">
+                  <dt className="text-slate-500">1口</dt>
+                  <dd className="font-semibold text-slate-950">{card.stakeLabel}</dd>
+                </div>
+                <div className="flex items-baseline justify-between gap-3">
+                  <dt className="text-slate-500">戻り</dt>
+                  <dd className="text-right font-semibold text-slate-950">{card.returnRateLabel}</dd>
+                </div>
+              </dl>
+            </div>
+            <Link href={card.href} className="mt-4 text-sm font-semibold text-teal-700 hover:text-teal-900">
+              {card.nextActionLabel}
+            </Link>
+          </article>
+        ))}
+      </div>
+    </SectionCard>
+  );
+}
 
 export default function DashboardPage() {
   const pathname = usePathname();
@@ -800,6 +894,27 @@ export default function DashboardPage() {
         summary: featuredBigOfficial.summary,
       })
     : null;
+  const domesticTotoRound =
+    inventoryRounds.find(
+      (round) =>
+        round.competitionType === "domestic_toto" ||
+        round.productType === "mini_toto",
+    ) ?? null;
+  const domesticTotoRoundCount = domesticTotoRound ? 1 : 0;
+  const domesticTotoRoundId = domesticTotoRound?.id ?? null;
+  const domesticTotoRoundTitle = domesticTotoRound?.title ?? null;
+  const winnerWatchRoundId = winnerWatchRound?.id ?? null;
+  const winnerWatchRoundTitle = winnerWatchRound?.title ?? null;
+  const evOpportunityCards = buildEvOpportunityCards({
+    bigOfficialSnapshots,
+    domesticRoundCount: domesticTotoRoundCount,
+    domesticRoundId: domesticTotoRoundId,
+    domesticRoundTitle: domesticTotoRoundTitle,
+    goal3Entries,
+    winnerRoundId: winnerWatchRoundId,
+    winnerRoundTitle: winnerWatchRoundTitle,
+    worldCupStrategy,
+  });
   const spotlightHeroImageSrc = resolveArtAsset(
     pathname,
     candidateStrategyArt.public_favorite.src,
@@ -814,6 +929,8 @@ export default function DashboardPage() {
         <ErrorNotice error={error} onRetry={() => void refresh()} />
       ) : data ? (
         <>
+          <EvOpportunityPreviewPanel cards={evOpportunityCards} />
+
           <SectionCard
             title="Haziの予想を入れる"
             description="ここが最初に押す入口です。第1634〜1637回totoのW杯対象52試合を作り、Haziの初期予想を入れてレビューへ進みます。"
