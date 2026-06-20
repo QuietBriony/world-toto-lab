@@ -5,6 +5,17 @@
   },
   "versions": [
     {
+      "csv": "world-cup-toto-1636-hot10-20000-plan-20260620-v4.csv",
+      "csvSha256": "CE328835C0F2DF417285D218A470A6059C14ADCAAD3D046DE0B5C0698DC21831",
+      "label": "2026-06-20 v4",
+      "legacyCsv": "world-cup-toto-1636-hot10-20000-plan.csv",
+      "legacyPdf": "world-cup-toto-1634-1636-evolved-plan.pdf",
+      "pdf": "world-cup-toto-1634-1636-evolved-plan-20260620-v4.pdf",
+      "pdfSha256": "E0F4462E776FA38265AAB3BD4DF20079D196B7929EB37E48749AD09EE7DA606E",
+      "publishedAt": "2026-06-20 17:32 JST",
+      "summary": "Adds Hazi's group-stage phase heuristic: 1636 is matchday-2 leaning, so the hot10 and 46-unit plan stay unchanged."
+    },
+    {
       "csv": "world-cup-toto-1636-hot10-20000-plan-20260620-v3.csv",
       "csvSha256": "CE328835C0F2DF417285D218A470A6059C14ADCAAD3D046DE0B5C0698DC21831",
       "label": "2026-06-20 v3",

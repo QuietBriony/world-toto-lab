@@ -17,8 +17,8 @@ from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer, 
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PDF_NAME = "world-cup-toto-1634-1636-evolved-plan-20260620-v3.pdf"
-CSV_NAME = "world-cup-toto-1636-hot10-20000-plan-20260620-v3.csv"
+PDF_NAME = "world-cup-toto-1634-1636-evolved-plan-20260620-v4.pdf"
+CSV_NAME = "world-cup-toto-1636-hot10-20000-plan-20260620-v4.csv"
 PDF_ALIASES = (
     PDF_NAME,
     "world-cup-toto-latest.pdf",
@@ -38,6 +38,7 @@ OUTCOMES = ("1", "0", "2")
 TOTO13_OUTCOME_COUNT = 3**13
 SNAPSHOT_1636_LABEL = "2026-06-20 17:02 JST"
 TOTAL_SALES_1636_YEN = 222_065_900
+PHASE_LOGIC_LABEL = "Haziロジック: 1636は第2戦寄り"
 
 SOURCE_1634_RESULT_URL = (
     "https://sp.toto-dream.com/dcs/subos/screen/si04/ssin007/"
@@ -335,6 +336,18 @@ def automation_table() -> Table:
     return table(rows, [30 * mm, 95 * mm, 49 * mm])
 
 
+def phase_logic_table() -> Table:
+    rows = [
+        ["対象", "読み", "買い目への使い方"],
+        ["1634寄り", "初戦は情報不足。強豪が慎重で、弱者の守備・GK上振れが起きる。", "強人気でもドロー事故を疑う。"],
+        ["1636寄り", "第2戦は初戦情報が入り、条件戦にもなり切らない。順当寄りに見やすい。", "強人気固定を崩しすぎず、割れ試合だけ分散。"],
+        ["1637寄り", "第3戦は突破条件、主力温存、引き分けOK、得失点差で歪む。", "次回は勝点条件を別ロジックで足す。"],
+    ]
+    result = table(rows, [23 * mm, 77 * mm, 70 * mm])
+    result.setStyle(TableStyle([("BACKGROUND", (0, 1), (0, -1), TEAL_LIGHT)]))
+    return result
+
+
 def previous_logic_table() -> Table:
     rows = [["順", "前回PDF候補", "実結果との差", "前回EV倍率"]]
     for rank, sig, misses, ev_multiple in PREVIOUS_1634_ROWS:
@@ -391,6 +404,10 @@ def build_pdf() -> Path:
         p("1634の失敗を踏まえ、1636は「強人気固定 + 割れ試合分散 + 激アツ10本だけ2口」に変えます。2口化は期待値が本当に高い時だけ効く一方、当たる範囲は広がらないため最大10本までに制限します。"),
         p(f"1636の公式投票率と売上は {SNAPSHOT_1636_LABEL} 時点に更新。売上は {yen(TOTAL_SALES_1636_YEN)}。hot10と46口推奨は前版から変わりません。", "small"),
         summary_table(),
+        Spacer(1, 3 * mm),
+        p(PHASE_LOGIC_LABEL, "h2"),
+        p("toto回番号ではなく、各国がW杯グループリーグで何試合目かを見る補助線です。今回は第2戦寄りなので、大荒れ前提へ寄せすぎず、強人気固定と割れ試合分散のままでよしとします。"),
+        phase_logic_table(),
         Spacer(1, 4 * mm),
         p("買うタイミング", "h2"),
         p("買うなら締切直前。ただし2026-06-20 19:00のネット締切に対し、公式投票を取り直してから転記する時間が必要です。目安は締切90分前から30分前。19:00を過ぎたら購入判断ではなく感想戦に切り替えます。"),

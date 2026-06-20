@@ -42,9 +42,11 @@ import {
   worldCupToto1635Review,
   worldCupToto1636Matches,
   worldCupToto1636NextPlan,
+  worldCupToto1636PhaseDecision,
   worldCupToto1636PurchaseRows,
   worldCupTotoLatestReportFileName,
   worldCupTotoNextPurchaseSheetFileName,
+  worldCupTotoPhaseHeuristics,
   worldCupTotoReportVersion,
   worldCupTotoVersionedPurchaseSheetFileName,
   worldCupTotoVersionedReportFileName,
@@ -353,6 +355,36 @@ function LatestWorldCupTotoPanel({
           hint="latestは差し替え用。固定版PDF/CSVは感想戦と比較用に残す"
         />
       </div>
+
+      <PlainNotice tone="teal" title="Haziロジック: W杯の何戦目かで荒れ方を見る">
+        <p>
+          {worldCupToto1636PhaseDecision.summary}
+          これは買い目を変える絶対ルールではなく、強人気を固定するか、ドローや逆側を残すかを決めるための補助線です。
+        </p>
+        <div className="mt-3 overflow-x-auto">
+          <table className="min-w-[760px] text-left text-sm">
+            <thead className="border-b border-emerald-900/15 text-xs uppercase tracking-[0.16em] text-emerald-950/60">
+              <tr>
+                <th className="px-2 py-2">対象</th>
+                <th className="px-2 py-2">読み</th>
+                <th className="px-2 py-2">使い方</th>
+              </tr>
+            </thead>
+            <tbody>
+              {worldCupTotoPhaseHeuristics.map((row) => (
+                <tr key={row.phase} className="border-b border-emerald-900/10 last:border-0">
+                  <td className="px-2 py-2 align-top">
+                    <span className="font-semibold text-emerald-950">{row.appliesTo}</span>
+                    <span className="mt-1 block text-xs text-emerald-900/65">{row.riskLabel}</span>
+                  </td>
+                  <td className="px-2 py-2 align-top text-emerald-950/80">{row.read}</td>
+                  <td className="px-2 py-2 align-top text-emerald-950/80">{row.action}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </PlainNotice>
 
       <div className="mt-5 grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
         <div className="overflow-x-auto rounded-[22px] border border-slate-200 bg-white/82">

@@ -6,9 +6,9 @@ export const worldCupTotoNextPurchaseSheetFileName =
   "world-cup-toto-latest-purchase-sheet.csv";
 
 export const worldCupTotoVersionedReportFileName =
-  "world-cup-toto-1634-1636-evolved-plan-20260620-v3.pdf";
+  "world-cup-toto-1634-1636-evolved-plan-20260620-v4.pdf";
 export const worldCupTotoVersionedPurchaseSheetFileName =
-  "world-cup-toto-1636-hot10-20000-plan-20260620-v3.csv";
+  "world-cup-toto-1636-hot10-20000-plan-20260620-v4.csv";
 export const worldCupTotoLegacyReportFileName =
   "world-cup-toto-1634-1636-evolved-plan.pdf";
 export const worldCupTotoLegacyPurchaseSheetFileName =
@@ -16,13 +16,13 @@ export const worldCupTotoLegacyPurchaseSheetFileName =
 
 export const worldCupTotoReportVersion = {
   csvSha256: "CE328835C0F2DF417285D218A470A6059C14ADCAAD3D046DE0B5C0698DC21831",
-  label: "2026-06-20 v3",
+  label: "2026-06-20 v4",
   latestCsvFileName: worldCupTotoNextPurchaseSheetFileName,
   latestPdfFileName: worldCupTotoLatestReportFileName,
   legacyCsvFileName: worldCupTotoLegacyPurchaseSheetFileName,
   legacyPdfFileName: worldCupTotoLegacyReportFileName,
-  pdfSha256: "FB38538655F8FC903016076D16F430DE2659FAF39C2A2B8A2782857C1643319E",
-  publishedAtLabel: "2026-06-20 17:02 JST",
+  pdfSha256: "E0F4462E776FA38265AAB3BD4DF20079D196B7929EB37E48749AD09EE7DA606E",
+  publishedAtLabel: "2026-06-20 17:32 JST",
   versionedCsvFileName: worldCupTotoVersionedPurchaseSheetFileName,
   versionedPdfFileName: worldCupTotoVersionedReportFileName,
 };
@@ -70,6 +70,14 @@ export type TotoPurchaseRow = {
   rank: number;
   signature: string;
   unitCount: number;
+};
+
+export type WorldCupTotoPhaseHeuristic = {
+  action: string;
+  appliesTo: string;
+  phase: "matchday1" | "matchday2" | "matchday3";
+  read: string;
+  riskLabel: string;
 };
 
 type PrizeResult = {
@@ -266,6 +274,36 @@ export const worldCupToto1636Matches: TotoNextPlanMatch[] = [
   { matchNo: 12, kickoffLabel: "06/24 05:00", home: "England", away: "Ghana", votes: { "1": 0.8433, "0": 0.1169, "2": 0.0398 }, recommendedOutcomes: ["1"], ruleLabel: "lock favorite over 80%", note: "Use as a lock." },
   { matchNo: 13, kickoffLabel: "06/21 09:00", home: "Ecuador", away: "Curacao", votes: { "1": 0.85, "0": 0.1122, "2": 0.0378 }, recommendedOutcomes: ["1"], ruleLabel: "lock favorite over 80%", note: "Use as a lock." },
 ];
+
+export const worldCupTotoPhaseHeuristics: WorldCupTotoPhaseHeuristic[] = [
+  {
+    action: "強人気でもドロー事故を疑う。初見の守備ブロック、GK上振れ、慎重な入りをメモする。",
+    appliesTo: "1634寄り",
+    phase: "matchday1",
+    read: "初戦は情報不足。見た目は順当でも、強豪が慎重に入り、弱者が守り切る事故が起きやすい。",
+    riskLabel: "荒れ警戒",
+  },
+  {
+    action: "今回の1636はここを主軸に置く。強人気固定を崩しすぎず、割れ試合だけ分散する。",
+    appliesTo: "1636寄り",
+    phase: "matchday2",
+    read: "第2戦は初戦の情報が入り、まだ突破条件が歪みすぎていない。順当寄りに評価しやすい。",
+    riskLabel: "順当寄り",
+  },
+  {
+    action: "次回1637以降で強く見る。勝点条件、主力温存、引き分けOK、大量得点狙いを別ロジックで足す。",
+    appliesTo: "1637寄り",
+    phase: "matchday3",
+    read: "第3戦は条件戦。実力差より、突破条件・得失点差・ローテーションで出目がズレる。",
+    riskLabel: "条件戦警戒",
+  },
+];
+
+export const worldCupToto1636PhaseDecision = {
+  label: "1636は第2戦寄りとして扱う",
+  summary:
+    "Haziの読みを採用して、1636は大荒れ前提へ寄せすぎない。強人気は固定し、オランダ戦・ノルウェー戦のように割れる面だけ分散する。",
+};
 
 function probabilityForSignature(signature: string) {
   return signature.split("").reduce((probability, outcome, index) => {
