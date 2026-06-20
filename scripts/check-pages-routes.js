@@ -43,6 +43,7 @@ async function main() {
     buildUrl(baseUrl, "/dev-playbook/", {}),
     buildUrl(baseUrl, "/hazi/", {}),
     buildUrl(baseUrl, "/world-cup-strategy/", {}),
+    buildUrl(baseUrl, "/ev-opportunities/", {}),
     buildUrl(baseUrl, "/big-carryover/", {}),
     buildUrl(baseUrl, "/goal3-value/", {}),
     buildUrl(baseUrl, "/big-carryover/", {

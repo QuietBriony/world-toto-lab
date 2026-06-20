@@ -57,6 +57,7 @@ export const appRoute = {
   devPlaybook: "/dev-playbook",
   workspace: "/workspace",
   bigCarryover: "/big-carryover",
+  evOpportunities: "/ev-opportunities",
   goal3Value: "/goal3-value",
   simpleView: "/simple-view",
   pickRoom: "/pick-room",
