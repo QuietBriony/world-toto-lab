@@ -36,8 +36,17 @@ import {
   type WorldCupStrategyLine,
   type WorldCupStrategyPick,
 } from "@/lib/world-cup-strategy";
+import {
+  TOTO13_STAKE_YEN,
+  worldCupToto1635Review,
+  worldCupToto1636Matches,
+  worldCupToto1636NextPlan,
+  worldCupToto1636PurchaseRows,
+  worldCupTotoLatestReportFileName,
+  worldCupTotoNextPurchaseSheetFileName,
+} from "@/lib/world-cup-toto-review-plan";
 
-const reportFileName = "world-cup-toto-1634-close-report.pdf";
+const reportFileName = worldCupTotoLatestReportFileName;
 
 function statusTone(status: WorldCupRoundWindowStatus) {
   if (status === "selling") {
@@ -154,6 +163,20 @@ function MiniFact({ label, value, hint }: { label: string; value: string; hint: 
   );
 }
 
+function outcomeLabel(value: string) {
+  if (value === "1") return "ホーム勝ち";
+  if (value === "0") return "引き分け";
+  if (value === "2") return "アウェイ勝ち";
+  return value;
+}
+
+function prizeTierLabel(value: string) {
+  if (value === "1st") return "1等";
+  if (value === "2nd") return "2等";
+  if (value === "3rd") return "3等";
+  return "外れ";
+}
+
 function coverageDistanceLabel(coverage: WorldCupSecondPrizeCoverage) {
   if (!coverage.ready) {
     return coverage.skippedReason ?? "未計算";
@@ -260,6 +283,121 @@ function StorageModeNotice({
         </span>
       </div>
     </PlainNotice>
+  );
+}
+
+function LatestWorldCupTotoPanel({
+  purchaseSheetHref,
+  reportHref,
+}: {
+  purchaseSheetHref: string;
+  reportHref: string;
+}) {
+  const random200 = worldCupToto1635Review.randomSimulationRows.find((row) => row.lineCount === 200);
+  const previewRows = worldCupToto1636PurchaseRows.slice(0, 12);
+
+  return (
+    <SectionCard
+      title="今回の結論"
+      description="1635回の事後検証と、1636回を買うなら何を何口置くかだけを先に見ます。"
+      actions={
+        <div className="flex flex-wrap gap-2">
+          <a href={reportHref} className={buttonClassName}>
+            最新PDF
+          </a>
+          <a href={purchaseSheetHref} className={secondaryButtonClassName}>
+            買い目CSV
+          </a>
+        </div>
+      }
+    >
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <MiniFact label="1口" value={formatCurrency(TOTO13_STAKE_YEN)} hint="toto13は1通りを1口ずつバラで置くのが基本" />
+        <MiniFact
+          label="1635回 人気順"
+          value={`${prizeTierLabel(worldCupToto1635Review.publicFavoritePrize.label)} / ${formatCurrency(
+            worldCupToto1635Review.publicFavoritePrize.payoutYen,
+          )}`}
+          hint={`人気順 ${worldCupToto1635Review.publicFavoriteSignature} は実結果から${worldCupToto1635Review.publicFavoriteMisses}試合ズレ`}
+        />
+        <MiniFact
+          label="200口ランダム"
+          value={random200 ? formatPercent(random200.exactProbability, 4) : "未計算"}
+          hint={random200 ? `1等の概算。3等以上は${formatPercent(random200.thirdOrBetterProbability, 1)}` : "未計算"}
+        />
+        <MiniFact
+          label="1636回 推奨"
+          value={`${worldCupToto1636NextPlan.coreLineCount}口 / ${formatCurrency(
+            worldCupToto1636NextPlan.recommendedBudgetYen,
+          )}`}
+          hint={`締切 ${worldCupToto1636NextPlan.purchaseDeadlineLabel}、20,000円CSVは議論用上限`}
+        />
+      </div>
+
+      <div className="mt-5 grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+        <div className="overflow-x-auto rounded-[22px] border border-slate-200 bg-white/82">
+          <table className="min-w-[720px] text-left text-sm">
+            <thead className="bg-slate-100 text-xs uppercase tracking-[0.16em] text-slate-500">
+              <tr>
+                <th className="px-3 py-3">順位</th>
+                <th className="px-3 py-3">買い目</th>
+                <th className="px-3 py-3">区分</th>
+                <th className="px-3 py-3">累計</th>
+              </tr>
+            </thead>
+            <tbody>
+              {previewRows.map((row) => (
+                <tr key={row.signature} className="border-t border-slate-100">
+                  <td className="px-3 py-3 font-semibold text-slate-950">{row.rank}</td>
+                  <td className="px-3 py-3 font-mono text-sm text-slate-900">{row.signature}</td>
+                  <td className="px-3 py-3">
+                    <Badge tone={row.bucket === "core" ? "positive" : "slate"}>
+                      {row.bucket === "core" ? "推奨コア" : "追加ヘッジ"}
+                    </Badge>
+                  </td>
+                  <td className="px-3 py-3 font-semibold text-slate-900">
+                    {formatCurrency(row.amountCumulativeYen)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="overflow-x-auto rounded-[22px] border border-slate-200 bg-white/82">
+          <table className="min-w-[520px] text-left text-sm">
+            <thead className="bg-slate-100 text-xs uppercase tracking-[0.16em] text-slate-500">
+              <tr>
+                <th className="px-3 py-3">No</th>
+                <th className="px-3 py-3">試合</th>
+                <th className="px-3 py-3">残す出目</th>
+              </tr>
+            </thead>
+            <tbody>
+              {worldCupToto1636Matches.map((match) => (
+                <tr key={match.matchNo} className="border-t border-slate-100">
+                  <td className="px-3 py-3 font-semibold text-slate-950">{match.matchNo}</td>
+                  <td className="px-3 py-3 text-slate-700">
+                    {match.home} vs {match.away}
+                    <p className="mt-1 text-xs text-slate-500">{match.ruleLabel}</p>
+                  </td>
+                  <td className="px-3 py-3 font-semibold text-slate-900">
+                    {match.recommendedOutcomes.map(outcomeLabel).join(" / ")}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <PlainNotice tone="slate" title="買い方メモ">
+        <p>
+          CSVは公式へそのまま投げる入稿ファイルではなく、手入力・転記・感想戦用の購入シートです。
+          公式のランダム購入は使えますが、今回の推奨はランダムではなく、強人気を固定して割れる試合だけ分散します。
+        </p>
+      </PlainNotice>
+    </SectionCard>
   );
 }
 
@@ -975,8 +1113,12 @@ export default function WorldCupStrategyPage() {
     return <LoadingNotice title="W杯toto EV司令塔を準備中" />;
   }
 
-  const primaryRound = strategy.rounds.find((round) => round.featured.roundNumber === 1634) ?? strategy.rounds[0];
+  const primaryRound =
+    strategy.rounds.find((round) => round.featured.roundNumber === 1636) ??
+    strategy.rounds.find((round) => round.featured.roundNumber === 1635) ??
+    strategy.rounds[0];
   const reportHref = resolveArtAsset(pathname, `/reports/${reportFileName}`);
+  const purchaseSheetHref = resolveArtAsset(pathname, `/reports/${worldCupTotoNextPurchaseSheetFileName}`);
 
   return (
     <div className="space-y-8">
@@ -1000,6 +1142,8 @@ export default function WorldCupStrategyPage() {
       />
 
       <StorageModeNotice isChecking={dataMode.isChecking} mode={dataMode.mode} />
+
+      <LatestWorldCupTotoPanel purchaseSheetHref={purchaseSheetHref} reportHref={reportHref} />
 
       <FirstAnswerPanel round={primaryRound} reportHref={reportHref} />
 

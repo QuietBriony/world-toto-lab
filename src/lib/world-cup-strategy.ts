@@ -26,6 +26,10 @@ import {
 } from "@/lib/featured-world-toto";
 import { calculateModelProbabilities } from "@/lib/probability/engine";
 import type { DashboardRoundSummary, Match, RoundEvAssumption, TotoOfficialRoundLibraryMatch } from "@/lib/types";
+import {
+  worldCupTotoOfficialResult1635Url,
+  worldCupTotoOfficialVote1635Url,
+} from "@/lib/world-cup-toto-review-plan";
 import { modelSeed } from "@/lib/world-toto-strength";
 
 const featuredSnapshotCapturedAt = "2026-06-07T08:56:00+09:00";
@@ -297,6 +301,29 @@ const knownFinalSnapshotsByRound = new Map<number, KnownFinalSnapshot>([
       ],
     },
   ],
+  [
+    1635,
+    {
+      sourceAsOfLabel: "2026-06-16 sales close",
+      sourceUrl: worldCupTotoOfficialVote1635Url,
+      totalSalesYen: 252729800,
+      voteRows: [
+        { matchNo: 1, officialVote1: 0.6976, officialVote0: 0.2124, officialVote2: 0.09 },
+        { matchNo: 2, officialVote1: 0.7537, officialVote0: 0.1739, officialVote2: 0.0724 },
+        { matchNo: 3, officialVote1: 0.4683, officialVote0: 0.3323, officialVote2: 0.1994 },
+        { matchNo: 4, officialVote1: 0.5117, officialVote0: 0.3079, officialVote2: 0.1804 },
+        { matchNo: 5, officialVote1: 0.1128, officialVote0: 0.2082, officialVote2: 0.679 },
+        { matchNo: 6, officialVote1: 0.7437, officialVote0: 0.1862, officialVote2: 0.0701 },
+        { matchNo: 7, officialVote1: 0.0653, officialVote0: 0.1818, officialVote2: 0.7529 },
+        { matchNo: 8, officialVote1: 0.5331, officialVote0: 0.2887, officialVote2: 0.1782 },
+        { matchNo: 9, officialVote1: 0.5909, officialVote0: 0.2792, officialVote2: 0.1299 },
+        { matchNo: 10, officialVote1: 0.9322, officialVote0: 0.0473, officialVote2: 0.0205 },
+        { matchNo: 11, officialVote1: 0.859, officialVote0: 0.1006, officialVote2: 0.0404 },
+        { matchNo: 12, officialVote1: 0.4409, officialVote0: 0.2991, officialVote2: 0.26 },
+        { matchNo: 13, officialVote1: 0.5941, officialVote0: 0.2729, officialVote2: 0.133 },
+      ],
+    },
+  ],
 ]);
 
 const knownActualResultsByRound = new Map<number, KnownActualResultSnapshot>([
@@ -311,6 +338,27 @@ const knownActualResultsByRound = new Map<number, KnownActualResultSnapshot>([
         { matchNo: 4, actualResult: "DRAW" },
         { matchNo: 6, actualResult: "DRAW" },
         { matchNo: 11, actualResult: "TWO" },
+        { matchNo: 12, actualResult: "ONE" },
+        { matchNo: 13, actualResult: "ONE" },
+      ],
+    },
+  ],
+  [
+    1635,
+    {
+      sourceAsOfLabel: `2026-06-20 preliminary result: ${worldCupTotoOfficialResult1635Url}`,
+      resultRows: [
+        { matchNo: 1, actualResult: "ONE" },
+        { matchNo: 2, actualResult: "ONE" },
+        { matchNo: 3, actualResult: "ONE" },
+        { matchNo: 4, actualResult: "ONE" },
+        { matchNo: 5, actualResult: "TWO" },
+        { matchNo: 6, actualResult: "ONE" },
+        { matchNo: 7, actualResult: "TWO" },
+        { matchNo: 8, actualResult: "DRAW" },
+        { matchNo: 9, actualResult: "ONE" },
+        { matchNo: 10, actualResult: "ONE" },
+        { matchNo: 11, actualResult: "DRAW" },
         { matchNo: 12, actualResult: "ONE" },
         { matchNo: 13, actualResult: "ONE" },
       ],
