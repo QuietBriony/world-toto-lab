@@ -7,6 +7,10 @@ import {
   worldCupToto1635Review,
   worldCupToto1636NextPlan,
   worldCupToto1636PurchaseRows,
+  worldCupTotoLatestReportFileName,
+  worldCupTotoNextPurchaseSheetFileName,
+  worldCupTotoReportVersion,
+  worldCupTotoVersionedReportFileName,
 } from "@/lib/world-cup-toto-review-plan";
 
 describe("world cup toto review plan", () => {
@@ -48,5 +52,14 @@ describe("world cup toto review plan", () => {
     expect(unitCount).toBe(200);
     expect(worldCupToto1636PurchaseRows.slice(0, 10).every((row) => row.bucket === "hot" && row.unitCount === 2)).toBe(true);
     expect(buildWorldCupToto1636PurchaseRows(46).reduce((sum, row) => sum + row.unitCount, 0)).toBe(46);
+  });
+
+  it("separates mutable latest links from immutable report versions", () => {
+    expect(worldCupTotoLatestReportFileName).toBe("world-cup-toto-latest.pdf");
+    expect(worldCupTotoNextPurchaseSheetFileName).toBe("world-cup-toto-latest-purchase-sheet.csv");
+    expect(worldCupTotoVersionedReportFileName).toBe("world-cup-toto-1634-1636-evolved-plan-20260620-v2.pdf");
+    expect(worldCupTotoReportVersion.label).toBe("2026-06-20 v2");
+    expect(worldCupTotoReportVersion.pdfSha256).toHaveLength(64);
+    expect(worldCupTotoReportVersion.csvSha256).toHaveLength(64);
   });
 });

@@ -1,9 +1,31 @@
 import type { OutcomeValue } from "@/lib/domain";
 
 export const worldCupTotoLatestReportFileName =
-  "world-cup-toto-1634-1636-evolved-plan.pdf";
+  "world-cup-toto-latest.pdf";
 export const worldCupTotoNextPurchaseSheetFileName =
+  "world-cup-toto-latest-purchase-sheet.csv";
+
+export const worldCupTotoVersionedReportFileName =
+  "world-cup-toto-1634-1636-evolved-plan-20260620-v2.pdf";
+export const worldCupTotoVersionedPurchaseSheetFileName =
+  "world-cup-toto-1636-hot10-20000-plan-20260620-v2.csv";
+export const worldCupTotoLegacyReportFileName =
+  "world-cup-toto-1634-1636-evolved-plan.pdf";
+export const worldCupTotoLegacyPurchaseSheetFileName =
   "world-cup-toto-1636-hot10-20000-plan.csv";
+
+export const worldCupTotoReportVersion = {
+  csvSha256: "4CABB3BD48797F09790D92F4DFCEBD9563E525BE39D7C39AA5266A7F35A6CAE4",
+  label: "2026-06-20 v2",
+  latestCsvFileName: worldCupTotoNextPurchaseSheetFileName,
+  latestPdfFileName: worldCupTotoLatestReportFileName,
+  legacyCsvFileName: worldCupTotoLegacyPurchaseSheetFileName,
+  legacyPdfFileName: worldCupTotoLegacyReportFileName,
+  pdfSha256: "8E9D9FD60B39E8B7CA449B7001948169EB67966362B64756AF74BCF146943A60",
+  publishedAtLabel: "2026-06-20 15:38 JST",
+  versionedCsvFileName: worldCupTotoVersionedPurchaseSheetFileName,
+  versionedPdfFileName: worldCupTotoVersionedReportFileName,
+};
 
 export const worldCupTotoOfficialResult1634Url =
   "https://sp.toto-dream.com/dcs/subos/screen/si04/ssin007/PGSSIN00701FwdLotDetailRslttoto.form?holdCntId=1634&commodityId=01&meetingFiscalYear=2026";
