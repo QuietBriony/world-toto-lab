@@ -22,8 +22,10 @@ import { resolveArtAsset } from "@/lib/ui-art";
 import { useDashboardData } from "@/lib/use-app-data";
 import {
   buildWorldCupStrategyDashboard,
+  worldCupEvGlossaryRows,
   type WorldCupEvSourceRow,
   type WorldCupFinalSnapshotSummary,
+  type WorldCupMarketEvComparisonRow,
   type WorldCupPortfolioPlan,
   type WorldCupPositiveEvCombo,
   type WorldCupOutcomePolicy,
@@ -77,6 +79,19 @@ function formatCount(value: number | null | undefined) {
 function formatSignedCurrency(value: number) {
   const sign = value >= 0 ? "+" : "";
   return `${sign}${formatCurrency(value)}`;
+}
+
+function formatMaybeSignedCurrency(value: number | null | undefined) {
+  return value === null || value === undefined ? "-" : formatSignedCurrency(value);
+}
+
+function formatSignedMultiple(value: number | null | undefined) {
+  if (value === null || value === undefined) {
+    return "-";
+  }
+
+  const sign = value >= 0 ? "+" : "";
+  return `${sign}${value.toFixed(2)}倍`;
 }
 
 function formatPayoutRange(plan: WorldCupPortfolioPlan) {
@@ -476,7 +491,14 @@ function LatestWorldCupTotoPanel({
   );
 }
 
-function SourceLink({ row }: { row: Pick<WorldCupEvSourceRow | WorldCupPredictionLogicRow, "sourceLabel" | "sourceUrl"> }) {
+function SourceLink({
+  row,
+}: {
+  row: Pick<
+    WorldCupEvSourceRow | WorldCupMarketEvComparisonRow | WorldCupPredictionLogicRow,
+    "sourceLabel" | "sourceUrl"
+  >;
+}) {
   if (!row.sourceUrl) {
     return <span>{row.sourceLabel}</span>;
   }
@@ -490,6 +512,89 @@ function SourceLink({ row }: { row: Pick<WorldCupEvSourceRow | WorldCupPredictio
     >
       {row.sourceLabel}
     </a>
+  );
+}
+
+function MarketEvExplainerPanel({ round }: { round: WorldCupRoundStrategy }) {
+  return (
+    <SectionCard
+      title="EVの見方と予測市場proxy"
+      description="総当たりやランダムの期待値を基準にして、公式投票率とズラすことで理論上の期待回収が上がっているかを見ます。"
+      actions={
+        <div className="flex flex-wrap gap-2">
+          <Badge tone="teal">p_model</Badge>
+          <Badge tone="amber">p_public</Badge>
+          <Badge tone="sky">market proxy</Badge>
+        </div>
+      }
+    >
+      <PlainNotice tone="teal" title="今回の読み">
+        <p className="text-base font-semibold text-slate-950">{round.marketEvVerdict}</p>
+        <p className="mt-2">
+          大事なのは「当たりそう」だけではなく、「同じ出目を買っている人が少なそう」まで同時に見ることです。
+          実オッズをまだ接続していない行は、利益保証ではなく議論用のproxyとして扱います。
+        </p>
+      </PlainNotice>
+
+      <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+        {worldCupEvGlossaryRows.map((row) => (
+          <div key={row.term} className="rounded-[18px] border border-slate-200 bg-white/86 px-4 py-3">
+            <p className="text-sm font-semibold text-slate-950">{row.term}</p>
+            <p className="mt-1 text-xs font-semibold leading-5 text-emerald-800">{row.formula}</p>
+            <p className="mt-2 text-xs leading-5 text-slate-600">{row.plain}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-5 overflow-x-auto pb-2">
+        <table className="min-w-[980px] border-separate border-spacing-0 text-left text-sm">
+          <thead>
+            <tr className="text-xs uppercase tracking-[0.14em] text-slate-500">
+              <th className="rounded-l-2xl bg-slate-100 px-3 py-3">戦略</th>
+              <th className="bg-slate-100 px-3 py-3">購入額</th>
+              <th className="bg-slate-100 px-3 py-3">期待回収</th>
+              <th className="bg-slate-100 px-3 py-3">期待損益</th>
+              <th className="bg-slate-100 px-3 py-3">EV倍率</th>
+              <th className="bg-slate-100 px-3 py-3">ランダム比</th>
+              <th className="bg-slate-100 px-3 py-3">読み方</th>
+              <th className="rounded-r-2xl bg-slate-100 px-3 py-3">根拠</th>
+            </tr>
+          </thead>
+          <tbody>
+            {round.marketEvComparisonRows.map((row) => (
+              <tr key={row.key} className="border-b border-slate-100">
+                <td className="px-3 py-3 align-top">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge tone={sourceStatusTone(row.status)}>{sourceStatusLabel(row.status)}</Badge>
+                    <span className="font-semibold text-slate-950">{row.label}</span>
+                  </div>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">{row.method}</p>
+                </td>
+                <td className="px-3 py-3 align-top font-semibold text-slate-900">
+                  {formatCurrency(row.costYen)}
+                </td>
+                <td className="px-3 py-3 align-top font-semibold text-slate-900">
+                  {formatCurrency(row.expectedReturnYen)}
+                </td>
+                <td className="px-3 py-3 align-top font-semibold text-slate-900">
+                  {formatMaybeSignedCurrency(row.expectedProfitYen)}
+                </td>
+                <td className="px-3 py-3 align-top font-semibold text-emerald-700">
+                  {row.evMultiple === null ? "-" : `${row.evMultiple.toFixed(2)}倍`}
+                </td>
+                <td className="px-3 py-3 align-top font-semibold text-slate-900">
+                  {formatSignedMultiple(row.evLiftMultiple)}
+                </td>
+                <td className="px-3 py-3 align-top text-slate-600">{row.verdict}</td>
+                <td className="px-3 py-3 align-top text-xs text-slate-500">
+                  <SourceLink row={row} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </SectionCard>
   );
 }
 
@@ -1228,6 +1333,8 @@ export default function WorldCupStrategyPage() {
       />
 
       <FirstAnswerPanel round={primaryRound} reportHref={reportHref} />
+
+      <MarketEvExplainerPanel round={primaryRound} />
 
       <LogicWorkbenchPanel round={primaryRound} />
 

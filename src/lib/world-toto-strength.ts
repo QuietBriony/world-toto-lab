@@ -92,16 +92,16 @@ export function modelSeed(input: {
     input.officialVote1 !== null &&
     input.officialVote0 !== null &&
     input.officialVote2 !== null;
+  const prior = teamStrengthPrior(input);
 
   if (hasOfficialVote) {
     return {
-      modelRationale: "公式人気を市場確率として軽量推定。",
-      modelSource: "official_vote" as const,
-      marketProb0: input.officialVote0,
-      marketProb1: input.officialVote1,
-      marketProb2: input.officialVote2,
+      ...prior,
+      modelRationale:
+        `${prior.modelRationale} Official vote is kept as p_public/crowd dilution, not copied into p_model.`,
+      modelSource: "team_strength_with_official_crowd" as const,
     };
   }
 
-  return teamStrengthPrior(input);
+  return prior;
 }

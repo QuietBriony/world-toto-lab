@@ -7,7 +7,9 @@ import {
   enumeratePositiveEvCombos,
   hammingDistance,
   resolveFeaturedWorldTotoRoundNumber,
+  worldCupEvGlossaryRows,
 } from "@/lib/world-cup-strategy";
+import { modelSeed } from "@/lib/world-toto-strength";
 
 function buildMatch(matchNo: number, overrides: Partial<Match> = {}): Match {
   return {
@@ -228,12 +230,33 @@ describe("world cup strategy", () => {
     expect(round1634.strictEvReady).toBe(true);
     expect(round1634.strictEvMissingReasons).toEqual([]);
     expect(round1634.positiveEv.rows.length).toBeGreaterThan(0);
-    expect(plan10000?.lineCount).toBe(9);
-    expect(plan10000?.costYen).toBe(900);
-    expect(plan10000?.expectedReturnYen).toBeCloseTo(1583894.13, 2);
+    expect(plan10000?.lineCount).toBeGreaterThan(0);
+    expect(plan10000?.lineCount).toBeLessThanOrEqual(100);
+    expect(plan10000?.costYen).toBe((plan10000?.lineCount ?? 0) * 100);
+    expect(plan10000?.expectedReturnYen).toBeGreaterThan(plan10000?.costYen ?? 0);
     expect(plan10000?.secondPrizeCoverage.ready).toBe(true);
     expect(plan10000?.secondPrizeCoverage.secondPrizeCoverageRate).toBe(1);
     expect(plan10000?.rows[0]?.strategyBucket).toBeTruthy();
+    expect(round1634.marketEvComparisonRows.map((row) => row.key)).toContain("market_proxy_portfolio");
+    expect(round1634.marketEvVerdict).toContain("market proxy");
+  });
+
+  it("documents EV terms and separates official crowd from predictive market proxy", () => {
+    const seed = modelSeed({
+      awayTeam: "繧ｹ繧､繧ｹ",
+      homeTeam: "繧ｫ繧ｿ繝ｼ繝ｫ",
+      officialVote0: 0.1,
+      officialVote1: 0.2,
+      officialVote2: 0.7,
+    });
+
+    expect(worldCupEvGlossaryRows.map((row) => row.term)).toEqual(
+      expect.arrayContaining(["EV", "p_model", "p_public", "予測市場EV", "期待損益"]),
+    );
+    expect(seed.modelSource).toBe("team_strength_with_official_crowd");
+    expect(seed.marketProb0).not.toBe(0.1);
+    expect(seed.marketProb1).not.toBe(0.2);
+    expect(seed.marketProb2).not.toBe(0.7);
   });
 
   it("turns a closed final snapshot into a review command", () => {

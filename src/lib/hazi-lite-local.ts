@@ -83,7 +83,7 @@ export type HaziLiteMatch = {
   modelProb1: number | null;
   modelProb2: number | null;
   modelRationale: string;
-  modelSource: "official_vote" | "team_strength";
+  modelSource: "official_vote" | "team_strength" | "team_strength_with_official_crowd";
   officialMatchNo: number | null;
   orthodox: HaziLiteStrategy;
   reviewChange: boolean;
@@ -965,7 +965,7 @@ function buildRoundMatch(input: {
     modelProb0: estimated.modelProb0,
     modelProb1: estimated.modelProb1,
     modelProb2: estimated.modelProb2,
-    tacticalNote: seed.modelSource === "official_vote" ? "AI source: official_vote" : "AI source: team_strength",
+    tacticalNote: `AI source: ${seed.modelSource}`,
     recommendedOutcomes: recommendedOutcomes(estimated),
     updatedAt: nowIso(),
   } satisfies Match;
@@ -1042,7 +1042,11 @@ export function readHaziLiteSummary(): HaziLiteSummary {
           modelProb1: match.modelProb1,
           modelProb2: match.modelProb2,
           modelRationale: match.adminNote ?? "軽量AI推定。",
-          modelSource: match.tacticalNote?.includes("team_strength") ? "team_strength" : "official_vote",
+          modelSource: match.tacticalNote?.includes("team_strength_with_official_crowd")
+            ? "team_strength_with_official_crowd"
+            : match.tacticalNote?.includes("team_strength")
+              ? "team_strength"
+              : "official_vote",
           officialMatchNo: match.officialMatchNo,
           orthodox,
           reviewChange: haziPick !== aiPick,
