@@ -211,7 +211,7 @@ export function SectionCard({
   return (
     <section
       className={cx(
-        "relative overflow-hidden rounded-[30px] border border-white/55 bg-[linear-gradient(145deg,rgba(255,255,255,0.94),rgba(244,250,246,0.9))] p-5 shadow-[0_28px_90px_-48px_rgba(0,0,0,0.42)] backdrop-blur-xl before:pointer-events-none before:absolute before:inset-x-6 before:top-0 before:h-px before:bg-[linear-gradient(90deg,transparent,rgba(22,128,61,0.48),rgba(245,158,11,0.35),transparent)] after:pointer-events-none after:absolute after:inset-0 after:bg-[repeating-linear-gradient(180deg,rgba(22,128,61,0.018)_0px,rgba(22,128,61,0.018)_26px,transparent_26px,transparent_52px)] after:opacity-85 after:content-[''] sm:p-6",
+        "relative min-w-0 overflow-hidden rounded-[30px] border border-white/55 bg-[linear-gradient(145deg,rgba(255,255,255,0.94),rgba(244,250,246,0.9))] p-5 shadow-[0_28px_90px_-48px_rgba(0,0,0,0.42)] backdrop-blur-xl before:pointer-events-none before:absolute before:inset-x-6 before:top-0 before:h-px before:bg-[linear-gradient(90deg,transparent,rgba(22,128,61,0.48),rgba(245,158,11,0.35),transparent)] after:pointer-events-none after:absolute after:inset-0 after:bg-[repeating-linear-gradient(180deg,rgba(22,128,61,0.018)_0px,rgba(22,128,61,0.018)_26px,transparent_26px,transparent_52px)] after:opacity-85 after:content-[''] sm:p-6",
         className,
       )}
       {...props}
@@ -238,7 +238,7 @@ export function SectionCard({
         </div>
       )}
 
-      <div className={cx("relative z-10 space-y-4", contentClassName)}>{children}</div>
+      <div className={cx("relative z-10 min-w-0 space-y-4", contentClassName)}>{children}</div>
     </section>
   );
 }
@@ -404,7 +404,7 @@ export function PageHeader({
   return (
     <header
       className={cx(
-        "scoreboard-glow pitch-stripes relative overflow-hidden flex flex-col gap-4 rounded-[32px] border border-white/14 bg-[linear-gradient(125deg,rgba(9,34,22,0.92),rgba(13,70,37,0.88)_42%,rgba(10,22,16,0.94))] p-5 shadow-[0_30px_90px_-50px_rgba(0,0,0,0.62)] backdrop-blur-xl before:pointer-events-none before:absolute before:right-[-4rem] before:top-[-5rem] before:h-40 before:w-40 before:rounded-full before:bg-[radial-gradient(circle,rgba(250,204,21,0.16),transparent_62%)] before:blur-xl after:pointer-events-none after:absolute after:inset-x-8 after:bottom-[-5rem] after:h-28 after:rounded-full after:border after:border-white/12 after:content-[''] sm:p-6 xl:flex-row xl:items-end xl:justify-between",
+        "scoreboard-glow pitch-stripes relative flex min-w-0 flex-col gap-4 overflow-hidden rounded-[32px] border border-white/14 bg-[linear-gradient(125deg,rgba(9,34,22,0.92),rgba(13,70,37,0.88)_42%,rgba(10,22,16,0.94))] p-5 shadow-[0_30px_90px_-50px_rgba(0,0,0,0.62)] backdrop-blur-xl before:pointer-events-none before:absolute before:right-[-4rem] before:top-[-5rem] before:h-40 before:w-40 before:rounded-full before:bg-[radial-gradient(circle,rgba(250,204,21,0.16),transparent_62%)] before:blur-xl after:pointer-events-none after:absolute after:inset-x-8 after:bottom-[-5rem] after:h-28 after:rounded-full after:border after:border-white/12 after:content-[''] sm:p-6 xl:flex-row xl:items-end xl:justify-between",
         className,
       )}
       {...props}
@@ -423,7 +423,7 @@ export function PageHeader({
           title
         )}
         {typeof description === "string" ? (
-          <p className="max-w-3xl text-sm leading-6 text-emerald-50/76 sm:text-base">
+          <p className="max-w-[300px] break-words text-sm leading-6 text-emerald-50/76 sm:max-w-3xl sm:text-base">
             {description}
           </p>
         ) : (

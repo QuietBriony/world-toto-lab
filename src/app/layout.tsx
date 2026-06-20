@@ -36,9 +36,9 @@ export default function RootLayout({
       lang="ja"
       className={cx("h-full antialiased", displayFont.variable, monoFont.variable)}
     >
-      <body className="min-h-full bg-[#081810]">
+      <body className="min-h-full overflow-x-hidden bg-[#081810]">
         <DataModeProvider>
-        <div className="relative isolate flex min-h-screen flex-col overflow-hidden">
+        <div className="relative isolate flex min-h-screen w-full max-w-full flex-col overflow-hidden">
           <div className="pointer-events-none absolute inset-0 -z-30 bg-[linear-gradient(180deg,#07130d_0%,#0a2116_18%,#0d321f_45%,#0b261a_100%)]" />
           <div className="pointer-events-none absolute inset-0 -z-20 bg-[repeating-linear-gradient(180deg,rgba(255,255,255,0.02)_0px,rgba(255,255,255,0.02)_38px,rgba(3,53,34,0.18)_38px,rgba(3,53,34,0.18)_76px)]" />
           <div className="pointer-events-none absolute inset-0 -z-20 bg-[radial-gradient(circle_at_top,rgba(250,204,21,0.12),transparent_18%),radial-gradient(circle_at_15%_18%,rgba(255,255,255,0.12),transparent_24%),radial-gradient(circle_at_85%_10%,rgba(56,189,248,0.12),transparent_20%)]" />
@@ -51,12 +51,12 @@ export default function RootLayout({
               <div className="flex flex-col gap-3 rounded-[24px] border border-white/12 bg-[linear-gradient(135deg,rgba(6,24,16,0.88),rgba(12,48,31,0.86))] px-4 py-3 shadow-[0_30px_90px_-48px_rgba(0,0,0,0.7)] ring-1 ring-white/5 lg:flex-row lg:items-center lg:justify-between">
                 <Link
                   href={appRoute.dashboard}
-                  className="flex items-center gap-3 rounded-[20px] outline-none transition hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-emerald-200/70"
+                  className="flex min-w-0 items-center gap-3 rounded-[20px] outline-none transition hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-emerald-200/70"
                 >
-                  <div className="relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-[20px] border border-emerald-200/20 bg-[linear-gradient(180deg,rgba(8,32,20,0.95),rgba(10,60,34,0.96))] font-display text-xl font-bold text-white shadow-[0_24px_70px_-38px_rgba(0,0,0,0.9)] before:absolute before:inset-[10px] before:rounded-[14px] before:border before:border-white/35 before:content-[''] after:absolute after:left-1/2 after:top-[10px] after:h-[calc(100%-20px)] after:w-px after:-translate-x-1/2 after:bg-white/30 after:content-['']">
+                  <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-[20px] border border-emerald-200/20 bg-[linear-gradient(180deg,rgba(8,32,20,0.95),rgba(10,60,34,0.96))] font-display text-xl font-bold text-white shadow-[0_24px_70px_-38px_rgba(0,0,0,0.9)] before:absolute before:inset-[10px] before:rounded-[14px] before:border before:border-white/35 before:content-[''] after:absolute after:left-1/2 after:top-[10px] after:h-[calc(100%-20px)] after:w-px after:-translate-x-1/2 after:bg-white/30 after:content-['']">
                     <span className="relative z-10">WT</span>
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge tone="teal">共有ラボ</Badge>
                       <Badge tone="amber">予想と記録</Badge>
@@ -64,12 +64,12 @@ export default function RootLayout({
                     <h1 className="mt-2 text-xl font-semibold tracking-[-0.04em] text-white sm:text-2xl">
                       ワールドtotoラボ
                     </h1>
-                    <p className="mt-1 max-w-2xl text-sm leading-6 text-emerald-50/78">
+                    <p className="mt-1 max-w-[240px] break-words text-sm leading-6 text-emerald-50/78 sm:max-w-2xl">
                       候補カードと自分の予想を、みんなで見比べる共有ページです。
                     </p>
                   </div>
                 </Link>
-                <div className="flex flex-wrap gap-2 lg:justify-end">
+                <div className="flex w-full min-w-0 flex-wrap gap-2 lg:w-auto lg:justify-end">
                   <DataModeBadge />
                   <Link href="/hazi" className={secondaryButtonClassName}>
                     Hazi軽量
@@ -82,7 +82,7 @@ export default function RootLayout({
             </div>
           </header>
 
-          <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+          <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col overflow-hidden px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
             <div className="flex flex-1 flex-col gap-6">{children}</div>
           </main>
 

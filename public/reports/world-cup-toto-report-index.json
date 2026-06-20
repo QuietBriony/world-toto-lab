@@ -5,6 +5,16 @@
   },
   "versions": [
     {
+      "csv": "world-cup-toto-1637-preliminary-10000-plan-20260621-v6.csv",
+      "csvSha256": "28909A5339C77C53617DD0995E7159D84EDA08AE2638F8A762809748BD12281F",
+      "label": "2026-06-21 v6",
+      "legacyPdf": "world-cup-toto-1634-1636-evolved-plan.pdf",
+      "pdf": "world-cup-toto-1634-1637-evolved-plan-20260621-v6.pdf",
+      "pdfSha256": "5128EEA53264AC6749F5C947A688430D1B688E3A01361E67538AA74974F7D83D",
+      "publishedAt": "2026-06-21 01:45 JST",
+      "summary": "Adds the 1637 matchday-3 deadline strategy, 100-unit preliminary sheet, final-recalculation workflow, and refreshed UI/PDF guidance."
+    },
+    {
       "csv": "world-cup-toto-1636-hot10-20000-plan-20260620-v5.csv",
       "csvSha256": "C1F5B9A3884D8B55645AC50BB3067A92440394671F5BBD5146E44FF5D288BC21",
       "label": "2026-06-20 v5",
