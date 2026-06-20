@@ -249,19 +249,19 @@ const featuredWorldToto1635Matches: TotoOfficialRoundLibraryMatch[] = [
 ];
 
 const featuredWorldToto1636VoteRows = [
-  { officialVote1: 0.7224, officialVote0: 0.2051, officialVote2: 0.0725 },
-  { officialVote1: 0.0783, officialVote0: 0.226, officialVote2: 0.6957 },
-  { officialVote1: 0.766, officialVote0: 0.1774, officialVote2: 0.0566 },
-  { officialVote1: 0.0441, officialVote0: 0.1333, officialVote2: 0.8226 },
-  { officialVote1: 0.7159, officialVote0: 0.2192, officialVote2: 0.0649 },
-  { officialVote1: 0.4994, officialVote0: 0.3155, officialVote2: 0.1851 },
-  { officialVote1: 0.7186, officialVote0: 0.2203, officialVote2: 0.0611 },
-  { officialVote1: 0.4508, officialVote0: 0.2922, officialVote2: 0.257 },
-  { officialVote1: 0.8086, officialVote0: 0.1461, officialVote2: 0.0453 },
-  { officialVote1: 0.1467, officialVote0: 0.3327, officialVote2: 0.5206 },
-  { officialVote1: 0.8364, officialVote0: 0.1233, officialVote2: 0.0403 },
-  { officialVote1: 0.845, officialVote0: 0.1147, officialVote2: 0.0403 },
-  { officialVote1: 0.8444, officialVote0: 0.1148, officialVote2: 0.0408 },
+  { officialVote1: 0.7125, officialVote0: 0.2123, officialVote2: 0.0752 },
+  { officialVote1: 0.0798, officialVote0: 0.2292, officialVote2: 0.691 },
+  { officialVote1: 0.7591, officialVote0: 0.184, officialVote2: 0.0569 },
+  { officialVote1: 0.0428, officialVote0: 0.1325, officialVote2: 0.8247 },
+  { officialVote1: 0.706, officialVote0: 0.2264, officialVote2: 0.0676 },
+  { officialVote1: 0.4985, officialVote0: 0.3152, officialVote2: 0.1863 },
+  { officialVote1: 0.7138, officialVote0: 0.2236, officialVote2: 0.0626 },
+  { officialVote1: 0.4495, officialVote0: 0.2928, officialVote2: 0.2577 },
+  { officialVote1: 0.8075, officialVote0: 0.1492, officialVote2: 0.0433 },
+  { officialVote1: 0.1496, officialVote0: 0.3319, officialVote2: 0.5185 },
+  { officialVote1: 0.8381, officialVote0: 0.1246, officialVote2: 0.0373 },
+  { officialVote1: 0.8433, officialVote0: 0.1169, officialVote2: 0.0398 },
+  { officialVote1: 0.85, officialVote0: 0.1122, officialVote2: 0.0378 },
 ] satisfies Pick<
   TotoOfficialRoundLibraryMatch,
   "officialVote0" | "officialVote1" | "officialVote2"
@@ -342,7 +342,7 @@ export const featuredWorldTotoRounds: FeaturedWorldTotoRound[] = [
     salesStartAt: "2026-06-12T08:00:00+09:00",
     sourceUrl: worldCupTotoOfficialSales1636Url,
     title: "第1636回 toto W杯本番",
-    totalSalesYen: 193558900,
+    totalSalesYen: 222065900,
   },
   {
     matches: featuredWorldToto1637Matches,

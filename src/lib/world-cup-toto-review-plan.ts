@@ -6,23 +6,23 @@ export const worldCupTotoNextPurchaseSheetFileName =
   "world-cup-toto-latest-purchase-sheet.csv";
 
 export const worldCupTotoVersionedReportFileName =
-  "world-cup-toto-1634-1636-evolved-plan-20260620-v2.pdf";
+  "world-cup-toto-1634-1636-evolved-plan-20260620-v3.pdf";
 export const worldCupTotoVersionedPurchaseSheetFileName =
-  "world-cup-toto-1636-hot10-20000-plan-20260620-v2.csv";
+  "world-cup-toto-1636-hot10-20000-plan-20260620-v3.csv";
 export const worldCupTotoLegacyReportFileName =
   "world-cup-toto-1634-1636-evolved-plan.pdf";
 export const worldCupTotoLegacyPurchaseSheetFileName =
   "world-cup-toto-1636-hot10-20000-plan.csv";
 
 export const worldCupTotoReportVersion = {
-  csvSha256: "8E43482964DB67B234A4485D2A2C487D1AEA9EC1C385066AF152AFFA6044D9A1",
-  label: "2026-06-20 v2",
+  csvSha256: "CE328835C0F2DF417285D218A470A6059C14ADCAAD3D046DE0B5C0698DC21831",
+  label: "2026-06-20 v3",
   latestCsvFileName: worldCupTotoNextPurchaseSheetFileName,
   latestPdfFileName: worldCupTotoLatestReportFileName,
   legacyCsvFileName: worldCupTotoLegacyPurchaseSheetFileName,
   legacyPdfFileName: worldCupTotoLegacyReportFileName,
-  pdfSha256: "8E9D9FD60B39E8B7CA449B7001948169EB67966362B64756AF74BCF146943A60",
-  publishedAtLabel: "2026-06-20 15:38 JST",
+  pdfSha256: "FB38538655F8FC903016076D16F430DE2659FAF39C2A2B8A2782857C1643319E",
+  publishedAtLabel: "2026-06-20 17:02 JST",
   versionedCsvFileName: worldCupTotoVersionedPurchaseSheetFileName,
   versionedPdfFileName: worldCupTotoVersionedReportFileName,
 };
@@ -252,19 +252,19 @@ export const worldCupToto1635Review = {
 };
 
 export const worldCupToto1636Matches: TotoNextPlanMatch[] = [
-  { matchNo: 1, kickoffLabel: "06/21 05:00", home: "Germany", away: "Cote d'Ivoire", votes: { "1": 0.7224, "0": 0.2051, "2": 0.0725 }, recommendedOutcomes: ["1"], ruleLabel: "lock favorite over 70%", note: "Use budget elsewhere instead of hedging this favorite." },
-  { matchNo: 2, kickoffLabel: "06/21 13:00", home: "Tunisia", away: "Japan", votes: { "1": 0.0783, "0": 0.226, "2": 0.6957 }, recommendedOutcomes: ["2", "0"], ruleLabel: "Japan win plus draw", note: "Japan is the main line, but the draw is cheap enough to keep." },
-  { matchNo: 3, kickoffLabel: "06/23 02:00", home: "Argentina", away: "Austria", votes: { "1": 0.766, "0": 0.1774, "2": 0.0566 }, recommendedOutcomes: ["1"], ruleLabel: "lock favorite over 70%", note: "Keep as a lock in the core sheet." },
-  { matchNo: 4, kickoffLabel: "06/24 08:00", home: "Panama", away: "Croatia", votes: { "1": 0.0441, "0": 0.1333, "2": 0.8226 }, recommendedOutcomes: ["2"], ruleLabel: "lock away favorite over 80%", note: "Croatia win is too expensive to fade in the core sheet." },
-  { matchNo: 5, kickoffLabel: "06/24 11:00", home: "Colombia", away: "Congo DR", votes: { "1": 0.7159, "0": 0.2192, "2": 0.0649 }, recommendedOutcomes: ["1"], ruleLabel: "lock favorite over 70%", note: "Colombia win is the core route." },
-  { matchNo: 6, kickoffLabel: "06/21 02:00", home: "Netherlands", away: "Sweden", votes: { "1": 0.4994, "0": 0.3155, "2": 0.1851 }, recommendedOutcomes: ["1", "0", "2"], ruleLabel: "spread split match", note: "This is the main variance slot." },
-  { matchNo: 7, kickoffLabel: "06/22 07:00", home: "Uruguay", away: "Cape Verde", votes: { "1": 0.7186, "0": 0.2203, "2": 0.0611 }, recommendedOutcomes: ["1"], ruleLabel: "lock favorite over 70%", note: "Use as a lock." },
-  { matchNo: 8, kickoffLabel: "06/23 09:00", home: "Norway", away: "Senegal", votes: { "1": 0.4508, "0": 0.2922, "2": 0.257 }, recommendedOutcomes: ["1", "0", "2"], ruleLabel: "spread 30% band", note: "Wide enough to keep all three outcomes in the core sheet." },
-  { matchNo: 9, kickoffLabel: "06/24 02:00", home: "Portugal", away: "Uzbekistan", votes: { "1": 0.8086, "0": 0.1461, "2": 0.0453 }, recommendedOutcomes: ["1"], ruleLabel: "lock favorite over 80%", note: "Use as a lock." },
-  { matchNo: 10, kickoffLabel: "06/23 12:00", home: "Jordan", away: "Algeria", votes: { "1": 0.1467, "0": 0.3327, "2": 0.5206 }, recommendedOutcomes: ["2", "0"], ruleLabel: "away win plus draw", note: "Algeria is the main line; draw has enough public share to cover." },
-  { matchNo: 11, kickoffLabel: "06/22 01:00", home: "Spain", away: "Saudi Arabia", votes: { "1": 0.8364, "0": 0.1233, "2": 0.0403 }, recommendedOutcomes: ["1"], ruleLabel: "lock favorite over 80%", note: "Use as a lock." },
-  { matchNo: 12, kickoffLabel: "06/24 05:00", home: "England", away: "Ghana", votes: { "1": 0.845, "0": 0.1147, "2": 0.0403 }, recommendedOutcomes: ["1"], ruleLabel: "lock favorite over 80%", note: "Use as a lock." },
-  { matchNo: 13, kickoffLabel: "06/21 09:00", home: "Ecuador", away: "Curacao", votes: { "1": 0.8444, "0": 0.1148, "2": 0.0408 }, recommendedOutcomes: ["1"], ruleLabel: "lock favorite over 80%", note: "Use as a lock." },
+  { matchNo: 1, kickoffLabel: "06/21 05:00", home: "Germany", away: "Cote d'Ivoire", votes: { "1": 0.7125, "0": 0.2123, "2": 0.0752 }, recommendedOutcomes: ["1"], ruleLabel: "lock favorite over 70%", note: "Use budget elsewhere instead of hedging this favorite." },
+  { matchNo: 2, kickoffLabel: "06/21 13:00", home: "Tunisia", away: "Japan", votes: { "1": 0.0798, "0": 0.2292, "2": 0.691 }, recommendedOutcomes: ["2", "0"], ruleLabel: "Japan win plus draw", note: "Japan is the main line, but the draw is cheap enough to keep." },
+  { matchNo: 3, kickoffLabel: "06/23 02:00", home: "Argentina", away: "Austria", votes: { "1": 0.7591, "0": 0.184, "2": 0.0569 }, recommendedOutcomes: ["1"], ruleLabel: "lock favorite over 70%", note: "Keep as a lock in the core sheet." },
+  { matchNo: 4, kickoffLabel: "06/24 08:00", home: "Panama", away: "Croatia", votes: { "1": 0.0428, "0": 0.1325, "2": 0.8247 }, recommendedOutcomes: ["2"], ruleLabel: "lock away favorite over 80%", note: "Croatia win is too expensive to fade in the core sheet." },
+  { matchNo: 5, kickoffLabel: "06/24 11:00", home: "Colombia", away: "Congo DR", votes: { "1": 0.706, "0": 0.2264, "2": 0.0676 }, recommendedOutcomes: ["1"], ruleLabel: "lock favorite over 70%", note: "Colombia win is the core route." },
+  { matchNo: 6, kickoffLabel: "06/21 02:00", home: "Netherlands", away: "Sweden", votes: { "1": 0.4985, "0": 0.3152, "2": 0.1863 }, recommendedOutcomes: ["1", "0", "2"], ruleLabel: "spread split match", note: "This is the main variance slot." },
+  { matchNo: 7, kickoffLabel: "06/22 07:00", home: "Uruguay", away: "Cape Verde", votes: { "1": 0.7138, "0": 0.2236, "2": 0.0626 }, recommendedOutcomes: ["1"], ruleLabel: "lock favorite over 70%", note: "Use as a lock." },
+  { matchNo: 8, kickoffLabel: "06/23 09:00", home: "Norway", away: "Senegal", votes: { "1": 0.4495, "0": 0.2928, "2": 0.2577 }, recommendedOutcomes: ["1", "0", "2"], ruleLabel: "spread 30% band", note: "Wide enough to keep all three outcomes in the core sheet." },
+  { matchNo: 9, kickoffLabel: "06/24 02:00", home: "Portugal", away: "Uzbekistan", votes: { "1": 0.8075, "0": 0.1492, "2": 0.0433 }, recommendedOutcomes: ["1"], ruleLabel: "lock favorite over 80%", note: "Use as a lock." },
+  { matchNo: 10, kickoffLabel: "06/23 12:00", home: "Jordan", away: "Algeria", votes: { "1": 0.1496, "0": 0.3319, "2": 0.5185 }, recommendedOutcomes: ["2", "0"], ruleLabel: "away win plus draw", note: "Algeria is the main line; draw has enough public share to cover." },
+  { matchNo: 11, kickoffLabel: "06/22 01:00", home: "Spain", away: "Saudi Arabia", votes: { "1": 0.8381, "0": 0.1246, "2": 0.0373 }, recommendedOutcomes: ["1"], ruleLabel: "lock favorite over 80%", note: "Use as a lock." },
+  { matchNo: 12, kickoffLabel: "06/24 05:00", home: "England", away: "Ghana", votes: { "1": 0.8433, "0": 0.1169, "2": 0.0398 }, recommendedOutcomes: ["1"], ruleLabel: "lock favorite over 80%", note: "Use as a lock." },
+  { matchNo: 13, kickoffLabel: "06/21 09:00", home: "Ecuador", away: "Curacao", votes: { "1": 0.85, "0": 0.1122, "2": 0.0378 }, recommendedOutcomes: ["1"], ruleLabel: "lock favorite over 80%", note: "Use as a lock." },
 ];
 
 function probabilityForSignature(signature: string) {
@@ -379,8 +379,8 @@ export const worldCupToto1636NextPlan = {
   maxDiscussionBudgetYen: 20_000,
   purchaseDeadlineLabel: "2026-06-20 19:00 JST",
   recommendedBudgetYen: (buildCoreRows().length + 10) * TOTO13_STAKE_YEN,
-  salesAsOfLabel: "2026-06-20 14:51 JST",
-  totalSalesYen: 193_558_900,
+  salesAsOfLabel: "2026-06-20 17:02 JST",
+  totalSalesYen: 222_065_900,
   summary:
     "Recommended evolved core is 46 units / 4,600 yen: 36 unique core rows, with the top 10 hot rows bought twice. The 20,000 yen CSV is a discussion cap, not an all-in recommendation, because positive EV is not proven.",
 };

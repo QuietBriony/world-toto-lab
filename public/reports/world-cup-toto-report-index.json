@@ -5,6 +5,17 @@
   },
   "versions": [
     {
+      "csv": "world-cup-toto-1636-hot10-20000-plan-20260620-v3.csv",
+      "csvSha256": "CE328835C0F2DF417285D218A470A6059C14ADCAAD3D046DE0B5C0698DC21831",
+      "label": "2026-06-20 v3",
+      "legacyCsv": "world-cup-toto-1636-hot10-20000-plan.csv",
+      "legacyPdf": "world-cup-toto-1634-1636-evolved-plan.pdf",
+      "pdf": "world-cup-toto-1634-1636-evolved-plan-20260620-v3.pdf",
+      "pdfSha256": "FB38538655F8FC903016076D16F430DE2659FAF39C2A2B8A2782857C1643319E",
+      "publishedAt": "2026-06-20 17:02 JST",
+      "summary": "World Cup toto 1634 postmortem, 1635 review, and 1636 hot10 purchase plan refreshed with 2026-06-20 17:02 vote data."
+    },
+    {
       "csv": "world-cup-toto-1636-hot10-20000-plan-20260620-v2.csv",
       "csvSha256": "8E43482964DB67B234A4485D2A2C487D1AEA9EC1C385066AF152AFFA6044D9A1",
       "label": "2026-06-20 v2",
