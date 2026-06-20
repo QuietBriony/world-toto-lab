@@ -17,8 +17,18 @@ from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer, 
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PDF_NAME = "world-cup-toto-1634-1636-evolved-plan.pdf"
-CSV_NAME = "world-cup-toto-1636-hot10-20000-plan.csv"
+PDF_NAME = "world-cup-toto-1634-1636-evolved-plan-20260620-v2.pdf"
+CSV_NAME = "world-cup-toto-1636-hot10-20000-plan-20260620-v2.csv"
+PDF_ALIASES = (
+    PDF_NAME,
+    "world-cup-toto-latest.pdf",
+    "world-cup-toto-1634-1636-evolved-plan.pdf",
+)
+CSV_ALIASES = (
+    CSV_NAME,
+    "world-cup-toto-latest-purchase-sheet.csv",
+    "world-cup-toto-1636-hot10-20000-plan.csv",
+)
 OUT_PDF_DIR = ROOT / "output" / "pdf"
 OUT_CSV_DIR = ROOT / "output" / "purchase-sheets"
 PUBLIC_DIR = ROOT / "public" / "reports"
@@ -254,6 +264,16 @@ def build_styles() -> dict[str, ParagraphStyle]:
 STYLES = build_styles()
 
 
+def copy_report_aliases(source: Path, output_dir: Path, public_dir: Path, names: tuple[str, ...]) -> None:
+    for name in names:
+        output_path = output_dir / name
+        public_path = public_dir / name
+
+        if output_path.resolve() != source.resolve():
+            shutil.copy2(source, output_path)
+        shutil.copy2(source, public_path)
+
+
 def p(text: str, style: str = "body") -> Paragraph:
     return Paragraph(text.replace("\n", "<br/>"), STYLES[style])
 
@@ -403,8 +423,7 @@ def build_pdf() -> Path:
         p(f"ソース: 1634結果 {SOURCE_1634_RESULT_URL} / 1634投票 {SOURCE_1634_VOTE_URL} / 1635結果 {SOURCE_1635_RESULT_URL} / 1636購入画面 {SOURCE_1636_BUY_URL} / 1636投票 {SOURCE_1636_VOTE_URL}", "small"),
     ]
     doc.build(story)
-    public_pdf_path = PUBLIC_DIR / PDF_NAME
-    shutil.copy2(pdf_path, public_pdf_path)
+    copy_report_aliases(pdf_path, OUT_PDF_DIR, PUBLIC_DIR, PDF_ALIASES)
     return pdf_path
 
 
@@ -417,8 +436,7 @@ def build_csv() -> Path:
         writer.writerow(["rank", "bucket", "unit_count", "amount_cumulative_yen", "signature", *[f"match_{index}" for index in range(1, 14)], "note"])
         for row in PURCHASE_ROWS_1636:
             writer.writerow([row["rank"], row["bucket"], row["units"], row["amount_cumulative_yen"], row["signature"], *row["picks"], row["note"]])
-    public_csv_path = PUBLIC_DIR / CSV_NAME
-    shutil.copy2(csv_path, public_csv_path)
+    copy_report_aliases(csv_path, OUT_CSV_DIR, PUBLIC_DIR, CSV_ALIASES)
     return csv_path
 
 

@@ -103,6 +103,8 @@ import { buildWorldCupStrategyDashboard } from "@/lib/world-cup-strategy";
 import {
   worldCupTotoLatestReportFileName,
   worldCupTotoNextPurchaseSheetFileName,
+  worldCupTotoReportVersion,
+  worldCupTotoVersionedReportFileName,
 } from "@/lib/world-cup-toto-review-plan";
 import { createFeaturedWorldTotoRoundInD1 } from "@/lib/featured-world-toto-d1";
 import { getStoredRoundTokens } from "@/lib/storage/d1ApiAdapter";
@@ -577,6 +579,10 @@ export default function DashboardPage() {
     pathname,
     `/reports/${worldCupTotoLatestReportFileName}`,
   );
+  const worldCupVersionedReportHref = resolveArtAsset(
+    pathname,
+    `/reports/${worldCupTotoVersionedReportFileName}`,
+  );
   const worldCupPurchaseSheetHref = resolveArtAsset(
     pathname,
     `/reports/${worldCupTotoNextPurchaseSheetFileName}`,
@@ -957,6 +963,9 @@ export default function DashboardPage() {
                 <Badge tone={worldCupStrategy.strictReadyCount > 0 ? "positive" : "slate"}>
                   計算可 {worldCupStrategy.strictReadyCount}
                 </Badge>
+                <Badge tone="sky">
+                  PDF {worldCupTotoReportVersion.label}
+                </Badge>
               </div>
             }
           >
@@ -1049,6 +1058,9 @@ export default function DashboardPage() {
                   </Link>
                   <a href={worldCupCloseReportHref} className={secondaryButtonClassName}>
                     最新PDF
+                  </a>
+                  <a href={worldCupVersionedReportHref} className={secondaryButtonClassName}>
+                    固定版PDF
                   </a>
                   <a href={worldCupPurchaseSheetHref} className={secondaryButtonClassName}>
                     買い目CSV

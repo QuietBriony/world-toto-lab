@@ -45,6 +45,9 @@ import {
   worldCupToto1636PurchaseRows,
   worldCupTotoLatestReportFileName,
   worldCupTotoNextPurchaseSheetFileName,
+  worldCupTotoReportVersion,
+  worldCupTotoVersionedPurchaseSheetFileName,
+  worldCupTotoVersionedReportFileName,
 } from "@/lib/world-cup-toto-review-plan";
 
 const reportFileName = worldCupTotoLatestReportFileName;
@@ -290,9 +293,13 @@ function StorageModeNotice({
 function LatestWorldCupTotoPanel({
   purchaseSheetHref,
   reportHref,
+  versionedPurchaseSheetHref,
+  versionedReportHref,
 }: {
   purchaseSheetHref: string;
   reportHref: string;
+  versionedPurchaseSheetHref: string;
+  versionedReportHref: string;
 }) {
   const previewRows = worldCupToto1636PurchaseRows.slice(0, 12);
 
@@ -305,13 +312,16 @@ function LatestWorldCupTotoPanel({
           <a href={reportHref} className={buttonClassName}>
             最新PDF
           </a>
+          <a href={versionedReportHref} className={secondaryButtonClassName}>
+            固定版PDF
+          </a>
           <a href={purchaseSheetHref} className={secondaryButtonClassName}>
             買い目CSV
           </a>
         </div>
       }
     >
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
         <MiniFact label="1口" value={formatCurrency(TOTO13_STAKE_YEN)} hint="toto13は1通りを1口ずつバラで置くのが基本" />
         <MiniFact
           label="1634前PDF"
@@ -336,6 +346,11 @@ function LatestWorldCupTotoPanel({
           label="半自動"
           value="CSV転記"
           hint="公式ランダムは別戦略。ログイン/購入/決済の自動化はしない"
+        />
+        <MiniFact
+          label="版管理"
+          value={worldCupTotoReportVersion.label}
+          hint="latestは差し替え用。固定版PDF/CSVは感想戦と比較用に残す"
         />
       </div>
 
@@ -403,6 +418,26 @@ function LatestWorldCupTotoPanel({
           CSVの <span className="font-semibold">unit_count=2</span> だけ同じ買い目を2口、残りは1口で転記します。
           公式のランダム/らくらく購入は使えますが、この推奨リストとは別物です。
           ログイン、購入確定、決済の自動化は行いません。
+        </p>
+      </PlainNotice>
+
+      <PlainNotice tone="teal" title="PDF/CSVの見分け方">
+        <p>
+          友人へ共有する時は <span className="font-semibold">最新PDF</span> と{" "}
+          <span className="font-semibold">買い目CSV</span> を使います。今後さらに磨いたら、このlatest URLは差し替わります。
+          感想戦で「前に見た資料」と比較する時は{" "}
+          <a className="font-semibold underline underline-offset-4" href={versionedReportHref}>
+            固定版PDF
+          </a>{" "}
+          /{" "}
+          <a className="font-semibold underline underline-offset-4" href={versionedPurchaseSheetHref}>
+            固定版CSV
+          </a>{" "}
+          を使います。
+        </p>
+        <p className="mt-2 font-mono text-xs leading-5 text-emerald-950/70">
+          PDF SHA256 {worldCupTotoReportVersion.pdfSha256.slice(0, 12)}... / CSV SHA256{" "}
+          {worldCupTotoReportVersion.csvSha256.slice(0, 12)}...
         </p>
       </PlainNotice>
     </SectionCard>
@@ -1127,6 +1162,8 @@ export default function WorldCupStrategyPage() {
     strategy.rounds[0];
   const reportHref = resolveArtAsset(pathname, `/reports/${reportFileName}`);
   const purchaseSheetHref = resolveArtAsset(pathname, `/reports/${worldCupTotoNextPurchaseSheetFileName}`);
+  const versionedReportHref = resolveArtAsset(pathname, `/reports/${worldCupTotoVersionedReportFileName}`);
+  const versionedPurchaseSheetHref = resolveArtAsset(pathname, `/reports/${worldCupTotoVersionedPurchaseSheetFileName}`);
 
   return (
     <div className="space-y-8">
@@ -1151,7 +1188,12 @@ export default function WorldCupStrategyPage() {
 
       <StorageModeNotice isChecking={dataMode.isChecking} mode={dataMode.mode} />
 
-      <LatestWorldCupTotoPanel purchaseSheetHref={purchaseSheetHref} reportHref={reportHref} />
+      <LatestWorldCupTotoPanel
+        purchaseSheetHref={purchaseSheetHref}
+        reportHref={reportHref}
+        versionedPurchaseSheetHref={versionedPurchaseSheetHref}
+        versionedReportHref={versionedReportHref}
+      />
 
       <FirstAnswerPanel round={primaryRound} reportHref={reportHref} />
 
