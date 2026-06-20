@@ -659,7 +659,7 @@ def build_csv() -> Path:
     PUBLIC_DIR.mkdir(parents=True, exist_ok=True)
     csv_path = OUT_CSV_DIR / CSV_NAME
     with csv_path.open("w", newline="", encoding="utf-8-sig") as output:
-        writer = csv.writer(output)
+        writer = csv.writer(output, lineterminator="\n")
         writer.writerow([
             "rank",
             "bucket",

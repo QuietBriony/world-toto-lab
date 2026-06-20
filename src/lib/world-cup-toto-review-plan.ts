@@ -15,13 +15,13 @@ export const worldCupTotoLegacyPurchaseSheetFileName =
   "world-cup-toto-1636-hot10-20000-plan.csv";
 
 export const worldCupTotoReportVersion = {
-  csvSha256: "C9F5FC8E991115BFD5D5561B9ED07E6B10692E1A195F321F97EBC5012071BBA3",
+  csvSha256: "C1F5B9A3884D8B55645AC50BB3067A92440394671F5BBD5146E44FF5D288BC21",
   label: "2026-06-20 v5",
   latestCsvFileName: worldCupTotoNextPurchaseSheetFileName,
   latestPdfFileName: worldCupTotoLatestReportFileName,
   legacyCsvFileName: worldCupTotoLegacyPurchaseSheetFileName,
   legacyPdfFileName: worldCupTotoLegacyReportFileName,
-  pdfSha256: "84F774703D789C9F47FE6B56DB82EC6D8380B3014A90F94BD5591971E9BC0290",
+  pdfSha256: "B504533A9A26AC6F7711CF08C43FAE21582882614621D3FD13985769B9F2CEF4",
   publishedAtLabel: "2026-06-20 23:05 JST",
   versionedCsvFileName: worldCupTotoVersionedPurchaseSheetFileName,
   versionedPdfFileName: worldCupTotoVersionedReportFileName,

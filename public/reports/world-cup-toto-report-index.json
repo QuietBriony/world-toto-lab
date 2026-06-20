@@ -5,6 +5,17 @@
   },
   "versions": [
     {
+      "csv": "world-cup-toto-1636-hot10-20000-plan-20260620-v5.csv",
+      "csvSha256": "C1F5B9A3884D8B55645AC50BB3067A92440394671F5BBD5146E44FF5D288BC21",
+      "label": "2026-06-20 v5",
+      "legacyCsv": "world-cup-toto-1636-hot10-20000-plan.csv",
+      "legacyPdf": "world-cup-toto-1634-1636-evolved-plan.pdf",
+      "pdf": "world-cup-toto-1634-1636-evolved-plan-20260620-v5.pdf",
+      "pdfSha256": "B504533A9A26AC6F7711CF08C43FAE21582882614621D3FD13985769B9F2CEF4",
+      "publishedAt": "2026-06-20 23:05 JST",
+      "summary": "Adds market/proxy EV, EV glossary, official-vote crowd separation, and the v5 1636 proxy-EV purchase sheet."
+    },
+    {
       "csv": "world-cup-toto-1636-hot10-20000-plan-20260620-v4.csv",
       "csvSha256": "CE328835C0F2DF417285D218A470A6059C14ADCAAD3D046DE0B5C0698DC21831",
       "label": "2026-06-20 v4",
