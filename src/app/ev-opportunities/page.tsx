@@ -9,6 +9,7 @@ import {
   ArtBannerPanel,
   Badge,
   buttonClassName,
+  HorizontalScrollTable,
   PageHeader,
   SectionCard,
   StatCard,
@@ -147,7 +148,7 @@ function OpportunityTable({
   currentPath: string;
 }) {
   return (
-    <div className="overflow-x-auto pb-2">
+    <HorizontalScrollTable>
       <table className="min-w-[980px] border-separate border-spacing-0 text-left text-sm">
         <thead>
           <tr className="text-xs uppercase tracking-[0.14em] text-slate-500">
@@ -195,7 +196,7 @@ function OpportunityTable({
           ))}
         </tbody>
       </table>
-    </div>
+    </HorizontalScrollTable>
   );
 }
 
