@@ -178,7 +178,10 @@ function OpportunityTable({
                 {isSelfLink(card.href, currentPath) ? (
                   <span className="font-semibold text-slate-500">{card.nextActionLabel}</span>
                 ) : (
-                  <Link href={card.href} className="font-semibold text-teal-700 hover:text-teal-900">
+                  <Link
+                    href={card.href}
+                    className="inline-flex min-h-[44px] items-center font-semibold text-teal-700 hover:text-teal-900"
+                  >
                     {card.nextActionLabel}
                   </Link>
                 )}
