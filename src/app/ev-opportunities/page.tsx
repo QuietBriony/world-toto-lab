@@ -65,7 +65,19 @@ function statusCount(cards: EvOpportunityCard[], status: EvOpportunityStatus) {
   return cards.filter((card) => card.status === status).length;
 }
 
-function OpportunityCard({ card }: { card: EvOpportunityCard }) {
+// trailingSlash:true のため usePathname と appRoute(href) で末尾スラッシュが食い違う。
+// 正規化して「自ページへの自己リンク」を判定する。
+function isSelfLink(href: string, currentPath: string) {
+  return href.replace(/\/+$/, "") === currentPath.replace(/\/+$/, "");
+}
+
+function OpportunityCard({
+  card,
+  currentPath,
+}: {
+  card: EvOpportunityCard;
+  currentPath: string;
+}) {
   return (
     <article className="rounded-[24px] border border-slate-200 bg-white/88 p-5 shadow-[0_18px_44px_-34px_rgba(15,23,42,0.38)]">
       <div className="flex flex-wrap items-center gap-2">
@@ -105,9 +117,17 @@ function OpportunityCard({ card }: { card: EvOpportunityCard }) {
       ) : null}
 
       <div className="mt-5 flex flex-wrap items-center gap-3">
-        <Link href={card.href} className={buttonClassName}>
-          {card.nextActionLabel}
-        </Link>
+        {isSelfLink(card.href, currentPath) ? (
+          // 自ページへの自己リンク（公営ウォッチ等、実遷移先が無い研究ネタ）は
+          // 押せる主ボタンにすると no-op のデッドエンドになるため、情報チップにする。
+          <span className="inline-flex items-center rounded-2xl border border-dashed border-slate-300 px-4 py-2 text-sm font-semibold text-slate-500">
+            {card.nextActionLabel}
+          </span>
+        ) : (
+          <Link href={card.href} className={buttonClassName}>
+            {card.nextActionLabel}
+          </Link>
+        )}
         {card.sourceUrl ? (
           <a href={card.sourceUrl} target="_blank" rel="noreferrer" className={secondaryButtonClassName}>
             根拠を見る
@@ -119,7 +139,13 @@ function OpportunityCard({ card }: { card: EvOpportunityCard }) {
   );
 }
 
-function OpportunityTable({ cards }: { cards: EvOpportunityCard[] }) {
+function OpportunityTable({
+  cards,
+  currentPath,
+}: {
+  cards: EvOpportunityCard[];
+  currentPath: string;
+}) {
   return (
     <div className="overflow-x-auto pb-2">
       <table className="min-w-[980px] border-separate border-spacing-0 text-left text-sm">
@@ -148,9 +174,13 @@ function OpportunityTable({ cards }: { cards: EvOpportunityCard[] }) {
               <td className="px-3 py-3 align-top text-slate-600">{card.returnRateLabel}</td>
               <td className="px-3 py-3 align-top text-slate-600">{card.stakeLabel}</td>
               <td className="px-3 py-3 align-top">
-                <Link href={card.href} className="font-semibold text-teal-700 hover:text-teal-900">
-                  {card.nextActionLabel}
-                </Link>
+                {isSelfLink(card.href, currentPath) ? (
+                  <span className="font-semibold text-slate-500">{card.nextActionLabel}</span>
+                ) : (
+                  <Link href={card.href} className="font-semibold text-teal-700 hover:text-teal-900">
+                    {card.nextActionLabel}
+                  </Link>
+                )}
               </td>
               <td className="px-3 py-3 align-top text-xs text-slate-500">
                 {card.sourceUrl ? (
@@ -298,7 +328,7 @@ export default function EvOpportunitiesPage() {
 
       <section className="grid gap-4 xl:grid-cols-2">
         {visibleCards.slice(0, 6).map((card) => (
-          <OpportunityCard key={card.id} card={card} />
+          <OpportunityCard key={card.id} card={card} currentPath={pathname} />
         ))}
       </section>
 
@@ -306,7 +336,7 @@ export default function EvOpportunitiesPage() {
         title="一覧"
         description="カードに出していない候補も含めて、EV/proxyの高い順に並べます。"
       >
-        <OpportunityTable cards={visibleCards} />
+        <OpportunityTable cards={visibleCards} currentPath={pathname} />
       </SectionCard>
     </div>
   );

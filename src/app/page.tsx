@@ -905,6 +905,7 @@ export default function DashboardPage() {
   const domesticTotoRoundTitle = domesticTotoRound?.title ?? null;
   const winnerWatchRoundId = winnerWatchRound?.id ?? null;
   const winnerWatchRoundTitle = winnerWatchRound?.title ?? null;
+  // React Compiler が自動メモ化するため手動 useMemo は不要（入力は安定参照）。
   const evOpportunityCards = buildEvOpportunityCards({
     bigOfficialSnapshots,
     domesticRoundCount: domesticTotoRoundCount,
@@ -929,8 +930,6 @@ export default function DashboardPage() {
         <ErrorNotice error={error} onRetry={() => void refresh()} />
       ) : data ? (
         <>
-          <EvOpportunityPreviewPanel cards={evOpportunityCards} />
-
           <SectionCard
             title="Haziの予想を入れる"
             description="ここが最初に押す入口です。第1634〜1637回totoのW杯対象52試合を作り、Haziの初期予想を入れてレビューへ進みます。"
@@ -949,7 +948,9 @@ export default function DashboardPage() {
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge tone="teal">{haziWorldTotoComplete ? "4回作成済み" : "未完了"}</Badge>
                   <Badge tone="info">第1634〜1637回 toto</Badge>
-                  <Badge tone="amber">ローカル保存</Badge>
+                  <Badge tone={dataMode.mode === "cloudflare_d1" ? "teal" : "amber"}>
+                    {dataMode.mode === "cloudflare_d1" ? "共有D1保存" : "ローカル保存"}
+                  </Badge>
                 </div>
                 <h3 className="mt-4 text-xl font-semibold tracking-tight text-slate-950">
                   {haziWorldTotoComplete
@@ -1064,6 +1065,10 @@ export default function DashboardPage() {
               </div>
             </div>
           </SectionCard>
+
+          {/* EVネタ帳プレビューは主導線『Haziの予想を入れる』の下に置く
+              （上に置くとスマホで4枚縦積み≈900pxが主CTAを画面外へ押し下げるため）。 */}
+          <EvOpportunityPreviewPanel cards={evOpportunityCards} />
 
           <SectionCard
             id="world-cup-strategy"
