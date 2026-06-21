@@ -1161,12 +1161,12 @@ function OutcomePolicyPanel({ policies }: { policies: WorldCupOutcomePolicy[] })
         <div>
           <h3 className="text-base font-semibold text-slate-950">購入候補の絞り込み</h3>
           <p className="mt-1 text-sm leading-6 text-slate-600">
-            確定済みは固定、70%以上はロック、割れ試合は分散。候補探索はこの出目だけで回します。
+            確定済みは固定、65%以上はロック、割れ試合は分散。候補探索はこの出目だけで回します。
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Badge tone="positive">固定 {fixedCount}</Badge>
-          <Badge tone="positive">70%+ {lockCount}</Badge>
+          <Badge tone="positive">65%+ {lockCount}</Badge>
           <Badge tone="amber">分散 {spreadCount}</Badge>
         </div>
       </div>
