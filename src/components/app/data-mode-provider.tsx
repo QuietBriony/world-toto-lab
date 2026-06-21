@@ -398,10 +398,13 @@ export function DataModeBadge() {
       <button type="button" className={cx(secondaryButtonClassName, "max-sm:!hidden")} onClick={requestJsonImport}>
         JSON
       </button>
-      <button type="button" className={cx(secondaryButtonClassName, "max-sm:!hidden")} onClick={() => void reconnect()}>
+      {/* 再接続と設定はモバイルでも残す。共有D1が落ちて local にフォールバックした
+          スマホでも、この2つがあれば /settings から再接続・モード切替・トークン投入で
+          復帰できる（ローカル/デモ/JSON は /settings 側にもあるので max-sm では隠す）。 */}
+      <button type="button" className={secondaryButtonClassName} onClick={() => void reconnect()}>
         再接続
       </button>
-      <Link href={appRoute.settings} className={cx(secondaryButtonClassName, "max-sm:!hidden")}>
+      <Link href={appRoute.settings} className={secondaryButtonClassName}>
         設定
       </Link>
     </div>
