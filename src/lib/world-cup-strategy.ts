@@ -962,12 +962,16 @@ function outcomePolicyFor(match: Match): WorldCupOutcomePolicy {
     };
   }
 
-  if (isKnownNumber(modelFavoriteProbability) && modelFavoriteProbability >= 0.7 && modelFavorite) {
+  // ロック閾値はモデルのスケールに合わせる。p_model は国別強度 prior（本命上限≈0.74）で
+  // 作るため、旧 officialVote コピー時代の 0.7 では強い本命でもほぼ発火しない
+  // （例: モデル本命 0.699 が 0.7 に僅かに届かずロック解除＝候補宇宙が膨張する一因）。
+  // 0.65 にすると「モデルが確信する強い本命（上位）」だけがロックされる。
+  if (isKnownNumber(modelFavoriteProbability) && modelFavoriteProbability >= 0.65 && modelFavorite) {
     return {
       allowedOutcomes: [modelFavorite],
       fixture,
       kind: "model_lock",
-      label: "70%以上ロック",
+      label: "65%以上ロック",
       matchNo: match.matchNo,
       modelFavorite,
       modelFavoriteProbability,
