@@ -238,7 +238,10 @@ function EvOpportunityPreviewPanel({ cards }: { cards: EvOpportunityCard[] }) {
                 </div>
               </dl>
             </div>
-            <Link href={card.href} className="mt-4 text-sm font-semibold text-teal-700 hover:text-teal-900">
+            <Link
+              href={card.href}
+              className="mt-4 inline-flex min-h-[44px] items-center text-sm font-semibold text-teal-700 hover:text-teal-900"
+            >
               {card.nextActionLabel}
             </Link>
           </article>
