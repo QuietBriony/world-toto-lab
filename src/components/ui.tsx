@@ -160,12 +160,15 @@ export function InfoBanner({
 
 type HorizontalScrollTableProps = HTMLAttributes<HTMLDivElement> & {
   children: ReactNode;
+  // スクロールする内側 div に足すクラス（枠線/角丸/背景など）。
+  contentClassName?: string;
   hint?: ReactNode;
 };
 
 export function HorizontalScrollTable({
   children,
   className,
+  contentClassName,
   hint = "横にスワイプで続きを見られます。",
   ...props
 }: HorizontalScrollTableProps) {
@@ -181,7 +184,9 @@ export function HorizontalScrollTable({
       <div className="relative">
         <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-6 bg-[linear-gradient(90deg,rgba(248,250,252,0.96),rgba(248,250,252,0))] sm:hidden" />
         <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-6 bg-[linear-gradient(270deg,rgba(248,250,252,0.96),rgba(248,250,252,0))] sm:hidden" />
-        <div className="overflow-x-auto overscroll-x-contain pb-2">{children}</div>
+        <div className={cx("overflow-x-auto overscroll-x-contain pb-2", contentClassName)}>
+          {children}
+        </div>
       </div>
     </div>
   );

@@ -9,6 +9,7 @@ import { ErrorNotice, LoadingNotice } from "@/components/app/states";
 import {
   Badge,
   buttonClassName,
+  HorizontalScrollTable,
   PageHeader,
   SectionCard,
   secondaryButtonClassName,
@@ -405,7 +406,7 @@ function NextWorldCupToto1637Panel({
       </PlainNotice>
 
       <div className="mt-5 grid gap-4 xl:grid-cols-[0.85fr_1.15fr]">
-        <div className="min-w-0 overflow-x-auto rounded-[22px] border border-slate-200 bg-white/82">
+        <HorizontalScrollTable className="min-w-0" contentClassName="rounded-[22px] border border-slate-200 bg-white/82">
           <table className="min-w-[600px] text-left text-sm">
             <thead className="bg-slate-100 text-xs uppercase tracking-[0.16em] text-slate-500">
               <tr>
@@ -426,9 +427,9 @@ function NextWorldCupToto1637Panel({
               ))}
             </tbody>
           </table>
-        </div>
+        </HorizontalScrollTable>
 
-        <div className="min-w-0 overflow-x-auto rounded-[22px] border border-slate-200 bg-white/82">
+        <HorizontalScrollTable className="min-w-0" contentClassName="rounded-[22px] border border-slate-200 bg-white/82">
           <table className="min-w-[640px] text-left text-sm">
             <thead className="bg-slate-100 text-xs uppercase tracking-[0.16em] text-slate-500">
               <tr>
@@ -461,10 +462,10 @@ function NextWorldCupToto1637Panel({
               ))}
             </tbody>
           </table>
-        </div>
+        </HorizontalScrollTable>
       </div>
 
-      <div className="mt-5 min-w-0 overflow-x-auto rounded-[22px] border border-slate-200 bg-white/82">
+      <HorizontalScrollTable className="mt-5 min-w-0" contentClassName="rounded-[22px] border border-slate-200 bg-white/82">
         <table className="min-w-[760px] text-left text-sm">
           <thead className="bg-slate-100 text-xs uppercase tracking-[0.16em] text-slate-500">
             <tr>
@@ -493,7 +494,7 @@ function NextWorldCupToto1637Panel({
             ))}
           </tbody>
         </table>
-      </div>
+      </HorizontalScrollTable>
 
       <PlainNotice tone="slate" title="共有リンクの使い分け">
         <p>
@@ -582,7 +583,7 @@ function LatestWorldCupTotoPanel({
           {worldCupToto1636PhaseDecision.summary}
           これは買い目を変える絶対ルールではなく、強人気を固定するか、ドローや逆側を残すかを決めるための補助線です。
         </p>
-        <div className="mt-3 overflow-x-auto">
+        <HorizontalScrollTable className="mt-3">
           <table className="min-w-[760px] text-left text-sm">
             <thead className="border-b border-emerald-900/15 text-xs uppercase tracking-[0.16em] text-emerald-950/60">
               <tr>
@@ -604,11 +605,11 @@ function LatestWorldCupTotoPanel({
               ))}
             </tbody>
           </table>
-        </div>
+        </HorizontalScrollTable>
       </PlainNotice>
 
       <div className="mt-5 grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-        <div className="min-w-0 overflow-x-auto rounded-[22px] border border-slate-200 bg-white/82">
+        <HorizontalScrollTable className="min-w-0" contentClassName="rounded-[22px] border border-slate-200 bg-white/82">
           <table className="min-w-[720px] text-left text-sm">
             <thead className="bg-slate-100 text-xs uppercase tracking-[0.16em] text-slate-500">
               <tr>
@@ -637,9 +638,9 @@ function LatestWorldCupTotoPanel({
               ))}
             </tbody>
           </table>
-        </div>
+        </HorizontalScrollTable>
 
-        <div className="min-w-0 overflow-x-auto rounded-[22px] border border-slate-200 bg-white/82">
+        <HorizontalScrollTable className="min-w-0" contentClassName="rounded-[22px] border border-slate-200 bg-white/82">
           <table className="min-w-[520px] text-left text-sm">
             <thead className="bg-slate-100 text-xs uppercase tracking-[0.16em] text-slate-500">
               <tr>
@@ -663,7 +664,7 @@ function LatestWorldCupTotoPanel({
               ))}
             </tbody>
           </table>
-        </div>
+        </HorizontalScrollTable>
       </div>
 
       <PlainNotice tone="slate" title="買い方メモ">
@@ -751,7 +752,7 @@ function MarketEvExplainerPanel({ round }: { round: WorldCupRoundStrategy }) {
         ))}
       </div>
 
-      <div className="mt-5 overflow-x-auto pb-2">
+      <HorizontalScrollTable className="mt-5">
         <table className="min-w-[980px] border-separate border-spacing-0 text-left text-sm">
           <thead>
             <tr className="text-xs uppercase tracking-[0.14em] text-slate-500">
@@ -798,14 +799,14 @@ function MarketEvExplainerPanel({ round }: { round: WorldCupRoundStrategy }) {
             ))}
           </tbody>
         </table>
-      </div>
+      </HorizontalScrollTable>
     </SectionCard>
   );
 }
 
 function EvSourceTable({ rows }: { rows: WorldCupEvSourceRow[] }) {
   return (
-    <div className="overflow-x-auto pb-2">
+    <HorizontalScrollTable>
       <table className="min-w-[920px] border-separate border-spacing-0 text-left text-sm">
         <thead>
           <tr className="text-xs uppercase tracking-[0.16em] text-slate-500">
@@ -832,7 +833,7 @@ function EvSourceTable({ rows }: { rows: WorldCupEvSourceRow[] }) {
           ))}
         </tbody>
       </table>
-    </div>
+    </HorizontalScrollTable>
   );
 }
 
@@ -1115,7 +1116,7 @@ function FinalSnapshotPanel({ snapshot }: { snapshot: WorldCupFinalSnapshotSumma
         <MiniFact label="最大ズレ" value={`${snapshot.maxAbsVoteShareDeltaPt.toFixed(2)}pt`} hint="公式人気率の変化" />
       </div>
 
-      <div className="mt-4 overflow-x-auto pb-2">
+      <HorizontalScrollTable className="mt-4">
         <table className="min-w-[760px] border-separate border-spacing-0 text-left text-sm">
           <thead>
             <tr className="text-xs uppercase tracking-[0.16em] text-slate-500">
@@ -1145,7 +1146,7 @@ function FinalSnapshotPanel({ snapshot }: { snapshot: WorldCupFinalSnapshotSumma
             ))}
           </tbody>
         </table>
-      </div>
+      </HorizontalScrollTable>
     </div>
   );
 }
@@ -1171,7 +1172,7 @@ function OutcomePolicyPanel({ policies }: { policies: WorldCupOutcomePolicy[] })
         </div>
       </div>
 
-      <div className="mt-4 overflow-x-auto pb-2">
+      <HorizontalScrollTable className="mt-4">
         <table className="min-w-[900px] border-separate border-spacing-0 text-left text-sm">
           <thead>
             <tr className="text-xs uppercase tracking-[0.16em] text-slate-500">
@@ -1206,7 +1207,7 @@ function OutcomePolicyPanel({ policies }: { policies: WorldCupOutcomePolicy[] })
             ))}
           </tbody>
         </table>
-      </div>
+      </HorizontalScrollTable>
     </div>
   );
 }
@@ -1251,7 +1252,7 @@ function TicketsTable({
       <p className="text-xs leading-5 text-slate-500">
         横に長い場合はスクロールできます。出目はNo.1からNo.13までの順です。
       </p>
-      <div className="overflow-x-auto pb-2">
+      <HorizontalScrollTable>
         <table className="min-w-[1040px] border-separate border-spacing-0 text-left text-sm">
           <thead>
             <tr className="text-xs uppercase tracking-[0.16em] text-slate-500">
@@ -1297,7 +1298,7 @@ function TicketsTable({
             ))}
           </tbody>
         </table>
-      </div>
+      </HorizontalScrollTable>
     </div>
   );
 }
