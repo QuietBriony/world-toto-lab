@@ -1675,6 +1675,39 @@ export function enumeratePositiveEvCombos(input: {
   }
 
   const assumption = input.assumption;
+
+  // 候補宇宙ガード: visit() は allowedOutcomes の直積を全葉まで同期 DFS するため、
+  // 全試合 open（3 出目）だと 3^13≈159万葉となり、各葉の payout/tier-EV 計算で
+  // メインスレッドを数秒ブロックする（友達のスマホでは 6-12 秒の凍結）。姉妹の
+  // calculateWorldCupSecondPrizeCoverage は同じ宇宙に coverageUniverseLimit ガードを
+  // 持つのに本関数には無かった。上限超過時は各試合をモデル上位 2 出目に縮約して
+  // 宇宙を抑える（EV は高確率出目が支配的で、最下位モデル出目を含む組は hit 確率が
+  // 小さく上位 EV リストには出てこないため、表示はほぼ不変）。それでも超過する
+  // （試合数が極端に多い）場合のみ DFS を打ち切って未計算を返す。
+  const fullUniverse = options.reduce((count, entries) => count * entries.length, 1);
+  const universeTooLarge = fullUniverse > coverageUniverseLimit;
+  const walk = universeTooLarge
+    ? options.map((entries) =>
+        entries.length <= 2
+          ? entries
+          : [...entries]
+              .sort(
+                (left, right) =>
+                  (right.modelProbability ?? 0) - (left.modelProbability ?? 0),
+              )
+              .slice(0, 2),
+      )
+    : options;
+  if (walk.reduce((count, entries) => count * entries.length, 1) > coverageUniverseLimit) {
+    return {
+      evaluatedCount: null,
+      ready: false,
+      rows: [],
+      totalPositiveCount: null,
+      truncated: true,
+    };
+  }
+
   const currentPicks = new Array<WorldCupStrategyPick>(matches.length);
   const currentModelProbabilities = new Array<number | null>(matches.length);
   const currentOfficialProbabilities = new Array<number | null>(matches.length);
@@ -1768,7 +1801,7 @@ export function enumeratePositiveEvCombos(input: {
       return;
     }
 
-    options[index].forEach((option) => {
+    walk[index].forEach((option) => {
       currentPicks[index] = {
         matchNo: option.matchNo,
         pick: option.outcome,
@@ -1800,7 +1833,7 @@ export function enumeratePositiveEvCombos(input: {
     ready: true,
     rows: topRows.sort(comparePositiveCombo),
     totalPositiveCount,
-    truncated: totalPositiveCount > topRows.length,
+    truncated: universeTooLarge || totalPositiveCount > topRows.length,
   };
 }
 
