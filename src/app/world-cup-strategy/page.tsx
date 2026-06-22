@@ -60,12 +60,16 @@ import {
   worldCupToto1637NextPlan,
   worldCupToto1637PurchaseRows,
   worldCupTotoLatestReportFileName,
+  worldCupTotoNextBasePurchaseSheetFileName,
+  worldCupTotoNextHotExtraSheetFileName,
   worldCupTotoLegacyPurchaseSheetFileName,
   worldCupTotoNextPurchaseSheetFileName,
   worldCupTotoOfficialSales1637Url,
   worldCupTotoOfficialVote1637Url,
   worldCupTotoPhaseHeuristics,
   worldCupTotoReportVersion,
+  worldCupTotoVersionedBasePurchaseSheetFileName,
+  worldCupTotoVersionedHotExtraSheetFileName,
   worldCupTotoVersionedPurchaseSheetFileName,
   worldCupTotoVersionedReportFileName,
 } from "@/lib/world-cup-toto-review-plan";
@@ -518,13 +522,21 @@ function OperatingSystemBacktestPanel() {
 }
 
 function NextWorldCupToto1637Panel({
+  basePurchaseSheetHref,
+  hotExtraSheetHref,
   purchaseSheetHref,
   reportHref,
+  versionedBasePurchaseSheetHref,
+  versionedHotExtraSheetHref,
   versionedPurchaseSheetHref,
   versionedReportHref,
 }: {
+  basePurchaseSheetHref: string;
+  hotExtraSheetHref: string;
   purchaseSheetHref: string;
   reportHref: string;
+  versionedBasePurchaseSheetHref: string;
+  versionedHotExtraSheetHref: string;
   versionedPurchaseSheetHref: string;
   versionedReportHref: string;
 }) {
@@ -544,6 +556,12 @@ function NextWorldCupToto1637Panel({
           </a>
           <a href={worldCupTotoOfficialVote1637Url} className={secondaryButtonClassName} rel="noreferrer" target="_blank">
             公式投票率
+          </a>
+          <a href={basePurchaseSheetHref} className={secondaryButtonClassName}>
+            ベース90
+          </a>
+          <a href={hotExtraSheetHref} className={secondaryButtonClassName}>
+            Hot追加10
           </a>
           <a href={worldCupTotoOfficialSales1637Url} className={secondaryButtonClassName} rel="noreferrer" target="_blank">
             販売期間
@@ -591,6 +609,20 @@ function NextWorldCupToto1637Panel({
           totoは固定オッズではなく、同じ出目に何人いるかで払戻が変わります。
           公式投票率と売上が締切前に動くほど、早い時点のEV推定はズレます。
           だから 1637 は今のCSVをたたき台にして、6/25夕方に同じロジックで差し替えます。
+        </p>
+        <p className="mt-2 text-sm leading-6 text-slate-600">
+          v9 fixed links:{" "}
+          <a className="font-semibold underline underline-offset-4" href={versionedPurchaseSheetHref}>
+            100口CSV
+          </a>{" "}
+          /{" "}
+          <a className="font-semibold underline underline-offset-4" href={versionedBasePurchaseSheetHref}>
+            ベース90
+          </a>{" "}
+          /{" "}
+          <a className="font-semibold underline underline-offset-4" href={versionedHotExtraSheetHref}>
+            Hot追加10
+          </a>
         </p>
       </PlainNotice>
 
@@ -1714,9 +1746,19 @@ export default function WorldCupStrategyPage() {
     strategy.rounds[0];
   const reportHref = resolveArtAsset(pathname, `/reports/${reportFileName}`);
   const purchaseSheetHref = resolveArtAsset(pathname, `/reports/${worldCupTotoNextPurchaseSheetFileName}`);
+  const basePurchaseSheetHref = resolveArtAsset(pathname, `/reports/${worldCupTotoNextBasePurchaseSheetFileName}`);
+  const hotExtraSheetHref = resolveArtAsset(pathname, `/reports/${worldCupTotoNextHotExtraSheetFileName}`);
   const legacyPurchaseSheetHref = resolveArtAsset(pathname, `/reports/${worldCupTotoLegacyPurchaseSheetFileName}`);
   const versionedReportHref = resolveArtAsset(pathname, `/reports/${worldCupTotoVersionedReportFileName}`);
   const versionedPurchaseSheetHref = resolveArtAsset(pathname, `/reports/${worldCupTotoVersionedPurchaseSheetFileName}`);
+  const versionedBasePurchaseSheetHref = resolveArtAsset(
+    pathname,
+    `/reports/${worldCupTotoVersionedBasePurchaseSheetFileName}`,
+  );
+  const versionedHotExtraSheetHref = resolveArtAsset(
+    pathname,
+    `/reports/${worldCupTotoVersionedHotExtraSheetFileName}`,
+  );
 
   return (
     <div className="space-y-8">
@@ -1744,8 +1786,12 @@ export default function WorldCupStrategyPage() {
       <OperatingSystemBacktestPanel />
 
       <NextWorldCupToto1637Panel
+        basePurchaseSheetHref={basePurchaseSheetHref}
+        hotExtraSheetHref={hotExtraSheetHref}
         purchaseSheetHref={purchaseSheetHref}
         reportHref={reportHref}
+        versionedBasePurchaseSheetHref={versionedBasePurchaseSheetHref}
+        versionedHotExtraSheetHref={versionedHotExtraSheetHref}
         versionedPurchaseSheetHref={versionedPurchaseSheetHref}
         versionedReportHref={versionedReportHref}
       />
