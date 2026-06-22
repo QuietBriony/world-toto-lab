@@ -12,23 +12,23 @@ export const worldCupTotoNextPurchaseSheet200FileName =
   "world-cup-toto-latest-200-purchase-sheet.csv";
 
 export const worldCupTotoVersionedReportFileName =
-  "world-cup-toto-1634-1637-evolved-plan-20260622-v14.pdf";
+  "world-cup-toto-1634-1637-evolved-plan-20260622-v15.pdf";
 export const worldCupTotoVersionedPurchaseSheet50FileName =
-  "world-cup-toto-1637-visual-5000-plan-20260622-v14.csv";
+  "world-cup-toto-1637-visual-5000-plan-20260622-v15.csv";
 export const worldCupTotoVersionedPurchaseSheetFileName =
-  "world-cup-toto-1637-visual-10000-plan-20260622-v14.csv";
+  "world-cup-toto-1637-visual-10000-plan-20260622-v15.csv";
 export const worldCupTotoVersionedPurchaseSheet200FileName =
-  "world-cup-toto-1637-visual-20000-plan-20260622-v14.csv";
+  "world-cup-toto-1637-visual-20000-plan-20260622-v15.csv";
 export const worldCupTotoLegacyReportFileName =
   "world-cup-toto-1634-1636-evolved-plan.pdf";
 export const worldCupTotoLegacyPurchaseSheetFileName =
   "world-cup-toto-1636-hot10-20000-plan.csv";
 
 export const worldCupTotoReportVersion = {
-  csv200Sha256: "7fc51d40e37d4f83ea697852251ac1d6ecbbd924804b7ff87f90e08f499dc5dc",
-  csv50Sha256: "36b8fedd4036555650bf42f8dd35bb3ac4f28969dd901a90c0af1708cd13f881",
-  csvSha256: "8f7f389221216d9ff6e8a07d5b5f3536b1fbd8391274efabc8d968a15393f79a",
-  label: "2026-06-22 v14",
+  csv200Sha256: "d8e4eecd5feb9eb765425aa348b56b8bddc041d21bf36c65563e75d3650a94d6",
+  csv50Sha256: "b79ff958e777b3882b94c000341bf752e4843feecf1e566aa6d90f5458d15f2a",
+  csvSha256: "027e04c3f299ccc3c58cb340ffaf7352583df229476d1f7a9196fcb47d0653f5",
+  label: "2026-06-22 v15",
   latest200CsvFileName: worldCupTotoNextPurchaseSheet200FileName,
   latestCsvFileName: worldCupTotoNextPurchaseSheetFileName,
   latest50CsvFileName: worldCupTotoNextPurchaseSheet50FileName,
@@ -36,8 +36,8 @@ export const worldCupTotoReportVersion = {
   latestPdfFileName: worldCupTotoLatestReportFileName,
   legacyCsvFileName: worldCupTotoLegacyPurchaseSheetFileName,
   legacyPdfFileName: worldCupTotoLegacyReportFileName,
-  pdfSha256: "35bd86724ffc5b6056f29304ba1bcf5d64fce673f6128135dbc4e191299f3d68",
-  publishedAtLabel: "2026-06-22 21:05 JST",
+  pdfSha256: "84044767a31fcd88dfc4b4d87f42da29b443415c7f8bee523f6441e310dd9947",
+  publishedAtLabel: "2026-06-22 21:55 JST",
   versioned200CsvFileName: worldCupTotoVersionedPurchaseSheet200FileName,
   versionedCsvFileName: worldCupTotoVersionedPurchaseSheetFileName,
   versioned50CsvFileName: worldCupTotoVersionedPurchaseSheet50FileName,
@@ -153,6 +153,20 @@ export type Toto1637ExternalMarketOverlay = {
   summary: string;
 };
 
+export type TotoOfficialVoteInterpretation = {
+  label: string;
+  note: string;
+  signals: string[];
+};
+
+export type Toto1637FinalLogic = {
+  backtestSignals: string[];
+  deadlineAction: string;
+  label: string;
+  selectedPlanLabel: string;
+  summary: string;
+};
+
 export type WorldCupContextFactorKey =
   | "country_name_bias"
   | "draw_ok"
@@ -196,6 +210,17 @@ const TOTO_PRIZE_TIERS = [
   { carryoverEligible: false, missCount: 1, poolShare: 0.15 },
   { carryoverEligible: false, missCount: 2, poolShare: 0.15 },
 ] as const;
+
+export const worldCupTotoOfficialVoteInterpretation: TotoOfficialVoteInterpretation = {
+  label: "公式投票率は日本のtoto購入者の人気",
+  note:
+    "公式投票率は勝率モデルではなく、日本のtoto購入者がどの出目を買っているかを示すデータ。払戻の薄さを読むp_publicとして使い、実勝率寄りのp_modelは外部市場とW杯文脈で補う。",
+  signals: [
+    "日本代表、ドイツ、スペイン、イングランドなどは知名度で勝ち側に寄りやすい。",
+    "寄りすぎた本命は当たりやすくても払戻が薄い。外部市場との差が大きい時は分散候補にする。",
+    "公式投票率は締切直前ほど重要。購入判断は最終30分の再取得を優先する。",
+  ],
+};
 
 export const worldCupToto1637ContextModel = {
   factors: [
@@ -437,7 +462,7 @@ export const worldCupToto1637Matches: Toto1637PlanMatch[] = [
     kickoffLabel: "06/26 05:00",
     home: "Ecuador",
     away: "Germany",
-    votes: { "1": 0.0531, "0": 0.1207, "2": 0.8262 },
+    votes: { "1": 0.0474, "0": 0.117, "2": 0.8356 },
     recommendedOutcomes: ["2", "0"],
     ruleLabel: "favorite plus matchday3 draw",
     note: "Germany is still the main line, but country-name bias, draw-ok condition, and rotation risk keep draw in the sheet.",
@@ -456,7 +481,7 @@ export const worldCupToto1637Matches: Toto1637PlanMatch[] = [
     kickoffLabel: "06/26 08:00",
     home: "Japan",
     away: "Sweden",
-    votes: { "1": 0.614, "0": 0.2626, "2": 0.1234 },
+    votes: { "1": 0.6454, "0": 0.2463, "2": 0.1083 },
     recommendedOutcomes: ["1", "0"],
     ruleLabel: "Japan win plus draw",
     note: "Japan is the main line, but public share has moved above 60%, so draw remains a necessary hedge.",
@@ -474,7 +499,7 @@ export const worldCupToto1637Matches: Toto1637PlanMatch[] = [
     kickoffLabel: "06/27 09:00",
     home: "Uruguay",
     away: "Spain",
-    votes: { "1": 0.0835, "0": 0.1923, "2": 0.7242 },
+    votes: { "1": 0.073, "0": 0.1785, "2": 0.7485 },
     recommendedOutcomes: ["2", "0"],
     ruleLabel: "semi lock plus draw",
     note: "Spain is the main line; group condition and rotation risk keep draw alive until the final standings check.",
@@ -493,7 +518,7 @@ export const worldCupToto1637Matches: Toto1637PlanMatch[] = [
     kickoffLabel: "06/28 08:30",
     home: "Colombia",
     away: "Portugal",
-    votes: { "1": 0.2691, "0": 0.3, "2": 0.4309 },
+    votes: { "1": 0.263, "0": 0.3057, "2": 0.4313 },
     recommendedOutcomes: ["2", "0", "1"],
     ruleLabel: "full spread",
     note: "Portugal leads public share, but the match is not a lock. Keep all three outcomes.",
@@ -512,7 +537,7 @@ export const worldCupToto1637Matches: Toto1637PlanMatch[] = [
     kickoffLabel: "06/28 11:00",
     home: "Algeria",
     away: "Austria",
-    votes: { "1": 0.1914, "0": 0.2891, "2": 0.5195 },
+    votes: { "1": 0.1922, "0": 0.2902, "2": 0.5176 },
     recommendedOutcomes: ["2", "0"],
     ruleLabel: "away win plus draw",
     note: "Austria is the main line; draw is material enough to keep and is helped by group-condition risk.",
@@ -530,7 +555,7 @@ export const worldCupToto1637Matches: Toto1637PlanMatch[] = [
     kickoffLabel: "06/26 08:00",
     home: "Tunisia",
     away: "Netherlands",
-    votes: { "1": 0.032, "0": 0.0505, "2": 0.9175 },
+    votes: { "1": 0.0268, "0": 0.0423, "2": 0.9309 },
     recommendedOutcomes: ["2", "0"],
     ruleLabel: "favorite plus thin draw hedge",
     note: "Netherlands remains the main line, but 90%+ public share is exactly where rotation and draw-ok risk should be visible.",
@@ -549,7 +574,7 @@ export const worldCupToto1637Matches: Toto1637PlanMatch[] = [
     kickoffLabel: "06/26 11:00",
     home: "Paraguay",
     away: "Australia",
-    votes: { "1": 0.3739, "0": 0.3082, "2": 0.3179 },
+    votes: { "1": 0.3669, "0": 0.3101, "2": 0.323 },
     recommendedOutcomes: ["1", "0", "2"],
     ruleLabel: "three-way split",
     note: "The public is almost flat. This is one of the main coverage slots.",
@@ -566,7 +591,7 @@ export const worldCupToto1637Matches: Toto1637PlanMatch[] = [
     kickoffLabel: "06/27 04:00",
     home: "Norway",
     away: "France",
-    votes: { "1": 0.0918, "0": 0.1677, "2": 0.7405 },
+    votes: { "1": 0.0898, "0": 0.1647, "2": 0.7455 },
     recommendedOutcomes: ["2", "0"],
     ruleLabel: "semi lock plus draw",
     note: "France is the main line; keep draw as the cheap matchday3 hedge.",
@@ -585,7 +610,7 @@ export const worldCupToto1637Matches: Toto1637PlanMatch[] = [
     kickoffLabel: "06/28 06:00",
     home: "Panama",
     away: "England",
-    votes: { "1": 0.0278, "0": 0.0443, "2": 0.9279 },
+    votes: { "1": 0.0234, "0": 0.0403, "2": 0.9363 },
     recommendedOutcomes: ["2"],
     ruleLabel: "lock favorite over 92%",
     note: "England is still a hard lock unless final lineup news is extreme.",
@@ -602,7 +627,7 @@ export const worldCupToto1637Matches: Toto1637PlanMatch[] = [
     kickoffLabel: "06/28 08:30",
     home: "Congo DR",
     away: "Uzbekistan",
-    votes: { "1": 0.3878, "0": 0.3395, "2": 0.2727 },
+    votes: { "1": 0.3955, "0": 0.3402, "2": 0.2643 },
     recommendedOutcomes: ["1", "0", "2"],
     ruleLabel: "three-way split",
     note: "Top two outcomes are only 4.8pt apart and draw is above 30%. Keep all three.",
@@ -619,7 +644,7 @@ export const worldCupToto1637Matches: Toto1637PlanMatch[] = [
     kickoffLabel: "06/28 11:00",
     home: "Jordan",
     away: "Argentina",
-    votes: { "1": 0.0265, "0": 0.04, "2": 0.9335 },
+    votes: { "1": 0.0215, "0": 0.034, "2": 0.9445 },
     recommendedOutcomes: ["2"],
     ruleLabel: "lock favorite over 93%",
     note: "Argentina is a hard lock unless group condition means heavy rotation.",
@@ -636,7 +661,7 @@ export const worldCupToto1637Matches: Toto1637PlanMatch[] = [
     kickoffLabel: "06/27 12:00",
     home: "New Zealand",
     away: "Belgium",
-    votes: { "1": 0.0412, "0": 0.0735, "2": 0.8853 },
+    votes: { "1": 0.0402, "0": 0.0911, "2": 0.8687 },
     recommendedOutcomes: ["2", "0"],
     ruleLabel: "favorite plus thin draw hedge",
     note: "Belgium remains the main line, but 88%+ public share plus rotation risk is enough to keep draw in the preliminary sheet.",
@@ -655,7 +680,7 @@ export const worldCupToto1637Matches: Toto1637PlanMatch[] = [
     kickoffLabel: "06/28 06:00",
     home: "Croatia",
     away: "Ghana",
-    votes: { "1": 0.7655, "0": 0.1529, "2": 0.0816 },
+    votes: { "1": 0.762, "0": 0.1579, "2": 0.0801 },
     recommendedOutcomes: ["1", "0"],
     ruleLabel: "semi lock plus draw",
     note: "Croatia is the main line; keep draw because matchday3 can turn into a condition game.",
@@ -1052,120 +1077,120 @@ function strongestPositiveDelta(delta: Record<OutcomeValue, number>) {
 const worldCupToto1637ExternalMarketRawRows = [
   {
     actionLabel: "市場はドイツ一択ではない。最終市場でも同じなら1/0を足す最優先枠。",
-    delta: { "1": 0.2106, "0": 0.1131, "2": -0.3237 },
+    delta: { "1": 0.2163, "0": 0.1168, "2": -0.3331 },
     marketProb: { "1": 0.2637, "0": 0.2338, "2": 0.5025 },
     matchNo: 1,
     sourceSlug: "fwc-ecu-ger-2026-06-25",
-    sourceUpdatedAt: "2026-06-22T11:27:57Z",
-    volumeUsd: 364_299,
+    sourceUpdatedAt: "2026-06-22T11:57:57Z",
+    volumeUsd: 365_130,
   },
   {
-    actionLabel: "日本人気がやや重い。100口以内では様子見、200口超なら2を検討。",
-    delta: { "1": -0.1016, "0": 0.011, "2": 0.0905 },
+    actionLabel: "日本人気がさらに重い。108口では1/0を残し、2は締切直前の市場上振れで追加候補。",
+    delta: { "1": -0.133, "0": 0.0273, "2": 0.1056 },
     marketProb: { "1": 0.5124, "0": 0.2736, "2": 0.2139 },
     matchNo: 2,
     sourceSlug: "fwc-jpn-swe-2026-06-25",
-    sourceUpdatedAt: "2026-06-22T11:27:58Z",
-    volumeUsd: 125_280,
+    sourceUpdatedAt: "2026-06-22T11:57:57Z",
+    volumeUsd: 125_354,
   },
   {
     actionLabel: "スペイン本線は維持。ドローが20%を超えるので締切版では0を復活候補にする。",
-    delta: { "1": 0.0421, "0": 0.0238, "2": -0.0659 },
+    delta: { "1": 0.0526, "0": 0.0376, "2": -0.0902 },
     marketProb: { "1": 0.1256, "0": 0.2161, "2": 0.6583 },
     matchNo: 3,
     sourceSlug: "fwc-uru-esp-2026-06-26",
-    sourceUpdatedAt: "2026-06-22T11:27:58Z",
-    volumeUsd: 96_875,
+    sourceUpdatedAt: "2026-06-22T11:57:58Z",
+    volumeUsd: 96_878,
   },
   {
     actionLabel: "公式と市場のズレは小さめ。外部市場版ではここを薄めてM01/M05へ資金移動。",
-    delta: { "1": 0.0045, "0": -0.0463, "2": 0.0417 },
-    marketProb: { "1": 0.2736, "0": 0.2537, "2": 0.4726 },
+    delta: { "1": 0.0134, "0": -0.0494, "2": 0.036 },
+    marketProb: { "1": 0.2764, "0": 0.2563, "2": 0.4673 },
     matchNo: 4,
     sourceSlug: "fwc-col-por-2026-06-27",
-    sourceUpdatedAt: "2026-06-22T11:27:57Z",
-    volumeUsd: 64_709,
+    sourceUpdatedAt: "2026-06-22T11:57:57Z",
+    volumeUsd: 64_711,
   },
   {
     actionLabel: "公式よりかなり接戦。Austria固定ではなく1/0/2へ広げる。",
-    delta: { "1": 0.1121, "0": 0.0243, "2": -0.1364 },
+    delta: { "1": 0.1113, "0": 0.0232, "2": -0.1345 },
     marketProb: { "1": 0.3035, "0": 0.3134, "2": 0.3831 },
     matchNo: 5,
     sourceSlug: "fwc-alg-aut-2026-06-27",
-    sourceUpdatedAt: "2026-06-22T11:27:57Z",
+    sourceUpdatedAt: "2026-06-22T11:57:56Z",
     volumeUsd: 38_686,
   },
   {
     actionLabel: "Netherlands本線。ドロー差分はあるが、200口以内ではまだロック寄り。",
-    delta: { "1": 0.0028, "0": 0.044, "2": -0.0469 },
+    delta: { "1": 0.008, "0": 0.0522, "2": -0.0603 },
     marketProb: { "1": 0.0348, "0": 0.0945, "2": 0.8706 },
     matchNo: 6,
     sourceSlug: "fwc-tun-ned-2026-06-25",
-    sourceUpdatedAt: "2026-06-22T11:27:58Z",
-    volumeUsd: 208_157,
+    sourceUpdatedAt: "2026-06-22T11:57:57Z",
+    volumeUsd: 208_178,
   },
   {
     actionLabel: "市場はドロー本命。ここは現行どおり全分散を維持。",
-    delta: { "1": -0.0439, "0": 0.1204, "2": -0.0765 },
+    delta: { "1": -0.0369, "0": 0.1185, "2": -0.0816 },
     marketProb: { "1": 0.33, "0": 0.4286, "2": 0.2414 },
     matchNo: 7,
     sourceSlug: "fwc-par-aus-2026-06-25",
-    sourceUpdatedAt: "2026-06-22T11:27:58Z",
-    volumeUsd: 158_476,
+    sourceUpdatedAt: "2026-06-22T11:57:57Z",
+    volumeUsd: 158_492,
   },
   {
     actionLabel: "France人気は公式ほど強くない。予算が増えたら0/1を足す候補。",
-    delta: { "1": 0.1277, "0": 0.0713, "2": -0.199 },
-    marketProb: { "1": 0.2195, "0": 0.239, "2": 0.5415 },
+    delta: { "1": 0.122, "0": 0.0767, "2": -0.1987 },
+    marketProb: { "1": 0.2118, "0": 0.2414, "2": 0.5468 },
     matchNo: 8,
     sourceSlug: "fwc-nor-fra-2026-06-26",
-    sourceUpdatedAt: "2026-06-22T11:27:58Z",
-    volumeUsd: 25_365,
+    sourceUpdatedAt: "2026-06-22T11:57:57Z",
+    volumeUsd: 25_703,
   },
   {
     actionLabel: "Englandはまだ本線。ただし92.8%ほど硬くはないので締切ニュースで0を検討。",
-    delta: { "1": 0.0667, "0": 0.0701, "2": -0.1369 },
+    delta: { "1": 0.0711, "0": 0.0741, "2": -0.1453 },
     marketProb: { "1": 0.0945, "0": 0.1144, "2": 0.791 },
     matchNo: 9,
     sourceSlug: "fwc-pan-eng-2026-06-27",
-    sourceUpdatedAt: "2026-06-22T11:27:58Z",
-    volumeUsd: 22_499,
+    sourceUpdatedAt: "2026-06-22T11:57:57Z",
+    volumeUsd: 22_623,
   },
   {
     actionLabel: "市場はCongo DR寄りを補強。現行の全分散枠として残す。",
-    delta: { "1": 0.0896, "0": -0.0933, "2": 0.0037 },
+    delta: { "1": 0.0819, "0": -0.094, "2": 0.0121 },
     marketProb: { "1": 0.4774, "0": 0.2462, "2": 0.2764 },
     matchNo: 10,
     sourceSlug: "fwc-cod-uzb-2026-06-27",
-    sourceUpdatedAt: "2026-06-22T11:27:57Z",
+    sourceUpdatedAt: "2026-06-22T11:57:56Z",
     volumeUsd: 13_279,
   },
   {
     actionLabel: "Argentinaは本線継続。公式ほど硬くはないが200口以内では2優先。",
-    delta: { "1": 0.0474, "0": 0.0733, "2": -0.1207 },
+    delta: { "1": 0.0524, "0": 0.0793, "2": -0.1317 },
     marketProb: { "1": 0.0739, "0": 0.1133, "2": 0.8128 },
     matchNo: 11,
     sourceSlug: "fwc-jor-arg-2026-06-27",
-    sourceUpdatedAt: "2026-06-22T11:27:58Z",
-    volumeUsd: 44_386,
+    sourceUpdatedAt: "2026-06-22T11:57:57Z",
+    volumeUsd: 45_781,
   },
   {
     actionLabel: "Belgiumは本線継続。ドローは上振れ候補だが優先度はM01/M05/M13未満。",
-    delta: { "1": 0.0235, "0": 0.0608, "2": -0.0843 },
+    delta: { "1": 0.0245, "0": 0.0432, "2": -0.0677 },
     marketProb: { "1": 0.0647, "0": 0.1343, "2": 0.801 },
     matchNo: 12,
     sourceSlug: "fwc-nzl-bel-2026-06-26",
-    sourceUpdatedAt: "2026-06-22T11:27:58Z",
-    volumeUsd: 39_293,
+    sourceUpdatedAt: "2026-06-22T11:57:57Z",
+    volumeUsd: 39_295,
   },
   {
     actionLabel: "Croatia人気が重い。市場反映版では最低でも0を足す。",
-    delta: { "1": -0.1675, "0": 0.0933, "2": 0.0742 },
+    delta: { "1": -0.164, "0": 0.0883, "2": 0.0757 },
     marketProb: { "1": 0.598, "0": 0.2462, "2": 0.1558 },
     matchNo: 13,
     sourceSlug: "fwc-cro-gha-2026-06-27",
-    sourceUpdatedAt: "2026-06-22T11:27:57Z",
-    volumeUsd: 21_162,
+    sourceUpdatedAt: "2026-06-22T11:57:57Z",
+    volumeUsd: 21_165,
   },
 ] satisfies Array<
   Omit<
@@ -1199,11 +1224,11 @@ export const worldCupToto1637ExternalMarketOverlay: Toto1637ExternalMarketOverla
     "p_market - p_public が +8pt 以上なら、公式で薄い出目でも昇格候補にする。",
     "公式人気の本命が p_market で -12pt 以上なら、単独ロックを解除する。",
     "p_market のドローが20%以上なら、締切版で0を残す候補に戻す。",
-    "200口以内では M01/M05/M07/M13 を優先し、低流動性のM08/M09/M11/M12は締切ニュースが強い時だけ足す。",
+    "200口以内では M01/M05/M07/M13 と日本戦M02の過熱を優先し、低流動性のM08/M09/M11/M12は締切ニュースが強い時だけ足す。",
   ],
-  fetchedAtLabel: "2026-06-22 20:33 JST",
+  fetchedAtLabel: "2026-06-22 20:57 JST",
   finalSelectionSummary:
-    "このまま締切直前も同じ市場差なら、現行の公式+W杯文脈プランからM01/M05/M13へ分散を移す。標準は市場補強108口、広めは市場補強162口。",
+    "このまま締切直前も同じ市場差なら、現行の公式+W杯文脈プランからM01/M02/M05/M07/M13へ分散を移す。暫定確定は市場補強108口、広めは市場補強162口。",
   marketAdjustedPlans: [
     buildToto1637MultiPlan(
       "市場補強27口",
@@ -1217,13 +1242,13 @@ export const worldCupToto1637ExternalMarketOverlay: Toto1637ExternalMarketOverla
     ),
     buildToto1637MultiPlan(
       "市場補強108口",
-      ["2/0/1", "1", "2", "2", "2/0/1", "2", "1/0/2", "2", "2", "1/0", "2", "2", "1/0"],
-      "標準案。M10のドローも戻し、公式より市場が荒れを見る箇所へ寄せる。",
+      ["2/0/1", "1/0", "2", "2", "2/0/1", "2", "1/0/2", "2", "2", "1", "2", "2", "1/0"],
+      "暫定確定案。M01/M05/M07/M13に加えて、日本人気が重いM02を1/0で受ける。",
     ),
     buildToto1637MultiPlan(
       "市場補強162口",
-      ["2/0/1", "1", "2", "2", "2/0/1", "2", "1/0/2", "2", "2", "1/0/2", "2", "2", "1/0"],
-      "広め案。M10を全分散へ戻しつつ200口以内に収める。",
+      ["2/0/1", "1/0", "2", "2", "2/0/1", "2", "1/0/2", "2", "2", "1", "2", "2", "1/0/2"],
+      "広め案。108口案からM13を全分散へ広げつつ200口以内に収める。",
     ),
   ],
   sourceDocs: [
@@ -1234,7 +1259,21 @@ export const worldCupToto1637ExternalMarketOverlay: Toto1637ExternalMarketOverla
   ],
   sourceUrl: worldCupTotoPolymarketSportsEventsUrl,
   summary:
-    "公式投票率とPolymarket価格の差を見ると、M01/M05/M07/M13は公式人気より荒れ側を厚くする根拠がある。一方、M04は外部市場のズレが小さいため、外部市場版ではここを薄めて予算を移す。",
+    "公式投票率とPolymarket価格の差を見ると、M01/M05/M07/M13は公式人気より荒れ側を厚くする根拠がある。M02も日本人気が強くなったため、108口案では1/0で受ける。一方、M04/M10は外部市場の優先度を下げて予算を移す。",
+};
+
+export const worldCupToto1637FinalLogic: Toto1637FinalLogic = {
+  backtestSignals: [
+    "1634は公式人気順が9試合ズレ。公式だけで1点に寄せると荒れを拾えなかった。",
+    "1635は公式人気順が2試合ズレで3等相当。第2戦寄りは順当が増えるが、強人気ドローは残す価値があった。",
+    "1637は第3戦寄りなので、公式人気順よりも外部市場差分とグループ条件を優先してロックを解除する。",
+  ],
+  deadlineAction:
+    "2026-06-25 18:25に公式投票率、売上、Polymarket 1X2を再取得し、差分が同じなら市場補強108口を購入候補として固定する。18:55以降は操作しない。",
+  label: "1637暫定確定ロジック",
+  selectedPlanLabel: "市場補強108口",
+  summary:
+    "公式投票率は日本の購入人気、Polymarketは実勝率寄りの市場価格、W杯文脈は第3戦の条件補正として分ける。現時点の最適候補は市場補強108口=10,800円。",
 };
 
 export const worldCupToto1637NextPlan = {
@@ -1253,14 +1292,14 @@ export const worldCupToto1637NextPlan = {
   recommendedBudgetYen: worldCupToto1637PurchaseRows.reduce((sum, row) => sum + row.unitCount, 0) * TOTO13_STAKE_YEN,
   recommendedPurchaseWindowLabel: "2026-06-25 18:35-18:50 JST",
   recommendedUnitCount: worldCupToto1637PurchaseRows.reduce((sum, row) => sum + row.unitCount, 0),
-  salesAsOfLabel: "2026-06-22 01:43 JST",
+  salesAsOfLabel: "2026-06-22 20:56 JST",
   salesSourceUrl: worldCupTotoOfficialSales1637Url,
   sourceUrl: worldCupTotoOfficialVote1637Url,
   summary:
-    "1637 is treated as matchday3: do not buy early. The main handoff is a multi-pick table. At the final window, refresh official votes and Polymarket prices, then choose either the official+context plan or the market-adjusted 108/162-unit plan.",
-  totalSalesYen: 28_015_000,
-  voteAsOfLabel: "2026-06-22 01:02 JST",
-  voteUnits: 276_271,
+    "1637 is treated as matchday3: do not buy early. The main handoff is a multi-pick table. At the final window, refresh official votes and Polymarket prices, then choose the market-adjusted 108-unit plan unless the final gap collapses.",
+  totalSalesYen: 43_181_300,
+  voteAsOfLabel: "2026-06-22 20:56 JST",
+  voteUnits: 431_813,
   workflow: [
     {
       action: "公式投票率と売上を取り直し、締切直前版のPDF/マルチ表を再生成する。",
