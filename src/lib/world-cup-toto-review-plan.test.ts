@@ -214,7 +214,7 @@ describe("world cup toto review plan", () => {
     expect(worldCupTotoVersionedPurchaseSheetFileName).toBe("world-cup-toto-1637-visual-10000-plan-20260622-v17.csv");
     expect(worldCupTotoVersionedPurchaseSheet200FileName).toBe("world-cup-toto-1637-visual-20000-plan-20260622-v17.csv");
     expect(worldCupTotoReportVersion.label).toBe("2026-06-22 v17");
-    expect(worldCupTotoReportVersion.publishedAtLabel).toBe("2026-06-22 22:15 JST");
+    expect(worldCupTotoReportVersion.publishedAtLabel).toBe("2026-06-22 22:34 JST");
     expect(worldCupTotoReportVersion.pdfSha256).toHaveLength(64);
     expect(worldCupTotoReportVersion.csv50Sha256).toHaveLength(64);
     expect(worldCupTotoReportVersion.csvSha256).toHaveLength(64);

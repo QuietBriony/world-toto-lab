@@ -37,7 +37,7 @@ export const worldCupTotoReportVersion = {
   legacyCsvFileName: worldCupTotoLegacyPurchaseSheetFileName,
   legacyPdfFileName: worldCupTotoLegacyReportFileName,
   pdfSha256: "53e34f5e0d22a23ea4a5210a5408cb52fb7e0701b5e7234ab45dac40250a98a3",
-  publishedAtLabel: "2026-06-22 22:15 JST",
+  publishedAtLabel: "2026-06-22 22:34 JST",
   versioned200CsvFileName: worldCupTotoVersionedPurchaseSheet200FileName,
   versionedCsvFileName: worldCupTotoVersionedPurchaseSheetFileName,
   versioned50CsvFileName: worldCupTotoVersionedPurchaseSheet50FileName,
