@@ -1,11 +1,32 @@
 {
   "latest": {
+    "base20000Csv": "world-cup-toto-latest-base-20000-sheet.csv",
     "baseCsv": "world-cup-toto-latest-base-sheet.csv",
     "csv": "world-cup-toto-latest-purchase-sheet.csv",
+    "csv10000": "world-cup-toto-latest-10000-purchase-sheet.csv",
+    "csv20000": "world-cup-toto-latest-20000-purchase-sheet.csv",
     "hotExtraCsv": "world-cup-toto-latest-hot-extra-sheet.csv",
     "pdf": "world-cup-toto-latest.pdf"
   },
   "versions": [
+    {
+      "base20000Csv": "world-cup-toto-1637-base-19000-plan-20260622-v10.csv",
+      "base20000CsvSha256": "B4654BE177DE5528E6DF5C938AABDFEDEC579D3316FA55DFBB126C11F2A0604B",
+      "baseCsv": "world-cup-toto-1637-base-9000-plan-20260622-v10.csv",
+      "baseCsvSha256": "A892B99B372801B50952CCBF341EAB799AD982EEBF68627F76B6636D61F22F80",
+      "csv": "world-cup-toto-1637-entry-10000-plan-20260622-v10.csv",
+      "csv20000": "world-cup-toto-1637-entry-20000-plan-20260622-v10.csv",
+      "csv20000Sha256": "2DEBD3BB9DA81F31E6F33BCA46A6FF8EE683E369BC5751AC4572DB6A9422ACB3",
+      "csvSha256": "45C1605BB1D5C62A6D54D6BE337AD8331799D0B68525B1339EC1EF207E806C56",
+      "hotExtraCsv": "world-cup-toto-1637-hot-extra-1000-plan-20260622-v10.csv",
+      "hotExtraCsvSha256": "4A84449FE52672EB862002F913B209DE2A30B121471A835A705753E69226C00F",
+      "label": "2026-06-22 v10",
+      "legacyPdf": "world-cup-toto-1634-1636-evolved-plan.pdf",
+      "pdf": "world-cup-toto-1634-1637-evolved-plan-20260622-v10.pdf",
+      "pdfSha256": "FDA7C0F5C6CAFA2549F4AE6F414D373D9BCC2E90953EC00B2F553ECF5D134E43",
+      "publishedAt": "2026-06-22 18:15 JST",
+      "summary": "Adds a 200-entry purchase-transfer sheet, keeps the 10,000 yen sheet, moves match_1 through match_13 to the front of every CSV, removes the long all-pick PDF dump, and documents external market sources for future probability blending."
+    },
     {
       "baseCsv": "world-cup-toto-1637-base-9000-plan-20260622-v9.csv",
       "baseCsvSha256": "9A83F58C2EC49A3396DB16153F5F6B9C44993DCE4A742A70EFC9DE112F116FB0",

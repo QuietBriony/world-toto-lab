@@ -4,37 +4,53 @@ export const worldCupTotoLatestReportFileName =
   "world-cup-toto-latest.pdf";
 export const worldCupTotoNextPurchaseSheetFileName =
   "world-cup-toto-latest-purchase-sheet.csv";
+export const worldCupTotoNextPurchaseSheet10000FileName =
+  "world-cup-toto-latest-10000-purchase-sheet.csv";
+export const worldCupTotoNextPurchaseSheet20000FileName =
+  "world-cup-toto-latest-20000-purchase-sheet.csv";
 export const worldCupTotoNextBasePurchaseSheetFileName =
   "world-cup-toto-latest-base-sheet.csv";
+export const worldCupTotoNextBasePurchaseSheet20000FileName =
+  "world-cup-toto-latest-base-20000-sheet.csv";
 export const worldCupTotoNextHotExtraSheetFileName =
   "world-cup-toto-latest-hot-extra-sheet.csv";
 
 export const worldCupTotoVersionedReportFileName =
-  "world-cup-toto-1634-1637-evolved-plan-20260622-v9.pdf";
+  "world-cup-toto-1634-1637-evolved-plan-20260622-v10.pdf";
 export const worldCupTotoVersionedPurchaseSheetFileName =
-  "world-cup-toto-1637-entry-10000-plan-20260622-v9.csv";
+  "world-cup-toto-1637-entry-10000-plan-20260622-v10.csv";
+export const worldCupTotoVersionedPurchaseSheet20000FileName =
+  "world-cup-toto-1637-entry-20000-plan-20260622-v10.csv";
 export const worldCupTotoVersionedBasePurchaseSheetFileName =
-  "world-cup-toto-1637-base-9000-plan-20260622-v9.csv";
+  "world-cup-toto-1637-base-9000-plan-20260622-v10.csv";
+export const worldCupTotoVersionedBasePurchaseSheet20000FileName =
+  "world-cup-toto-1637-base-19000-plan-20260622-v10.csv";
 export const worldCupTotoVersionedHotExtraSheetFileName =
-  "world-cup-toto-1637-hot-extra-1000-plan-20260622-v9.csv";
+  "world-cup-toto-1637-hot-extra-1000-plan-20260622-v10.csv";
 export const worldCupTotoLegacyReportFileName =
   "world-cup-toto-1634-1636-evolved-plan.pdf";
 export const worldCupTotoLegacyPurchaseSheetFileName =
   "world-cup-toto-1636-hot10-20000-plan.csv";
 
 export const worldCupTotoReportVersion = {
-  baseCsvSha256: "9a83f58c2ec49a3396db16153f5f6b9c44993dce4a742a70efc9de112f116fb0",
-  csvSha256: "2885971faa5df664731f8e6066d3dda512a6fa6ff64e36d5544618b8b5c737da",
-  hotExtraCsvSha256: "c8f1627ee48384d6f30c2f66a47c0dab73e4225167f41f547b784b1858672f4c",
-  label: "2026-06-22 v9",
+  base20000CsvSha256: "b4654be177de5528e6df5c938aabdfedec579d3316fa55dfbb126c11f2a0604b",
+  baseCsvSha256: "a892b99b372801b50952ccbf341eab799ad982eebf68627f76b6636d61f22f80",
+  csv20000Sha256: "2debd3bb9da81f31e6f33bca46a6ff8ee683e369bc5751ac4572db6a9422acb3",
+  csvSha256: "45c1605bb1d5c62a6d54d6be337ad8331799d0b68525b1339ec1ef207e806c56",
+  hotExtraCsvSha256: "4a84449fe52672eb862002f913b209de2a30b121471a835a705753e69226c00f",
+  label: "2026-06-22 v10",
+  latest20000CsvFileName: worldCupTotoNextPurchaseSheet20000FileName,
+  latestBase20000CsvFileName: worldCupTotoNextBasePurchaseSheet20000FileName,
   latestBaseCsvFileName: worldCupTotoNextBasePurchaseSheetFileName,
   latestCsvFileName: worldCupTotoNextPurchaseSheetFileName,
   latestHotExtraCsvFileName: worldCupTotoNextHotExtraSheetFileName,
   latestPdfFileName: worldCupTotoLatestReportFileName,
   legacyCsvFileName: worldCupTotoLegacyPurchaseSheetFileName,
   legacyPdfFileName: worldCupTotoLegacyReportFileName,
-  pdfSha256: "fdb0612e69570a7f277fc6919225b2cd63c1a7a115f7c26301808ed7d39501de",
-  publishedAtLabel: "2026-06-22 16:30 JST",
+  pdfSha256: "fda7c0f5c6cafa2549f4ae6f414d373d9bcc2e90953ec00b2f553ecf5d134e43",
+  publishedAtLabel: "2026-06-22 18:15 JST",
+  versioned20000CsvFileName: worldCupTotoVersionedPurchaseSheet20000FileName,
+  versionedBase20000CsvFileName: worldCupTotoVersionedBasePurchaseSheet20000FileName,
   versionedBaseCsvFileName: worldCupTotoVersionedBasePurchaseSheetFileName,
   versionedCsvFileName: worldCupTotoVersionedPurchaseSheetFileName,
   versionedHotExtraCsvFileName: worldCupTotoVersionedHotExtraSheetFileName,
@@ -935,11 +951,16 @@ export function buildWorldCupToto1637PurchaseRows(uniqueLineLimit = 90): Toto163
 }
 
 export const worldCupToto1637PurchaseRows = buildWorldCupToto1637PurchaseRows();
+export const worldCupToto1637PurchaseRows20000 = buildWorldCupToto1637PurchaseRows(190);
 
 export const worldCupToto1637NextPlan = {
   coreLineCount: buildAllowedRows(worldCupToto1637Matches).length,
   hardStopLabel: "2026-06-25 18:55 JST",
   hotDoublePatternCount: 10,
+  maxRecommendedBudgetYen:
+    worldCupToto1637PurchaseRows20000.reduce((sum, row) => sum + row.unitCount, 0) * TOTO13_STAKE_YEN,
+  maxRecommendedUnitCount: worldCupToto1637PurchaseRows20000.reduce((sum, row) => sum + row.unitCount, 0),
+  maxRecommendedUniqueLineCount: worldCupToto1637PurchaseRows20000.length,
   preliminaryUniqueLineCount: worldCupToto1637PurchaseRows.length,
   purchaseDeadlineLabel: "2026-06-25 19:00 JST",
   purchaseFreezeLabel: "2026-06-25 18:25 JST",
@@ -950,7 +971,7 @@ export const worldCupToto1637NextPlan = {
   salesSourceUrl: worldCupTotoOfficialSales1637Url,
   sourceUrl: worldCupTotoOfficialVote1637Url,
   summary:
-    "1637 is treated as matchday3: do not buy early. The preliminary sheet applies World Cup context adjustments for neutral venue, country-name bias, group situation, draw-ok incentives, and rotation risk. Freeze the latest vote/sales snapshot around 18:25, regenerate the sheet, then enter 90 base lines one unit each. If the final sheet still looks sane, add the separate Hot10 extra sheet for one more unit each.",
+    "1637 is treated as matchday3: do not buy early. The preliminary sheet applies World Cup context adjustments for neutral venue, country-name bias, group situation, draw-ok incentives, and rotation risk. Freeze the latest vote/sales snapshot around 18:25, regenerate the sheet, then enter either 90 base lines for the 10,000 yen plan or 190 base lines for the 20,000 yen cap plan. If the final sheet still looks sane, add the separate Hot10 extra sheet for one more unit each.",
   totalSalesYen: 28_015_000,
   voteAsOfLabel: "2026-06-22 01:02 JST",
   voteUnits: 276_271,
