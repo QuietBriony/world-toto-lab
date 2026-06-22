@@ -403,6 +403,66 @@ describe("world cup strategy", () => {
     expect(result.rows[0]?.cashProbability).toBeGreaterThan(result.rows[0]?.hitProbability ?? 0);
   });
 
+  it("guards the candidate universe so all-open 13-match rounds stay fast (no 3^13 freeze)", () => {
+    // 13 試合すべて open（本命 < 65% でロックされない）＝本来 3^13 = 1,594,323 通り。
+    // ガードが各試合をモデル上位 2 出目に縮約し、宇宙を 2^13 = 8192 以下へ抑える。
+    const openMatches = Array.from({ length: 13 }, (_value, index) =>
+      buildMatch(index + 1, {
+        modelProb0: 0.33,
+        modelProb1: 0.34,
+        modelProb2: 0.33,
+        officialVote0: 0.33,
+        officialVote1: 0.34,
+        officialVote2: 0.33,
+      }),
+    );
+    const result = enumeratePositiveEvCombos({
+      assumption: buildAssumption(),
+      limit: 50,
+      matches: openMatches,
+    });
+
+    expect(result.ready).toBe(true);
+    // 159万通りを全探索せず、縮約後の宇宙（≤ 2^13）だけを評価する。
+    expect(result.evaluatedCount).not.toBeNull();
+    expect(result.evaluatedCount ?? 0).toBeLessThanOrEqual(8192);
+    expect(result.evaluatedCount ?? 0).toBeGreaterThan(0);
+    // 縮約が起きたので truncated=true（一部の最下位モデル出目を除外）。
+    expect(result.truncated).toBe(true);
+  });
+
+  it("does not truncate rounds whose universe is within the limit", () => {
+    const result = enumeratePositiveEvCombos({
+      assumption: buildAssumption(),
+      limit: 3,
+      matches: [
+        buildMatch(1, { modelProb0: 0.1, modelProb1: 0.1, modelProb2: 0.8 }),
+        buildMatch(2, { modelProb0: 0.1, modelProb1: 0.1, modelProb2: 0.8 }),
+      ],
+    });
+
+    // 2 試合 = 3^2 = 9 通りは上限内なので全 outcome を評価（縮約なし）。
+    expect(result.ready).toBe(true);
+    expect(result.evaluatedCount).toBe(9);
+  });
+
+  it("recalibrated 65% lock fires for strong favorites on the featured rounds", () => {
+    // featured 第1636回は team-strength prior でモデル本命の最大が約0.699。
+    // 旧閾値 0.7 では1件もロックされず候補宇宙が膨張していたが、0.65 では強い本命が
+    // ロックされるようになる（buildWorldCupStrategyDashboard は実モデル確率を再計算する）。
+    const dash = buildWorldCupStrategyDashboard({ rounds: [], includePositiveCombos: false });
+    const round1636 = dash.rounds.find((round) => round.featured.roundNumber === 1636);
+
+    expect(round1636).toBeTruthy();
+    const lockPolicies = round1636!.outcomePolicies.filter(
+      (policy) => policy.kind === "model_lock",
+    );
+    expect(lockPolicies.length).toBeGreaterThan(0);
+    expect(lockPolicies[0]?.label).toBe("65%以上ロック");
+    // ロックは1出目だけを残す。
+    expect(lockPolicies[0]?.allowedOutcomes).toHaveLength(1);
+  });
+
   it("fixes known actual results and locks 70 percent model favorites in portfolio search", () => {
     const actualByMatchNo = new Map<number, "1" | "0" | "2">([
       [1, "0"],

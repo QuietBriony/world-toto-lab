@@ -962,12 +962,16 @@ function outcomePolicyFor(match: Match): WorldCupOutcomePolicy {
     };
   }
 
-  if (isKnownNumber(modelFavoriteProbability) && modelFavoriteProbability >= 0.7 && modelFavorite) {
+  // ロック閾値はモデルのスケールに合わせる。p_model は国別強度 prior（本命上限≈0.74）で
+  // 作るため、旧 officialVote コピー時代の 0.7 では強い本命でもほぼ発火しない
+  // （例: モデル本命 0.699 が 0.7 に僅かに届かずロック解除＝候補宇宙が膨張する一因）。
+  // 0.65 にすると「モデルが確信する強い本命（上位）」だけがロックされる。
+  if (isKnownNumber(modelFavoriteProbability) && modelFavoriteProbability >= 0.65 && modelFavorite) {
     return {
       allowedOutcomes: [modelFavorite],
       fixture,
       kind: "model_lock",
-      label: "70%以上ロック",
+      label: "65%以上ロック",
       matchNo: match.matchNo,
       modelFavorite,
       modelFavoriteProbability,
@@ -1675,6 +1679,39 @@ export function enumeratePositiveEvCombos(input: {
   }
 
   const assumption = input.assumption;
+
+  // 候補宇宙ガード: visit() は allowedOutcomes の直積を全葉まで同期 DFS するため、
+  // 全試合 open（3 出目）だと 3^13≈159万葉となり、各葉の payout/tier-EV 計算で
+  // メインスレッドを数秒ブロックする（友達のスマホでは 6-12 秒の凍結）。姉妹の
+  // calculateWorldCupSecondPrizeCoverage は同じ宇宙に coverageUniverseLimit ガードを
+  // 持つのに本関数には無かった。上限超過時は各試合をモデル上位 2 出目に縮約して
+  // 宇宙を抑える（EV は高確率出目が支配的で、最下位モデル出目を含む組は hit 確率が
+  // 小さく上位 EV リストには出てこないため、表示はほぼ不変）。それでも超過する
+  // （試合数が極端に多い）場合のみ DFS を打ち切って未計算を返す。
+  const fullUniverse = options.reduce((count, entries) => count * entries.length, 1);
+  const universeTooLarge = fullUniverse > coverageUniverseLimit;
+  const walk = universeTooLarge
+    ? options.map((entries) =>
+        entries.length <= 2
+          ? entries
+          : [...entries]
+              .sort(
+                (left, right) =>
+                  (right.modelProbability ?? 0) - (left.modelProbability ?? 0),
+              )
+              .slice(0, 2),
+      )
+    : options;
+  if (walk.reduce((count, entries) => count * entries.length, 1) > coverageUniverseLimit) {
+    return {
+      evaluatedCount: null,
+      ready: false,
+      rows: [],
+      totalPositiveCount: null,
+      truncated: true,
+    };
+  }
+
   const currentPicks = new Array<WorldCupStrategyPick>(matches.length);
   const currentModelProbabilities = new Array<number | null>(matches.length);
   const currentOfficialProbabilities = new Array<number | null>(matches.length);
@@ -1768,7 +1805,7 @@ export function enumeratePositiveEvCombos(input: {
       return;
     }
 
-    options[index].forEach((option) => {
+    walk[index].forEach((option) => {
       currentPicks[index] = {
         matchNo: option.matchNo,
         pick: option.outcome,
@@ -1800,7 +1837,7 @@ export function enumeratePositiveEvCombos(input: {
     ready: true,
     rows: topRows.sort(comparePositiveCombo),
     totalPositiveCount,
-    truncated: totalPositiveCount > topRows.length,
+    truncated: universeTooLarge || totalPositiveCount > topRows.length,
   };
 }
 
