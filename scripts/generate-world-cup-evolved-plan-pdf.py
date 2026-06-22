@@ -17,37 +17,30 @@ from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer, 
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PDF_NAME = "world-cup-toto-1634-1637-evolved-plan-20260622-v10.pdf"
-CSV_NAME = "world-cup-toto-1637-entry-10000-plan-20260622-v10.csv"
-CSV_200_NAME = "world-cup-toto-1637-entry-20000-plan-20260622-v10.csv"
-BASE_CSV_NAME = "world-cup-toto-1637-base-9000-plan-20260622-v10.csv"
-BASE_200_CSV_NAME = "world-cup-toto-1637-base-19000-plan-20260622-v10.csv"
-HOT_EXTRA_CSV_NAME = "world-cup-toto-1637-hot-extra-1000-plan-20260622-v10.csv"
+PDF_NAME = "world-cup-toto-1634-1637-evolved-plan-20260622-v11.pdf"
+CSV_50_NAME = "world-cup-toto-1637-entry-5000-plan-20260622-v11.csv"
+CSV_NAME = "world-cup-toto-1637-entry-10000-plan-20260622-v11.csv"
+CSV_200_NAME = "world-cup-toto-1637-entry-20000-plan-20260622-v11.csv"
 PDF_ALIASES = (
     PDF_NAME,
     "world-cup-toto-latest.pdf",
     "world-cup-toto-1634-1636-evolved-plan.pdf",
 )
+CSV_50_ALIASES = (
+    CSV_50_NAME,
+    "world-cup-toto-latest-50-purchase-sheet.csv",
+    "world-cup-toto-latest-5000-purchase-sheet.csv",
+)
 CSV_ALIASES = (
     CSV_NAME,
     "world-cup-toto-latest-purchase-sheet.csv",
+    "world-cup-toto-latest-100-purchase-sheet.csv",
     "world-cup-toto-latest-10000-purchase-sheet.csv",
 )
 CSV_200_ALIASES = (
     CSV_200_NAME,
+    "world-cup-toto-latest-200-purchase-sheet.csv",
     "world-cup-toto-latest-20000-purchase-sheet.csv",
-)
-BASE_CSV_ALIASES = (
-    BASE_CSV_NAME,
-    "world-cup-toto-latest-base-sheet.csv",
-)
-BASE_200_CSV_ALIASES = (
-    BASE_200_CSV_NAME,
-    "world-cup-toto-latest-base-20000-sheet.csv",
-)
-HOT_EXTRA_CSV_ALIASES = (
-    HOT_EXTRA_CSV_NAME,
-    "world-cup-toto-latest-hot-extra-sheet.csv",
 )
 OUT_PDF_DIR = ROOT / "output" / "pdf"
 OUT_CSV_DIR = ROOT / "output" / "purchase-sheets"
@@ -420,7 +413,7 @@ def row_proxy_score(row: tuple[str, ...], matches: list[PlanMatch]) -> float:
     return score
 
 
-def build_purchase_rows_1637(unique_line_limit: int = 90) -> list[dict[str, object]]:
+def build_purchase_rows_1637(unique_line_limit: int = 100) -> list[dict[str, object]]:
     sorted_rows = sorted(
         build_allowed_rows(MATCHES_1637),
         key=lambda row: (-row_proxy_score(row, MATCHES_1637), signature(row)),
@@ -428,14 +421,10 @@ def build_purchase_rows_1637(unique_line_limit: int = 90) -> list[dict[str, obje
     purchase_rows: list[dict[str, object]] = []
     cumulative_units = 0
     for index, row in enumerate(sorted_rows[:unique_line_limit], start=1):
-        units = 2 if index <= 10 else 1
+        units = 1
         cumulative_units += units
-        bucket = "hot" if index <= 10 else "core"
-        note = (
-            "暫定Hot枠。最終再計算後も残ったら最大2口まで。"
-            if bucket == "hot"
-            else "暫定1637枠。最終再計算で残れば1口。"
-        )
+        bucket = "direct"
+        note = "暫定1637枠。最終再計算で残れば1口だけ買う。"
         purchase_rows.append(
             {
                 "rank": index,
@@ -514,8 +503,9 @@ def build_purchase_rows(unit_budget: int = 200) -> list[dict[str, object]]:
 
 
 PURCHASE_ROWS_1636 = build_purchase_rows()
-PURCHASE_ROWS_1637 = build_purchase_rows_1637()
-PURCHASE_ROWS_1637_200 = build_purchase_rows_1637(190)
+PURCHASE_ROWS_1637_50 = build_purchase_rows_1637(50)
+PURCHASE_ROWS_1637 = build_purchase_rows_1637(100)
+PURCHASE_ROWS_1637_200 = build_purchase_rows_1637(200)
 CORE_LINE_COUNT_1636 = len(build_allowed_rows(MATCHES_1636))
 CORE_BUDGET_1636_YEN = CORE_LINE_COUNT_1636 * STAKE_YEN
 ACTUAL_1634 = actual_signature(MATCHES_1634)
@@ -628,12 +618,12 @@ def summary_table() -> Table:
     rows = [
         ["質問", "今回の答え"],
         ["1口いくら?", "toto13は1口100円。基本は同じ組み合わせを厚くせず、1口ずつバラで置く。"],
-        ["次の1637はいくら?", "暫定は100口 = 10,000円。90ユニークを1口ずつ + Hot10を追加で1口ずつ。最終再計算までは買わない。"],
+        ["次の1637はいくら?", "暫定は50口=5,000円、100口=10,000円、200口=20,000円。すべて重複なしで1行1口。最終再計算までは買わない。"],
         ["1636はいくらだった?", f"20%ドロー閾値込みの候補宇宙は{CORE_LINE_COUNT_1636:,}通り = {yen(CORE_BUDGET_1636_YEN)}。表示シートは上位{int(plan['units'])}口 = {yen(plan['cost_yen'])}に制限。"],
         ["当たったら?", "1等は選んだ出目の同時当せん口数で変わる。2等/3等も期待値に足す。"],
         ["EVは上がった?", f"market proxy上の{int(plan['units'])}口はEV {multiple(plan['ev_multiple'])}、期待損益 {signed_yen(plan['expected_profit_yen'])}。ただし実オッズ未接続なのでproxy扱い。"],
         ["いつ買う?", "1637は6/25 18:35-18:50 JSTが目安。18:25に公式投票率/売上を取り直し、18:55で打ち切る。"],
-        ["買い方", "まず90ユニークを1口ずつ。戻りを厚くしたいHot10だけ、別の追加シートで1口ずつ足す。"],
+        ["買い方", "50/100/200口のCSVから予算に合うものを1つ選び、上から順に公式の普通購入画面へ転記する。"],
     ]
     result = table(rows, [38 * mm, 140 * mm])
     result.setStyle(TableStyle([("BACKGROUND", (0, 1), (0, -1), TEAL_LIGHT)]))
@@ -716,7 +706,7 @@ def strategy_1637_summary_table() -> Table:
         ["項目", "1637の暫定方針"],
         ["ステータス", f"公式投票率 {SNAPSHOT_1637_VOTE_LABEL}、売上 {SNAPSHOT_1637_SALES_LABEL} 時点。売上は {yen(TOTAL_SALES_1637_YEN)}。"],
         ["買うタイミング", "今は買わない。6/25 18:25に再取得、18:35-18:50に購入、18:55で打ち切り。ネット販売締切は19:00。"],
-        ["予算", "暫定100口 = 10,000円。ベース90口 = 9,000円、Hot追加10口 = 1,000円。"],
+        ["予算", "50口 = 5,000円、100口 = 10,000円、200口 = 20,000円。すべて1行1口、重複なし。"],
         ["なぜギリ?", "公式投票率と売上は動く。締切直前ほど払戻推定と人気ズレの推定誤差が小さい。"],
         ["注意", "購入/決済の自動化は対象外。CSVは公式画面へ人が確認して転記するための作業表。"],
     ]
@@ -730,7 +720,7 @@ def operation_1637_table() -> Table:
         ["時刻", "やること", "担当"],
         ["6/25 18:25", "公式投票率と売上を取り直し、PDF/CSVを再生成する。", "system"],
         ["6/25 18:30", "強人気ロック、条件戦ドロー、30%台分散を目視確認する。", "human"],
-        ["6/25 18:35-18:50", "ベース90口を転記し、厚くするならHot追加10口シートだけを別途転記する。", "human"],
+        ["6/25 18:35-18:50", "予算に合わせて50/100/200口CSVを1つ選び、上からそのまま転記する。", "human"],
         ["6/25 18:55", "購入確定を止める。締切19:00に食い込まない。", "human"],
     ]
     return table(rows, [30 * mm, 104 * mm, 26 * mm])
@@ -751,39 +741,30 @@ def policy_table_1637() -> Table:
 
 
 def hot_table_1637() -> Table:
-    rows = [["順", "買い目", "ベース", "Hot追加", "合計口数", "score", "区分"]]
+    rows = [["順", "買い目", "口数", "累計", "score", "区分"]]
     for row in PURCHASE_ROWS_1637[:20]:
-        base_units = 1
-        extra_units = 1 if row["bucket"] == "hot" else 0
         rows.append([
             row["rank"],
             row["signature"],
-            base_units,
-            extra_units,
-            base_units + extra_units,
+            1,
+            yen(int(row["rank"]) * STAKE_YEN),
             f"{float(row['proxy_score']):.4f}",
             row["bucket"],
         ])
-    return table(rows, [10 * mm, 48 * mm, 14 * mm, 18 * mm, 18 * mm, 22 * mm, 18 * mm])
+    return table(rows, [10 * mm, 50 * mm, 16 * mm, 24 * mm, 24 * mm, 22 * mm])
 
 
 def budget_plan_summary_1637() -> Table:
-    total_units_100 = sum(int(row["units"]) for row in PURCHASE_ROWS_1637)
-    total_units_200 = sum(int(row["units"]) for row in PURCHASE_ROWS_1637_200)
-    base_units_100 = len(PURCHASE_ROWS_1637)
-    base_units_200 = len(PURCHASE_ROWS_1637_200)
-    hot_extra_units_100 = total_units_100 - base_units_100
-    hot_extra_units_200 = total_units_200 - base_units_200
     core_line_count = len(build_allowed_rows(MATCHES_1637))
     rows = [
         ["項目", "内容"],
         ["全推奨コア", f"{core_line_count:,}通り x {STAKE_YEN}円 = {yen(core_line_count * STAKE_YEN)}。これは広すぎるので実用購入対象にはしない。"],
-        ["1万円プラン", f"{base_units_100}通り + Hot追加{hot_extra_units_100}口 = {total_units_100}口 / {yen(total_units_100 * STAKE_YEN)}。"],
-        ["2万円以内プラン", f"{base_units_200}通り + Hot追加{hot_extra_units_200}口 = {total_units_200}口 / {yen(total_units_200 * STAKE_YEN)}。200口以内の推奨パターン。"],
+        ["50口以内プラン", f"{len(PURCHASE_ROWS_1637_50)}通り / {sum(int(row['units']) for row in PURCHASE_ROWS_1637_50)}口 / {yen(len(PURCHASE_ROWS_1637_50) * STAKE_YEN)}。"],
+        ["100口以内プラン", f"{len(PURCHASE_ROWS_1637)}通り / {sum(int(row['units']) for row in PURCHASE_ROWS_1637)}口 / {yen(len(PURCHASE_ROWS_1637) * STAKE_YEN)}。標準プラン。"],
+        ["200口以内プラン", f"{len(PURCHASE_ROWS_1637_200)}通り / {sum(int(row['units']) for row in PURCHASE_ROWS_1637_200)}口 / {yen(len(PURCHASE_ROWS_1637_200) * STAKE_YEN)}。広めに拾うプラン。"],
         ["入力順", "CSVは rank, match_1, ... match_13 を先頭に置く。公式の普通購入画面で左から 1/0/2 をそのまま押すための転記表。"],
-        ["Hot追加入力", "Hot10はベースに混ぜて2口表示にしない。別シートの10行を追加で1口ずつ入力する。"],
         ["読み方", "1=ホーム勝ち、0=引き分け、2=アウェイ勝ち。signature は match_1 から match_13 までをつなげた確認用。"],
-        ["CSV", "latest-purchase-sheet は1万円、latest-20000-purchase-sheet は2万円以内。どちらも1行=1口。PDFには全買い目を載せない。"],
+        ["CSV", "latest-50/100/200-purchase-sheet を使う。latest-purchase-sheet は100口版の別名。PDFには全買い目を載せない。"],
         ["注意", "CSV/PDFは転記用メモ。購入、決済、自動投票は対象外。締切直前の再計算後に人が公式画面で確認して入力する。"],
     ]
     result = table(rows, [34 * mm, 134 * mm])
@@ -807,7 +788,7 @@ def transfer_preview_table_1637(rows_source: list[dict[str, object]], limit: int
 
 def external_market_source_table() -> Table:
     rows = [
-        ["ソース", "使い方", "v10での扱い"],
+        ["ソース", "使い方", "v11での扱い"],
         ["公式投票率", "p_public。toto参加者の偏りを見る。", "現行の主ソース。締切直前に再取得。"],
         ["Polymarket", "市場価格、板、BBO、出来高を外部p_model候補にする。", "次の接続候補。強アカウント単体より市場価格と流動性を優先。"],
         ["Kalshi", "公開market data/orderbookがあれば二値市場の補助確率にする。", "サッカー該当市場がある時だけ採用。"],
@@ -841,19 +822,6 @@ def budget_plan_table_1637(start_rank: int, end_rank: int) -> Table:
     return table(rows, [13 * mm, 18 * mm, 14 * mm, 28 * mm, 76 * mm])
 
 
-def hot_extra_table_1637() -> Table:
-    rows = [["追加順", "元rank", "追加口数", "追加累計", "signature / match_1-13"]]
-    for index, row in enumerate(PURCHASE_ROWS_1637[:10], start=1):
-        rows.append([
-            index,
-            row["rank"],
-            1,
-            yen(index * STAKE_YEN),
-            row["signature"],
-        ])
-    return table(rows, [14 * mm, 16 * mm, 18 * mm, 28 * mm, 76 * mm])
-
-
 def hot_table() -> Table:
     rows = [["順", "買い目", "口数", "累計", "EV/口", "区分"]]
     for row in PURCHASE_ROWS_1636[:20]:
@@ -864,7 +832,7 @@ def hot_table() -> Table:
 def automation_table() -> Table:
     rows = [
         ["方法", "使い方", "評価"],
-        ["買い目CSV", "latest-purchase-sheet は100口を1行1口で並べる。Hotだけ増やす時は hot-extra-sheet を使う。", "今回の推奨。"],
+        ["買い目CSV", "latest-50/100/200-purchase-sheet はすべて1行1口で並べる。予算に合う1ファイルだけ使う。", "今回の推奨。"],
         ["公式ランダム", "金額だけ指定して公式側に任せる。", "今回の戦略とは別物。検証用ならあり。"],
         ["らくらく購入", "予想は公式側が自動選択する。", "指定買い目ではないので今回のCSVとは別。"],
         ["完全自動購入", "ログイン、購入、決済まで自動化する。", "対象外。購入と決済は人が行う。"],
@@ -883,13 +851,13 @@ def build_pdf() -> Path:
         leftMargin=12 * mm,
         topMargin=12 * mm,
         bottomMargin=10 * mm,
-        title="W杯toto 1634-1637 EV改善メモ v10",
+        title="W杯toto 1634-1637 EV改善メモ v11",
     )
 
     story = [
-        p("W杯toto 1634-1637 EV改善メモ v10", "title"),
+        p("W杯toto 1634-1637 EV改善メモ v11", "title"),
         p("目的はシンプルです。1口いくらか、当たったらどれくらい戻るか、10口や1万円ならどの出目をどう置くか、そしてランダムよりEVが上がっているのかを見ます。"),
-        p(f"1637の公式投票率は {SNAPSHOT_1637_VOTE_LABEL}、売上は {SNAPSHOT_1637_SALES_LABEL} 時点。現在売上は {yen(TOTAL_SALES_1637_YEN)}、投票数は {VOTE_UNITS_1637:,}口。latest PDF/CSVはこのv10へ差し替えます。", "small"),
+        p(f"1637の公式投票率は {SNAPSHOT_1637_VOTE_LABEL}、売上は {SNAPSHOT_1637_SALES_LABEL} 時点。現在売上は {yen(TOTAL_SALES_1637_YEN)}、投票数は {VOTE_UNITS_1637:,}口。latest PDF/CSVはこのv11へ差し替えます。", "small"),
         summary_table(),
         Spacer(1, 4 * mm),
         p("EVをわかりやすく", "h2"),
@@ -907,26 +875,25 @@ def build_pdf() -> Path:
         operation_1637_table(),
         Spacer(1, 4 * mm),
         p("出目を残すルール", "h2"),
-        p(f"公式人気順だけなら {FAVORITE_1637}。ただし第3戦は中立地、国名人気、勝点条件、温存、引き分けOKで人気順からズレる余地があります。v10ではこの補正をproxy確率と買い目ランキングに入れています。"),
+        p(f"公式人気順だけなら {FAVORITE_1637}。ただし第3戦は中立地、国名人気、勝点条件、温存、引き分けOKで人気順からズレる余地があります。v11ではこの補正をproxy確率と買い目ランキングに入れています。"),
         policy_table_1637(),
         Spacer(1, 4 * mm),
-        p("暫定Hot10とCSV先頭", "h2"),
-        p("暫定100口のうち、上位10本だけ2口まで。2口化は戻りを厚くするだけで、的中範囲は広がりません。最終再計算で順位が入れ替わったら差し替えます。"),
+        p("暫定買い目CSV先頭", "h2"),
+        p("v11では重複買いをしません。上位から50口、100口、200口の3段階を作り、予算に合うCSVを1つ選んでそのまま転記します。"),
         hot_table_1637(),
         PageBreak(),
-        p("1637 転記用CSVと200口以内プラン", "title"),
+        p("1637 転記用CSV 50/100/200口", "title"),
         p("PDFには全買い目を載せません。公式の普通購入画面では、CSVの rank から順に match_1 ... match_13 の 1/0/2 を左から押します。1行がそのまま1口です。"),
         budget_plan_summary_1637(),
         Spacer(1, 4 * mm),
-        p("1万円プラン 先頭サンプル", "h2"),
-        transfer_preview_table_1637(PURCHASE_ROWS_1637, 12),
+        p("50口以内プラン 先頭サンプル", "h2"),
+        transfer_preview_table_1637(PURCHASE_ROWS_1637_50, 9),
         Spacer(1, 4 * mm),
-        p("2万円以内プラン 先頭サンプル", "h2"),
+        p("100口以内プラン 先頭サンプル", "h2"),
+        transfer_preview_table_1637(PURCHASE_ROWS_1637, 9),
+        PageBreak(),
+        p("200口以内プラン 先頭サンプル", "h2"),
         transfer_preview_table_1637(PURCHASE_ROWS_1637_200, 9),
-        Spacer(1, 4 * mm),
-        p("Hot追加10口だけの単独買い目", "h2"),
-        p("ここだけを足すと、Hot10が2口扱いになります。ベース90口に重ねる追加分なので、この表単独の金額は1,000円です。"),
-        hot_extra_table_1637(),
         PageBreak(),
         p("外部市場で推奨を補強する", "title"),
         p("強アカウントを丸ごとコピーするより、公開市場価格、板の厚み、出来高、ブックメーカーの1X2確率をp_modelへ混ぜる方が再現性があります。特定アカウントは、履歴が取れる場合だけ補助シグナルにします。"),
@@ -970,8 +937,8 @@ def build_pdf() -> Path:
         p("出目を残すルール", "h2"),
         policy_table(),
         PageBreak(),
-        p("Hot10と購入シート先頭", "title"),
-        p("Hot10だけ追加で1口ずつ足します。これは当たった時の戻りを厚くするだけで、的中範囲や2等カバー範囲は広がりません。したがって追加は最大10本までに制限します。"),
+        p("1636旧シート先頭", "title"),
+        p("1636では上位を厚くする案も試しましたが、v11の1637方針では重複購入をやめ、50/100/200口の重複なしCSVに寄せます。"),
         hot_table(),
         Spacer(1, 4 * mm),
         p("なるべく自動で買う方法", "h2"),
@@ -987,38 +954,20 @@ def build_pdf() -> Path:
 
 def entry_rows_1637(
     purchase_rows: list[dict[str, object]],
-    *,
-    base_label: str,
-    include_base: bool,
-    include_hot_extra: bool,
 ) -> list[dict[str, object]]:
     rows: list[dict[str, object]] = []
-    if include_base:
-        for row in purchase_rows:
-            rows.append({
-                "rank": len(rows) + 1,
-                "source_rank": row["rank"],
-                "bucket": "base_hot" if row["bucket"] == "hot" else "base_core",
-                "unit_count": 1,
-                "amount_cumulative_yen": (len(rows) + 1) * STAKE_YEN,
-                "signature": row["signature"],
-                "picks": row["picks"],
-                "proxy_score": row["proxy_score"],
-                "note": f"{base_label}。Hotでもまず1口だけ置く。",
-            })
-    if include_hot_extra:
-        for row in purchase_rows[:10]:
-            rows.append({
-                "rank": len(rows) + 1,
-                "source_rank": row["rank"],
-                "bucket": "hot_extra",
-                "unit_count": 1,
-                "amount_cumulative_yen": (len(rows) + 1) * STAKE_YEN,
-                "signature": row["signature"],
-                "picks": row["picks"],
-                "proxy_score": row["proxy_score"],
-                "note": "Hot10追加1口。ベース90口に重ねる分。",
-            })
+    for row in purchase_rows:
+        rows.append({
+            "rank": len(rows) + 1,
+            "source_rank": row["rank"],
+            "bucket": "direct",
+            "unit_count": 1,
+            "amount_cumulative_yen": (len(rows) + 1) * STAKE_YEN,
+            "signature": row["signature"],
+            "picks": row["picks"],
+            "proxy_score": row["proxy_score"],
+            "note": "重複なしの直接購入行。1行を1口だけ買う。",
+        })
     return rows
 
 
@@ -1054,44 +1003,18 @@ def write_purchase_csv(csv_path: Path, rows: list[dict[str, object]], aliases: t
 def build_csv() -> dict[str, Path]:
     OUT_CSV_DIR.mkdir(parents=True, exist_ok=True)
     PUBLIC_DIR.mkdir(parents=True, exist_ok=True)
+    csv_50_path = OUT_CSV_DIR / CSV_50_NAME
     csv_path = OUT_CSV_DIR / CSV_NAME
     csv_200_path = OUT_CSV_DIR / CSV_200_NAME
-    base_csv_path = OUT_CSV_DIR / BASE_CSV_NAME
-    base_200_csv_path = OUT_CSV_DIR / BASE_200_CSV_NAME
-    hot_extra_csv_path = OUT_CSV_DIR / HOT_EXTRA_CSV_NAME
 
-    write_purchase_csv(
-        csv_path,
-        entry_rows_1637(PURCHASE_ROWS_1637, base_label="ベース90口", include_base=True, include_hot_extra=True),
-        CSV_ALIASES,
-    )
-    write_purchase_csv(
-        csv_200_path,
-        entry_rows_1637(PURCHASE_ROWS_1637_200, base_label="ベース190口", include_base=True, include_hot_extra=True),
-        CSV_200_ALIASES,
-    )
-    write_purchase_csv(
-        base_csv_path,
-        entry_rows_1637(PURCHASE_ROWS_1637, base_label="ベース90口", include_base=True, include_hot_extra=False),
-        BASE_CSV_ALIASES,
-    )
-    write_purchase_csv(
-        base_200_csv_path,
-        entry_rows_1637(PURCHASE_ROWS_1637_200, base_label="ベース190口", include_base=True, include_hot_extra=False),
-        BASE_200_CSV_ALIASES,
-    )
-    write_purchase_csv(
-        hot_extra_csv_path,
-        entry_rows_1637(PURCHASE_ROWS_1637, base_label="ベース90口", include_base=False, include_hot_extra=True),
-        HOT_EXTRA_CSV_ALIASES,
-    )
+    write_purchase_csv(csv_50_path, entry_rows_1637(PURCHASE_ROWS_1637_50), CSV_50_ALIASES)
+    write_purchase_csv(csv_path, entry_rows_1637(PURCHASE_ROWS_1637), CSV_ALIASES)
+    write_purchase_csv(csv_200_path, entry_rows_1637(PURCHASE_ROWS_1637_200), CSV_200_ALIASES)
 
     return {
+        "all_50": csv_50_path,
         "all": csv_path,
         "all_200": csv_200_path,
-        "base": base_csv_path,
-        "base_200": base_200_csv_path,
-        "hot_extra": hot_extra_csv_path,
     }
 
 
@@ -1099,12 +1022,11 @@ def main() -> None:
     pdf_path = build_pdf()
     csv_paths = build_csv()
     print(f"PDF: {pdf_path}")
+    print(f"CSV_50: {csv_paths['all_50']}")
     print(f"CSV: {csv_paths['all']}")
     print(f"CSV_200: {csv_paths['all_200']}")
-    print(f"BASE_CSV: {csv_paths['base']}")
-    print(f"BASE_200_CSV: {csv_paths['base_200']}")
-    print(f"HOT_EXTRA_CSV: {csv_paths['hot_extra']}")
     print(f"purchase_rows={len(PURCHASE_ROWS_1636)} units={sum(int(row['units']) for row in PURCHASE_ROWS_1636)}")
+    print(f"purchase_rows_1637_50={len(PURCHASE_ROWS_1637_50)} units={sum(int(row['units']) for row in PURCHASE_ROWS_1637_50)}")
     print(f"purchase_rows_1637={len(PURCHASE_ROWS_1637)} units={sum(int(row['units']) for row in PURCHASE_ROWS_1637)}")
     print(f"purchase_rows_1637_200={len(PURCHASE_ROWS_1637_200)} units={sum(int(row['units']) for row in PURCHASE_ROWS_1637_200)}")
     print(f"recommended_units={sum(int(row['units']) for row in recommended_entries())}")
