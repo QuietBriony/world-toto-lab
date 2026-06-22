@@ -17,10 +17,10 @@ from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer, 
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PDF_NAME = "world-cup-toto-1634-1637-evolved-plan-20260622-v11.pdf"
-CSV_50_NAME = "world-cup-toto-1637-entry-5000-plan-20260622-v11.csv"
-CSV_NAME = "world-cup-toto-1637-entry-10000-plan-20260622-v11.csv"
-CSV_200_NAME = "world-cup-toto-1637-entry-20000-plan-20260622-v11.csv"
+PDF_NAME = "world-cup-toto-1634-1637-evolved-plan-20260622-v12.pdf"
+CSV_50_NAME = "world-cup-toto-1637-visual-5000-plan-20260622-v12.csv"
+CSV_NAME = "world-cup-toto-1637-visual-10000-plan-20260622-v12.csv"
+CSV_200_NAME = "world-cup-toto-1637-visual-20000-plan-20260622-v12.csv"
 PDF_ALIASES = (
     PDF_NAME,
     "world-cup-toto-latest.pdf",
@@ -279,6 +279,24 @@ def signature(outcomes: list[str] | tuple[str, ...]) -> str:
 
 def display_outcomes(outcomes: tuple[str, ...]) -> str:
     return "/".join(outcomes)
+
+
+def match_label(match: PlanMatch) -> str:
+    return f"M{match.no:02d} {match.home} vs {match.away}"
+
+
+def outcome_label(match: PlanMatch, outcome: str) -> str:
+    if outcome == "1":
+        return f"1: {match.home}勝ち"
+    if outcome == "0":
+        return "0: 引き分け"
+    if outcome == "2":
+        return f"2: {match.away}勝ち"
+    return outcome
+
+
+def compact_pick_list(picks: tuple[str, ...] | list[str]) -> str:
+    return " ".join(str(item) for item in picks)
 
 
 def actual_signature(matches: list[ResultMatch]) -> str:
@@ -759,12 +777,12 @@ def budget_plan_summary_1637() -> Table:
     rows = [
         ["項目", "内容"],
         ["全推奨コア", f"{core_line_count:,}通り x {STAKE_YEN}円 = {yen(core_line_count * STAKE_YEN)}。これは広すぎるので実用購入対象にはしない。"],
-        ["50口以内プラン", f"{len(PURCHASE_ROWS_1637_50)}通り / {sum(int(row['units']) for row in PURCHASE_ROWS_1637_50)}口 / {yen(len(PURCHASE_ROWS_1637_50) * STAKE_YEN)}。"],
-        ["100口以内プラン", f"{len(PURCHASE_ROWS_1637)}通り / {sum(int(row['units']) for row in PURCHASE_ROWS_1637)}口 / {yen(len(PURCHASE_ROWS_1637) * STAKE_YEN)}。標準プラン。"],
-        ["200口以内プラン", f"{len(PURCHASE_ROWS_1637_200)}通り / {sum(int(row['units']) for row in PURCHASE_ROWS_1637_200)}口 / {yen(len(PURCHASE_ROWS_1637_200) * STAKE_YEN)}。広めに拾うプラン。"],
-        ["入力順", "CSVは rank, match_1, ... match_13 を先頭に置く。公式の普通購入画面で左から 1/0/2 をそのまま押すための転記表。"],
-        ["読み方", "1=ホーム勝ち、0=引き分け、2=アウェイ勝ち。signature は match_1 から match_13 までをつなげた確認用。"],
-        ["CSV", "latest-50/100/200-purchase-sheet を使う。latest-purchase-sheet は100口版の別名。PDFには全買い目を載せない。"],
+        ["50口以内プラン", f"{len(PURCHASE_ROWS_1637_50)}通り / {sum(int(row['units']) for row in PURCHASE_ROWS_1637_50)}口 / {yen(len(PURCHASE_ROWS_1637_50) * STAKE_YEN)}。PDF内に全50行を載せる。"],
+        ["100口以内プラン", f"{len(PURCHASE_ROWS_1637)}通り / {sum(int(row['units']) for row in PURCHASE_ROWS_1637)}口 / {yen(len(PURCHASE_ROWS_1637) * STAKE_YEN)}。標準プラン。CSVで全100行を確認する。"],
+        ["200口以内プラン", f"{len(PURCHASE_ROWS_1637_200)}通り / {sum(int(row['units']) for row in PURCHASE_ROWS_1637_200)}口 / {yen(len(PURCHASE_ROWS_1637_200) * STAKE_YEN)}。広めに拾うプラン。CSVで全200行を確認する。"],
+        ["入力順", "PDFのM01-M13対応表を見て、公式の普通購入画面で試合No.順に1/0/2を押す。CSVは各試合列に「2: ドイツ勝ち」のようなラベルも出す。"],
+        ["読み方", "1=ホーム勝ち、0=引き分け、2=アウェイ勝ち。signature はM01からM13までの数字をつなげた確認用。"],
+        ["CSV", "latest-50/100/200-purchase-sheet を使う。latest-purchase-sheet は100口版の別名。v12から目視用ラベル付き。"],
         ["注意", "CSV/PDFは転記用メモ。購入、決済、自動投票は対象外。締切直前の再計算後に人が公式画面で確認して入力する。"],
     ]
     result = table(rows, [34 * mm, 134 * mm])
@@ -772,23 +790,59 @@ def budget_plan_summary_1637() -> Table:
     return result
 
 
-def transfer_preview_table_1637(rows_source: list[dict[str, object]], limit: int = 18) -> Table:
-    rows = [["rank", "区分", "match_1-7", "match_8-13", "signature"]]
-    for row in rows_source[:limit]:
+def match_button_table_1637() -> Table:
+    rows = [["No", "対象試合", "1", "0", "2", "推奨で残す出目"]]
+    for match in MATCHES_1637:
+        rows.append([
+            f"M{match.no:02d}",
+            f"{match.home} vs {match.away}\n{match.kickoff}",
+            f"{match.home}勝ち\n{pct(match.votes[0], 1)}",
+            f"引き分け\n{pct(match.votes[1], 1)}",
+            f"{match.away}勝ち\n{pct(match.votes[2], 1)}",
+            f"{display_outcomes(match.allowed)}\n{match.rule}",
+        ])
+    return table(rows, [10 * mm, 39 * mm, 25 * mm, 24 * mm, 25 * mm, 45 * mm])
+
+
+def visual_purchase_table_1637(
+    rows_source: list[dict[str, object]],
+    start_rank: int,
+    end_rank: int,
+) -> Table:
+    rows = [["rank", "累計", *[f"M{index:02d}" for index in range(1, 14)], "signature"]]
+    for row in rows_source[start_rank - 1:end_rank]:
         picks = tuple(str(item) for item in row["picks"])
         rows.append([
             row["rank"],
-            row["bucket"],
-            " ".join(picks[:7]),
-            " ".join(picks[7:]),
+            yen(int(row["rank"]) * STAKE_YEN),
+            *picks,
             row["signature"],
         ])
-    return table(rows, [13 * mm, 20 * mm, 43 * mm, 37 * mm, 50 * mm])
+    return table(rows, [10 * mm, 16 * mm, *([9 * mm] * 13), 30 * mm])
+
+
+def visual_purchase_preview_table_1637(
+    rows_source: list[dict[str, object]],
+    start_rank: int,
+    end_rank: int,
+) -> Table:
+    rows = [["rank", "累計", "M01-M04", "M05-M08", "M09-M13", "signature"]]
+    for row in rows_source[start_rank - 1:end_rank]:
+        picks = tuple(str(item) for item in row["picks"])
+        rows.append([
+            row["rank"],
+            yen(int(row["rank"]) * STAKE_YEN),
+            compact_pick_list(picks[:4]),
+            compact_pick_list(picks[4:8]),
+            compact_pick_list(picks[8:]),
+            row["signature"],
+        ])
+    return table(rows, [13 * mm, 19 * mm, 29 * mm, 29 * mm, 35 * mm, 43 * mm])
 
 
 def external_market_source_table() -> Table:
     rows = [
-        ["ソース", "使い方", "v11での扱い"],
+        ["ソース", "使い方", "v12での扱い"],
         ["公式投票率", "p_public。toto参加者の偏りを見る。", "現行の主ソース。締切直前に再取得。"],
         ["Polymarket", "市場価格、板、BBO、出来高を外部p_model候補にする。", "次の接続候補。強アカウント単体より市場価格と流動性を優先。"],
         ["Kalshi", "公開market data/orderbookがあれば二値市場の補助確率にする。", "サッカー該当市場がある時だけ採用。"],
@@ -810,7 +864,7 @@ def source_blend_table() -> Table:
 
 
 def budget_plan_table_1637(start_rank: int, end_rank: int) -> Table:
-    rows = [["rank", "区分", "口数", "累計", "signature / match_1-13"]]
+    rows = [["rank", "区分", "口数", "累計", "signature / M01-M13"]]
     for row in PURCHASE_ROWS_1637[start_rank - 1:end_rank]:
         rows.append([
             row["rank"],
@@ -851,13 +905,13 @@ def build_pdf() -> Path:
         leftMargin=12 * mm,
         topMargin=12 * mm,
         bottomMargin=10 * mm,
-        title="W杯toto 1634-1637 EV改善メモ v11",
+        title="W杯toto 1634-1637 EV改善メモ v12",
     )
 
     story = [
-        p("W杯toto 1634-1637 EV改善メモ v11", "title"),
+        p("W杯toto 1634-1637 EV改善メモ v12", "title"),
         p("目的はシンプルです。1口いくらか、当たったらどれくらい戻るか、10口や1万円ならどの出目をどう置くか、そしてランダムよりEVが上がっているのかを見ます。"),
-        p(f"1637の公式投票率は {SNAPSHOT_1637_VOTE_LABEL}、売上は {SNAPSHOT_1637_SALES_LABEL} 時点。現在売上は {yen(TOTAL_SALES_1637_YEN)}、投票数は {VOTE_UNITS_1637:,}口。latest PDF/CSVはこのv11へ差し替えます。", "small"),
+        p(f"1637の公式投票率は {SNAPSHOT_1637_VOTE_LABEL}、売上は {SNAPSHOT_1637_SALES_LABEL} 時点。現在売上は {yen(TOTAL_SALES_1637_YEN)}、投票数は {VOTE_UNITS_1637:,}口。latest PDF/CSVはこのv12へ差し替えます。", "small"),
         summary_table(),
         Spacer(1, 4 * mm),
         p("EVをわかりやすく", "h2"),
@@ -875,25 +929,34 @@ def build_pdf() -> Path:
         operation_1637_table(),
         Spacer(1, 4 * mm),
         p("出目を残すルール", "h2"),
-        p(f"公式人気順だけなら {FAVORITE_1637}。ただし第3戦は中立地、国名人気、勝点条件、温存、引き分けOKで人気順からズレる余地があります。v11ではこの補正をproxy確率と買い目ランキングに入れています。"),
+        p(f"公式人気順だけなら {FAVORITE_1637}。ただし第3戦は中立地、国名人気、勝点条件、温存、引き分けOKで人気順からズレる余地があります。v12ではこの補正をproxy確率と買い目ランキングに入れています。"),
         policy_table_1637(),
         Spacer(1, 4 * mm),
-        p("暫定買い目CSV先頭", "h2"),
-        p("v11では重複買いをしません。上位から50口、100口、200口の3段階を作り、予算に合うCSVを1つ選んでそのまま転記します。"),
+        p("暫定買い目の考え方", "h2"),
+        p("v12では重複買いをしません。上位から50口、100口、200口の3段階を作り、予算に合う一覧を1つ選んでそのまま普通購入画面へ転記します。"),
         hot_table_1637(),
         PageBreak(),
-        p("1637 転記用CSV 50/100/200口", "title"),
-        p("PDFには全買い目を載せません。公式の普通購入画面では、CSVの rank から順に match_1 ... match_13 の 1/0/2 を左から押します。1行がそのまま1口です。"),
-        budget_plan_summary_1637(),
-        Spacer(1, 4 * mm),
-        p("50口以内プラン 先頭サンプル", "h2"),
-        transfer_preview_table_1637(PURCHASE_ROWS_1637_50, 9),
-        Spacer(1, 4 * mm),
-        p("100口以内プラン 先頭サンプル", "h2"),
-        transfer_preview_table_1637(PURCHASE_ROWS_1637, 9),
+        p("1637 普通購入画面で押す対応表", "title"),
+        p("1口100円です。各行は1口で、M01からM13までを左から押します。まず下の対応表で、各試合の1/0/2が何を意味するかを確認します。"),
+        match_button_table_1637(),
         PageBreak(),
-        p("200口以内プラン 先頭サンプル", "h2"),
-        transfer_preview_table_1637(PURCHASE_ROWS_1637_200, 9),
+        p("1637 目視入力リスト 50/100/200口", "title"),
+        p("PDFだけで買うなら50口プランを使います。100口/200口は同じ順番で続くため、CSVの全行一覧を使います。CSVもv12から試合名と出目ラベル付きです。"),
+        budget_plan_summary_1637(),
+        PageBreak(),
+        p("50口以内プラン 1-25口", "h2"),
+        visual_purchase_table_1637(PURCHASE_ROWS_1637_50, 1, 25),
+        PageBreak(),
+        p("50口以内プラン 26-50口", "h2"),
+        visual_purchase_table_1637(PURCHASE_ROWS_1637_50, 26, 50),
+        PageBreak(),
+        p("100口/200口プランの追加分確認", "h2"),
+        p("100口はこの50口に51-100行を足します。200口はさらに101-200行を足します。全行はCSVで確認します。"),
+        p("100口追加分 51-62口", "h2"),
+        visual_purchase_preview_table_1637(PURCHASE_ROWS_1637, 51, 62),
+        Spacer(1, 4 * mm),
+        p("200口追加分 101-112口", "h2"),
+        visual_purchase_preview_table_1637(PURCHASE_ROWS_1637_200, 101, 112),
         PageBreak(),
         p("外部市場で推奨を補強する", "title"),
         p("強アカウントを丸ごとコピーするより、公開市場価格、板の厚み、出来高、ブックメーカーの1X2確率をp_modelへ混ぜる方が再現性があります。特定アカウントは、履歴が取れる場合だけ補助シグナルにします。"),
@@ -938,7 +1001,7 @@ def build_pdf() -> Path:
         policy_table(),
         PageBreak(),
         p("1636旧シート先頭", "title"),
-        p("1636では上位を厚くする案も試しましたが、v11の1637方針では重複購入をやめ、50/100/200口の重複なしCSVに寄せます。"),
+        p("1636では上位を厚くする案も試しましたが、v12の1637方針では重複購入をやめ、50/100/200口の重複なしCSVに寄せます。"),
         hot_table(),
         Spacer(1, 4 * mm),
         p("なるべく自動で買う方法", "h2"),
@@ -976,24 +1039,29 @@ def write_purchase_csv(csv_path: Path, rows: list[dict[str, object]], aliases: t
         writer = csv.writer(output, lineterminator="\n")
         writer.writerow([
             "rank",
-            *[f"match_{index}" for index in range(1, 14)],
+            "amount_cumulative_yen",
+            "pick_list",
+            *[match_label(match) for match in MATCHES_1637],
             "signature",
+            *[f"match_{index}" for index in range(1, 14)],
             "bucket",
             "source_rank",
             "unit_count",
-            "amount_cumulative_yen",
             "proxy_score",
             "note",
         ])
         for row in rows:
+            picks = tuple(str(item) for item in row["picks"])
             writer.writerow([
                 row["rank"],
-                *row["picks"],
+                row["amount_cumulative_yen"],
+                compact_pick_list(picks),
+                *[outcome_label(match, picks[index]) for index, match in enumerate(MATCHES_1637)],
                 row["signature"],
+                *picks,
                 row["bucket"],
                 row["source_rank"],
                 row["unit_count"],
-                row["amount_cumulative_yen"],
                 f"{float(row['proxy_score']):.6f}",
                 row["note"],
             ])

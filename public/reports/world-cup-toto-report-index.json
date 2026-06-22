@@ -8,6 +8,21 @@
   },
   "versions": [
     {
+      "csv": "world-cup-toto-1637-visual-10000-plan-20260622-v12.csv",
+      "csv50": "world-cup-toto-1637-visual-5000-plan-20260622-v12.csv",
+      "csv50Sha256": "36B8FEDD4036555650BF42F8DD35BB3AC4F28969DD901A90C0AF1708CD13F881",
+      "csv100Sha256": "8F7F389221216D9FF6E8A07D5B5F3536B1FBD8391274EFABC8D968A15393F79A",
+      "csv200": "world-cup-toto-1637-visual-20000-plan-20260622-v12.csv",
+      "csv200Sha256": "7FC51D40E37D4F83EA697852251AC1D6ECBBD924804B7FF87F90E08F499DC5DC",
+      "csvSha256": "8F7F389221216D9FF6E8A07D5B5F3536B1FBD8391274EFABC8D968A15393F79A",
+      "label": "2026-06-22 v12",
+      "legacyPdf": "world-cup-toto-1634-1636-evolved-plan.pdf",
+      "pdf": "world-cup-toto-1634-1637-evolved-plan-20260622-v12.pdf",
+      "pdfSha256": "FB93C7E7B536B22B0354BAF701A2722A58DF6BF35DCDE78552C7C425614AD96A",
+      "publishedAt": "2026-06-22 20:10 JST",
+      "summary": "Reworks the 1637 purchase workflow for visual entry: the PDF includes the match button map, all 50 base rows, and 100/200 add-on previews; CSV sheets now put readable match labels before raw match_1 through match_13 fields."
+    },
+    {
       "csv": "world-cup-toto-1637-entry-10000-plan-20260622-v11.csv",
       "csv50": "world-cup-toto-1637-entry-5000-plan-20260622-v11.csv",
       "csv50Sha256": "E1C4553D7BE57D03B1CB49E38CF35CB3B327AD428752CBC0208D41236FAA07A3",

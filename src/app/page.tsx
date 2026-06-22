@@ -1198,13 +1198,13 @@ export default function DashboardPage() {
                     固定版PDF
                   </a>
                   <a href={worldCupPurchaseSheet50Href} className={secondaryButtonClassName}>
-                    50口CSV
+                    50口一覧CSV
                   </a>
                   <a href={worldCupPurchaseSheetHref} className={secondaryButtonClassName}>
-                    100口CSV
+                    100口一覧CSV
                   </a>
                   <a href={worldCupPurchaseSheet200Href} className={secondaryButtonClassName}>
-                    200口CSV
+                    200口一覧CSV
                   </a>
                 </div>
               </div>

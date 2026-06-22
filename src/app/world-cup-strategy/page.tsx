@@ -552,13 +552,13 @@ function NextWorldCupToto1637Panel({
             最新PDF
           </a>
           <a href={purchaseSheet50Href} className={secondaryButtonClassName}>
-            50口CSV
+            50口一覧CSV
           </a>
           <a href={purchaseSheetHref} className={secondaryButtonClassName}>
-            100口CSV
+            100口一覧CSV
           </a>
           <a href={purchaseSheet200Href} className={secondaryButtonClassName}>
-            200口CSV
+            200口一覧CSV
           </a>
           <a href={worldCupTotoOfficialVote1637Url} className={secondaryButtonClassName} rel="noreferrer" target="_blank">
             公式投票率
@@ -618,17 +618,17 @@ function NextWorldCupToto1637Panel({
           だから 1637 は今のCSVをたたき台にして、6/25夕方に同じロジックで差し替えます。
         </p>
         <p className="mt-2 text-sm leading-6 text-slate-600">
-          v11 fixed links:{" "}
+          v12 fixed links:{" "}
           <a className="font-semibold underline underline-offset-4" href={versionedPurchaseSheet50Href}>
-            50口CSV
+            50口一覧CSV
           </a>{" "}
           /{" "}
           <a className="font-semibold underline underline-offset-4" href={versionedPurchaseSheetHref}>
-            100口CSV
+            100口一覧CSV
           </a>{" "}
           /{" "}
           <a className="font-semibold underline underline-offset-4" href={versionedPurchaseSheet200Href}>
-            200口CSV
+            200口一覧CSV
           </a>
         </p>
       </PlainNotice>
