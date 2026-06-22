@@ -67,6 +67,7 @@ import {
   worldCupTotoOfficialSales1637Url,
   worldCupTotoOfficialVote1637Url,
   worldCupTotoPhaseHeuristics,
+  worldCupTotoPolymarketBacktestAudit,
   worldCupTotoReportVersion,
   worldCupTotoVersionedPurchaseSheet200FileName,
   worldCupTotoVersionedPurchaseSheet50FileName,
@@ -370,6 +371,19 @@ function instructionStatusTone(status: "implemented" | "next" | "partial") {
   return "slate" as const;
 }
 
+function polymarketCoverageStatusLabel(status: string) {
+  if (status === "forward_ready") return "1637で前向き利用";
+  if (status === "partial_not_strict") return "一部だけ";
+  if (status === "strict_ready") return "厳密検証可";
+  return "履歴token待ち";
+}
+
+function polymarketCoverageStatusTone(status: string) {
+  if (status === "forward_ready" || status === "strict_ready") return "teal" as const;
+  if (status === "partial_not_strict") return "amber" as const;
+  return "slate" as const;
+}
+
 function OperatingSystemBacktestPanel() {
   const implementedRows = worldCupTotoInstructionSystem.filter(
     (row) => row.implementationStatus === "implemented",
@@ -523,9 +537,46 @@ function OperatingSystemBacktestPanel() {
         <p>{worldCupTotoOptimizationReadiness.summary}</p>
       </PlainNotice>
 
+      <PlainNotice tone="teal" title="Polymarket同時刻バックテスト監査">
+        <p>{worldCupTotoPolymarketBacktestAudit.summary}</p>
+        <p className="mt-2 text-sm leading-6 text-slate-700">
+          {worldCupTotoPolymarketBacktestAudit.decisionFor1637}
+        </p>
+      </PlainNotice>
+
+      <div className="mt-4 min-w-0 overflow-x-auto rounded-[22px] border border-teal-200 bg-white/86">
+        <table className="min-w-[920px] text-left text-sm">
+          <thead className="bg-teal-50 text-xs uppercase tracking-[0.16em] text-teal-700">
+            <tr>
+              <th className="px-3 py-3">回</th>
+              <th className="px-3 py-3">状態</th>
+              <th className="px-3 py-3">公式</th>
+              <th className="px-3 py-3">Polymarket</th>
+              <th className="px-3 py-3">判定</th>
+            </tr>
+          </thead>
+          <tbody>
+            {worldCupTotoPolymarketBacktestAudit.coverageRows.map((row) => (
+              <tr key={row.roundNumber} className="border-t border-teal-100">
+                <td className="px-3 py-3 align-top font-semibold text-slate-950">第{row.roundNumber}回</td>
+                <td className="px-3 py-3 align-top">
+                  <Badge tone={polymarketCoverageStatusTone(row.status)}>
+                    {polymarketCoverageStatusLabel(row.status)}
+                  </Badge>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">{row.resultState}</p>
+                </td>
+                <td className="px-3 py-3 align-top text-slate-700">{row.officialSnapshot}</td>
+                <td className="px-3 py-3 align-top text-slate-700">{row.polyCoverage}</td>
+                <td className="px-3 py-3 align-top text-slate-700">{row.verdict}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
       <PlainNotice tone="teal" title="次の最適ロジック">
         <ul className="list-disc space-y-1 pl-5">
-          {worldCupTotoBacktestSummary.nextOptimizationSteps.map((step) => (
+          {[...worldCupTotoBacktestSummary.nextOptimizationSteps, ...worldCupTotoPolymarketBacktestAudit.implementationRules].map((step) => (
             <li key={step}>{step}</li>
           ))}
         </ul>

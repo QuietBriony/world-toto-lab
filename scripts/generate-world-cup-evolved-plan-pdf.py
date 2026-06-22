@@ -17,10 +17,10 @@ from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer, 
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PDF_NAME = "world-cup-toto-1634-1637-evolved-plan-20260622-v15.pdf"
-CSV_50_NAME = "world-cup-toto-1637-visual-5000-plan-20260622-v15.csv"
-CSV_NAME = "world-cup-toto-1637-visual-10000-plan-20260622-v15.csv"
-CSV_200_NAME = "world-cup-toto-1637-visual-20000-plan-20260622-v15.csv"
+PDF_NAME = "world-cup-toto-1634-1637-evolved-plan-20260622-v16.pdf"
+CSV_50_NAME = "world-cup-toto-1637-visual-5000-plan-20260622-v16.csv"
+CSV_NAME = "world-cup-toto-1637-visual-10000-plan-20260622-v16.csv"
+CSV_200_NAME = "world-cup-toto-1637-visual-20000-plan-20260622-v16.csv"
 PDF_ALIASES = (
     PDF_NAME,
     "world-cup-toto-latest.pdf",
@@ -967,7 +967,7 @@ def budget_plan_summary_1637() -> Table:
         ["200口以内プラン", f"{len(PURCHASE_ROWS_1637_200)}通り / {sum(int(row['units']) for row in PURCHASE_ROWS_1637_200)}口 / {yen(len(PURCHASE_ROWS_1637_200) * STAKE_YEN)}。広めに拾うプラン。CSVで全200行を確認する。"],
         ["入力順", "PDFのM01-M13対応表を見て、公式の普通購入画面で試合No.順に1/0/2を押す。CSVは各試合列に「2: ドイツ勝ち」のようなラベルも出す。"],
         ["読み方", "1=ホーム勝ち、0=引き分け、2=アウェイ勝ち。signature はM01からM13までの数字をつなげた確認用。"],
-        ["CSV", "latest-50/100/200-purchase-sheet は検算用に残す。latest-purchase-sheet は100口版の別名。v15ではPDFのマルチ表を主導線にする。"],
+        ["CSV", "latest-50/100/200-purchase-sheet は検算用に残す。latest-purchase-sheet は100口版の別名。v16ではPDFのマルチ表を主導線にする。"],
         ["注意", "CSV/PDFは転記用メモ。購入、決済、自動投票は対象外。締切直前の再計算後に人が公式画面で確認して入力する。"],
     ]
     result = table(rows, [34 * mm, 134 * mm])
@@ -1064,7 +1064,7 @@ def visual_purchase_preview_table_1637(
 
 def external_market_source_table() -> Table:
     rows = [
-        ["ソース", "使い方", "v15での扱い"],
+        ["ソース", "使い方", "v16での扱い"],
         ["公式投票率", "p_public。toto参加者の偏りを見る。", "現行の主ソース。締切直前に再取得。"],
         ["Polymarket", "Sports APIのW杯1X2価格を外部p_model候補にする。", "1637の13試合を公開APIで照合済み。強アカウントより市場価格を優先。"],
         ["Kalshi", "公開market data/orderbookがあれば二値市場の補助確率にする。", "サッカー該当市場がある時だけ採用。"],
@@ -1137,7 +1137,7 @@ def final_market_decision_rule_table() -> Table:
 
 def final_logic_table_1637() -> Table:
     rows = [
-        ["論点", "v15での読み"],
+        ["論点", "v16での読み"],
         ["公式投票率", "日本のtoto購入者の人気。勝率ではなく、払戻が薄くなる混み具合として読む。"],
         ["バックテスト", "1634は公式人気順が9ズレ、1635は2ズレで3等相当。公式1点だけでは荒れを拾いにくい。"],
         ["外部市場", "PolymarketではM01/M05/M07/M13が公式より荒れ側。M02も日本人気が重い。"],
@@ -1146,6 +1146,32 @@ def final_logic_table_1637() -> Table:
     ]
     result = table(rows, [36 * mm, 132 * mm])
     result.setStyle(TableStyle([("BACKGROUND", (0, 1), (0, -1), TEAL_LIGHT)]))
+    return result
+
+
+def polymarket_backtest_audit_table() -> Table:
+    rows = [
+        ["回", "公式データ", "Polymarket取得", "判定"],
+        ["1634", "締切時点の公式投票率あり / 結果確定", "Sports API通常一覧では対象13試合を再発見できず", "Poly優位とは未判定。token IDが見つかれば再検証。"],
+        ["1635", "締切時点の公式投票率あり / 結果確定", "Sports API通常一覧では対象13試合を再発見できず", "公式人気順は3等圏。Poly比較はtoken ID待ち。"],
+        ["1636", "2026-06-20 17:02公式投票率あり / 一部進行中", "通常一覧で7/13試合だけ確認。開始後/終了後が混ざる", "厳密比較には使わない。結果確定後に履歴tokenが取れた分だけ検証。"],
+        ["1637", "2026-06-22 20:56公式投票率あり / 未開催", "Sports APIで13/13試合を照合済み", "前向き利用可。6/25 18:25に同時刻保存して本検証対象へ。"],
+    ]
+    result = table(rows, [16 * mm, 48 * mm, 54 * mm, 50 * mm])
+    result.setStyle(TableStyle([("BACKGROUND", (0, 1), (0, -1), TEAL_LIGHT)]))
+    return result
+
+
+def polymarket_backtest_rules_table() -> Table:
+    rows = [
+        ["ルール", "理由"],
+        ["現在価格を過去回に混ぜない", "結果後価格や決済価格を入れると後出し検証になる。"],
+        ["販売締切前timestampだけ使う", "公式投票率と同じ時刻のp_marketで比較する。"],
+        ["token IDが取れない回は未判定", "Polyなら良かった、とは言わない。公式のみバックテストとして残す。"],
+        ["1637は同時刻保存を最優先", "今回から検証母集団を作れる。最適ロジックを後で厳密に評価できる。"],
+    ]
+    result = table(rows, [46 * mm, 122 * mm])
+    result.setStyle(TableStyle([("BACKGROUND", (0, 1), (0, -1), AMBER_LIGHT)]))
     return result
 
 
@@ -1202,13 +1228,13 @@ def build_pdf() -> Path:
         leftMargin=12 * mm,
         topMargin=12 * mm,
         bottomMargin=10 * mm,
-        title="W杯toto 1634-1637 EV改善メモ v15",
+        title="W杯toto 1634-1637 EV改善メモ v16",
     )
 
     story = [
-        p("W杯toto 1634-1637 EV改善メモ v15", "title"),
+        p("W杯toto 1634-1637 EV改善メモ v16", "title"),
         p("目的はシンプルです。1口いくらか、当たったらどれくらい戻るか、10口や1万円ならどの出目をどう置くか、そしてランダムよりEVが上がっているのかを見ます。"),
-        p(f"1637の公式投票率は {SNAPSHOT_1637_VOTE_LABEL}、売上は {SNAPSHOT_1637_SALES_LABEL} 時点。現在売上は {yen(TOTAL_SALES_1637_YEN)}、投票数は {VOTE_UNITS_1637:,}口。latest PDFはこのv15へ差し替えます。", "small"),
+        p(f"1637の公式投票率は {SNAPSHOT_1637_VOTE_LABEL}、売上は {SNAPSHOT_1637_SALES_LABEL} 時点。現在売上は {yen(TOTAL_SALES_1637_YEN)}、投票数は {VOTE_UNITS_1637:,}口。latest PDFはこのv16へ差し替えます。", "small"),
         p("公式投票率は勝率そのものではなく、日本のtoto購入者の人気です。払戻の薄さを見るp_publicとして使い、勝率寄りのp_modelはPolymarketなどの外部市場とW杯文脈で補います。", "small"),
         summary_table(),
         Spacer(1, 4 * mm),
@@ -1216,7 +1242,7 @@ def build_pdf() -> Path:
         ev_glossary_table(),
         Spacer(1, 4 * mm),
         p("総当たりEVより上がったか", "h2"),
-        p("結論: proxy上は上がっています。v15ではPolymarketの試合別1X2は接続済みです。ただし、ブックメーカー複数社のvig除去やBetfair板はまだ未接続なので、真EVではなく外部市場proxyとして扱います。"),
+        p("結論: proxy上は上がっています。v16ではPolymarketの試合別1X2は接続済みです。ただし、ブックメーカー複数社のvig除去やBetfair板はまだ未接続なので、真EVではなく外部市場proxyとして扱います。"),
         market_ev_table(),
         PageBreak(),
         p("1637の最適戦略", "title"),
@@ -1227,7 +1253,7 @@ def build_pdf() -> Path:
         operation_1637_table(),
         Spacer(1, 4 * mm),
         p("出目を残すルール", "h2"),
-        p(f"公式人気順だけなら {FAVORITE_1637}。ただし第3戦は中立地、国名人気、勝点条件、温存、引き分けOKで人気順からズレる余地があります。v15ではこの補正とPolymarket差分をマルチ選択の残し方に入れています。"),
+        p(f"公式人気順だけなら {FAVORITE_1637}。ただし第3戦は中立地、国名人気、勝点条件、温存、引き分けOKで人気順からズレる余地があります。v16ではこの補正とPolymarket差分をマルチ選択の残し方に入れています。"),
         policy_table_1637(),
         Spacer(1, 4 * mm),
         p("マルチ指定の合計口数", "h2"),
@@ -1259,9 +1285,15 @@ def build_pdf() -> Path:
         p("強アカウントを丸ごとコピーするより、公開市場価格、板の厚み、出来高、ブックメーカーの1X2確率をp_modelへ混ぜる方が再現性があります。今回の1637ではPolymarketの試合別1X2が取れたので、外部市場サンプルとして使っています。特定アカウントは、履歴が取れる場合だけ補助シグナルにします。"),
         external_market_source_table(),
         Spacer(1, 4 * mm),
+        p("Poly同時刻バックテスト監査", "h2"),
+        p("Polymarketにはprices-historyがありますが、過去回に現在価格や決済価格を混ぜると後出しになります。1634/1635は終了済みSports eventのtoken IDがまだ解けていないため、Polyなら良かったとはまだ言いません。"),
+        polymarket_backtest_audit_table(),
+        Spacer(1, 4 * mm),
+        polymarket_backtest_rules_table(),
+        Spacer(1, 4 * mm),
         p("1637 暫定確定ロジック", "h2"),
         final_logic_table_1637(),
-        Spacer(1, 4 * mm),
+        PageBreak(),
         p("締切直前のブレンド案", "h2"),
         source_blend_table(),
         Spacer(1, 4 * mm),
@@ -1302,7 +1334,7 @@ def build_pdf() -> Path:
         policy_table(),
         PageBreak(),
         p("1636旧シート先頭", "title"),
-        p("1636では上位を厚くする案も試しましたが、v15の1637方針ではCSV行詳細よりマルチ選択表で口数と金額を確認します。"),
+        p("1636では上位を厚くする案も試しましたが、v16の1637方針ではCSV行詳細よりマルチ選択表で口数と金額を確認します。"),
         hot_table(),
         Spacer(1, 4 * mm),
         p("なるべく自動で買う方法", "h2"),
