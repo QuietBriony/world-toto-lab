@@ -57,13 +57,10 @@ import {
   worldCupToto1636PurchaseRows,
   worldCupToto1637ContextModel,
   worldCupToto1637Matches,
+  worldCupToto1637MultiPlans,
   worldCupToto1637NextPlan,
-  worldCupToto1637PurchaseRows,
   worldCupTotoLatestReportFileName,
-  worldCupTotoNextPurchaseSheet200FileName,
-  worldCupTotoNextPurchaseSheet50FileName,
   worldCupTotoLegacyPurchaseSheetFileName,
-  worldCupTotoNextPurchaseSheetFileName,
   worldCupTotoOfficialSales1637Url,
   worldCupTotoOfficialVote1637Url,
   worldCupTotoPhaseHeuristics,
@@ -522,43 +519,29 @@ function OperatingSystemBacktestPanel() {
 }
 
 function NextWorldCupToto1637Panel({
-  purchaseSheet200Href,
-  purchaseSheet50Href,
-  purchaseSheetHref,
   reportHref,
   versionedPurchaseSheet200Href,
   versionedPurchaseSheet50Href,
   versionedPurchaseSheetHref,
   versionedReportHref,
 }: {
-  purchaseSheet200Href: string;
-  purchaseSheet50Href: string;
-  purchaseSheetHref: string;
   reportHref: string;
   versionedPurchaseSheet200Href: string;
   versionedPurchaseSheet50Href: string;
   versionedPurchaseSheetHref: string;
   versionedReportHref: string;
 }) {
-  const previewRows = worldCupToto1637PurchaseRows.slice(0, 12);
+  const standardMultiPlan = worldCupToto1637MultiPlans.find((plan) => plan.label === "1万円級");
+  const wideMultiPlan = worldCupToto1637MultiPlans.find((plan) => plan.label === "200口以内広め");
 
   return (
     <SectionCard
       title="第1637回 いつ買う・何を買う"
-      description="暫定結論は、今すぐ買わずに締切直前で再計算。1万円なら90ユニーク + 激アツ10本だけ2口です。"
+      description="暫定結論は、今すぐ買わずに締切直前で再計算。買い方はCSV行ではなく、M01-M13のマルチ指定で口数と金額を確認します。"
       actions={
         <div className="flex flex-wrap gap-2">
           <a href={reportHref} className={buttonClassName}>
             最新PDF
-          </a>
-          <a href={purchaseSheet50Href} className={secondaryButtonClassName}>
-            50口一覧CSV
-          </a>
-          <a href={purchaseSheetHref} className={secondaryButtonClassName}>
-            100口一覧CSV
-          </a>
-          <a href={purchaseSheet200Href} className={secondaryButtonClassName}>
-            200口一覧CSV
           </a>
           <a href={worldCupTotoOfficialVote1637Url} className={secondaryButtonClassName} rel="noreferrer" target="_blank">
             公式投票率
@@ -581,18 +564,18 @@ function NextWorldCupToto1637Panel({
           hint={`${worldCupToto1637NextPlan.hardStopLabel}で操作を止める`}
         />
         <MiniFact
-          label="標準100口"
-          value={`${worldCupToto1637NextPlan.recommendedUnitCount}口 / ${formatCurrency(
-            worldCupToto1637NextPlan.recommendedBudgetYen,
+          label="標準マルチ"
+          value={`${standardMultiPlan?.unitCount ?? 108}口 / ${formatCurrency(
+            standardMultiPlan?.budgetYen ?? 10_800,
           )}`}
-          hint={`${worldCupToto1637NextPlan.preliminaryUniqueLineCount}ユニーク / 重複なし`}
+          hint="M04/M07/M10全分散 + M02/M05ドロー"
         />
         <MiniFact
-          label="広め200口"
-          value={`${worldCupToto1637NextPlan.maxRecommendedUnitCount}口 / ${formatCurrency(
-            worldCupToto1637NextPlan.maxRecommendedBudgetYen,
+          label="広めマルチ"
+          value={`${wideMultiPlan?.unitCount ?? 162}口 / ${formatCurrency(
+            wideMultiPlan?.budgetYen ?? 16_200,
           )}`}
-          hint={`${worldCupToto1637NextPlan.maxRecommendedUniqueLineCount}ユニーク / 重複なし`}
+          hint="200口以内でM05も全分散"
         />
         <MiniFact
           label="候補宇宙"
@@ -615,20 +598,24 @@ function NextWorldCupToto1637Panel({
         <p>
           totoは固定オッズではなく、同じ出目に何人いるかで払戻が変わります。
           公式投票率と売上が締切前に動くほど、早い時点のEV推定はズレます。
-          だから 1637 は今のCSVをたたき台にして、6/25夕方に同じロジックで差し替えます。
+          だから 1637 は今のPDF/マルチ表をたたき台にして、6/25夕方に同じロジックで差し替えます。
         </p>
         <p className="mt-2 text-sm leading-6 text-slate-600">
-          v12 fixed links:{" "}
+          v13 fixed links:{" "}
+          <a className="font-semibold underline underline-offset-4" href={versionedReportHref}>
+            PDF
+          </a>{" "}
+          / 補助CSV{" "}
           <a className="font-semibold underline underline-offset-4" href={versionedPurchaseSheet50Href}>
-            50口一覧CSV
+            50
           </a>{" "}
           /{" "}
           <a className="font-semibold underline underline-offset-4" href={versionedPurchaseSheetHref}>
-            100口一覧CSV
+            100
           </a>{" "}
           /{" "}
           <a className="font-semibold underline underline-offset-4" href={versionedPurchaseSheet200Href}>
-            200口一覧CSV
+            200
           </a>
         </p>
       </PlainNotice>
@@ -711,28 +698,30 @@ function NextWorldCupToto1637Panel({
       </div>
 
       <HorizontalScrollTable className="mt-5 min-w-0" contentClassName="rounded-[22px] border border-slate-200 bg-white/82">
-        <table className="min-w-[760px] text-left text-sm">
+        <table className="min-w-[860px] text-left text-sm">
           <thead className="bg-slate-100 text-xs uppercase tracking-[0.16em] text-slate-500">
             <tr>
-              <th className="px-3 py-3">順位</th>
-              <th className="px-3 py-3">買い目</th>
-              <th className="px-3 py-3">口数</th>
-              <th className="px-3 py-3">区分</th>
-              <th className="px-3 py-3">累計</th>
-              <th className="px-3 py-3">score</th>
+              <th className="px-3 py-3">プラン</th>
+              <th className="px-3 py-3">M01-M04</th>
+              <th className="px-3 py-3">M05-M08</th>
+              <th className="px-3 py-3">M09-M13</th>
+              <th className="px-3 py-3">計算</th>
+              <th className="px-3 py-3">合計</th>
+              <th className="px-3 py-3">金額</th>
+              <th className="px-3 py-3">メモ</th>
             </tr>
           </thead>
           <tbody>
-            {previewRows.map((row) => (
-              <tr key={row.signature} className="border-t border-slate-100">
-                <td className="px-3 py-3 font-semibold text-slate-950">{row.rank}</td>
-                <td className="px-3 py-3 font-mono text-sm text-slate-900">{row.signature}</td>
-                <td className="px-3 py-3 font-semibold text-slate-900">{row.unitCount}</td>
-                <td className="px-3 py-3">
-                  <Badge tone="slate">1口</Badge>
-                </td>
-                <td className="px-3 py-3 font-semibold text-slate-900">{formatCurrency(row.amountCumulativeYen)}</td>
-                <td className="px-3 py-3 font-mono text-xs text-slate-600">{row.proxyScore.toFixed(4)}</td>
+            {worldCupToto1637MultiPlans.map((plan) => (
+              <tr key={plan.label} className="border-t border-slate-100">
+                <td className="px-3 py-3 font-semibold text-slate-950">{plan.label}</td>
+                <td className="px-3 py-3 font-mono text-sm text-slate-900">{plan.choices.slice(0, 4).join(" ")}</td>
+                <td className="px-3 py-3 font-mono text-sm text-slate-900">{plan.choices.slice(4, 8).join(" ")}</td>
+                <td className="px-3 py-3 font-mono text-sm text-slate-900">{plan.choices.slice(8, 13).join(" ")}</td>
+                <td className="px-3 py-3 font-mono text-xs text-slate-600">{plan.formula}</td>
+                <td className="px-3 py-3 font-semibold text-slate-900">{plan.unitCount.toLocaleString("ja-JP")}口</td>
+                <td className="px-3 py-3 font-semibold text-slate-900">{formatCurrency(plan.budgetYen)}</td>
+                <td className="px-3 py-3 text-xs leading-relaxed text-slate-600">{plan.note}</td>
               </tr>
             ))}
           </tbody>
@@ -1750,9 +1739,6 @@ export default function WorldCupStrategyPage() {
     strategy.rounds.find((round) => round.featured.roundNumber === 1635) ??
     strategy.rounds[0];
   const reportHref = resolveArtAsset(pathname, `/reports/${reportFileName}`);
-  const purchaseSheetHref = resolveArtAsset(pathname, `/reports/${worldCupTotoNextPurchaseSheetFileName}`);
-  const purchaseSheet50Href = resolveArtAsset(pathname, `/reports/${worldCupTotoNextPurchaseSheet50FileName}`);
-  const purchaseSheet200Href = resolveArtAsset(pathname, `/reports/${worldCupTotoNextPurchaseSheet200FileName}`);
   const legacyPurchaseSheetHref = resolveArtAsset(pathname, `/reports/${worldCupTotoLegacyPurchaseSheetFileName}`);
   const versionedReportHref = resolveArtAsset(pathname, `/reports/${worldCupTotoVersionedReportFileName}`);
   const versionedPurchaseSheet50Href = resolveArtAsset(
@@ -1791,9 +1777,6 @@ export default function WorldCupStrategyPage() {
       <OperatingSystemBacktestPanel />
 
       <NextWorldCupToto1637Panel
-        purchaseSheet200Href={purchaseSheet200Href}
-        purchaseSheet50Href={purchaseSheet50Href}
-        purchaseSheetHref={purchaseSheetHref}
         reportHref={reportHref}
         versionedPurchaseSheet200Href={versionedPurchaseSheet200Href}
         versionedPurchaseSheet50Href={versionedPurchaseSheet50Href}

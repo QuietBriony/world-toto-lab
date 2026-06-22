@@ -12,13 +12,13 @@ export const worldCupTotoNextPurchaseSheet200FileName =
   "world-cup-toto-latest-200-purchase-sheet.csv";
 
 export const worldCupTotoVersionedReportFileName =
-  "world-cup-toto-1634-1637-evolved-plan-20260622-v12.pdf";
+  "world-cup-toto-1634-1637-evolved-plan-20260622-v13.pdf";
 export const worldCupTotoVersionedPurchaseSheet50FileName =
-  "world-cup-toto-1637-visual-5000-plan-20260622-v12.csv";
+  "world-cup-toto-1637-visual-5000-plan-20260622-v13.csv";
 export const worldCupTotoVersionedPurchaseSheetFileName =
-  "world-cup-toto-1637-visual-10000-plan-20260622-v12.csv";
+  "world-cup-toto-1637-visual-10000-plan-20260622-v13.csv";
 export const worldCupTotoVersionedPurchaseSheet200FileName =
-  "world-cup-toto-1637-visual-20000-plan-20260622-v12.csv";
+  "world-cup-toto-1637-visual-20000-plan-20260622-v13.csv";
 export const worldCupTotoLegacyReportFileName =
   "world-cup-toto-1634-1636-evolved-plan.pdf";
 export const worldCupTotoLegacyPurchaseSheetFileName =
@@ -28,7 +28,7 @@ export const worldCupTotoReportVersion = {
   csv200Sha256: "7fc51d40e37d4f83ea697852251ac1d6ecbbd924804b7ff87f90e08f499dc5dc",
   csv50Sha256: "36b8fedd4036555650bf42f8dd35bb3ac4f28969dd901a90c0af1708cd13f881",
   csvSha256: "8f7f389221216d9ff6e8a07d5b5f3536b1fbd8391274efabc8d968a15393f79a",
-  label: "2026-06-22 v12",
+  label: "2026-06-22 v13",
   latest200CsvFileName: worldCupTotoNextPurchaseSheet200FileName,
   latestCsvFileName: worldCupTotoNextPurchaseSheetFileName,
   latest50CsvFileName: worldCupTotoNextPurchaseSheet50FileName,
@@ -36,8 +36,8 @@ export const worldCupTotoReportVersion = {
   latestPdfFileName: worldCupTotoLatestReportFileName,
   legacyCsvFileName: worldCupTotoLegacyPurchaseSheetFileName,
   legacyPdfFileName: worldCupTotoLegacyReportFileName,
-  pdfSha256: "fb93c7e7b536b22b0354baf701a2722a58df6bf35dcde78552c7c425614ad96a",
-  publishedAtLabel: "2026-06-22 20:10 JST",
+  pdfSha256: "0d71091307229a1db6a56aa4b54e954dba065d4621a29b458e7975a6f2d74e58",
+  publishedAtLabel: "2026-06-22 20:45 JST",
   versioned200CsvFileName: worldCupTotoVersionedPurchaseSheet200FileName,
   versionedCsvFileName: worldCupTotoVersionedPurchaseSheetFileName,
   versioned50CsvFileName: worldCupTotoVersionedPurchaseSheet50FileName,
@@ -103,6 +103,15 @@ export type Toto1637PurchaseRow = {
   proxyScore: number;
   rank: number;
   signature: string;
+  unitCount: number;
+};
+
+export type Toto1637MultiPlan = {
+  budgetYen: number;
+  choices: string[];
+  formula: string;
+  label: string;
+  note: string;
   unitCount: number;
 };
 
@@ -938,11 +947,66 @@ export const worldCupToto1637PurchaseRows50 = buildWorldCupToto1637PurchaseRows(
 export const worldCupToto1637PurchaseRows = buildWorldCupToto1637PurchaseRows(100);
 export const worldCupToto1637PurchaseRows200 = buildWorldCupToto1637PurchaseRows(200);
 
+function multiChoiceCount(choice: string) {
+  return choice.split("/").length;
+}
+
+function buildToto1637MultiPlan(
+  label: string,
+  choices: string[],
+  note: string,
+): Toto1637MultiPlan {
+  const counts = choices.map(multiChoiceCount);
+  const unitCount = counts.reduce((product, count) => product * count, 1);
+  const formula = Array.from(new Set(counts))
+    .filter((count) => count > 1)
+    .sort((left, right) => right - left)
+    .map((count) => {
+      const quantity = counts.filter((item) => item === count).length;
+
+      return quantity > 1 ? `${count}^${quantity}` : `${count}`;
+    })
+    .join(" x ");
+
+  return {
+    budgetYen: unitCount * TOTO13_STAKE_YEN,
+    choices,
+    formula: formula || "1",
+    label,
+    note,
+    unitCount,
+  };
+}
+
+export const worldCupToto1637MultiPlans: Toto1637MultiPlan[] = [
+  buildToto1637MultiPlan(
+    "分散核",
+    ["2", "1", "2", "2/0/1", "2", "2", "1/0/2", "2", "2", "1/0/2", "2", "2", "1"],
+    "30%台に散る3試合だけ全分散する最小形。",
+  ),
+  buildToto1637MultiPlan(
+    "5千円級",
+    ["2", "1/0", "2", "2/0/1", "2", "2", "1/0/2", "2", "2", "1/0/2", "2", "2", "1"],
+    "分散核に日本戦ドローを足す。",
+  ),
+  buildToto1637MultiPlan(
+    "1万円級",
+    ["2", "1/0", "2", "2/0/1", "2/0", "2", "1/0/2", "2", "2", "1/0/2", "2", "2", "1"],
+    "5千円級にアルジェリア vs オーストリアのドローを足す標準案。",
+  ),
+  buildToto1637MultiPlan(
+    "200口以内広め",
+    ["2", "1/0", "2", "2/0/1", "2/0/1", "2", "1/0/2", "2", "2", "1/0/2", "2", "2", "1"],
+    "M05も全分散にして、200口以内で広げる上限案。",
+  ),
+];
+
 export const worldCupToto1637NextPlan = {
   coreLineCount: buildAllowedRows(worldCupToto1637Matches).length,
   hardStopLabel: "2026-06-25 18:55 JST",
   directPurchasePlanUnitCounts: [50, 100, 200],
   hotDoublePatternCount: 0,
+  multiPurchasePlanUnitCounts: worldCupToto1637MultiPlans.map((plan) => plan.unitCount),
   maxRecommendedBudgetYen:
     worldCupToto1637PurchaseRows200.reduce((sum, row) => sum + row.unitCount, 0) * TOTO13_STAKE_YEN,
   maxRecommendedUnitCount: worldCupToto1637PurchaseRows200.reduce((sum, row) => sum + row.unitCount, 0),
@@ -957,13 +1021,13 @@ export const worldCupToto1637NextPlan = {
   salesSourceUrl: worldCupTotoOfficialSales1637Url,
   sourceUrl: worldCupTotoOfficialVote1637Url,
   summary:
-    "1637 is treated as matchday3: do not buy early. The preliminary sheet applies World Cup context adjustments for neutral venue, country-name bias, group situation, draw-ok incentives, and rotation risk. Freeze the latest vote/sales snapshot around 18:25, regenerate the sheet, then choose one direct-purchase CSV: 50, 100, or 200 unique rows. No duplicated hot rows.",
+    "1637 is treated as matchday3: do not buy early. The main handoff is now a multi-pick table: choose outcomes for M01-M13, multiply the selected outcome counts, and confirm the total units and cost in the official screen. The row-by-row CSV remains only as a check artifact.",
   totalSalesYen: 28_015_000,
   voteAsOfLabel: "2026-06-22 01:02 JST",
   voteUnits: 276_271,
   workflow: [
     {
-      action: "公式投票率と売上を取り直し、締切直前版のCSV/PDFを再生成する。",
+      action: "公式投票率と売上を取り直し、締切直前版のPDF/マルチ表を再生成する。",
       owner: "system",
       timeLabel: "2026-06-25 18:25",
     },
@@ -973,7 +1037,7 @@ export const worldCupToto1637NextPlan = {
       timeLabel: "2026-06-25 18:30",
     },
     {
-      action: "予算に合わせて50/100/200口CSVを1つ選び、上からそのまま公式画面へ転記する。",
+      action: "予算に合わせて27/54/108/162口のマルチ指定を公式画面へ入力する。",
       owner: "human",
       timeLabel: "2026-06-25 18:35-18:50",
     },
