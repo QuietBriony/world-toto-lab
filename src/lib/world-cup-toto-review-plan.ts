@@ -12,13 +12,13 @@ export const worldCupTotoNextPurchaseSheet200FileName =
   "world-cup-toto-latest-200-purchase-sheet.csv";
 
 export const worldCupTotoVersionedReportFileName =
-  "world-cup-toto-1634-1637-evolved-plan-20260622-v13.pdf";
+  "world-cup-toto-1634-1637-evolved-plan-20260622-v14.pdf";
 export const worldCupTotoVersionedPurchaseSheet50FileName =
-  "world-cup-toto-1637-visual-5000-plan-20260622-v13.csv";
+  "world-cup-toto-1637-visual-5000-plan-20260622-v14.csv";
 export const worldCupTotoVersionedPurchaseSheetFileName =
-  "world-cup-toto-1637-visual-10000-plan-20260622-v13.csv";
+  "world-cup-toto-1637-visual-10000-plan-20260622-v14.csv";
 export const worldCupTotoVersionedPurchaseSheet200FileName =
-  "world-cup-toto-1637-visual-20000-plan-20260622-v13.csv";
+  "world-cup-toto-1637-visual-20000-plan-20260622-v14.csv";
 export const worldCupTotoLegacyReportFileName =
   "world-cup-toto-1634-1636-evolved-plan.pdf";
 export const worldCupTotoLegacyPurchaseSheetFileName =
@@ -28,7 +28,7 @@ export const worldCupTotoReportVersion = {
   csv200Sha256: "7fc51d40e37d4f83ea697852251ac1d6ecbbd924804b7ff87f90e08f499dc5dc",
   csv50Sha256: "36b8fedd4036555650bf42f8dd35bb3ac4f28969dd901a90c0af1708cd13f881",
   csvSha256: "8f7f389221216d9ff6e8a07d5b5f3536b1fbd8391274efabc8d968a15393f79a",
-  label: "2026-06-22 v13",
+  label: "2026-06-22 v14",
   latest200CsvFileName: worldCupTotoNextPurchaseSheet200FileName,
   latestCsvFileName: worldCupTotoNextPurchaseSheetFileName,
   latest50CsvFileName: worldCupTotoNextPurchaseSheet50FileName,
@@ -36,8 +36,8 @@ export const worldCupTotoReportVersion = {
   latestPdfFileName: worldCupTotoLatestReportFileName,
   legacyCsvFileName: worldCupTotoLegacyPurchaseSheetFileName,
   legacyPdfFileName: worldCupTotoLegacyReportFileName,
-  pdfSha256: "0d71091307229a1db6a56aa4b54e954dba065d4621a29b458e7975a6f2d74e58",
-  publishedAtLabel: "2026-06-22 20:45 JST",
+  pdfSha256: "35bd86724ffc5b6056f29304ba1bcf5d64fce673f6128135dbc4e191299f3d68",
+  publishedAtLabel: "2026-06-22 21:05 JST",
   versioned200CsvFileName: worldCupTotoVersionedPurchaseSheet200FileName,
   versionedCsvFileName: worldCupTotoVersionedPurchaseSheetFileName,
   versioned50CsvFileName: worldCupTotoVersionedPurchaseSheet50FileName,
@@ -60,6 +60,16 @@ export const worldCupTotoOfficialVote1637Url =
   "https://sp.toto-dream.com/dcs/subos/screen/si01/ssin025/PGSSIN02501ForwardVotetotoSP.form?commodityId=01&fromId=SSIN026&gameAssortment=A&holdCntId=1637";
 export const worldCupTotoOfficialSales1637Url =
   "https://sp.toto-dream.com/dcs/subos/screen/si01/ssin025/PGSSIN02501ForwardSalesTermtotoSP.form?holdCntId=1637";
+export const worldCupTotoPolymarketSportsEventsUrl =
+  "https://gateway.polymarket.us/v2/sports/soccer/events?limit=100&offset=0&type=sport&section=general";
+export const worldCupTotoPolymarketSportsDocsUrl =
+  "https://docs.polymarket.us/api-reference/sports/overview";
+export const worldCupTotoPolymarketMarketsDocsUrl =
+  "https://docs.polymarket.us/api-reference/markets/get-markets";
+export const worldCupTotoPolymarketBboDocsUrl =
+  "https://docs.polymarket.us/api-reference/markets/get-market-bbo";
+export const worldCupTotoOddsApiDocsUrl =
+  "https://the-odds-api.com/liveapi/guides/v4/";
 
 export type TotoVoteShare = Record<OutcomeValue, number>;
 
@@ -113,6 +123,34 @@ export type Toto1637MultiPlan = {
   label: string;
   note: string;
   unitCount: number;
+};
+
+export type Toto1637ExternalMarketRow = {
+  actionLabel: string;
+  delta: Record<OutcomeValue, number>;
+  marketFavoriteOutcome: OutcomeValue;
+  marketProb: TotoVoteShare;
+  matchLabel: string;
+  matchNo: number;
+  officialFavoriteOutcome: OutcomeValue;
+  officialProb: TotoVoteShare;
+  source: "Polymarket";
+  sourceSlug: string;
+  sourceUpdatedAt: string;
+  strongestPositiveDeltaOutcome: OutcomeValue;
+  volumeUsd: number;
+};
+
+export type Toto1637ExternalMarketOverlay = {
+  comparisonRows: Toto1637ExternalMarketRow[];
+  dataStatusLabel: string;
+  decisionRules: string[];
+  fetchedAtLabel: string;
+  finalSelectionSummary: string;
+  marketAdjustedPlans: Toto1637MultiPlan[];
+  sourceDocs: { label: string; url: string }[];
+  sourceUrl: string;
+  summary: string;
 };
 
 export type WorldCupContextFactorKey =
@@ -1001,6 +1039,204 @@ export const worldCupToto1637MultiPlans: Toto1637MultiPlan[] = [
   ),
 ];
 
+function planMatchLabel(match: Toto1637PlanMatch) {
+  return `${match.home} vs ${match.away}`;
+}
+
+function strongestPositiveDelta(delta: Record<OutcomeValue, number>) {
+  return (["1", "0", "2"] as const)
+    .map((outcome) => ({ outcome, value: delta[outcome] }))
+    .sort((left, right) => right.value - left.value)[0].outcome;
+}
+
+const worldCupToto1637ExternalMarketRawRows = [
+  {
+    actionLabel: "市場はドイツ一択ではない。最終市場でも同じなら1/0を足す最優先枠。",
+    delta: { "1": 0.2106, "0": 0.1131, "2": -0.3237 },
+    marketProb: { "1": 0.2637, "0": 0.2338, "2": 0.5025 },
+    matchNo: 1,
+    sourceSlug: "fwc-ecu-ger-2026-06-25",
+    sourceUpdatedAt: "2026-06-22T11:27:57Z",
+    volumeUsd: 364_299,
+  },
+  {
+    actionLabel: "日本人気がやや重い。100口以内では様子見、200口超なら2を検討。",
+    delta: { "1": -0.1016, "0": 0.011, "2": 0.0905 },
+    marketProb: { "1": 0.5124, "0": 0.2736, "2": 0.2139 },
+    matchNo: 2,
+    sourceSlug: "fwc-jpn-swe-2026-06-25",
+    sourceUpdatedAt: "2026-06-22T11:27:58Z",
+    volumeUsd: 125_280,
+  },
+  {
+    actionLabel: "スペイン本線は維持。ドローが20%を超えるので締切版では0を復活候補にする。",
+    delta: { "1": 0.0421, "0": 0.0238, "2": -0.0659 },
+    marketProb: { "1": 0.1256, "0": 0.2161, "2": 0.6583 },
+    matchNo: 3,
+    sourceSlug: "fwc-uru-esp-2026-06-26",
+    sourceUpdatedAt: "2026-06-22T11:27:58Z",
+    volumeUsd: 96_875,
+  },
+  {
+    actionLabel: "公式と市場のズレは小さめ。外部市場版ではここを薄めてM01/M05へ資金移動。",
+    delta: { "1": 0.0045, "0": -0.0463, "2": 0.0417 },
+    marketProb: { "1": 0.2736, "0": 0.2537, "2": 0.4726 },
+    matchNo: 4,
+    sourceSlug: "fwc-col-por-2026-06-27",
+    sourceUpdatedAt: "2026-06-22T11:27:57Z",
+    volumeUsd: 64_709,
+  },
+  {
+    actionLabel: "公式よりかなり接戦。Austria固定ではなく1/0/2へ広げる。",
+    delta: { "1": 0.1121, "0": 0.0243, "2": -0.1364 },
+    marketProb: { "1": 0.3035, "0": 0.3134, "2": 0.3831 },
+    matchNo: 5,
+    sourceSlug: "fwc-alg-aut-2026-06-27",
+    sourceUpdatedAt: "2026-06-22T11:27:57Z",
+    volumeUsd: 38_686,
+  },
+  {
+    actionLabel: "Netherlands本線。ドロー差分はあるが、200口以内ではまだロック寄り。",
+    delta: { "1": 0.0028, "0": 0.044, "2": -0.0469 },
+    marketProb: { "1": 0.0348, "0": 0.0945, "2": 0.8706 },
+    matchNo: 6,
+    sourceSlug: "fwc-tun-ned-2026-06-25",
+    sourceUpdatedAt: "2026-06-22T11:27:58Z",
+    volumeUsd: 208_157,
+  },
+  {
+    actionLabel: "市場はドロー本命。ここは現行どおり全分散を維持。",
+    delta: { "1": -0.0439, "0": 0.1204, "2": -0.0765 },
+    marketProb: { "1": 0.33, "0": 0.4286, "2": 0.2414 },
+    matchNo: 7,
+    sourceSlug: "fwc-par-aus-2026-06-25",
+    sourceUpdatedAt: "2026-06-22T11:27:58Z",
+    volumeUsd: 158_476,
+  },
+  {
+    actionLabel: "France人気は公式ほど強くない。予算が増えたら0/1を足す候補。",
+    delta: { "1": 0.1277, "0": 0.0713, "2": -0.199 },
+    marketProb: { "1": 0.2195, "0": 0.239, "2": 0.5415 },
+    matchNo: 8,
+    sourceSlug: "fwc-nor-fra-2026-06-26",
+    sourceUpdatedAt: "2026-06-22T11:27:58Z",
+    volumeUsd: 25_365,
+  },
+  {
+    actionLabel: "Englandはまだ本線。ただし92.8%ほど硬くはないので締切ニュースで0を検討。",
+    delta: { "1": 0.0667, "0": 0.0701, "2": -0.1369 },
+    marketProb: { "1": 0.0945, "0": 0.1144, "2": 0.791 },
+    matchNo: 9,
+    sourceSlug: "fwc-pan-eng-2026-06-27",
+    sourceUpdatedAt: "2026-06-22T11:27:58Z",
+    volumeUsd: 22_499,
+  },
+  {
+    actionLabel: "市場はCongo DR寄りを補強。現行の全分散枠として残す。",
+    delta: { "1": 0.0896, "0": -0.0933, "2": 0.0037 },
+    marketProb: { "1": 0.4774, "0": 0.2462, "2": 0.2764 },
+    matchNo: 10,
+    sourceSlug: "fwc-cod-uzb-2026-06-27",
+    sourceUpdatedAt: "2026-06-22T11:27:57Z",
+    volumeUsd: 13_279,
+  },
+  {
+    actionLabel: "Argentinaは本線継続。公式ほど硬くはないが200口以内では2優先。",
+    delta: { "1": 0.0474, "0": 0.0733, "2": -0.1207 },
+    marketProb: { "1": 0.0739, "0": 0.1133, "2": 0.8128 },
+    matchNo: 11,
+    sourceSlug: "fwc-jor-arg-2026-06-27",
+    sourceUpdatedAt: "2026-06-22T11:27:58Z",
+    volumeUsd: 44_386,
+  },
+  {
+    actionLabel: "Belgiumは本線継続。ドローは上振れ候補だが優先度はM01/M05/M13未満。",
+    delta: { "1": 0.0235, "0": 0.0608, "2": -0.0843 },
+    marketProb: { "1": 0.0647, "0": 0.1343, "2": 0.801 },
+    matchNo: 12,
+    sourceSlug: "fwc-nzl-bel-2026-06-26",
+    sourceUpdatedAt: "2026-06-22T11:27:58Z",
+    volumeUsd: 39_293,
+  },
+  {
+    actionLabel: "Croatia人気が重い。市場反映版では最低でも0を足す。",
+    delta: { "1": -0.1675, "0": 0.0933, "2": 0.0742 },
+    marketProb: { "1": 0.598, "0": 0.2462, "2": 0.1558 },
+    matchNo: 13,
+    sourceSlug: "fwc-cro-gha-2026-06-27",
+    sourceUpdatedAt: "2026-06-22T11:27:57Z",
+    volumeUsd: 21_162,
+  },
+] satisfies Array<
+  Omit<
+    Toto1637ExternalMarketRow,
+    | "marketFavoriteOutcome"
+    | "matchLabel"
+    | "officialFavoriteOutcome"
+    | "officialProb"
+    | "source"
+    | "strongestPositiveDeltaOutcome"
+  >
+>;
+
+export const worldCupToto1637ExternalMarketOverlay: Toto1637ExternalMarketOverlay = {
+  comparisonRows: worldCupToto1637ExternalMarketRawRows.map((row) => {
+    const match = worldCupToto1637Matches.find((item) => item.matchNo === row.matchNo);
+    const officialProb = match?.votes ?? { "1": 0, "0": 0, "2": 0 };
+
+    return {
+      ...row,
+      marketFavoriteOutcome: favoriteFromVotes(row.marketProb),
+      matchLabel: match ? planMatchLabel(match) : `M${String(row.matchNo).padStart(2, "0")}`,
+      officialFavoriteOutcome: favoriteFromVotes(officialProb),
+      officialProb,
+      source: "Polymarket",
+      strongestPositiveDeltaOutcome: strongestPositiveDelta(row.delta),
+    };
+  }),
+  dataStatusLabel: "Polymarket public Sports API sample connected; Hazi comment not included",
+  decisionRules: [
+    "p_market - p_public が +8pt 以上なら、公式で薄い出目でも昇格候補にする。",
+    "公式人気の本命が p_market で -12pt 以上なら、単独ロックを解除する。",
+    "p_market のドローが20%以上なら、締切版で0を残す候補に戻す。",
+    "200口以内では M01/M05/M07/M13 を優先し、低流動性のM08/M09/M11/M12は締切ニュースが強い時だけ足す。",
+  ],
+  fetchedAtLabel: "2026-06-22 20:33 JST",
+  finalSelectionSummary:
+    "このまま締切直前も同じ市場差なら、現行の公式+W杯文脈プランからM01/M05/M13へ分散を移す。標準は市場補強108口、広めは市場補強162口。",
+  marketAdjustedPlans: [
+    buildToto1637MultiPlan(
+      "市場補強27口",
+      ["2/0/1", "1", "2", "2", "2/0/1", "2", "1/0/2", "2", "2", "1", "2", "2", "1"],
+      "M01/M05/M07だけ市場差分を強く反映した最小形。",
+    ),
+    buildToto1637MultiPlan(
+      "市場補強54口",
+      ["2/0/1", "1", "2", "2", "2/0/1", "2", "1/0/2", "2", "2", "1", "2", "2", "1/0"],
+      "54口級ではM13のドローを追加。Croatia人気の重さを直接ケアする。",
+    ),
+    buildToto1637MultiPlan(
+      "市場補強108口",
+      ["2/0/1", "1", "2", "2", "2/0/1", "2", "1/0/2", "2", "2", "1/0", "2", "2", "1/0"],
+      "標準案。M10のドローも戻し、公式より市場が荒れを見る箇所へ寄せる。",
+    ),
+    buildToto1637MultiPlan(
+      "市場補強162口",
+      ["2/0/1", "1", "2", "2", "2/0/1", "2", "1/0/2", "2", "2", "1/0/2", "2", "2", "1/0"],
+      "広め案。M10を全分散へ戻しつつ200口以内に収める。",
+    ),
+  ],
+  sourceDocs: [
+    { label: "Polymarket Sports API", url: worldCupTotoPolymarketSportsDocsUrl },
+    { label: "Polymarket Markets API", url: worldCupTotoPolymarketMarketsDocsUrl },
+    { label: "Polymarket BBO API", url: worldCupTotoPolymarketBboDocsUrl },
+    { label: "Odds API bookmaker docs", url: worldCupTotoOddsApiDocsUrl },
+  ],
+  sourceUrl: worldCupTotoPolymarketSportsEventsUrl,
+  summary:
+    "公式投票率とPolymarket価格の差を見ると、M01/M05/M07/M13は公式人気より荒れ側を厚くする根拠がある。一方、M04は外部市場のズレが小さいため、外部市場版ではここを薄めて予算を移す。",
+};
+
 export const worldCupToto1637NextPlan = {
   coreLineCount: buildAllowedRows(worldCupToto1637Matches).length,
   hardStopLabel: "2026-06-25 18:55 JST",
@@ -1021,7 +1257,7 @@ export const worldCupToto1637NextPlan = {
   salesSourceUrl: worldCupTotoOfficialSales1637Url,
   sourceUrl: worldCupTotoOfficialVote1637Url,
   summary:
-    "1637 is treated as matchday3: do not buy early. The main handoff is now a multi-pick table: choose outcomes for M01-M13, multiply the selected outcome counts, and confirm the total units and cost in the official screen. The row-by-row CSV remains only as a check artifact.",
+    "1637 is treated as matchday3: do not buy early. The main handoff is a multi-pick table. At the final window, refresh official votes and Polymarket prices, then choose either the official+context plan or the market-adjusted 108/162-unit plan.",
   totalSalesYen: 28_015_000,
   voteAsOfLabel: "2026-06-22 01:02 JST",
   voteUnits: 276_271,
@@ -1032,12 +1268,17 @@ export const worldCupToto1637NextPlan = {
       timeLabel: "2026-06-25 18:25",
     },
     {
-      action: "強人気ロック、条件戦ドロー、30%台分散を目視で確認する。",
+      action: "Polymarket公開価格をread-onlyで取り、公式投票率との差分をM01-M13で確認する。",
+      owner: "system",
+      timeLabel: "2026-06-25 18:27",
+    },
+    {
+      action: "強人気ロック、条件戦ドロー、30%台分散、市場差分+8pt以上の出目を目視で確認する。",
       owner: "human",
       timeLabel: "2026-06-25 18:30",
     },
     {
-      action: "予算に合わせて27/54/108/162口のマルチ指定を公式画面へ入力する。",
+      action: "予算に合わせて通常プランか市場補強108/162口を選び、M01-M13のマルチ指定を公式画面へ入力する。",
       owner: "human",
       timeLabel: "2026-06-25 18:35-18:50",
     },
