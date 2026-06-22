@@ -8,6 +8,21 @@
   },
   "versions": [
     {
+      "csv": "world-cup-toto-1637-visual-10000-plan-20260622-v15.csv",
+      "csv50": "world-cup-toto-1637-visual-5000-plan-20260622-v15.csv",
+      "csv50Sha256": "B79FF958E777B3882B94C000341BF752E4843FEECF1E566AA6D90F5458D15F2A",
+      "csv100Sha256": "027E04C3F299CCC3C58CB340FFAF7352583DF229476D1F7A9196FCB47D0653F5",
+      "csv200": "world-cup-toto-1637-visual-20000-plan-20260622-v15.csv",
+      "csv200Sha256": "D8E4EECD5FEB9EB765425AA348B56B8BDDC041D21BF36C65563E75D3650A94D6",
+      "csvSha256": "027E04C3F299CCC3C58CB340FFAF7352583DF229476D1F7A9196FCB47D0653F5",
+      "label": "2026-06-22 v15",
+      "legacyPdf": "world-cup-toto-1634-1636-evolved-plan.pdf",
+      "pdf": "world-cup-toto-1634-1637-evolved-plan-20260622-v15.pdf",
+      "pdfSha256": "84044767A31FCD88DFC4B4D87F42DA29B443415C7F8BEE523F6441E310DD9947",
+      "publishedAt": "2026-06-22 21:55 JST",
+      "summary": "Refreshes round 1637 with the 2026-06-22 20:56 official vote snapshot, keeps Polymarket as the external-market proxy, explains official votes as Japanese toto crowd share, and locks the provisional final recommendation to the market-adjusted 108-unit plan."
+    },
+    {
       "csv": "world-cup-toto-1637-visual-10000-plan-20260622-v14.csv",
       "csv50": "world-cup-toto-1637-visual-5000-plan-20260622-v14.csv",
       "csv50Sha256": "36B8FEDD4036555650BF42F8DD35BB3AC4F28969DD901A90C0AF1708CD13F881",

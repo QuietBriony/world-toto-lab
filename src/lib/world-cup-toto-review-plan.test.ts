@@ -16,6 +16,7 @@ import {
   worldCupToto1636PurchaseRows,
   worldCupToto1637ContextModel,
   worldCupToto1637ExternalMarketOverlay,
+  worldCupToto1637FinalLogic,
   worldCupToto1637Matches,
   worldCupToto1637MultiPlans,
   worldCupToto1637NextPlan,
@@ -26,6 +27,7 @@ import {
   worldCupTotoNextPurchaseSheet200FileName,
   worldCupTotoNextPurchaseSheet50FileName,
   worldCupTotoNextPurchaseSheetFileName,
+  worldCupTotoOfficialVoteInterpretation,
   worldCupTotoPhaseHeuristics,
   worldCupTotoReportVersion,
   worldCupTotoVersionedPurchaseSheet200FileName,
@@ -99,8 +101,8 @@ describe("world cup toto review plan", () => {
 
     expect(worldCupToto1637NextPlan.purchaseDeadlineLabel).toBe("2026-06-25 19:00 JST");
     expect(worldCupToto1637NextPlan.recommendedPurchaseWindowLabel).toBe("2026-06-25 18:35-18:50 JST");
-    expect(worldCupToto1637NextPlan.totalSalesYen).toBe(28_015_000);
-    expect(worldCupToto1637NextPlan.voteUnits).toBe(276_271);
+    expect(worldCupToto1637NextPlan.totalSalesYen).toBe(43_181_300);
+    expect(worldCupToto1637NextPlan.voteUnits).toBe(431_813);
     expect(worldCupToto1637NextPlan.coreLineCount).toBe(6_912);
     expect(worldCupToto1637NextPlan.preliminaryUniqueLineCount).toBe(100);
     expect(worldCupToto1637NextPlan.recommendedUnitCount).toBe(100);
@@ -138,6 +140,7 @@ describe("world cup toto review plan", () => {
     expect(worldCupToto1637NextPlan.workflow.map((step) => step.timeLabel)).toContain("2026-06-25 18:27");
     expect(worldCupToto1637Matches.every((match) => match.contextFactors.length > 0)).toBe(true);
     expect(worldCupToto1637Matches.find((match) => match.matchNo === 1)?.recommendedOutcomes).toContain("0");
+    expect(worldCupToto1637Matches.find((match) => match.matchNo === 2)?.votes["1"]).toBeCloseTo(0.6454, 4);
     expect(worldCupToto1637Matches.find((match) => match.matchNo === 6)?.riskBucket).toBe("semi");
     expect(worldCupToto1637PurchaseRows50).toHaveLength(50);
     expect(worldCupToto1637PurchaseRows).toHaveLength(100);
@@ -156,9 +159,12 @@ describe("world cup toto review plan", () => {
 
     expect(worldCupToto1637ExternalMarketOverlay.dataStatusLabel).toContain("Polymarket");
     expect(worldCupToto1637ExternalMarketOverlay.dataStatusLabel).toContain("Hazi comment not included");
+    expect(worldCupTotoOfficialVoteInterpretation.label).toContain("日本のtoto購入者");
+    expect(worldCupToto1637FinalLogic.selectedPlanLabel).toBe("市場補強108口");
     expect(marketRows).toHaveLength(13);
     expect(marketRows.every((row) => row.source === "Polymarket" && row.sourceSlug.startsWith("fwc-"))).toBe(true);
     expect(marketRows.find((row) => row.matchNo === 1)?.delta["1"]).toBeGreaterThan(0.2);
+    expect(marketRows.find((row) => row.matchNo === 2)?.delta["2"]).toBeGreaterThan(0.1);
     expect(marketRows.find((row) => row.matchNo === 5)?.marketProb["1"]).toBeGreaterThan(0.3);
     expect(marketRows.find((row) => row.matchNo === 7)?.marketFavoriteOutcome).toBe("0");
     expect(marketRows.find((row) => row.matchNo === 13)?.actionLabel).toContain("0を足す");
@@ -166,7 +172,7 @@ describe("world cup toto review plan", () => {
     expect(marketPlans.map((plan) => plan.unitCount)).toEqual([27, 54, 108, 162]);
     expect(marketPlans[2]?.choices).toEqual([
       "2/0/1",
-      "1",
+      "1/0",
       "2",
       "2",
       "2/0/1",
@@ -174,7 +180,7 @@ describe("world cup toto review plan", () => {
       "1/0/2",
       "2",
       "2",
-      "1/0",
+      "1",
       "2",
       "2",
       "1/0",
@@ -186,12 +192,12 @@ describe("world cup toto review plan", () => {
     expect(worldCupTotoNextPurchaseSheetFileName).toBe("world-cup-toto-latest-purchase-sheet.csv");
     expect(worldCupTotoNextPurchaseSheet50FileName).toBe("world-cup-toto-latest-50-purchase-sheet.csv");
     expect(worldCupTotoNextPurchaseSheet200FileName).toBe("world-cup-toto-latest-200-purchase-sheet.csv");
-    expect(worldCupTotoVersionedReportFileName).toBe("world-cup-toto-1634-1637-evolved-plan-20260622-v14.pdf");
-    expect(worldCupTotoVersionedPurchaseSheet50FileName).toBe("world-cup-toto-1637-visual-5000-plan-20260622-v14.csv");
-    expect(worldCupTotoVersionedPurchaseSheetFileName).toBe("world-cup-toto-1637-visual-10000-plan-20260622-v14.csv");
-    expect(worldCupTotoVersionedPurchaseSheet200FileName).toBe("world-cup-toto-1637-visual-20000-plan-20260622-v14.csv");
-    expect(worldCupTotoReportVersion.label).toBe("2026-06-22 v14");
-    expect(worldCupTotoReportVersion.publishedAtLabel).toBe("2026-06-22 21:05 JST");
+    expect(worldCupTotoVersionedReportFileName).toBe("world-cup-toto-1634-1637-evolved-plan-20260622-v15.pdf");
+    expect(worldCupTotoVersionedPurchaseSheet50FileName).toBe("world-cup-toto-1637-visual-5000-plan-20260622-v15.csv");
+    expect(worldCupTotoVersionedPurchaseSheetFileName).toBe("world-cup-toto-1637-visual-10000-plan-20260622-v15.csv");
+    expect(worldCupTotoVersionedPurchaseSheet200FileName).toBe("world-cup-toto-1637-visual-20000-plan-20260622-v15.csv");
+    expect(worldCupTotoReportVersion.label).toBe("2026-06-22 v15");
+    expect(worldCupTotoReportVersion.publishedAtLabel).toBe("2026-06-22 21:55 JST");
     expect(worldCupTotoReportVersion.pdfSha256).toHaveLength(64);
     expect(worldCupTotoReportVersion.csv50Sha256).toHaveLength(64);
     expect(worldCupTotoReportVersion.csvSha256).toHaveLength(64);

@@ -57,11 +57,13 @@ import {
   worldCupToto1636PurchaseRows,
   worldCupToto1637ContextModel,
   worldCupToto1637ExternalMarketOverlay,
+  worldCupToto1637FinalLogic,
   worldCupToto1637Matches,
   worldCupToto1637MultiPlans,
   worldCupToto1637NextPlan,
   worldCupTotoLatestReportFileName,
   worldCupTotoLegacyPurchaseSheetFileName,
+  worldCupTotoOfficialVoteInterpretation,
   worldCupTotoOfficialSales1637Url,
   worldCupTotoOfficialVote1637Url,
   worldCupTotoPhaseHeuristics,
@@ -559,6 +561,7 @@ function NextWorldCupToto1637Panel({
         row.actionLabel.includes("最優先") ||
         row.actionLabel.includes("全分散") ||
         row.actionLabel.includes("広げる") ||
+        row.actionLabel.includes("日本人気") ||
         row.actionLabel.includes("0を足す") ||
         row.actionLabel.includes("薄め"),
     )
@@ -592,6 +595,13 @@ function NextWorldCupToto1637Panel({
           label="締切"
           value={worldCupToto1637NextPlan.purchaseDeadlineLabel.replace("2026-06-25 ", "")}
           hint={`${worldCupToto1637NextPlan.hardStopLabel}で操作を止める`}
+        />
+        <MiniFact
+          label="暫定確定"
+          value={`${marketStandardPlan?.unitCount ?? 108}口 / ${formatCurrency(
+            marketStandardPlan?.budgetYen ?? 10_800,
+          )}`}
+          hint={worldCupToto1637FinalLogic.selectedPlanLabel}
         />
         <MiniFact
           label="標準マルチ"
@@ -631,7 +641,7 @@ function NextWorldCupToto1637Panel({
           だから 1637 は今のPDF/マルチ表をたたき台にして、6/25夕方に同じロジックで差し替えます。
         </p>
         <p className="mt-2 text-sm leading-6 text-slate-600">
-          {worldCupTotoReportVersion.label} fixed links:{" "}
+          {worldCupTotoReportVersion.label} 固定リンク:{" "}
           <a className="font-semibold underline underline-offset-4" href={versionedReportHref}>
             PDF
           </a>{" "}
@@ -648,6 +658,15 @@ function NextWorldCupToto1637Panel({
             200
           </a>
         </p>
+      </PlainNotice>
+
+      <PlainNotice tone="teal" title={worldCupTotoOfficialVoteInterpretation.label}>
+        <p>{worldCupTotoOfficialVoteInterpretation.note}</p>
+        <ul className="mt-2 list-disc space-y-1 pl-5 text-sm leading-6 text-slate-700">
+          {worldCupTotoOfficialVoteInterpretation.signals.map((signal) => (
+            <li key={signal}>{signal}</li>
+          ))}
+        </ul>
       </PlainNotice>
 
       <PlainNotice tone="teal" title={worldCupToto1637ContextModel.label}>
@@ -687,6 +706,16 @@ function NextWorldCupToto1637Panel({
           Haziコメントなしの前提では、人間メモ重みは0にして、公式投票率、Polymarket価格、W杯コンテキストだけで見る。
           締切直前も同じ差分なら、通常の1万円級より市場補強108口を優先候補にする。
         </p>
+      </PlainNotice>
+
+      <PlainNotice tone="teal" title={worldCupToto1637FinalLogic.label}>
+        <p>{worldCupToto1637FinalLogic.summary}</p>
+        <ul className="mt-2 list-disc space-y-1 pl-5 text-sm leading-6 text-slate-700">
+          {worldCupToto1637FinalLogic.backtestSignals.map((signal) => (
+            <li key={signal}>{signal}</li>
+          ))}
+        </ul>
+        <p className="mt-2 text-sm leading-6 text-slate-700">{worldCupToto1637FinalLogic.deadlineAction}</p>
       </PlainNotice>
 
       <HorizontalScrollTable className="mt-5 min-w-0" contentClassName="rounded-[22px] border border-amber-200 bg-white/86">
