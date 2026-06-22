@@ -61,6 +61,7 @@ import {
   worldCupToto1637PurchaseRows,
   worldCupTotoLatestReportFileName,
   worldCupTotoNextBasePurchaseSheetFileName,
+  worldCupTotoNextPurchaseSheet20000FileName,
   worldCupTotoNextHotExtraSheetFileName,
   worldCupTotoLegacyPurchaseSheetFileName,
   worldCupTotoNextPurchaseSheetFileName,
@@ -69,6 +70,7 @@ import {
   worldCupTotoPhaseHeuristics,
   worldCupTotoReportVersion,
   worldCupTotoVersionedBasePurchaseSheetFileName,
+  worldCupTotoVersionedPurchaseSheet20000FileName,
   worldCupTotoVersionedHotExtraSheetFileName,
   worldCupTotoVersionedPurchaseSheetFileName,
   worldCupTotoVersionedReportFileName,
@@ -524,19 +526,23 @@ function OperatingSystemBacktestPanel() {
 function NextWorldCupToto1637Panel({
   basePurchaseSheetHref,
   hotExtraSheetHref,
+  purchaseSheet20000Href,
   purchaseSheetHref,
   reportHref,
   versionedBasePurchaseSheetHref,
   versionedHotExtraSheetHref,
+  versionedPurchaseSheet20000Href,
   versionedPurchaseSheetHref,
   versionedReportHref,
 }: {
   basePurchaseSheetHref: string;
   hotExtraSheetHref: string;
+  purchaseSheet20000Href: string;
   purchaseSheetHref: string;
   reportHref: string;
   versionedBasePurchaseSheetHref: string;
   versionedHotExtraSheetHref: string;
+  versionedPurchaseSheet20000Href: string;
   versionedPurchaseSheetHref: string;
   versionedReportHref: string;
 }) {
@@ -552,7 +558,10 @@ function NextWorldCupToto1637Panel({
             最新PDF
           </a>
           <a href={purchaseSheetHref} className={secondaryButtonClassName}>
-            最新CSV
+            1万円CSV
+          </a>
+          <a href={purchaseSheet20000Href} className={secondaryButtonClassName}>
+            2万円以内CSV
           </a>
           <a href={worldCupTotoOfficialVote1637Url} className={secondaryButtonClassName} rel="noreferrer" target="_blank">
             公式投票率
@@ -581,11 +590,18 @@ function NextWorldCupToto1637Panel({
           hint={`${worldCupToto1637NextPlan.hardStopLabel}で操作を止める`}
         />
         <MiniFact
-          label="暫定予算"
+          label="1万円プラン"
           value={`${worldCupToto1637NextPlan.recommendedUnitCount}口 / ${formatCurrency(
             worldCupToto1637NextPlan.recommendedBudgetYen,
           )}`}
           hint={`${worldCupToto1637NextPlan.preliminaryUniqueLineCount}ユニーク + Hot${worldCupToto1637NextPlan.hotDoublePatternCount}`}
+        />
+        <MiniFact
+          label="200口以内"
+          value={`${worldCupToto1637NextPlan.maxRecommendedUnitCount}口 / ${formatCurrency(
+            worldCupToto1637NextPlan.maxRecommendedBudgetYen,
+          )}`}
+          hint={`${worldCupToto1637NextPlan.maxRecommendedUniqueLineCount}ユニーク + Hot${worldCupToto1637NextPlan.hotDoublePatternCount}`}
         />
         <MiniFact
           label="候補宇宙"
@@ -611,9 +627,13 @@ function NextWorldCupToto1637Panel({
           だから 1637 は今のCSVをたたき台にして、6/25夕方に同じロジックで差し替えます。
         </p>
         <p className="mt-2 text-sm leading-6 text-slate-600">
-          v9 fixed links:{" "}
+          v10 fixed links:{" "}
           <a className="font-semibold underline underline-offset-4" href={versionedPurchaseSheetHref}>
             100口CSV
+          </a>{" "}
+          /{" "}
+          <a className="font-semibold underline underline-offset-4" href={versionedPurchaseSheet20000Href}>
+            200口CSV
           </a>{" "}
           /{" "}
           <a className="font-semibold underline underline-offset-4" href={versionedBasePurchaseSheetHref}>
@@ -1746,11 +1766,16 @@ export default function WorldCupStrategyPage() {
     strategy.rounds[0];
   const reportHref = resolveArtAsset(pathname, `/reports/${reportFileName}`);
   const purchaseSheetHref = resolveArtAsset(pathname, `/reports/${worldCupTotoNextPurchaseSheetFileName}`);
+  const purchaseSheet20000Href = resolveArtAsset(pathname, `/reports/${worldCupTotoNextPurchaseSheet20000FileName}`);
   const basePurchaseSheetHref = resolveArtAsset(pathname, `/reports/${worldCupTotoNextBasePurchaseSheetFileName}`);
   const hotExtraSheetHref = resolveArtAsset(pathname, `/reports/${worldCupTotoNextHotExtraSheetFileName}`);
   const legacyPurchaseSheetHref = resolveArtAsset(pathname, `/reports/${worldCupTotoLegacyPurchaseSheetFileName}`);
   const versionedReportHref = resolveArtAsset(pathname, `/reports/${worldCupTotoVersionedReportFileName}`);
   const versionedPurchaseSheetHref = resolveArtAsset(pathname, `/reports/${worldCupTotoVersionedPurchaseSheetFileName}`);
+  const versionedPurchaseSheet20000Href = resolveArtAsset(
+    pathname,
+    `/reports/${worldCupTotoVersionedPurchaseSheet20000FileName}`,
+  );
   const versionedBasePurchaseSheetHref = resolveArtAsset(
     pathname,
     `/reports/${worldCupTotoVersionedBasePurchaseSheetFileName}`,
@@ -1788,10 +1813,12 @@ export default function WorldCupStrategyPage() {
       <NextWorldCupToto1637Panel
         basePurchaseSheetHref={basePurchaseSheetHref}
         hotExtraSheetHref={hotExtraSheetHref}
+        purchaseSheet20000Href={purchaseSheet20000Href}
         purchaseSheetHref={purchaseSheetHref}
         reportHref={reportHref}
         versionedBasePurchaseSheetHref={versionedBasePurchaseSheetHref}
         versionedHotExtraSheetHref={versionedHotExtraSheetHref}
+        versionedPurchaseSheet20000Href={versionedPurchaseSheet20000Href}
         versionedPurchaseSheetHref={versionedPurchaseSheetHref}
         versionedReportHref={versionedReportHref}
       />

@@ -111,6 +111,7 @@ import { buildWorldCupStrategyDashboard } from "@/lib/world-cup-strategy";
 import {
   worldCupTotoLatestReportFileName,
   worldCupTotoNextHotExtraSheetFileName,
+  worldCupTotoNextPurchaseSheet20000FileName,
   worldCupTotoNextPurchaseSheetFileName,
   worldCupTotoReportVersion,
   worldCupTotoVersionedReportFileName,
@@ -685,6 +686,10 @@ export default function DashboardPage() {
     pathname,
     `/reports/${worldCupTotoNextPurchaseSheetFileName}`,
   );
+  const worldCupPurchaseSheet20000Href = resolveArtAsset(
+    pathname,
+    `/reports/${worldCupTotoNextPurchaseSheet20000FileName}`,
+  );
   const worldCupHotExtraSheetHref = resolveArtAsset(
     pathname,
     `/reports/${worldCupTotoNextHotExtraSheetFileName}`,
@@ -1193,7 +1198,10 @@ export default function DashboardPage() {
                     固定版PDF
                   </a>
                   <a href={worldCupPurchaseSheetHref} className={secondaryButtonClassName}>
-                    買い目CSV
+                    1万円CSV
+                  </a>
+                  <a href={worldCupPurchaseSheet20000Href} className={secondaryButtonClassName}>
+                    2万円以内CSV
                   </a>
                   <a href={worldCupHotExtraSheetHref} className={secondaryButtonClassName}>
                     Hot追加10CSV
