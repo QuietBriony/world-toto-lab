@@ -355,6 +355,18 @@ function riskBucketTone(bucket: "flex" | "lock" | "semi" | "spread") {
   return "sky" as const;
 }
 
+function finalLockDecisionLabel(decision: "downgrade54" | "expand162" | "keep108") {
+  if (decision === "expand162") return "162候補";
+  if (decision === "downgrade54") return "54縮小";
+  return "108維持";
+}
+
+function finalLockDecisionTone(decision: "downgrade54" | "expand162" | "keep108") {
+  if (decision === "expand162") return "amber" as const;
+  if (decision === "downgrade54") return "slate" as const;
+  return "teal" as const;
+}
+
 function contextFactorLabelList(factors: readonly { label: string }[]) {
   return factors.map((factor) => factor.label).join(" / ");
 }
@@ -768,6 +780,35 @@ function NextWorldCupToto1637Panel({
         </ul>
         <p className="mt-2 text-sm leading-6 text-slate-700">{worldCupToto1637FinalLogic.deadlineAction}</p>
       </PlainNotice>
+
+      <HorizontalScrollTable className="mt-5 min-w-0" contentClassName="rounded-[22px] border border-teal-200 bg-white/86">
+        <table className="min-w-[1020px] text-left text-sm">
+          <thead className="bg-teal-50 text-xs uppercase tracking-[0.16em] text-teal-700">
+            <tr>
+              <th className="px-3 py-3">判定軸</th>
+              <th className="px-3 py-3">現在の読み</th>
+              <th className="px-3 py-3">最終判断</th>
+              <th className="px-3 py-3">108口維持</th>
+              <th className="px-3 py-3">162口拡張</th>
+              <th className="px-3 py-3">54口縮小</th>
+            </tr>
+          </thead>
+          <tbody>
+            {worldCupToto1637FinalLogic.lockRules.map((rule) => (
+              <tr key={rule.checkLabel} className="border-t border-teal-100">
+                <td className="px-3 py-3 font-semibold text-slate-950">{rule.checkLabel}</td>
+                <td className="px-3 py-3 text-xs leading-relaxed text-slate-700">{rule.currentRead}</td>
+                <td className="px-3 py-3">
+                  <Badge tone={finalLockDecisionTone(rule.decision)}>{finalLockDecisionLabel(rule.decision)}</Badge>
+                </td>
+                <td className="px-3 py-3 text-xs leading-relaxed text-slate-700">{rule.keep108Condition}</td>
+                <td className="px-3 py-3 text-xs leading-relaxed text-slate-700">{rule.upgradeCondition}</td>
+                <td className="px-3 py-3 text-xs leading-relaxed text-slate-700">{rule.downgradeCondition}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </HorizontalScrollTable>
 
       <HorizontalScrollTable className="mt-5 min-w-0" contentClassName="rounded-[22px] border border-amber-200 bg-white/86">
         <table className="min-w-[920px] text-left text-sm">
