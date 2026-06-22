@@ -6,23 +6,23 @@ export const worldCupTotoNextPurchaseSheetFileName =
   "world-cup-toto-latest-purchase-sheet.csv";
 
 export const worldCupTotoVersionedReportFileName =
-  "world-cup-toto-1634-1637-evolved-plan-20260621-v6.pdf";
+  "world-cup-toto-1634-1637-evolved-plan-20260622-v7.pdf";
 export const worldCupTotoVersionedPurchaseSheetFileName =
-  "world-cup-toto-1637-preliminary-10000-plan-20260621-v6.csv";
+  "world-cup-toto-1637-preliminary-10000-plan-20260622-v7.csv";
 export const worldCupTotoLegacyReportFileName =
   "world-cup-toto-1634-1636-evolved-plan.pdf";
 export const worldCupTotoLegacyPurchaseSheetFileName =
   "world-cup-toto-1636-hot10-20000-plan.csv";
 
 export const worldCupTotoReportVersion = {
-  csvSha256: "28909a5339c77c53617dd0995e7159d84eda08ae2638f8a762809748bd12281f",
-  label: "2026-06-21 v6",
+  csvSha256: "514593e133130b5cad6ce9d3e36853e7d4d4129c8e10aa6564b6cffc2647db9e",
+  label: "2026-06-22 v7",
   latestCsvFileName: worldCupTotoNextPurchaseSheetFileName,
   latestPdfFileName: worldCupTotoLatestReportFileName,
   legacyCsvFileName: worldCupTotoLegacyPurchaseSheetFileName,
   legacyPdfFileName: worldCupTotoLegacyReportFileName,
-  pdfSha256: "5128eea53264ac6749f5c947a688430d1b688e3a01361e67538aa74974f7d83d",
-  publishedAtLabel: "2026-06-21 01:45 JST",
+  pdfSha256: "0916d011792108f67981deadf22d09327a5e6d8a916e2b206798ef71abe8c118",
+  publishedAtLabel: "2026-06-22 02:20 JST",
   versionedCsvFileName: worldCupTotoVersionedPurchaseSheetFileName,
   versionedPdfFileName: worldCupTotoVersionedReportFileName,
 };
@@ -89,7 +89,23 @@ export type Toto1637PurchaseRow = {
   unitCount: number;
 };
 
+export type WorldCupContextFactorKey =
+  | "country_name_bias"
+  | "draw_ok"
+  | "group_situation"
+  | "neutral_venue"
+  | "rotation_risk";
+
+export type WorldCupContextFactor = {
+  key: WorldCupContextFactorKey;
+  label: string;
+  note: string;
+  outcomeAdjustments: Partial<Record<OutcomeValue, number>>;
+};
+
 export type Toto1637PlanMatch = TotoNextPlanMatch & {
+  contextFactors: WorldCupContextFactor[];
+  matchdayContextLabel: string;
   riskBucket: Toto1637MatchRiskBucket;
 };
 
@@ -108,6 +124,7 @@ type PrizeResult = {
 
 export const TOTO13_OUTCOME_COUNT = 3 ** 13;
 export const TOTO13_STAKE_YEN = 100;
+export const WORLD_CUP_TOTO_DRAW_HEDGE_THRESHOLD = 0.2;
 const WORLD_CUP_TOTO_1636_TOTAL_SALES_YEN = 222_065_900;
 const TOTO_RETURN_RATE = 0.5;
 const TOTO_PRIZE_TIERS = [
@@ -115,6 +132,53 @@ const TOTO_PRIZE_TIERS = [
   { carryoverEligible: false, missCount: 1, poolShare: 0.15 },
   { carryoverEligible: false, missCount: 2, poolShare: 0.15 },
 ] as const;
+
+export const worldCupToto1637ContextModel = {
+  factors: [
+    {
+      key: "neutral_venue",
+      label: "中立地",
+      note: "ホーム扱いでも実質中立地なので、国名だけでホーム勝ちを強く見すぎない。",
+    },
+    {
+      key: "country_name_bias",
+      label: "国名人気",
+      note: "ドイツ、スペイン、フランス、イングランドなどの人気国は公開投票が勝ち側に寄りやすい。",
+    },
+    {
+      key: "group_situation",
+      label: "グループ状況",
+      note: "突破条件、得失点差、勝点差で必要な結果が変わる。第3戦はここを締切直前に再確認する。",
+    },
+    {
+      key: "draw_ok",
+      label: "引き分けOK",
+      note: "強豪側が引き分けでも足りる局面では、勝ち一本よりドローを少し厚くする。",
+    },
+    {
+      key: "rotation_risk",
+      label: "主力温存",
+      note: "突破濃厚・日程余裕・累積警告リスクがある人気国は勝率を少し下げて分散を見る。",
+    },
+  ] satisfies { key: WorldCupContextFactorKey; label: string; note: string }[],
+  label: "1637 W杯第3戦コンテキスト補正",
+  summary:
+    "公開投票だけでなく、中立地、国名人気、グループ状況、引き分けOK、主力温存を試合別に持たせ、proxy確率と買い目ランキングへ反映する。",
+};
+
+function contextFactor(
+  key: WorldCupContextFactorKey,
+  outcomeAdjustments: Partial<Record<OutcomeValue, number>>,
+): WorldCupContextFactor {
+  const factor = worldCupToto1637ContextModel.factors.find((item) => item.key === key);
+
+  return {
+    key,
+    label: factor?.label ?? key,
+    note: factor?.note ?? "",
+    outcomeAdjustments,
+  };
+}
 
 function favoriteFromVotes(votes: TotoVoteShare) {
   return (["1", "0", "2"] as const)
@@ -288,13 +352,13 @@ export const worldCupToto1635Review = {
 };
 
 export const worldCupToto1636Matches: TotoNextPlanMatch[] = [
-  { matchNo: 1, kickoffLabel: "06/21 05:00", home: "Germany", away: "Cote d'Ivoire", votes: { "1": 0.7125, "0": 0.2123, "2": 0.0752 }, recommendedOutcomes: ["1"], ruleLabel: "lock favorite over 70%", note: "Use budget elsewhere instead of hedging this favorite." },
+  { matchNo: 1, kickoffLabel: "06/21 05:00", home: "Germany", away: "Cote d'Ivoire", votes: { "1": 0.7125, "0": 0.2123, "2": 0.0752 }, recommendedOutcomes: ["1", "0"], ruleLabel: "favorite plus 20% draw hedge", note: "Draw probability is above 20%, so keep the draw even with a 70% favorite." },
   { matchNo: 2, kickoffLabel: "06/21 13:00", home: "Tunisia", away: "Japan", votes: { "1": 0.0798, "0": 0.2292, "2": 0.691 }, recommendedOutcomes: ["2", "0"], ruleLabel: "Japan win plus draw", note: "Japan is the main line, but the draw is cheap enough to keep." },
   { matchNo: 3, kickoffLabel: "06/23 02:00", home: "Argentina", away: "Austria", votes: { "1": 0.7591, "0": 0.184, "2": 0.0569 }, recommendedOutcomes: ["1"], ruleLabel: "lock favorite over 70%", note: "Keep as a lock in the core sheet." },
   { matchNo: 4, kickoffLabel: "06/24 08:00", home: "Panama", away: "Croatia", votes: { "1": 0.0428, "0": 0.1325, "2": 0.8247 }, recommendedOutcomes: ["2"], ruleLabel: "lock away favorite over 80%", note: "Croatia win is too expensive to fade in the core sheet." },
-  { matchNo: 5, kickoffLabel: "06/24 11:00", home: "Colombia", away: "Congo DR", votes: { "1": 0.706, "0": 0.2264, "2": 0.0676 }, recommendedOutcomes: ["1"], ruleLabel: "lock favorite over 70%", note: "Colombia win is the core route." },
+  { matchNo: 5, kickoffLabel: "06/24 11:00", home: "Colombia", away: "Congo DR", votes: { "1": 0.706, "0": 0.2264, "2": 0.0676 }, recommendedOutcomes: ["1", "0"], ruleLabel: "favorite plus 20% draw hedge", note: "Colombia is the main route, but draw probability is above 20%." },
   { matchNo: 6, kickoffLabel: "06/21 02:00", home: "Netherlands", away: "Sweden", votes: { "1": 0.4985, "0": 0.3152, "2": 0.1863 }, recommendedOutcomes: ["1", "0", "2"], ruleLabel: "spread split match", note: "This is the main variance slot." },
-  { matchNo: 7, kickoffLabel: "06/22 07:00", home: "Uruguay", away: "Cape Verde", votes: { "1": 0.7138, "0": 0.2236, "2": 0.0626 }, recommendedOutcomes: ["1"], ruleLabel: "lock favorite over 70%", note: "Use as a lock." },
+  { matchNo: 7, kickoffLabel: "06/22 07:00", home: "Uruguay", away: "Cape Verde", votes: { "1": 0.7138, "0": 0.2236, "2": 0.0626 }, recommendedOutcomes: ["1", "0"], ruleLabel: "favorite plus 20% draw hedge", note: "This is the Cape Verde miss: draw probability was above 20%, so it must remain in the recommended sheet." },
   { matchNo: 8, kickoffLabel: "06/23 09:00", home: "Norway", away: "Senegal", votes: { "1": 0.4495, "0": 0.2928, "2": 0.2577 }, recommendedOutcomes: ["1", "0", "2"], ruleLabel: "spread 30% band", note: "Wide enough to keep all three outcomes in the core sheet." },
   { matchNo: 9, kickoffLabel: "06/24 02:00", home: "Portugal", away: "Uzbekistan", votes: { "1": 0.8075, "0": 0.1492, "2": 0.0433 }, recommendedOutcomes: ["1"], ruleLabel: "lock favorite over 80%", note: "Use as a lock." },
   { matchNo: 10, kickoffLabel: "06/23 12:00", home: "Jordan", away: "Algeria", votes: { "1": 0.1496, "0": 0.3319, "2": 0.5185 }, recommendedOutcomes: ["2", "0"], ruleLabel: "away win plus draw", note: "Algeria is the main line; draw has enough public share to cover." },
@@ -304,19 +368,243 @@ export const worldCupToto1636Matches: TotoNextPlanMatch[] = [
 ];
 
 export const worldCupToto1637Matches: Toto1637PlanMatch[] = [
-  { matchNo: 1, kickoffLabel: "06/26 05:00", home: "Ecuador", away: "Germany", votes: { "1": 0.0348, "0": 0.1052, "2": 0.86 }, recommendedOutcomes: ["2"], ruleLabel: "lock favorite over 85%", note: "Germany is too popular to fade in the preliminary sheet; final group condition can reopen draw.", riskBucket: "lock" },
-  { matchNo: 2, kickoffLabel: "06/26 08:00", home: "Japan", away: "Sweden", votes: { "1": 0.5506, "0": 0.2931, "2": 0.1563 }, recommendedOutcomes: ["1", "0"], ruleLabel: "Japan win plus draw", note: "Keep Japan as main line, but preserve draw because matchday3 incentives can compress risk.", riskBucket: "flex" },
-  { matchNo: 3, kickoffLabel: "06/27 09:00", home: "Uruguay", away: "Spain", votes: { "1": 0.076, "0": 0.1906, "2": 0.7334 }, recommendedOutcomes: ["2", "0"], ruleLabel: "semi lock plus draw", note: "Spain is the main line; matchday3 draw condition stays in the sheet until final standings check.", riskBucket: "semi" },
-  { matchNo: 4, kickoffLabel: "06/28 08:30", home: "Colombia", away: "Portugal", votes: { "1": 0.2717, "0": 0.3002, "2": 0.4281 }, recommendedOutcomes: ["2", "0", "1"], ruleLabel: "full spread", note: "Portugal leads public share, but the match is not a lock. Keep all three outcomes.", riskBucket: "spread" },
-  { matchNo: 5, kickoffLabel: "06/28 11:00", home: "Algeria", away: "Austria", votes: { "1": 0.1733, "0": 0.2854, "2": 0.5413 }, recommendedOutcomes: ["2", "0"], ruleLabel: "away win plus draw", note: "Austria is the main line; draw is material enough to keep.", riskBucket: "flex" },
-  { matchNo: 6, kickoffLabel: "06/26 08:00", home: "Tunisia", away: "Netherlands", votes: { "1": 0.0216, "0": 0.0562, "2": 0.9222 }, recommendedOutcomes: ["2"], ruleLabel: "lock favorite over 90%", note: "Netherlands is a hard lock unless lineup/news changes sharply.", riskBucket: "lock" },
-  { matchNo: 7, kickoffLabel: "06/26 11:00", home: "Paraguay", away: "Australia", votes: { "1": 0.3611, "0": 0.3153, "2": 0.3236 }, recommendedOutcomes: ["1", "0", "2"], ruleLabel: "three-way split", note: "The public is almost flat. This is one of the main coverage slots.", riskBucket: "spread" },
-  { matchNo: 8, kickoffLabel: "06/27 04:00", home: "Norway", away: "France", votes: { "1": 0.0862, "0": 0.1754, "2": 0.7384 }, recommendedOutcomes: ["2", "0"], ruleLabel: "semi lock plus draw", note: "France is the main line; keep draw as the cheap matchday3 hedge.", riskBucket: "semi" },
-  { matchNo: 9, kickoffLabel: "06/28 06:00", home: "Panama", away: "England", votes: { "1": 0.0149, "0": 0.032, "2": 0.9531 }, recommendedOutcomes: ["2"], ruleLabel: "lock favorite over 95%", note: "England is a hard lock in the preliminary sheet.", riskBucket: "lock" },
-  { matchNo: 10, kickoffLabel: "06/28 08:30", home: "Congo DR", away: "Uzbekistan", votes: { "1": 0.3831, "0": 0.3531, "2": 0.2638 }, recommendedOutcomes: ["1", "0", "2"], ruleLabel: "three-way split", note: "Top two outcomes are only 3.0pt apart. Keep all three.", riskBucket: "spread" },
-  { matchNo: 11, kickoffLabel: "06/28 11:00", home: "Jordan", away: "Argentina", votes: { "1": 0.0129, "0": 0.0275, "2": 0.9596 }, recommendedOutcomes: ["2"], ruleLabel: "lock favorite over 95%", note: "Argentina is a hard lock unless group condition means heavy rotation.", riskBucket: "lock" },
-  { matchNo: 12, kickoffLabel: "06/27 12:00", home: "New Zealand", away: "Belgium", votes: { "1": 0.0277, "0": 0.0614, "2": 0.9109 }, recommendedOutcomes: ["2"], ruleLabel: "lock favorite over 90%", note: "Belgium is a hard lock in the preliminary sheet.", riskBucket: "lock" },
-  { matchNo: 13, kickoffLabel: "06/28 06:00", home: "Croatia", away: "Ghana", votes: { "1": 0.7905, "0": 0.1419, "2": 0.0676 }, recommendedOutcomes: ["1", "0"], ruleLabel: "semi lock plus draw", note: "Croatia is the main line; keep draw because matchday3 can turn into a condition game.", riskBucket: "semi" },
+  {
+    matchNo: 1,
+    kickoffLabel: "06/26 05:00",
+    home: "Ecuador",
+    away: "Germany",
+    votes: { "1": 0.0531, "0": 0.1207, "2": 0.8262 },
+    recommendedOutcomes: ["2", "0"],
+    ruleLabel: "favorite plus matchday3 draw",
+    note: "Germany is still the main line, but country-name bias, draw-ok condition, and rotation risk keep draw in the sheet.",
+    riskBucket: "semi",
+    matchdayContextLabel: "第3戦: 強豪人気の勝ち一本を少し割り引く",
+    contextFactors: [
+      contextFactor("neutral_venue", { "0": 0.02, "1": 0.01 }),
+      contextFactor("country_name_bias", { "2": -0.03, "0": 0.04, "1": 0.02 }),
+      contextFactor("group_situation", { "0": 0.03, "1": 0.02 }),
+      contextFactor("draw_ok", { "2": -0.02, "0": 0.06 }),
+      contextFactor("rotation_risk", { "2": -0.04, "0": 0.05, "1": 0.02 }),
+    ],
+  },
+  {
+    matchNo: 2,
+    kickoffLabel: "06/26 08:00",
+    home: "Japan",
+    away: "Sweden",
+    votes: { "1": 0.614, "0": 0.2626, "2": 0.1234 },
+    recommendedOutcomes: ["1", "0"],
+    ruleLabel: "Japan win plus draw",
+    note: "Japan is the main line, but public share has moved above 60%, so draw remains a necessary hedge.",
+    riskBucket: "flex",
+    matchdayContextLabel: "第3戦: 日本人気の過熱をドローで受ける",
+    contextFactors: [
+      contextFactor("neutral_venue", { "0": 0.02, "2": 0.01 }),
+      contextFactor("country_name_bias", { "1": -0.02, "0": 0.04, "2": 0.02 }),
+      contextFactor("group_situation", { "0": 0.04 }),
+      contextFactor("draw_ok", { "1": -0.01, "0": 0.05 }),
+    ],
+  },
+  {
+    matchNo: 3,
+    kickoffLabel: "06/27 09:00",
+    home: "Uruguay",
+    away: "Spain",
+    votes: { "1": 0.0835, "0": 0.1923, "2": 0.7242 },
+    recommendedOutcomes: ["2", "0"],
+    ruleLabel: "semi lock plus draw",
+    note: "Spain is the main line; group condition and rotation risk keep draw alive until the final standings check.",
+    riskBucket: "semi",
+    matchdayContextLabel: "第3戦: スペイン人気にドロー補正",
+    contextFactors: [
+      contextFactor("neutral_venue", { "0": 0.02, "1": 0.01 }),
+      contextFactor("country_name_bias", { "2": -0.03, "0": 0.04, "1": 0.02 }),
+      contextFactor("group_situation", { "0": 0.04, "1": 0.01 }),
+      contextFactor("draw_ok", { "2": -0.02, "0": 0.05 }),
+      contextFactor("rotation_risk", { "2": -0.03, "0": 0.04, "1": 0.02 }),
+    ],
+  },
+  {
+    matchNo: 4,
+    kickoffLabel: "06/28 08:30",
+    home: "Colombia",
+    away: "Portugal",
+    votes: { "1": 0.2691, "0": 0.3, "2": 0.4309 },
+    recommendedOutcomes: ["2", "0", "1"],
+    ruleLabel: "full spread",
+    note: "Portugal leads public share, but the match is not a lock. Keep all three outcomes.",
+    riskBucket: "spread",
+    matchdayContextLabel: "第3戦: 人気国だが公開票が割れている",
+    contextFactors: [
+      contextFactor("neutral_venue", { "0": 0.02 }),
+      contextFactor("country_name_bias", { "2": -0.02, "0": 0.03, "1": 0.02 }),
+      contextFactor("group_situation", { "1": 0.02, "0": 0.03, "2": 0.01 }),
+      contextFactor("draw_ok", { "0": 0.04 }),
+      contextFactor("rotation_risk", { "2": -0.02, "0": 0.03, "1": 0.02 }),
+    ],
+  },
+  {
+    matchNo: 5,
+    kickoffLabel: "06/28 11:00",
+    home: "Algeria",
+    away: "Austria",
+    votes: { "1": 0.1914, "0": 0.2891, "2": 0.5195 },
+    recommendedOutcomes: ["2", "0"],
+    ruleLabel: "away win plus draw",
+    note: "Austria is the main line; draw is material enough to keep and is helped by group-condition risk.",
+    riskBucket: "flex",
+    matchdayContextLabel: "第3戦: 半人気側の勝ちとドロー",
+    contextFactors: [
+      contextFactor("neutral_venue", { "0": 0.02, "1": 0.01 }),
+      contextFactor("group_situation", { "0": 0.04, "1": 0.02 }),
+      contextFactor("draw_ok", { "2": -0.01, "0": 0.05 }),
+      contextFactor("rotation_risk", { "2": -0.02, "0": 0.03, "1": 0.02 }),
+    ],
+  },
+  {
+    matchNo: 6,
+    kickoffLabel: "06/26 08:00",
+    home: "Tunisia",
+    away: "Netherlands",
+    votes: { "1": 0.032, "0": 0.0505, "2": 0.9175 },
+    recommendedOutcomes: ["2", "0"],
+    ruleLabel: "favorite plus thin draw hedge",
+    note: "Netherlands remains the main line, but 90%+ public share is exactly where rotation and draw-ok risk should be visible.",
+    riskBucket: "semi",
+    matchdayContextLabel: "第3戦: 90%超の強豪人気をドローで薄く保険",
+    contextFactors: [
+      contextFactor("neutral_venue", { "0": 0.02, "1": 0.01 }),
+      contextFactor("country_name_bias", { "2": -0.04, "0": 0.04, "1": 0.02 }),
+      contextFactor("group_situation", { "0": 0.03 }),
+      contextFactor("draw_ok", { "2": -0.03, "0": 0.06 }),
+      contextFactor("rotation_risk", { "2": -0.05, "0": 0.05, "1": 0.02 }),
+    ],
+  },
+  {
+    matchNo: 7,
+    kickoffLabel: "06/26 11:00",
+    home: "Paraguay",
+    away: "Australia",
+    votes: { "1": 0.3739, "0": 0.3082, "2": 0.3179 },
+    recommendedOutcomes: ["1", "0", "2"],
+    ruleLabel: "three-way split",
+    note: "The public is almost flat. This is one of the main coverage slots.",
+    riskBucket: "spread",
+    matchdayContextLabel: "第3戦: 公開票が均衡、全分散",
+    contextFactors: [
+      contextFactor("neutral_venue", { "0": 0.02 }),
+      contextFactor("group_situation", { "1": 0.02, "0": 0.03, "2": 0.02 }),
+      contextFactor("draw_ok", { "0": 0.04 }),
+    ],
+  },
+  {
+    matchNo: 8,
+    kickoffLabel: "06/27 04:00",
+    home: "Norway",
+    away: "France",
+    votes: { "1": 0.0918, "0": 0.1677, "2": 0.7405 },
+    recommendedOutcomes: ["2", "0"],
+    ruleLabel: "semi lock plus draw",
+    note: "France is the main line; keep draw as the cheap matchday3 hedge.",
+    riskBucket: "semi",
+    matchdayContextLabel: "第3戦: フランス人気と主力温存リスク",
+    contextFactors: [
+      contextFactor("neutral_venue", { "0": 0.02, "1": 0.01 }),
+      contextFactor("country_name_bias", { "2": -0.03, "0": 0.04, "1": 0.02 }),
+      contextFactor("group_situation", { "0": 0.03, "1": 0.01 }),
+      contextFactor("draw_ok", { "2": -0.02, "0": 0.05 }),
+      contextFactor("rotation_risk", { "2": -0.04, "0": 0.04, "1": 0.02 }),
+    ],
+  },
+  {
+    matchNo: 9,
+    kickoffLabel: "06/28 06:00",
+    home: "Panama",
+    away: "England",
+    votes: { "1": 0.0278, "0": 0.0443, "2": 0.9279 },
+    recommendedOutcomes: ["2"],
+    ruleLabel: "lock favorite over 92%",
+    note: "England is still a hard lock unless final lineup news is extreme.",
+    riskBucket: "lock",
+    matchdayContextLabel: "第3戦: 補正ありでも勝ち優先",
+    contextFactors: [
+      contextFactor("neutral_venue", { "0": 0.01, "1": 0.01 }),
+      contextFactor("country_name_bias", { "2": -0.03, "0": 0.03 }),
+      contextFactor("rotation_risk", { "2": -0.03, "0": 0.03, "1": 0.01 }),
+    ],
+  },
+  {
+    matchNo: 10,
+    kickoffLabel: "06/28 08:30",
+    home: "Congo DR",
+    away: "Uzbekistan",
+    votes: { "1": 0.3878, "0": 0.3395, "2": 0.2727 },
+    recommendedOutcomes: ["1", "0", "2"],
+    ruleLabel: "three-way split",
+    note: "Top two outcomes are only 4.8pt apart and draw is above 30%. Keep all three.",
+    riskBucket: "spread",
+    matchdayContextLabel: "第3戦: 30%台に散る主分散枠",
+    contextFactors: [
+      contextFactor("neutral_venue", { "0": 0.02 }),
+      contextFactor("group_situation", { "1": 0.02, "0": 0.03, "2": 0.02 }),
+      contextFactor("draw_ok", { "0": 0.04 }),
+    ],
+  },
+  {
+    matchNo: 11,
+    kickoffLabel: "06/28 11:00",
+    home: "Jordan",
+    away: "Argentina",
+    votes: { "1": 0.0265, "0": 0.04, "2": 0.9335 },
+    recommendedOutcomes: ["2"],
+    ruleLabel: "lock favorite over 93%",
+    note: "Argentina is a hard lock unless group condition means heavy rotation.",
+    riskBucket: "lock",
+    matchdayContextLabel: "第3戦: 補正ありでも勝ち優先",
+    contextFactors: [
+      contextFactor("neutral_venue", { "0": 0.01, "1": 0.01 }),
+      contextFactor("country_name_bias", { "2": -0.03, "0": 0.03 }),
+      contextFactor("rotation_risk", { "2": -0.03, "0": 0.03, "1": 0.01 }),
+    ],
+  },
+  {
+    matchNo: 12,
+    kickoffLabel: "06/27 12:00",
+    home: "New Zealand",
+    away: "Belgium",
+    votes: { "1": 0.0412, "0": 0.0735, "2": 0.8853 },
+    recommendedOutcomes: ["2", "0"],
+    ruleLabel: "favorite plus thin draw hedge",
+    note: "Belgium remains the main line, but 88%+ public share plus rotation risk is enough to keep draw in the preliminary sheet.",
+    riskBucket: "semi",
+    matchdayContextLabel: "第3戦: ベルギー人気をドローで薄く保険",
+    contextFactors: [
+      contextFactor("neutral_venue", { "0": 0.02, "1": 0.01 }),
+      contextFactor("country_name_bias", { "2": -0.04, "0": 0.04, "1": 0.02 }),
+      contextFactor("group_situation", { "0": 0.03 }),
+      contextFactor("draw_ok", { "2": -0.02, "0": 0.06 }),
+      contextFactor("rotation_risk", { "2": -0.04, "0": 0.05, "1": 0.02 }),
+    ],
+  },
+  {
+    matchNo: 13,
+    kickoffLabel: "06/28 06:00",
+    home: "Croatia",
+    away: "Ghana",
+    votes: { "1": 0.7655, "0": 0.1529, "2": 0.0816 },
+    recommendedOutcomes: ["1", "0"],
+    ruleLabel: "semi lock plus draw",
+    note: "Croatia is the main line; keep draw because matchday3 can turn into a condition game.",
+    riskBucket: "semi",
+    matchdayContextLabel: "第3戦: クロアチア人気と引き分け条件",
+    contextFactors: [
+      contextFactor("neutral_venue", { "0": 0.02, "2": 0.01 }),
+      contextFactor("country_name_bias", { "1": -0.02, "0": 0.03, "2": 0.01 }),
+      contextFactor("group_situation", { "0": 0.04, "2": 0.01 }),
+      contextFactor("draw_ok", { "1": -0.02, "0": 0.06 }),
+      contextFactor("rotation_risk", { "1": -0.03, "0": 0.04, "2": 0.02 }),
+    ],
+  },
 ];
 
 export const worldCupTotoPhaseHeuristics: WorldCupTotoPhaseHeuristic[] = [
@@ -328,7 +616,7 @@ export const worldCupTotoPhaseHeuristics: WorldCupTotoPhaseHeuristic[] = [
     riskLabel: "荒れ警戒",
   },
   {
-    action: "今回の1636はここを主軸に置く。強人気固定を崩しすぎず、割れ試合だけ分散する。",
+    action: "今回の1636はここを主軸に置く。強人気固定を基本にしつつ、事前ドロー20%以上は候補に残す。",
     appliesTo: "1636寄り",
     phase: "matchday2",
     read: "第2戦は初戦の情報が入り、まだ突破条件が歪みすぎていない。順当寄りに評価しやすい。",
@@ -346,7 +634,7 @@ export const worldCupTotoPhaseHeuristics: WorldCupTotoPhaseHeuristic[] = [
 export const worldCupToto1636PhaseDecision = {
   label: "1636は第2戦寄りとして扱う",
   summary:
-    "Haziの読みを採用して、1636は大荒れ前提へ寄せすぎない。強人気は固定し、オランダ戦・ノルウェー戦のように割れる面だけ分散する。",
+    "Haziの読みを採用して、1636は大荒れ前提へ寄せすぎない。ただしCape Verde型の反省として、事前ドロー確率20%以上は強人気でも買い目候補に残す。",
 };
 
 function normalizeVoteShares(values: number[]) {
@@ -360,6 +648,16 @@ function normalizeVoteShares(values: number[]) {
   } satisfies TotoVoteShare;
 }
 
+function contextFactorsForMatch(match: TotoNextPlanMatch) {
+  return "contextFactors" in match ? (match as Toto1637PlanMatch).contextFactors : [];
+}
+
+function contextAdjustmentForOutcome(match: TotoNextPlanMatch, outcome: OutcomeValue) {
+  return contextFactorsForMatch(match).reduce((sum, factor) => {
+    return sum + (factor.outcomeAdjustments[outcome] ?? 0);
+  }, 0);
+}
+
 function proxyVotesForMatch(match: TotoNextPlanMatch) {
   const values = (["1", "0", "2"] as const).map((outcome) => {
     const boost = match.recommendedOutcomes.includes(outcome)
@@ -367,7 +665,8 @@ function proxyVotesForMatch(match: TotoNextPlanMatch) {
         ? 1.08
         : 1.04
       : 0.84;
-    const base = match.votes[outcome] * boost;
+    const contextBoost = Math.min(1.22, Math.max(0.78, 1 + contextAdjustmentForOutcome(match, outcome)));
+    const base = match.votes[outcome] * boost * contextBoost;
 
     return match.recommendedOutcomes.length === 3 ? base * 0.96 + (1 / 3) * 0.04 : base;
   });
@@ -543,21 +842,25 @@ export function buildWorldCupToto1636PurchaseRows(limit = 200): TotoPurchaseRow[
     }, []);
 }
 
-export const worldCupToto1636PurchaseRows = buildWorldCupToto1636PurchaseRows();
+const worldCupToto1636RecommendedUnitCap = 200;
+const worldCupToto1636CoreRows = buildCoreRows();
+
+export const worldCupToto1636PurchaseRows = buildWorldCupToto1636PurchaseRows(worldCupToto1636RecommendedUnitCap);
 
 export const worldCupToto1636NextPlan = {
-  coreLineCount: buildCoreRows().length,
-  baseCoreBudgetYen: buildCoreRows().length * TOTO13_STAKE_YEN,
+  coreLineCount: worldCupToto1636CoreRows.length,
+  baseCoreBudgetYen: worldCupToto1636CoreRows.length * TOTO13_STAKE_YEN,
+  drawHedgeThreshold: WORLD_CUP_TOTO_DRAW_HEDGE_THRESHOLD,
   hotDoublePatternCount: 10,
-  recommendedUnitCount: buildCoreRows().length + 10,
+  recommendedUnitCount: worldCupToto1636PurchaseRows.reduce((sum, row) => sum + row.unitCount, 0),
   discussionSheetLineCount: worldCupToto1636PurchaseRows.length,
   maxDiscussionBudgetYen: 20_000,
   purchaseDeadlineLabel: "2026-06-20 19:00 JST",
-  recommendedBudgetYen: (buildCoreRows().length + 10) * TOTO13_STAKE_YEN,
+  recommendedBudgetYen: worldCupToto1636PurchaseRows.reduce((sum, row) => sum + row.unitCount, 0) * TOTO13_STAKE_YEN,
   salesAsOfLabel: "2026-06-20 17:02 JST",
   totalSalesYen: 222_065_900,
   summary:
-    "Recommended evolved core is 46 units / 4,600 yen: 36 unique core rows, with the top 10 hot rows bought twice. The 20,000 yen CSV is a discussion cap, not an all-in recommendation, because positive EV is not proven.",
+    "Replayed recommendation now keeps every pre-match draw at 20% or higher, including Uruguay vs Cape Verde. The candidate core is 288 unique rows / 28,800 yen, so the visible sheet is capped at 200 units / 20,000 yen and ranked by proxy EV instead of buying every core row.",
 };
 
 function rowProxyScore(row: readonly OutcomeValue[], matches: readonly TotoNextPlanMatch[]) {
@@ -568,9 +871,17 @@ function rowProxyScore(row: readonly OutcomeValue[], matches: readonly TotoNextP
     const proxyProbability = proxyRows[index]?.[outcome] ?? 0.01;
     const publicProbability = match?.votes[outcome] ?? 0.01;
     const valueGap = Math.max(0, proxyProbability - publicProbability);
+    const contextScore = match ? contextAdjustmentForOutcome(match, outcome) : 0;
     const varianceBonus = match && match.recommendedOutcomes.length >= 3 ? 0.02 : 0;
 
-    return score + Math.log(proxyProbability) + valueGap * 1.2 + (1 - publicProbability) * 0.04 + varianceBonus;
+    return (
+      score +
+      Math.log(proxyProbability) +
+      valueGap * 1.2 +
+      (1 - publicProbability) * 0.04 +
+      contextScore * 0.55 +
+      varianceBonus
+    );
   }, 0);
 }
 
@@ -621,14 +932,14 @@ export const worldCupToto1637NextPlan = {
   recommendedBudgetYen: worldCupToto1637PurchaseRows.reduce((sum, row) => sum + row.unitCount, 0) * TOTO13_STAKE_YEN,
   recommendedPurchaseWindowLabel: "2026-06-25 18:35-18:50 JST",
   recommendedUnitCount: worldCupToto1637PurchaseRows.reduce((sum, row) => sum + row.unitCount, 0),
-  salesAsOfLabel: "2026-06-21 01:08 JST",
+  salesAsOfLabel: "2026-06-22 01:43 JST",
   salesSourceUrl: worldCupTotoOfficialSales1637Url,
   sourceUrl: worldCupTotoOfficialVote1637Url,
   summary:
-    "1637 is treated as matchday3: do not buy early. Freeze the latest vote/sales snapshot around 18:25, regenerate the sheet, then buy 90 unique lines with the top 10 doubled only if the final sheet still looks sane.",
-  totalSalesYen: 7_839_700,
-  voteAsOfLabel: "2026-06-21 00:12 JST",
-  voteUnits: 74_072,
+    "1637 is treated as matchday3: do not buy early. The preliminary sheet now applies World Cup context adjustments for neutral venue, country-name bias, group situation, draw-ok incentives, and rotation risk. Freeze the latest vote/sales snapshot around 18:25, regenerate the sheet, then buy 90 unique lines with the top 10 doubled only if the final sheet still looks sane.",
+  totalSalesYen: 28_015_000,
+  voteAsOfLabel: "2026-06-22 01:02 JST",
+  voteUnits: 276_271,
   workflow: [
     {
       action: "公式投票率と売上を取り直し、締切直前版のCSV/PDFを再生成する。",

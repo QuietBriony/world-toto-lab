@@ -17,8 +17,8 @@ from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer, 
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PDF_NAME = "world-cup-toto-1634-1637-evolved-plan-20260621-v6.pdf"
-CSV_NAME = "world-cup-toto-1637-preliminary-10000-plan-20260621-v6.csv"
+PDF_NAME = "world-cup-toto-1634-1637-evolved-plan-20260622-v7.pdf"
+CSV_NAME = "world-cup-toto-1637-preliminary-10000-plan-20260622-v7.csv"
 PDF_ALIASES = (
     PDF_NAME,
     "world-cup-toto-latest.pdf",
@@ -33,14 +33,16 @@ OUT_CSV_DIR = ROOT / "output" / "purchase-sheets"
 PUBLIC_DIR = ROOT / "public" / "reports"
 
 STAKE_YEN = 100
+DRAW_HEDGE_THRESHOLD = 0.20
+RECOMMENDED_1636_UNIT_CAP = 200
 OUTCOMES = ("1", "0", "2")
 TOTO13_OUTCOME_COUNT = 3**13
 SNAPSHOT_1636_LABEL = "2026-06-20 17:02 JST"
 TOTAL_SALES_1636_YEN = 222_065_900
-SNAPSHOT_1637_VOTE_LABEL = "2026-06-21 00:12 JST"
-SNAPSHOT_1637_SALES_LABEL = "2026-06-21 01:08 JST"
-TOTAL_SALES_1637_YEN = 7_839_700
-VOTE_UNITS_1637 = 74_072
+SNAPSHOT_1637_VOTE_LABEL = "2026-06-22 01:02 JST"
+SNAPSHOT_1637_SALES_LABEL = "2026-06-22 01:43 JST"
+TOTAL_SALES_1637_YEN = 28_015_000
+VOTE_UNITS_1637 = 276_271
 RETURN_RATE = 0.5
 TIER_DEFS = (
     ("1等", 0, 0.70, True),
@@ -146,13 +148,13 @@ MATCHES_1635 = [
 ]
 
 MATCHES_1636 = [
-    PlanMatch(1, "ドイツ", "コートジボワール", "06/21 05:00", (0.7125, 0.2123, 0.0752), ("1",), "70%超は勝ち固定"),
+    PlanMatch(1, "ドイツ", "コートジボワール", "06/21 05:00", (0.7125, 0.2123, 0.0752), ("1", "0"), "勝ち軸 + 20%ドロー"),
     PlanMatch(2, "チュニジア", "日本", "06/21 13:00", (0.0798, 0.2292, 0.6910), ("2", "0"), "日本勝ち軸 + ドロー"),
     PlanMatch(3, "アルゼンチン", "オーストリア", "06/23 02:00", (0.7591, 0.1840, 0.0569), ("1",), "70%超は勝ち固定"),
     PlanMatch(4, "パナマ", "クロアチア", "06/24 08:00", (0.0428, 0.1325, 0.8247), ("2",), "80%超アウェイ固定"),
-    PlanMatch(5, "コロンビア", "コンゴ民主共和国", "06/24 11:00", (0.7060, 0.2264, 0.0676), ("1",), "70%超は勝ち固定"),
+    PlanMatch(5, "コロンビア", "コンゴ民主共和国", "06/24 11:00", (0.7060, 0.2264, 0.0676), ("1", "0"), "勝ち軸 + 20%ドロー"),
     PlanMatch(6, "オランダ", "スウェーデン", "06/21 02:00", (0.4985, 0.3152, 0.1863), ("1", "0", "2"), "割れる試合は全分散"),
-    PlanMatch(7, "ウルグアイ", "カーボベルデ", "06/22 07:00", (0.7138, 0.2236, 0.0626), ("1",), "70%超は勝ち固定"),
+    PlanMatch(7, "ウルグアイ", "カーボベルデ", "06/22 07:00", (0.7138, 0.2236, 0.0626), ("1", "0"), "勝ち軸 + 20%ドロー"),
     PlanMatch(8, "ノルウェー", "セネガル", "06/23 09:00", (0.4495, 0.2928, 0.2577), ("1", "0", "2"), "30%台なので全分散"),
     PlanMatch(9, "ポルトガル", "ウズベキスタン", "06/24 02:00", (0.8075, 0.1492, 0.0433), ("1",), "80%超は勝ち固定"),
     PlanMatch(10, "ヨルダン", "アルジェリア", "06/23 12:00", (0.1496, 0.3319, 0.5185), ("2", "0"), "アウェイ勝ち軸 + ドロー"),
@@ -162,20 +164,44 @@ MATCHES_1636 = [
 ]
 
 MATCHES_1637 = [
-    PlanMatch(1, "エクアドル", "ドイツ", "06/26 05:00", (0.0348, 0.1052, 0.8600), ("2",), "85%超アウェイ固定", "lock"),
-    PlanMatch(2, "日本", "スウェーデン", "06/26 08:00", (0.5506, 0.2931, 0.1563), ("1", "0"), "日本勝ち軸 + ドロー", "flex"),
-    PlanMatch(3, "ウルグアイ", "スペイン", "06/27 09:00", (0.0760, 0.1906, 0.7334), ("2", "0"), "スペイン軸 + 条件戦ドロー", "semi"),
-    PlanMatch(4, "コロンビア", "ポルトガル", "06/28 08:30", (0.2717, 0.3002, 0.4281), ("2", "0", "1"), "30%台を全分散", "spread"),
-    PlanMatch(5, "アルジェリア", "オーストリア", "06/28 11:00", (0.1733, 0.2854, 0.5413), ("2", "0"), "オーストリア軸 + ドロー", "flex"),
-    PlanMatch(6, "チュニジア", "オランダ", "06/26 08:00", (0.0216, 0.0562, 0.9222), ("2",), "90%超アウェイ固定", "lock"),
-    PlanMatch(7, "パラグアイ", "オーストラリア", "06/26 11:00", (0.3611, 0.3153, 0.3236), ("1", "0", "2"), "ほぼ三分で全分散", "spread"),
-    PlanMatch(8, "ノルウェー", "フランス", "06/27 04:00", (0.0862, 0.1754, 0.7384), ("2", "0"), "フランス軸 + 条件戦ドロー", "semi"),
-    PlanMatch(9, "パナマ", "イングランド", "06/28 06:00", (0.0149, 0.0320, 0.9531), ("2",), "95%超アウェイ固定", "lock"),
-    PlanMatch(10, "コンゴ民主共和国", "ウズベキスタン", "06/28 08:30", (0.3831, 0.3531, 0.2638), ("1", "0", "2"), "上位差3ptで全分散", "spread"),
-    PlanMatch(11, "ヨルダン", "アルゼンチン", "06/28 11:00", (0.0129, 0.0275, 0.9596), ("2",), "95%超アウェイ固定", "lock"),
-    PlanMatch(12, "ニュージーランド", "ベルギー", "06/27 12:00", (0.0277, 0.0614, 0.9109), ("2",), "90%超アウェイ固定", "lock"),
-    PlanMatch(13, "クロアチア", "ガーナ", "06/28 06:00", (0.7905, 0.1419, 0.0676), ("1", "0"), "クロアチア軸 + 条件戦ドロー", "semi"),
+    PlanMatch(1, "エクアドル", "ドイツ", "06/26 05:00", (0.0531, 0.1207, 0.8262), ("2", "0"), "強豪人気 + 第3戦ドロー", "semi"),
+    PlanMatch(2, "日本", "スウェーデン", "06/26 08:00", (0.6140, 0.2626, 0.1234), ("1", "0"), "日本勝ち軸 + ドロー", "flex"),
+    PlanMatch(3, "ウルグアイ", "スペイン", "06/27 09:00", (0.0835, 0.1923, 0.7242), ("2", "0"), "スペイン軸 + 条件戦ドロー", "semi"),
+    PlanMatch(4, "コロンビア", "ポルトガル", "06/28 08:30", (0.2691, 0.3000, 0.4309), ("2", "0", "1"), "30%台を全分散", "spread"),
+    PlanMatch(5, "アルジェリア", "オーストリア", "06/28 11:00", (0.1914, 0.2891, 0.5195), ("2", "0"), "オーストリア軸 + ドロー", "flex"),
+    PlanMatch(6, "チュニジア", "オランダ", "06/26 08:00", (0.0320, 0.0505, 0.9175), ("2", "0"), "90%超人気 + 薄いドロー", "semi"),
+    PlanMatch(7, "パラグアイ", "オーストラリア", "06/26 11:00", (0.3739, 0.3082, 0.3179), ("1", "0", "2"), "ほぼ三分で全分散", "spread"),
+    PlanMatch(8, "ノルウェー", "フランス", "06/27 04:00", (0.0918, 0.1677, 0.7405), ("2", "0"), "フランス軸 + 条件戦ドロー", "semi"),
+    PlanMatch(9, "パナマ", "イングランド", "06/28 06:00", (0.0278, 0.0443, 0.9279), ("2",), "補正ありでも勝ち固定", "lock"),
+    PlanMatch(10, "コンゴ民主共和国", "ウズベキスタン", "06/28 08:30", (0.3878, 0.3395, 0.2727), ("1", "0", "2"), "30%台に散る全分散", "spread"),
+    PlanMatch(11, "ヨルダン", "アルゼンチン", "06/28 11:00", (0.0265, 0.0400, 0.9335), ("2",), "補正ありでも勝ち固定", "lock"),
+    PlanMatch(12, "ニュージーランド", "ベルギー", "06/27 12:00", (0.0412, 0.0735, 0.8853), ("2", "0"), "強豪人気 + 薄いドロー", "semi"),
+    PlanMatch(13, "クロアチア", "ガーナ", "06/28 06:00", (0.7655, 0.1529, 0.0816), ("1", "0"), "クロアチア軸 + 条件戦ドロー", "semi"),
 ]
+
+CONTEXT_FACTOR_LABELS = {
+    "neutral_venue": "中立地",
+    "country_name_bias": "国名人気",
+    "group_situation": "グループ状況",
+    "draw_ok": "引き分けOK",
+    "rotation_risk": "主力温存",
+}
+
+CONTEXT_1637 = {
+    1: (("neutral_venue", (0.01, 0.02, 0.00)), ("country_name_bias", (0.02, 0.04, -0.03)), ("group_situation", (0.02, 0.03, 0.00)), ("draw_ok", (0.00, 0.06, -0.02)), ("rotation_risk", (0.02, 0.05, -0.04))),
+    2: (("neutral_venue", (0.00, 0.02, 0.01)), ("country_name_bias", (-0.02, 0.04, 0.02)), ("group_situation", (0.00, 0.04, 0.00)), ("draw_ok", (-0.01, 0.05, 0.00))),
+    3: (("neutral_venue", (0.01, 0.02, 0.00)), ("country_name_bias", (0.02, 0.04, -0.03)), ("group_situation", (0.01, 0.04, 0.00)), ("draw_ok", (0.00, 0.05, -0.02)), ("rotation_risk", (0.02, 0.04, -0.03))),
+    4: (("neutral_venue", (0.00, 0.02, 0.00)), ("country_name_bias", (0.02, 0.03, -0.02)), ("group_situation", (0.02, 0.03, 0.01)), ("draw_ok", (0.00, 0.04, 0.00)), ("rotation_risk", (0.02, 0.03, -0.02))),
+    5: (("neutral_venue", (0.01, 0.02, 0.00)), ("group_situation", (0.02, 0.04, 0.00)), ("draw_ok", (0.00, 0.05, -0.01)), ("rotation_risk", (0.02, 0.03, -0.02))),
+    6: (("neutral_venue", (0.01, 0.02, 0.00)), ("country_name_bias", (0.02, 0.04, -0.04)), ("group_situation", (0.00, 0.03, 0.00)), ("draw_ok", (0.00, 0.06, -0.03)), ("rotation_risk", (0.02, 0.05, -0.05))),
+    7: (("neutral_venue", (0.00, 0.02, 0.00)), ("group_situation", (0.02, 0.03, 0.02)), ("draw_ok", (0.00, 0.04, 0.00))),
+    8: (("neutral_venue", (0.01, 0.02, 0.00)), ("country_name_bias", (0.02, 0.04, -0.03)), ("group_situation", (0.01, 0.03, 0.00)), ("draw_ok", (0.00, 0.05, -0.02)), ("rotation_risk", (0.02, 0.04, -0.04))),
+    9: (("neutral_venue", (0.01, 0.01, 0.00)), ("country_name_bias", (0.00, 0.03, -0.03)), ("rotation_risk", (0.01, 0.03, -0.03))),
+    10: (("neutral_venue", (0.00, 0.02, 0.00)), ("group_situation", (0.02, 0.03, 0.02)), ("draw_ok", (0.00, 0.04, 0.00))),
+    11: (("neutral_venue", (0.01, 0.01, 0.00)), ("country_name_bias", (0.00, 0.03, -0.03)), ("rotation_risk", (0.01, 0.03, -0.03))),
+    12: (("neutral_venue", (0.01, 0.02, 0.00)), ("country_name_bias", (0.02, 0.04, -0.04)), ("group_situation", (0.00, 0.03, 0.00)), ("draw_ok", (0.00, 0.06, -0.02)), ("rotation_risk", (0.02, 0.05, -0.04))),
+    13: (("neutral_venue", (0.00, 0.02, 0.01)), ("country_name_bias", (-0.02, 0.03, 0.01)), ("group_situation", (0.00, 0.04, 0.01)), ("draw_ok", (-0.02, 0.06, 0.00)), ("rotation_risk", (-0.03, 0.04, 0.02))),
+}
 
 
 def register_fonts() -> tuple[str, str]:
@@ -264,6 +290,15 @@ def normalize(values: list[float]) -> tuple[float, float, float]:
     return tuple(value / total for value in clipped)  # type: ignore[return-value]
 
 
+def context_adjustment(match: PlanMatch, outcome: str) -> float:
+    outcome_index = OUTCOMES.index(outcome)
+    return sum(adjustments[outcome_index] for _, adjustments in CONTEXT_1637.get(match.no, ()))
+
+
+def context_factor_names(match: PlanMatch) -> str:
+    return " / ".join(CONTEXT_FACTOR_LABELS[key] for key, _ in CONTEXT_1637.get(match.no, ()))
+
+
 def proxy_probs(match: PlanMatch) -> tuple[float, float, float]:
     weights = []
     for outcome, vote in zip(OUTCOMES, match.votes, strict=True):
@@ -271,7 +306,8 @@ def proxy_probs(match: PlanMatch) -> tuple[float, float, float]:
             boost = 1.08 if len(match.allowed) == 1 else 1.04
         else:
             boost = 0.84
-        weights.append(vote * boost)
+        context_boost = min(1.22, max(0.78, 1 + context_adjustment(match, outcome)))
+        weights.append(vote * boost * context_boost)
 
     if len(match.allowed) == 3:
         weights = [weight * 0.96 + (1 / 3) * 0.04 for weight in weights]
@@ -352,8 +388,9 @@ def row_proxy_score(row: tuple[str, ...], matches: list[PlanMatch]) -> float:
         proxy_probability = outcome_probability(outcome, proxy_by_match[index])
         public_probability = outcome_probability(outcome, match.votes)
         value_gap = max(0.0, proxy_probability - public_probability)
+        context_score = context_adjustment(match, outcome)
         variance_bonus = 0.02 if len(match.allowed) >= 3 else 0.0
-        score += log(proxy_probability) + value_gap * 1.2 + (1 - public_probability) * 0.04 + variance_bonus
+        score += log(proxy_probability) + value_gap * 1.2 + (1 - public_probability) * 0.04 + context_score * 0.55 + variance_bonus
     return score
 
 
@@ -452,6 +489,8 @@ def build_purchase_rows(unit_budget: int = 200) -> list[dict[str, object]]:
 
 PURCHASE_ROWS_1636 = build_purchase_rows()
 PURCHASE_ROWS_1637 = build_purchase_rows_1637()
+CORE_LINE_COUNT_1636 = len(build_allowed_rows(MATCHES_1636))
+CORE_BUDGET_1636_YEN = CORE_LINE_COUNT_1636 * STAKE_YEN
 ACTUAL_1634 = actual_signature(MATCHES_1634)
 FAVORITE_1634 = favorite_signature(MATCHES_1634)
 ACTUAL_1635 = actual_signature(MATCHES_1635)
@@ -465,7 +504,7 @@ def recommended_entries() -> list[dict[str, object]]:
     units = 0
     for row in PURCHASE_ROWS_1636:
         next_units = units + int(row["units"])
-        if next_units > 46:
+        if next_units > RECOMMENDED_1636_UNIT_CAP:
             break
         rows.append(row)
         units = next_units
@@ -563,9 +602,9 @@ def summary_table() -> Table:
         ["質問", "今回の答え"],
         ["1口いくら?", "toto13は1口100円。基本は同じ組み合わせを厚くせず、1口ずつバラで置く。"],
         ["次の1637はいくら?", "暫定は100口 = 10,000円。90ユニーク + Hot10だけ2口。最終再計算までは買わない。"],
-        ["1636はいくらだった?", f"推奨コアは46口 = {yen(plan['cost_yen'])}。20,000円CSVは議論用の上限で、全買い推奨ではない。"],
+        ["1636はいくらだった?", f"20%ドロー閾値込みの候補宇宙は{CORE_LINE_COUNT_1636:,}通り = {yen(CORE_BUDGET_1636_YEN)}。表示シートは上位{int(plan['units'])}口 = {yen(plan['cost_yen'])}に制限。"],
         ["当たったら?", "1等は選んだ出目の同時当せん口数で変わる。2等/3等も期待値に足す。"],
-        ["EVは上がった?", f"market proxy上の46口はEV {multiple(plan['ev_multiple'])}、期待損益 {signed_yen(plan['expected_profit_yen'])}。ただし実オッズ未接続なのでproxy扱い。"],
+        ["EVは上がった?", f"market proxy上の{int(plan['units'])}口はEV {multiple(plan['ev_multiple'])}、期待損益 {signed_yen(plan['expected_profit_yen'])}。ただし実オッズ未接続なのでproxy扱い。"],
         ["いつ買う?", "1637は6/25 18:35-18:50 JSTが目安。18:25に公式投票率/売上を取り直し、18:55で打ち切る。"],
         ["買い方", "Hot10だけ2口まで。それ以外は1口。2口化は戻りを厚くするだけで、的中範囲は広がらない。"],
     ]
@@ -596,7 +635,7 @@ def market_ev_table() -> Table:
         ["総当たり/ランダム基準", yen(STAKE_YEN), yen(STAKE_YEN * random_ev), multiple(random_ev), "+0.00倍", "売上50%還元の基準線。"],
         ["公式人気ど真ん中", yen(STAKE_YEN), yen(public_ev["expected_return_yen"]), multiple(public_ev["ev_multiple"]), f"{public_ev['ev_multiple'] - random_ev:+.2f}倍", f"出目 {FAVORITE_1636}。人が多く払戻は薄くなりやすい。"],
         ["market proxy上位1口", yen(STAKE_YEN), yen(float(top_ev["expected_return_yen"])), multiple(float(top_ev["ev_multiple"])), f"{float(top_ev['ev_multiple']) - random_ev:+.2f}倍", f"出目 {top_ev['signature']}。実オッズ未接続なのでproxy。"],
-        ["proxy EV 46口", yen(plan["cost_yen"]), yen(plan["expected_return_yen"]), multiple(plan["ev_multiple"]), f"{plan['ev_multiple'] - random_ev:+.2f}倍", "1-3等EV込み。買い目議論用の推奨コア。"],
+        [f"proxy EV {int(plan['units'])}口", yen(plan["cost_yen"]), yen(plan["expected_return_yen"]), multiple(plan["ev_multiple"]), f"{plan['ev_multiple'] - random_ev:+.2f}倍", "1-3等EV込み。20%ドロー閾値を反映した上限シート。"],
     ]
     result = table(rows, [32 * mm, 22 * mm, 26 * mm, 18 * mm, 22 * mm, 51 * mm])
     result.setStyle(TableStyle([("BACKGROUND", (0, 3), (-1, 4), AMBER_LIGHT)]))
@@ -607,7 +646,7 @@ def phase_logic_table() -> Table:
     rows = [
         ["対象", "読み", "買い目への使い方"],
         ["1634寄り: 初戦", "情報不足で荒れやすい。強人気でもドロー事故を拾う余地がある。", "強人気固定に寄せすぎない。"],
-        ["1636寄り: 第2戦", "初戦情報が入り、条件戦にはまだ寄り切らない。順当が増えやすい。", "強人気固定を基本に、割れる試合だけ分散。"],
+        ["1636寄り: 第2戦", "初戦情報が入り、条件戦にはまだ寄り切らない。順当が増えやすい。", "強人気固定を基本に、ドロー20%以上は残す。"],
         ["1637寄り: 第3戦", "勝点、温存、引き分けOK、得失点差で歪む。", "勝点条件を別ロジックで足す。"],
     ]
     result = table(rows, [28 * mm, 72 * mm, 68 * mm])
@@ -633,7 +672,7 @@ def mismatch_table(matches: list[ResultMatch], title: str) -> Table:
 
 def random_table() -> Table:
     rows = [["購入", "費用", "1等", "2等以上", "3等以上"]]
-    for line_count in [10, 46, 100, 200]:
+    for line_count in [10, 100, RECOMMENDED_1636_UNIT_CAP, CORE_LINE_COUNT_1636]:
         rows.append([f"{line_count}口", yen(line_count * STAKE_YEN), pct(random_probability(line_count, 0), 5), pct(random_probability(line_count, 1), 3), pct(random_probability(line_count, 2), 2)])
     return table(rows, [24 * mm, 30 * mm, 38 * mm, 38 * mm, 38 * mm])
 
@@ -671,7 +710,7 @@ def operation_1637_table() -> Table:
 
 
 def policy_table_1637() -> Table:
-    rows = [["No", "試合", "公式投票 1/0/2", "残す出目", "区分/ルール"]]
+    rows = [["No", "試合", "公式投票 1/0/2", "残す出目", "区分/ルール", "W杯補正"]]
     for match in MATCHES_1637:
         rows.append([
             match.no,
@@ -679,8 +718,9 @@ def policy_table_1637() -> Table:
             " / ".join(pct(vote, 1) for vote in match.votes),
             display_outcomes(match.allowed),
             f"{match.risk}: {match.rule}",
+            context_factor_names(match),
         ])
-    return table(rows, [9 * mm, 54 * mm, 37 * mm, 16 * mm, 50 * mm])
+    return table(rows, [8 * mm, 40 * mm, 32 * mm, 15 * mm, 32 * mm, 41 * mm])
 
 
 def hot_table_1637() -> Table:
@@ -726,13 +766,13 @@ def build_pdf() -> Path:
         leftMargin=12 * mm,
         topMargin=12 * mm,
         bottomMargin=10 * mm,
-        title="W杯toto 1634-1637 EV改善メモ v6",
+        title="W杯toto 1634-1637 EV改善メモ v7",
     )
 
     story = [
-        p("W杯toto 1634-1637 EV改善メモ v6", "title"),
+        p("W杯toto 1634-1637 EV改善メモ v7", "title"),
         p("目的はシンプルです。1口いくらか、当たったらどれくらい戻るか、10口や1万円ならどの出目をどう置くか、そしてランダムよりEVが上がっているのかを見ます。"),
-        p(f"1637の公式投票率は {SNAPSHOT_1637_VOTE_LABEL}、売上は {SNAPSHOT_1637_SALES_LABEL} 時点。現在売上は {yen(TOTAL_SALES_1637_YEN)}、投票数は {VOTE_UNITS_1637:,}口。latest PDF/CSVはこのv6へ差し替えます。", "small"),
+        p(f"1637の公式投票率は {SNAPSHOT_1637_VOTE_LABEL}、売上は {SNAPSHOT_1637_SALES_LABEL} 時点。現在売上は {yen(TOTAL_SALES_1637_YEN)}、投票数は {VOTE_UNITS_1637:,}口。latest PDF/CSVはこのv7へ差し替えます。", "small"),
         summary_table(),
         Spacer(1, 4 * mm),
         p("EVをわかりやすく", "h2"),
@@ -750,7 +790,7 @@ def build_pdf() -> Path:
         operation_1637_table(),
         Spacer(1, 4 * mm),
         p("出目を残すルール", "h2"),
-        p(f"公式人気順だけなら {FAVORITE_1637}。ただし第3戦は勝点条件、温存、引き分けOKで人気順からズレる余地があります。"),
+        p(f"公式人気順だけなら {FAVORITE_1637}。ただし第3戦は中立地、国名人気、勝点条件、温存、引き分けOKで人気順からズレる余地があります。v7ではこの補正をproxy確率と買い目ランキングに入れています。"),
         policy_table_1637(),
         Spacer(1, 4 * mm),
         p("暫定Hot10とCSV先頭", "h2"),
@@ -780,7 +820,7 @@ def build_pdf() -> Path:
         mismatch_table(MATCHES_1635, "1635試合"),
         PageBreak(),
         p("1636の買い方", "title"),
-        p("1636は第2戦寄りとして、強人気は固定し、割れる試合だけ分散します。推奨コアは36ユニーク買い目 + Hot10だけ2口 = 46口/4,600円。20,000円CSVは議論用の上限です。"),
+        p(f"1636は第2戦寄りとして順当寄りを軸にします。ただしカーボベルデの反省として、事前ドロー確率{int(DRAW_HEDGE_THRESHOLD * 100)}%以上は強人気でも買い目候補に残します。候補宇宙は{CORE_LINE_COUNT_1636:,}通り/{yen(CORE_BUDGET_1636_YEN)}、表示シートは上位{int(plan_ev_summary(recommended_entries())['units'])}口/{yen(plan_ev_summary(recommended_entries())['cost_yen'])}に制限します。"),
         phase_logic_table(),
         Spacer(1, 4 * mm),
         p("ランダムでどれくらい当たるか", "h2"),
