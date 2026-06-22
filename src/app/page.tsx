@@ -110,9 +110,6 @@ import {
 import { buildWorldCupStrategyDashboard } from "@/lib/world-cup-strategy";
 import {
   worldCupTotoLatestReportFileName,
-  worldCupTotoNextPurchaseSheet200FileName,
-  worldCupTotoNextPurchaseSheet50FileName,
-  worldCupTotoNextPurchaseSheetFileName,
   worldCupTotoReportVersion,
   worldCupTotoVersionedReportFileName,
 } from "@/lib/world-cup-toto-review-plan";
@@ -682,18 +679,6 @@ export default function DashboardPage() {
     pathname,
     `/reports/${worldCupTotoVersionedReportFileName}`,
   );
-  const worldCupPurchaseSheetHref = resolveArtAsset(
-    pathname,
-    `/reports/${worldCupTotoNextPurchaseSheetFileName}`,
-  );
-  const worldCupPurchaseSheet50Href = resolveArtAsset(
-    pathname,
-    `/reports/${worldCupTotoNextPurchaseSheet50FileName}`,
-  );
-  const worldCupPurchaseSheet200Href = resolveArtAsset(
-    pathname,
-    `/reports/${worldCupTotoNextPurchaseSheet200FileName}`,
-  );
   const latestPlayHref = latestRound
     ? buildRoundHref(appRoute.play, latestRound.id, {
         user: latestPrimaryUserId,
@@ -1196,15 +1181,6 @@ export default function DashboardPage() {
                   </a>
                   <a href={worldCupVersionedReportHref} className={secondaryButtonClassName}>
                     固定版PDF
-                  </a>
-                  <a href={worldCupPurchaseSheet50Href} className={secondaryButtonClassName}>
-                    50口一覧CSV
-                  </a>
-                  <a href={worldCupPurchaseSheetHref} className={secondaryButtonClassName}>
-                    100口一覧CSV
-                  </a>
-                  <a href={worldCupPurchaseSheet200Href} className={secondaryButtonClassName}>
-                    200口一覧CSV
                   </a>
                 </div>
               </div>

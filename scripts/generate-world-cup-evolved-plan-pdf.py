@@ -17,10 +17,10 @@ from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer, 
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PDF_NAME = "world-cup-toto-1634-1637-evolved-plan-20260622-v12.pdf"
-CSV_50_NAME = "world-cup-toto-1637-visual-5000-plan-20260622-v12.csv"
-CSV_NAME = "world-cup-toto-1637-visual-10000-plan-20260622-v12.csv"
-CSV_200_NAME = "world-cup-toto-1637-visual-20000-plan-20260622-v12.csv"
+PDF_NAME = "world-cup-toto-1634-1637-evolved-plan-20260622-v13.pdf"
+CSV_50_NAME = "world-cup-toto-1637-visual-5000-plan-20260622-v13.csv"
+CSV_NAME = "world-cup-toto-1637-visual-10000-plan-20260622-v13.csv"
+CSV_200_NAME = "world-cup-toto-1637-visual-20000-plan-20260622-v13.csv"
 PDF_ALIASES = (
     PDF_NAME,
     "world-cup-toto-latest.pdf",
@@ -198,6 +198,29 @@ MATCHES_1637 = [
     PlanMatch(13, "クロアチア", "ガーナ", "06/28 06:00", (0.7655, 0.1529, 0.0816), ("1", "0"), "クロアチア軸 + 条件戦ドロー", "semi"),
 ]
 
+MULTI_PLANS_1637 = [
+    {
+        "label": "分散核",
+        "choices": ("2", "1", "2", "2/0/1", "2", "2", "1/0/2", "2", "2", "1/0/2", "2", "2", "1"),
+        "note": "30%台に散る3試合だけ全分散する最小形。",
+    },
+    {
+        "label": "5千円級",
+        "choices": ("2", "1/0", "2", "2/0/1", "2", "2", "1/0/2", "2", "2", "1/0/2", "2", "2", "1"),
+        "note": "分散核に日本戦ドローを足す。",
+    },
+    {
+        "label": "1万円級",
+        "choices": ("2", "1/0", "2", "2/0/1", "2/0", "2", "1/0/2", "2", "2", "1/0/2", "2", "2", "1"),
+        "note": "5千円級にアルジェリア vs オーストリアのドローを足す標準案。",
+    },
+    {
+        "label": "200口以内広め",
+        "choices": ("2", "1/0", "2", "2/0/1", "2/0/1", "2", "1/0/2", "2", "2", "1/0/2", "2", "2", "1"),
+        "note": "M05も全分散にして、200口以内で広げる上限案。",
+    },
+]
+
 CONTEXT_FACTOR_LABELS = {
     "neutral_venue": "中立地",
     "country_name_bias": "国名人気",
@@ -297,6 +320,28 @@ def outcome_label(match: PlanMatch, outcome: str) -> str:
 
 def compact_pick_list(picks: tuple[str, ...] | list[str]) -> str:
     return " ".join(str(item) for item in picks)
+
+
+def choice_count(choice: str) -> int:
+    return len(choice.split("/"))
+
+
+def multi_plan_units(plan: dict[str, object]) -> int:
+    units = 1
+    for choice in plan["choices"]:
+        units *= choice_count(str(choice))
+    return units
+
+
+def multi_plan_formula(plan: dict[str, object]) -> str:
+    counts = [choice_count(str(choice)) for choice in plan["choices"]]
+    parts: list[str] = []
+    for count in sorted(set(counts), reverse=True):
+        if count <= 1:
+            continue
+        quantity = counts.count(count)
+        parts.append(f"{count}^{quantity}" if quantity > 1 else str(count))
+    return " x ".join(parts) if parts else "1"
 
 
 def actual_signature(matches: list[ResultMatch]) -> str:
@@ -636,12 +681,12 @@ def summary_table() -> Table:
     rows = [
         ["質問", "今回の答え"],
         ["1口いくら?", "toto13は1口100円。基本は同じ組み合わせを厚くせず、1口ずつバラで置く。"],
-        ["次の1637はいくら?", "暫定は50口=5,000円、100口=10,000円、200口=20,000円。すべて重複なしで1行1口。最終再計算までは買わない。"],
+        ["次の1637はいくら?", "暫定は27口=2,700円、54口=5,400円、108口=10,800円、162口=16,200円。公式マルチで選択数を掛け算する。最終再計算までは買わない。"],
         ["1636はいくらだった?", f"20%ドロー閾値込みの候補宇宙は{CORE_LINE_COUNT_1636:,}通り = {yen(CORE_BUDGET_1636_YEN)}。表示シートは上位{int(plan['units'])}口 = {yen(plan['cost_yen'])}に制限。"],
         ["当たったら?", "1等は選んだ出目の同時当せん口数で変わる。2等/3等も期待値に足す。"],
         ["EVは上がった?", f"market proxy上の{int(plan['units'])}口はEV {multiple(plan['ev_multiple'])}、期待損益 {signed_yen(plan['expected_profit_yen'])}。ただし実オッズ未接続なのでproxy扱い。"],
         ["いつ買う?", "1637は6/25 18:35-18:50 JSTが目安。18:25に公式投票率/売上を取り直し、18:55で打ち切る。"],
-        ["買い方", "50/100/200口のCSVから予算に合うものを1つ選び、上から順に公式の普通購入画面へ転記する。"],
+        ["買い方", "M01-M13で指定された出目をマルチ選択する。各行CSVの細かい買い目一覧は主導線にしない。"],
     ]
     result = table(rows, [38 * mm, 140 * mm])
     result.setStyle(TableStyle([("BACKGROUND", (0, 1), (0, -1), TEAL_LIGHT)]))
@@ -724,9 +769,9 @@ def strategy_1637_summary_table() -> Table:
         ["項目", "1637の暫定方針"],
         ["ステータス", f"公式投票率 {SNAPSHOT_1637_VOTE_LABEL}、売上 {SNAPSHOT_1637_SALES_LABEL} 時点。売上は {yen(TOTAL_SALES_1637_YEN)}。"],
         ["買うタイミング", "今は買わない。6/25 18:25に再取得、18:35-18:50に購入、18:55で打ち切り。ネット販売締切は19:00。"],
-        ["予算", "50口 = 5,000円、100口 = 10,000円、200口 = 20,000円。すべて1行1口、重複なし。"],
+        ["予算", "分散核27口=2,700円、5千円級54口=5,400円、1万円級108口=10,800円、200口以内広め162口=16,200円。"],
         ["なぜギリ?", "公式投票率と売上は動く。締切直前ほど払戻推定と人気ズレの推定誤差が小さい。"],
-        ["注意", "購入/決済の自動化は対象外。CSVは公式画面へ人が確認して転記するための作業表。"],
+        ["注意", "購入/決済の自動化は対象外。マルチ指定の口数と金額を人が公式画面で確認して入力する。"],
     ]
     result = table(rows, [34 * mm, 134 * mm])
     result.setStyle(TableStyle([("BACKGROUND", (0, 1), (0, -1), TEAL_LIGHT)]))
@@ -736,9 +781,9 @@ def strategy_1637_summary_table() -> Table:
 def operation_1637_table() -> Table:
     rows = [
         ["時刻", "やること", "担当"],
-        ["6/25 18:25", "公式投票率と売上を取り直し、PDF/CSVを再生成する。", "system"],
+        ["6/25 18:25", "公式投票率と売上を取り直し、PDFとマルチ選択表を再生成する。", "system"],
         ["6/25 18:30", "強人気ロック、条件戦ドロー、30%台分散を目視確認する。", "human"],
-        ["6/25 18:35-18:50", "予算に合わせて50/100/200口CSVを1つ選び、上からそのまま転記する。", "human"],
+        ["6/25 18:35-18:50", "予算に合わせて27/54/108/162口のマルチ指定を公式画面へ入力する。", "human"],
         ["6/25 18:55", "購入確定を止める。締切19:00に食い込まない。", "human"],
     ]
     return table(rows, [30 * mm, 104 * mm, 26 * mm])
@@ -782,7 +827,7 @@ def budget_plan_summary_1637() -> Table:
         ["200口以内プラン", f"{len(PURCHASE_ROWS_1637_200)}通り / {sum(int(row['units']) for row in PURCHASE_ROWS_1637_200)}口 / {yen(len(PURCHASE_ROWS_1637_200) * STAKE_YEN)}。広めに拾うプラン。CSVで全200行を確認する。"],
         ["入力順", "PDFのM01-M13対応表を見て、公式の普通購入画面で試合No.順に1/0/2を押す。CSVは各試合列に「2: ドイツ勝ち」のようなラベルも出す。"],
         ["読み方", "1=ホーム勝ち、0=引き分け、2=アウェイ勝ち。signature はM01からM13までの数字をつなげた確認用。"],
-        ["CSV", "latest-50/100/200-purchase-sheet を使う。latest-purchase-sheet は100口版の別名。v12から目視用ラベル付き。"],
+        ["CSV", "latest-50/100/200-purchase-sheet は検算用に残す。latest-purchase-sheet は100口版の別名。v13ではPDFのマルチ表を主導線にする。"],
         ["注意", "CSV/PDFは転記用メモ。購入、決済、自動投票は対象外。締切直前の再計算後に人が公式画面で確認して入力する。"],
     ]
     result = table(rows, [34 * mm, 134 * mm])
@@ -802,6 +847,43 @@ def match_button_table_1637() -> Table:
             f"{display_outcomes(match.allowed)}\n{match.rule}",
         ])
     return table(rows, [10 * mm, 39 * mm, 25 * mm, 24 * mm, 25 * mm, 45 * mm])
+
+
+def multi_plan_summary_table_1637() -> Table:
+    core_line_count = len(build_allowed_rows(MATCHES_1637))
+    rows = [["プラン", "選び方", "計算", "合計口数", "金額"]]
+    for plan in MULTI_PLANS_1637:
+        units = multi_plan_units(plan)
+        rows.append([
+            plan["label"],
+            plan["note"],
+            multi_plan_formula(plan),
+            f"{units:,}口",
+            yen(units * STAKE_YEN),
+        ])
+    rows.append([
+        "全推奨コア",
+        "残している出目を全部マルチ指定する参考値。実用購入対象にはしない。",
+        "allowed all",
+        f"{core_line_count:,}口",
+        yen(core_line_count * STAKE_YEN),
+    ])
+    result = table(rows, [24 * mm, 72 * mm, 22 * mm, 22 * mm, 28 * mm])
+    result.setStyle(TableStyle([("BACKGROUND", (0, 1), (0, -1), TEAL_LIGHT)]))
+    return result
+
+
+def multi_plan_matrix_table_1637() -> Table:
+    headers = ["No", "対象試合", *[str(plan["label"]) for plan in MULTI_PLANS_1637], "メモ"]
+    rows = [headers]
+    for index, match in enumerate(MATCHES_1637):
+        rows.append([
+            f"M{match.no:02d}",
+            f"{match.home} vs {match.away}\n{match.kickoff}",
+            *[plan["choices"][index] for plan in MULTI_PLANS_1637],
+            match.rule,
+        ])
+    return table(rows, [10 * mm, 38 * mm, 18 * mm, 18 * mm, 18 * mm, 24 * mm, 42 * mm])
 
 
 def visual_purchase_table_1637(
@@ -842,7 +924,7 @@ def visual_purchase_preview_table_1637(
 
 def external_market_source_table() -> Table:
     rows = [
-        ["ソース", "使い方", "v12での扱い"],
+        ["ソース", "使い方", "v13での扱い"],
         ["公式投票率", "p_public。toto参加者の偏りを見る。", "現行の主ソース。締切直前に再取得。"],
         ["Polymarket", "市場価格、板、BBO、出来高を外部p_model候補にする。", "次の接続候補。強アカウント単体より市場価格と流動性を優先。"],
         ["Kalshi", "公開market data/orderbookがあれば二値市場の補助確率にする。", "サッカー該当市場がある時だけ採用。"],
@@ -886,7 +968,7 @@ def hot_table() -> Table:
 def automation_table() -> Table:
     rows = [
         ["方法", "使い方", "評価"],
-        ["買い目CSV", "latest-50/100/200-purchase-sheet はすべて1行1口で並べる。予算に合う1ファイルだけ使う。", "今回の推奨。"],
+        ["補助CSV", "latest-50/100/200-purchase-sheet は検算用に残す。PDFのマルチ指定が主導線。", "補助扱い。"],
         ["公式ランダム", "金額だけ指定して公式側に任せる。", "今回の戦略とは別物。検証用ならあり。"],
         ["らくらく購入", "予想は公式側が自動選択する。", "指定買い目ではないので今回のCSVとは別。"],
         ["完全自動購入", "ログイン、購入、決済まで自動化する。", "対象外。購入と決済は人が行う。"],
@@ -905,13 +987,13 @@ def build_pdf() -> Path:
         leftMargin=12 * mm,
         topMargin=12 * mm,
         bottomMargin=10 * mm,
-        title="W杯toto 1634-1637 EV改善メモ v12",
+        title="W杯toto 1634-1637 EV改善メモ v13",
     )
 
     story = [
-        p("W杯toto 1634-1637 EV改善メモ v12", "title"),
+        p("W杯toto 1634-1637 EV改善メモ v13", "title"),
         p("目的はシンプルです。1口いくらか、当たったらどれくらい戻るか、10口や1万円ならどの出目をどう置くか、そしてランダムよりEVが上がっているのかを見ます。"),
-        p(f"1637の公式投票率は {SNAPSHOT_1637_VOTE_LABEL}、売上は {SNAPSHOT_1637_SALES_LABEL} 時点。現在売上は {yen(TOTAL_SALES_1637_YEN)}、投票数は {VOTE_UNITS_1637:,}口。latest PDF/CSVはこのv12へ差し替えます。", "small"),
+        p(f"1637の公式投票率は {SNAPSHOT_1637_VOTE_LABEL}、売上は {SNAPSHOT_1637_SALES_LABEL} 時点。現在売上は {yen(TOTAL_SALES_1637_YEN)}、投票数は {VOTE_UNITS_1637:,}口。latest PDFはこのv13へ差し替えます。", "small"),
         summary_table(),
         Spacer(1, 4 * mm),
         p("EVをわかりやすく", "h2"),
@@ -922,41 +1004,27 @@ def build_pdf() -> Path:
         market_ev_table(),
         PageBreak(),
         p("1637の最適戦略", "title"),
-        p("1637は第3戦寄りの条件戦として扱います。現時点の暫定CSVは作りますが、買うのは締切直前に公式投票率と売上を取り直してからです。"),
+        p("1637は第3戦寄りの条件戦として扱います。現時点の暫定マルチ選択表は作りますが、買うのは締切直前に公式投票率と売上を取り直してからです。"),
         strategy_1637_summary_table(),
         Spacer(1, 4 * mm),
         p("当日の回し方", "h2"),
         operation_1637_table(),
         Spacer(1, 4 * mm),
         p("出目を残すルール", "h2"),
-        p(f"公式人気順だけなら {FAVORITE_1637}。ただし第3戦は中立地、国名人気、勝点条件、温存、引き分けOKで人気順からズレる余地があります。v12ではこの補正をproxy確率と買い目ランキングに入れています。"),
+        p(f"公式人気順だけなら {FAVORITE_1637}。ただし第3戦は中立地、国名人気、勝点条件、温存、引き分けOKで人気順からズレる余地があります。v13ではこの補正をマルチ選択の残し方に入れています。"),
         policy_table_1637(),
         Spacer(1, 4 * mm),
-        p("暫定買い目の考え方", "h2"),
-        p("v12では重複買いをしません。上位から50口、100口、200口の3段階を作り、予算に合う一覧を1つ選んでそのまま普通購入画面へ転記します。"),
-        hot_table_1637(),
+        p("マルチ指定の合計口数", "h2"),
+        p("公式マルチでは、各試合で選んだ出目数を掛け算したものが購入口数です。下の表だけ見れば、どの出目を残すと何口・いくらかがわかります。"),
+        multi_plan_summary_table_1637(),
         PageBreak(),
         p("1637 普通購入画面で押す対応表", "title"),
-        p("1口100円です。各行は1口で、M01からM13までを左から押します。まず下の対応表で、各試合の1/0/2が何を意味するかを確認します。"),
+        p("1口100円です。M01からM13まで、選ぶプランの列に書いた 1/0/2 をマルチで押します。1=ホーム勝ち、0=引き分け、2=アウェイ勝ちです。"),
         match_button_table_1637(),
         PageBreak(),
-        p("1637 目視入力リスト 50/100/200口", "title"),
-        p("PDFだけで買うなら50口プランを使います。100口/200口は同じ順番で続くため、CSVの全行一覧を使います。CSVもv12から試合名と出目ラベル付きです。"),
-        budget_plan_summary_1637(),
-        PageBreak(),
-        p("50口以内プラン 1-25口", "h2"),
-        visual_purchase_table_1637(PURCHASE_ROWS_1637_50, 1, 25),
-        PageBreak(),
-        p("50口以内プラン 26-50口", "h2"),
-        visual_purchase_table_1637(PURCHASE_ROWS_1637_50, 26, 50),
-        PageBreak(),
-        p("100口/200口プランの追加分確認", "h2"),
-        p("100口はこの50口に51-100行を足します。200口はさらに101-200行を足します。全行はCSVで確認します。"),
-        p("100口追加分 51-62口", "h2"),
-        visual_purchase_preview_table_1637(PURCHASE_ROWS_1637, 51, 62),
-        Spacer(1, 4 * mm),
-        p("200口追加分 101-112口", "h2"),
-        visual_purchase_preview_table_1637(PURCHASE_ROWS_1637_200, 101, 112),
+        p("1637 マルチ出目サマリ", "title"),
+        p("CSVの各行詳細は使いません。選ぶプランの列だけを見て、M01からM13へ同じ出目を入れます。"),
+        multi_plan_matrix_table_1637(),
         PageBreak(),
         p("外部市場で推奨を補強する", "title"),
         p("強アカウントを丸ごとコピーするより、公開市場価格、板の厚み、出来高、ブックメーカーの1X2確率をp_modelへ混ぜる方が再現性があります。特定アカウントは、履歴が取れる場合だけ補助シグナルにします。"),
@@ -1001,7 +1069,7 @@ def build_pdf() -> Path:
         policy_table(),
         PageBreak(),
         p("1636旧シート先頭", "title"),
-        p("1636では上位を厚くする案も試しましたが、v12の1637方針では重複購入をやめ、50/100/200口の重複なしCSVに寄せます。"),
+        p("1636では上位を厚くする案も試しましたが、v13の1637方針ではCSV行詳細よりマルチ選択表で口数と金額を確認します。"),
         hot_table(),
         Spacer(1, 4 * mm),
         p("なるべく自動で買う方法", "h2"),
