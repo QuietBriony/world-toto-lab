@@ -15,6 +15,7 @@ import {
   worldCupToto1636PhaseDecision,
   worldCupToto1636PurchaseRows,
   worldCupToto1637ContextModel,
+  worldCupToto1637ExternalMarketOverlay,
   worldCupToto1637Matches,
   worldCupToto1637MultiPlans,
   worldCupToto1637NextPlan,
@@ -134,6 +135,7 @@ describe("world cup toto review plan", () => {
       "draw_ok",
       "rotation_risk",
     ]);
+    expect(worldCupToto1637NextPlan.workflow.map((step) => step.timeLabel)).toContain("2026-06-25 18:27");
     expect(worldCupToto1637Matches.every((match) => match.contextFactors.length > 0)).toBe(true);
     expect(worldCupToto1637Matches.find((match) => match.matchNo === 1)?.recommendedOutcomes).toContain("0");
     expect(worldCupToto1637Matches.find((match) => match.matchNo === 6)?.riskBucket).toBe("semi");
@@ -148,17 +150,48 @@ describe("world cup toto review plan", () => {
     expect(buildWorldCupToto1637PurchaseRows(20).reduce((sum, row) => sum + row.unitCount, 0)).toBe(20);
   });
 
+  it("shows how external market prices change the 1637 final selection", () => {
+    const marketRows = worldCupToto1637ExternalMarketOverlay.comparisonRows;
+    const marketPlans = worldCupToto1637ExternalMarketOverlay.marketAdjustedPlans;
+
+    expect(worldCupToto1637ExternalMarketOverlay.dataStatusLabel).toContain("Polymarket");
+    expect(worldCupToto1637ExternalMarketOverlay.dataStatusLabel).toContain("Hazi comment not included");
+    expect(marketRows).toHaveLength(13);
+    expect(marketRows.every((row) => row.source === "Polymarket" && row.sourceSlug.startsWith("fwc-"))).toBe(true);
+    expect(marketRows.find((row) => row.matchNo === 1)?.delta["1"]).toBeGreaterThan(0.2);
+    expect(marketRows.find((row) => row.matchNo === 5)?.marketProb["1"]).toBeGreaterThan(0.3);
+    expect(marketRows.find((row) => row.matchNo === 7)?.marketFavoriteOutcome).toBe("0");
+    expect(marketRows.find((row) => row.matchNo === 13)?.actionLabel).toContain("0を足す");
+    expect(worldCupToto1637ExternalMarketOverlay.decisionRules.some((rule) => rule.includes("+8pt"))).toBe(true);
+    expect(marketPlans.map((plan) => plan.unitCount)).toEqual([27, 54, 108, 162]);
+    expect(marketPlans[2]?.choices).toEqual([
+      "2/0/1",
+      "1",
+      "2",
+      "2",
+      "2/0/1",
+      "2",
+      "1/0/2",
+      "2",
+      "2",
+      "1/0",
+      "2",
+      "2",
+      "1/0",
+    ]);
+  });
+
   it("separates mutable latest links from immutable report versions", () => {
     expect(worldCupTotoLatestReportFileName).toBe("world-cup-toto-latest.pdf");
     expect(worldCupTotoNextPurchaseSheetFileName).toBe("world-cup-toto-latest-purchase-sheet.csv");
     expect(worldCupTotoNextPurchaseSheet50FileName).toBe("world-cup-toto-latest-50-purchase-sheet.csv");
     expect(worldCupTotoNextPurchaseSheet200FileName).toBe("world-cup-toto-latest-200-purchase-sheet.csv");
-    expect(worldCupTotoVersionedReportFileName).toBe("world-cup-toto-1634-1637-evolved-plan-20260622-v13.pdf");
-    expect(worldCupTotoVersionedPurchaseSheet50FileName).toBe("world-cup-toto-1637-visual-5000-plan-20260622-v13.csv");
-    expect(worldCupTotoVersionedPurchaseSheetFileName).toBe("world-cup-toto-1637-visual-10000-plan-20260622-v13.csv");
-    expect(worldCupTotoVersionedPurchaseSheet200FileName).toBe("world-cup-toto-1637-visual-20000-plan-20260622-v13.csv");
-    expect(worldCupTotoReportVersion.label).toBe("2026-06-22 v13");
-    expect(worldCupTotoReportVersion.publishedAtLabel).toBe("2026-06-22 20:45 JST");
+    expect(worldCupTotoVersionedReportFileName).toBe("world-cup-toto-1634-1637-evolved-plan-20260622-v14.pdf");
+    expect(worldCupTotoVersionedPurchaseSheet50FileName).toBe("world-cup-toto-1637-visual-5000-plan-20260622-v14.csv");
+    expect(worldCupTotoVersionedPurchaseSheetFileName).toBe("world-cup-toto-1637-visual-10000-plan-20260622-v14.csv");
+    expect(worldCupTotoVersionedPurchaseSheet200FileName).toBe("world-cup-toto-1637-visual-20000-plan-20260622-v14.csv");
+    expect(worldCupTotoReportVersion.label).toBe("2026-06-22 v14");
+    expect(worldCupTotoReportVersion.publishedAtLabel).toBe("2026-06-22 21:05 JST");
     expect(worldCupTotoReportVersion.pdfSha256).toHaveLength(64);
     expect(worldCupTotoReportVersion.csv50Sha256).toHaveLength(64);
     expect(worldCupTotoReportVersion.csvSha256).toHaveLength(64);

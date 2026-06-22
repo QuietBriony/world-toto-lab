@@ -8,6 +8,21 @@
   },
   "versions": [
     {
+      "csv": "world-cup-toto-1637-visual-10000-plan-20260622-v14.csv",
+      "csv50": "world-cup-toto-1637-visual-5000-plan-20260622-v14.csv",
+      "csv50Sha256": "36B8FEDD4036555650BF42F8DD35BB3AC4F28969DD901A90C0AF1708CD13F881",
+      "csv100Sha256": "8F7F389221216D9FF6E8A07D5B5F3536B1FBD8391274EFABC8D968A15393F79A",
+      "csv200": "world-cup-toto-1637-visual-20000-plan-20260622-v14.csv",
+      "csv200Sha256": "7FC51D40E37D4F83EA697852251AC1D6ECBBD924804B7FF87F90E08F499DC5DC",
+      "csvSha256": "8F7F389221216D9FF6E8A07D5B5F3536B1FBD8391274EFABC8D968A15393F79A",
+      "label": "2026-06-22 v14",
+      "legacyPdf": "world-cup-toto-1634-1636-evolved-plan.pdf",
+      "pdf": "world-cup-toto-1634-1637-evolved-plan-20260622-v14.pdf",
+      "pdfSha256": "35BD86724FFC5B6056F29304BA1BCF5D64FCE673F6128135DBC4E191299F3D68",
+      "publishedAt": "2026-06-22 21:05 JST",
+      "summary": "Adds a Polymarket external-market overlay for round 1637, showing official-vote vs market-probability gaps and market-adjusted 27, 54, 108, and 162-unit multi-pick plans."
+    },
+    {
       "csv": "world-cup-toto-1637-visual-10000-plan-20260622-v13.csv",
       "csv50": "world-cup-toto-1637-visual-5000-plan-20260622-v13.csv",
       "csv50Sha256": "36B8FEDD4036555650BF42F8DD35BB3AC4F28969DD901A90C0AF1708CD13F881",

@@ -56,6 +56,7 @@ import {
   worldCupToto1636PhaseDecision,
   worldCupToto1636PurchaseRows,
   worldCupToto1637ContextModel,
+  worldCupToto1637ExternalMarketOverlay,
   worldCupToto1637Matches,
   worldCupToto1637MultiPlans,
   worldCupToto1637NextPlan,
@@ -87,6 +88,19 @@ function statusTone(status: WorldCupRoundWindowStatus) {
 
 function formatMultiple(value: number | null | undefined) {
   return value === null || value === undefined ? "-" : `${value.toFixed(2)}倍`;
+}
+
+function formatSignedPercentPoint(value: number) {
+  const sign = value > 0 ? "+" : "";
+
+  return `${sign}${(value * 100).toFixed(1)}pt`;
+}
+
+function compactProbabilities(probabilities: { "0": number; "1": number; "2": number }) {
+  return `${formatPercent(probabilities["1"], 1)} / ${formatPercent(probabilities["0"], 1)} / ${formatPercent(
+    probabilities["2"],
+    1,
+  )}`;
 }
 
 function formatCount(value: number | null | undefined) {
@@ -533,6 +547,22 @@ function NextWorldCupToto1637Panel({
 }) {
   const standardMultiPlan = worldCupToto1637MultiPlans.find((plan) => plan.label === "1万円級");
   const wideMultiPlan = worldCupToto1637MultiPlans.find((plan) => plan.label === "200口以内広め");
+  const marketStandardPlan = worldCupToto1637ExternalMarketOverlay.marketAdjustedPlans.find(
+    (plan) => plan.label === "市場補強108口",
+  );
+  const marketWidePlan = worldCupToto1637ExternalMarketOverlay.marketAdjustedPlans.find(
+    (plan) => plan.label === "市場補強162口",
+  );
+  const externalPriorityRows = worldCupToto1637ExternalMarketOverlay.comparisonRows
+    .filter(
+      (row) =>
+        row.actionLabel.includes("最優先") ||
+        row.actionLabel.includes("全分散") ||
+        row.actionLabel.includes("広げる") ||
+        row.actionLabel.includes("0を足す") ||
+        row.actionLabel.includes("薄め"),
+    )
+    .slice(0, 5);
 
   return (
     <SectionCard
@@ -601,7 +631,7 @@ function NextWorldCupToto1637Panel({
           だから 1637 は今のPDF/マルチ表をたたき台にして、6/25夕方に同じロジックで差し替えます。
         </p>
         <p className="mt-2 text-sm leading-6 text-slate-600">
-          v13 fixed links:{" "}
+          {worldCupTotoReportVersion.label} fixed links:{" "}
           <a className="font-semibold underline underline-offset-4" href={versionedReportHref}>
             PDF
           </a>{" "}
@@ -631,6 +661,68 @@ function NextWorldCupToto1637Panel({
           ))}
         </div>
       </PlainNotice>
+
+      <PlainNotice tone="amber" title="外部市場補強: 公式とどれくらい違うか">
+        <p>{worldCupToto1637ExternalMarketOverlay.summary}</p>
+        <div className="mt-3 grid gap-3 md:grid-cols-3">
+          <MiniFact
+            label="外部ソース"
+            value="Polymarket"
+            hint={`${worldCupToto1637ExternalMarketOverlay.fetchedAtLabel}取得`}
+          />
+          <MiniFact
+            label="標準反映"
+            value={`${marketStandardPlan?.unitCount ?? 108}口 / ${formatCurrency(
+              marketStandardPlan?.budgetYen ?? 10_800,
+            )}`}
+            hint="M01/M05/M13へ分散を移す"
+          />
+          <MiniFact
+            label="広め反映"
+            value={`${marketWidePlan?.unitCount ?? 162}口 / ${formatCurrency(marketWidePlan?.budgetYen ?? 16_200)}`}
+            hint="200口以内の市場補強案"
+          />
+        </div>
+        <p className="mt-3 text-sm leading-6 text-slate-700">
+          Haziコメントなしの前提では、人間メモ重みは0にして、公式投票率、Polymarket価格、W杯コンテキストだけで見る。
+          締切直前も同じ差分なら、通常の1万円級より市場補強108口を優先候補にする。
+        </p>
+      </PlainNotice>
+
+      <HorizontalScrollTable className="mt-5 min-w-0" contentClassName="rounded-[22px] border border-amber-200 bg-white/86">
+        <table className="min-w-[920px] text-left text-sm">
+          <thead className="bg-amber-50 text-xs uppercase tracking-[0.16em] text-amber-700">
+            <tr>
+              <th className="px-3 py-3">No</th>
+              <th className="px-3 py-3">試合</th>
+              <th className="px-3 py-3">公式 1/0/2</th>
+              <th className="px-3 py-3">Polymarket 1/0/2</th>
+              <th className="px-3 py-3">最大差分</th>
+              <th className="px-3 py-3">最終選択への反映</th>
+            </tr>
+          </thead>
+          <tbody>
+            {externalPriorityRows.map((row) => (
+              <tr key={row.matchNo} className="border-t border-amber-100">
+                <td className="px-3 py-3 font-semibold text-slate-950">{row.matchNo}</td>
+                <td className="px-3 py-3 text-slate-700">
+                  {row.matchLabel}
+                  <p className="mt-1 text-xs text-slate-500">
+                    fav {outcomeLabel(row.officialFavoriteOutcome)} → {outcomeLabel(row.marketFavoriteOutcome)}
+                  </p>
+                </td>
+                <td className="px-3 py-3 font-mono text-xs text-slate-600">{compactProbabilities(row.officialProb)}</td>
+                <td className="px-3 py-3 font-mono text-xs text-slate-900">{compactProbabilities(row.marketProb)}</td>
+                <td className="px-3 py-3 font-semibold text-amber-800">
+                  {outcomeLabel(row.strongestPositiveDeltaOutcome)}{" "}
+                  {formatSignedPercentPoint(row.delta[row.strongestPositiveDeltaOutcome])}
+                </td>
+                <td className="px-3 py-3 text-xs leading-relaxed text-slate-700">{row.actionLabel}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </HorizontalScrollTable>
 
       <div className="mt-5 grid gap-4 xl:grid-cols-[0.85fr_1.15fr]">
         <HorizontalScrollTable className="min-w-0" contentClassName="rounded-[22px] border border-slate-200 bg-white/82">
@@ -728,16 +820,45 @@ function NextWorldCupToto1637Panel({
         </table>
       </HorizontalScrollTable>
 
+      <HorizontalScrollTable className="mt-4 min-w-0" contentClassName="rounded-[22px] border border-amber-200 bg-white/86">
+        <table className="min-w-[860px] text-left text-sm">
+          <thead className="bg-amber-50 text-xs uppercase tracking-[0.16em] text-amber-700">
+            <tr>
+              <th className="px-3 py-3">市場反映プラン</th>
+              <th className="px-3 py-3">M01-M04</th>
+              <th className="px-3 py-3">M05-M08</th>
+              <th className="px-3 py-3">M09-M13</th>
+              <th className="px-3 py-3">合計</th>
+              <th className="px-3 py-3">金額</th>
+              <th className="px-3 py-3">メモ</th>
+            </tr>
+          </thead>
+          <tbody>
+            {worldCupToto1637ExternalMarketOverlay.marketAdjustedPlans.map((plan) => (
+              <tr key={plan.label} className="border-t border-amber-100">
+                <td className="px-3 py-3 font-semibold text-slate-950">{plan.label}</td>
+                <td className="px-3 py-3 font-mono text-sm text-slate-900">{plan.choices.slice(0, 4).join(" ")}</td>
+                <td className="px-3 py-3 font-mono text-sm text-slate-900">{plan.choices.slice(4, 8).join(" ")}</td>
+                <td className="px-3 py-3 font-mono text-sm text-slate-900">{plan.choices.slice(8, 13).join(" ")}</td>
+                <td className="px-3 py-3 font-semibold text-slate-900">{plan.unitCount.toLocaleString("ja-JP")}口</td>
+                <td className="px-3 py-3 font-semibold text-slate-900">{formatCurrency(plan.budgetYen)}</td>
+                <td className="px-3 py-3 text-xs leading-relaxed text-slate-700">{plan.note}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </HorizontalScrollTable>
+
       <PlainNotice tone="slate" title="共有リンクの使い分け">
         <p>
           友人と見る時は最新PDF/CSVで十分です。資料を磨いたら latest は差し替わります。
           感想戦で固定版を引用する時だけ{" "}
           <a className="font-semibold underline underline-offset-4" href={versionedReportHref}>
-            v6固定PDF
+            固定PDF
           </a>{" "}
           /{" "}
           <a className="font-semibold underline underline-offset-4" href={versionedPurchaseSheetHref}>
-            v6固定CSV
+            固定CSV
           </a>{" "}
           を使います。
         </p>
