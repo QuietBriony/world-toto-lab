@@ -1,14 +1,27 @@
 {
   "latest": {
-    "base20000Csv": "world-cup-toto-latest-base-20000-sheet.csv",
-    "baseCsv": "world-cup-toto-latest-base-sheet.csv",
     "csv": "world-cup-toto-latest-purchase-sheet.csv",
-    "csv10000": "world-cup-toto-latest-10000-purchase-sheet.csv",
-    "csv20000": "world-cup-toto-latest-20000-purchase-sheet.csv",
-    "hotExtraCsv": "world-cup-toto-latest-hot-extra-sheet.csv",
+    "csv50": "world-cup-toto-latest-50-purchase-sheet.csv",
+    "csv100": "world-cup-toto-latest-100-purchase-sheet.csv",
+    "csv200": "world-cup-toto-latest-200-purchase-sheet.csv",
     "pdf": "world-cup-toto-latest.pdf"
   },
   "versions": [
+    {
+      "csv": "world-cup-toto-1637-entry-10000-plan-20260622-v11.csv",
+      "csv50": "world-cup-toto-1637-entry-5000-plan-20260622-v11.csv",
+      "csv50Sha256": "E1C4553D7BE57D03B1CB49E38CF35CB3B327AD428752CBC0208D41236FAA07A3",
+      "csv100Sha256": "26EE6F447CE2B8A73B0BE13865F91C5B51A957E59498A65A4FA13DA69F081C94",
+      "csv200": "world-cup-toto-1637-entry-20000-plan-20260622-v11.csv",
+      "csv200Sha256": "9C6E8EBF96AE9659AF70E6E6027F60A4227E23953D030965EF70B8ADA7495BE1",
+      "csvSha256": "26EE6F447CE2B8A73B0BE13865F91C5B51A957E59498A65A4FA13DA69F081C94",
+      "label": "2026-06-22 v11",
+      "legacyPdf": "world-cup-toto-1634-1636-evolved-plan.pdf",
+      "pdf": "world-cup-toto-1634-1637-evolved-plan-20260622-v11.pdf",
+      "pdfSha256": "AE3D6AA75BCC84F47B8FAA4E3FDCAAB28AA60AA66FD3C3550F0076C1202F620A",
+      "publishedAt": "2026-06-22 18:55 JST",
+      "summary": "Simplifies the 1637 purchase workflow to direct no-duplicate 50, 100, and 200-entry sheets with match_1 through match_13 first. Removes the latest Hot10 add-on workflow from the PDF and UI."
+    },
     {
       "base20000Csv": "world-cup-toto-1637-base-19000-plan-20260622-v10.csv",
       "base20000CsvSha256": "B4654BE177DE5528E6DF5C938AABDFEDEC579D3316FA55DFBB126C11F2A0604B",

@@ -110,8 +110,8 @@ import {
 import { buildWorldCupStrategyDashboard } from "@/lib/world-cup-strategy";
 import {
   worldCupTotoLatestReportFileName,
-  worldCupTotoNextHotExtraSheetFileName,
-  worldCupTotoNextPurchaseSheet20000FileName,
+  worldCupTotoNextPurchaseSheet200FileName,
+  worldCupTotoNextPurchaseSheet50FileName,
   worldCupTotoNextPurchaseSheetFileName,
   worldCupTotoReportVersion,
   worldCupTotoVersionedReportFileName,
@@ -686,13 +686,13 @@ export default function DashboardPage() {
     pathname,
     `/reports/${worldCupTotoNextPurchaseSheetFileName}`,
   );
-  const worldCupPurchaseSheet20000Href = resolveArtAsset(
+  const worldCupPurchaseSheet50Href = resolveArtAsset(
     pathname,
-    `/reports/${worldCupTotoNextPurchaseSheet20000FileName}`,
+    `/reports/${worldCupTotoNextPurchaseSheet50FileName}`,
   );
-  const worldCupHotExtraSheetHref = resolveArtAsset(
+  const worldCupPurchaseSheet200Href = resolveArtAsset(
     pathname,
-    `/reports/${worldCupTotoNextHotExtraSheetFileName}`,
+    `/reports/${worldCupTotoNextPurchaseSheet200FileName}`,
   );
   const latestPlayHref = latestRound
     ? buildRoundHref(appRoute.play, latestRound.id, {
@@ -1197,14 +1197,14 @@ export default function DashboardPage() {
                   <a href={worldCupVersionedReportHref} className={secondaryButtonClassName}>
                     固定版PDF
                   </a>
+                  <a href={worldCupPurchaseSheet50Href} className={secondaryButtonClassName}>
+                    50口CSV
+                  </a>
                   <a href={worldCupPurchaseSheetHref} className={secondaryButtonClassName}>
-                    1万円CSV
+                    100口CSV
                   </a>
-                  <a href={worldCupPurchaseSheet20000Href} className={secondaryButtonClassName}>
-                    2万円以内CSV
-                  </a>
-                  <a href={worldCupHotExtraSheetHref} className={secondaryButtonClassName}>
-                    Hot追加10CSV
+                  <a href={worldCupPurchaseSheet200Href} className={secondaryButtonClassName}>
+                    200口CSV
                   </a>
                 </div>
               </div>

@@ -127,7 +127,7 @@ export const worldCupTotoInstructionSystem = [
     id: "tier_ev",
     implementationStatus: "implemented",
     label: "1等だけでなく2/3等EVも見る",
-    operatingRule: "toto13は1等/2等/3等の推定払戻を合算し、2等カバー率も見る。Hot10の2口化は戻りを厚くするだけで、範囲は広げない。",
+    operatingRule: "toto13は1等/2等/3等の推定払戻を合算し、2等カバー率も見る。実購入シートは50/100/200口の重複なし直接購入を基本にする。",
     source: "ユーザー要望: 2,3位も金もらえるんだっけ",
     userNeed: "1等が外れても、2/3等込みで現実的な戻りを見たい。",
   },
