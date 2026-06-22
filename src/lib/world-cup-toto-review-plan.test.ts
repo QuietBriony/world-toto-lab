@@ -135,12 +135,12 @@ describe("world cup toto review plan", () => {
     expect(worldCupTotoNextPurchaseSheetFileName).toBe("world-cup-toto-latest-purchase-sheet.csv");
     expect(worldCupTotoNextPurchaseSheet50FileName).toBe("world-cup-toto-latest-50-purchase-sheet.csv");
     expect(worldCupTotoNextPurchaseSheet200FileName).toBe("world-cup-toto-latest-200-purchase-sheet.csv");
-    expect(worldCupTotoVersionedReportFileName).toBe("world-cup-toto-1634-1637-evolved-plan-20260622-v11.pdf");
-    expect(worldCupTotoVersionedPurchaseSheet50FileName).toBe("world-cup-toto-1637-entry-5000-plan-20260622-v11.csv");
-    expect(worldCupTotoVersionedPurchaseSheetFileName).toBe("world-cup-toto-1637-entry-10000-plan-20260622-v11.csv");
-    expect(worldCupTotoVersionedPurchaseSheet200FileName).toBe("world-cup-toto-1637-entry-20000-plan-20260622-v11.csv");
-    expect(worldCupTotoReportVersion.label).toBe("2026-06-22 v11");
-    expect(worldCupTotoReportVersion.publishedAtLabel).toBe("2026-06-22 18:55 JST");
+    expect(worldCupTotoVersionedReportFileName).toBe("world-cup-toto-1634-1637-evolved-plan-20260622-v12.pdf");
+    expect(worldCupTotoVersionedPurchaseSheet50FileName).toBe("world-cup-toto-1637-visual-5000-plan-20260622-v12.csv");
+    expect(worldCupTotoVersionedPurchaseSheetFileName).toBe("world-cup-toto-1637-visual-10000-plan-20260622-v12.csv");
+    expect(worldCupTotoVersionedPurchaseSheet200FileName).toBe("world-cup-toto-1637-visual-20000-plan-20260622-v12.csv");
+    expect(worldCupTotoReportVersion.label).toBe("2026-06-22 v12");
+    expect(worldCupTotoReportVersion.publishedAtLabel).toBe("2026-06-22 20:10 JST");
     expect(worldCupTotoReportVersion.pdfSha256).toHaveLength(64);
     expect(worldCupTotoReportVersion.csv50Sha256).toHaveLength(64);
     expect(worldCupTotoReportVersion.csvSha256).toHaveLength(64);
@@ -173,18 +173,36 @@ describe("world cup toto review plan", () => {
     expect(csv).toHaveLength(worldCupToto1637NextPlan.recommendedUnitCount + 1);
     expect(csv50).toHaveLength(51);
     expect(csv200).toHaveLength(worldCupToto1637NextPlan.maxRecommendedUnitCount + 1);
-    expect(csv[0]?.split(",").slice(0, 15)).toEqual([
+    expect(csv[0]?.split(",").slice(0, 17)).toEqual([
       "rank",
-      ...Array.from({ length: 13 }, (_, index) => `match_${index + 1}`),
+      "amount_cumulative_yen",
+      "pick_list",
+      "M01 エクアドル vs ドイツ",
+      "M02 日本 vs スウェーデン",
+      "M03 ウルグアイ vs スペイン",
+      "M04 コロンビア vs ポルトガル",
+      "M05 アルジェリア vs オーストリア",
+      "M06 チュニジア vs オランダ",
+      "M07 パラグアイ vs オーストラリア",
+      "M08 ノルウェー vs フランス",
+      "M09 パナマ vs イングランド",
+      "M10 コンゴ民主共和国 vs ウズベキスタン",
+      "M11 ヨルダン vs アルゼンチン",
+      "M12 ニュージーランド vs ベルギー",
+      "M13 クロアチア vs ガーナ",
       "signature",
     ]);
-    expect(csv50[1]?.split(",")[14]).toBe(worldCupToto1637PurchaseRows50[0]?.signature);
-    expect(latestCsv[1]?.split(",")[14]).toBe(worldCupToto1637PurchaseRows[0]?.signature);
-    expect(csv[1]?.split(",")[14]).toBe(worldCupToto1637PurchaseRows[0]?.signature);
-    expect(csv200[1]?.split(",")[14]).toBe(worldCupToto1637PurchaseRows200[0]?.signature);
-    expect(csv[100]?.split(",")[18]).toBe("10000");
-    expect(csv50[50]?.split(",")[18]).toBe("5000");
-    expect(csv200[200]?.split(",")[18]).toBe("20000");
-    expect(csv.every((line, index) => index === 0 || line.split(",")[15] === "direct")).toBe(true);
+    expect(csv[0]?.split(",").slice(17, 30)).toEqual(
+      Array.from({ length: 13 }, (_, index) => `match_${index + 1}`),
+    );
+    expect(csv50[1]?.split(",")[3]).toBe("2: ドイツ勝ち");
+    expect(csv50[1]?.split(",")[16]).toBe(worldCupToto1637PurchaseRows50[0]?.signature);
+    expect(latestCsv[1]?.split(",")[16]).toBe(worldCupToto1637PurchaseRows[0]?.signature);
+    expect(csv[1]?.split(",")[16]).toBe(worldCupToto1637PurchaseRows[0]?.signature);
+    expect(csv200[1]?.split(",")[16]).toBe(worldCupToto1637PurchaseRows200[0]?.signature);
+    expect(csv[100]?.split(",")[1]).toBe("10000");
+    expect(csv50[50]?.split(",")[1]).toBe("5000");
+    expect(csv200[200]?.split(",")[1]).toBe("20000");
+    expect(csv.every((line, index) => index === 0 || line.split(",")[30] === "direct")).toBe(true);
   });
 });

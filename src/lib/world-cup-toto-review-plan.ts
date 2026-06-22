@@ -12,23 +12,23 @@ export const worldCupTotoNextPurchaseSheet200FileName =
   "world-cup-toto-latest-200-purchase-sheet.csv";
 
 export const worldCupTotoVersionedReportFileName =
-  "world-cup-toto-1634-1637-evolved-plan-20260622-v11.pdf";
+  "world-cup-toto-1634-1637-evolved-plan-20260622-v12.pdf";
 export const worldCupTotoVersionedPurchaseSheet50FileName =
-  "world-cup-toto-1637-entry-5000-plan-20260622-v11.csv";
+  "world-cup-toto-1637-visual-5000-plan-20260622-v12.csv";
 export const worldCupTotoVersionedPurchaseSheetFileName =
-  "world-cup-toto-1637-entry-10000-plan-20260622-v11.csv";
+  "world-cup-toto-1637-visual-10000-plan-20260622-v12.csv";
 export const worldCupTotoVersionedPurchaseSheet200FileName =
-  "world-cup-toto-1637-entry-20000-plan-20260622-v11.csv";
+  "world-cup-toto-1637-visual-20000-plan-20260622-v12.csv";
 export const worldCupTotoLegacyReportFileName =
   "world-cup-toto-1634-1636-evolved-plan.pdf";
 export const worldCupTotoLegacyPurchaseSheetFileName =
   "world-cup-toto-1636-hot10-20000-plan.csv";
 
 export const worldCupTotoReportVersion = {
-  csv200Sha256: "9c6e8ebf96ae9659af70e6e6027f60a4227e23953d030965ef70b8ada7495be1",
-  csv50Sha256: "e1c4553d7be57d03b1cb49e38cf35cb3b327ad428752cbc0208d41236faa07a3",
-  csvSha256: "26ee6f447ce2b8a73b0be13865f91c5b51a957e59498a65a4fa13da69f081c94",
-  label: "2026-06-22 v11",
+  csv200Sha256: "7fc51d40e37d4f83ea697852251ac1d6ecbbd924804b7ff87f90e08f499dc5dc",
+  csv50Sha256: "36b8fedd4036555650bf42f8dd35bb3ac4f28969dd901a90c0af1708cd13f881",
+  csvSha256: "8f7f389221216d9ff6e8a07d5b5f3536b1fbd8391274efabc8d968a15393f79a",
+  label: "2026-06-22 v12",
   latest200CsvFileName: worldCupTotoNextPurchaseSheet200FileName,
   latestCsvFileName: worldCupTotoNextPurchaseSheetFileName,
   latest50CsvFileName: worldCupTotoNextPurchaseSheet50FileName,
@@ -36,8 +36,8 @@ export const worldCupTotoReportVersion = {
   latestPdfFileName: worldCupTotoLatestReportFileName,
   legacyCsvFileName: worldCupTotoLegacyPurchaseSheetFileName,
   legacyPdfFileName: worldCupTotoLegacyReportFileName,
-  pdfSha256: "ae3d6aa75bcc84f47b8faa4e3fdcaab28aa60aa66fd3c3550f0076c1202f620a",
-  publishedAtLabel: "2026-06-22 18:55 JST",
+  pdfSha256: "fb93c7e7b536b22b0354baf701a2722a58df6bf35dcde78552c7c425614ad96a",
+  publishedAtLabel: "2026-06-22 20:10 JST",
   versioned200CsvFileName: worldCupTotoVersionedPurchaseSheet200FileName,
   versionedCsvFileName: worldCupTotoVersionedPurchaseSheetFileName,
   versioned50CsvFileName: worldCupTotoVersionedPurchaseSheet50FileName,
