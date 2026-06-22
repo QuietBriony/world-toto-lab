@@ -110,6 +110,7 @@ import {
 import { buildWorldCupStrategyDashboard } from "@/lib/world-cup-strategy";
 import {
   worldCupTotoLatestReportFileName,
+  worldCupTotoNextHotExtraSheetFileName,
   worldCupTotoNextPurchaseSheetFileName,
   worldCupTotoReportVersion,
   worldCupTotoVersionedReportFileName,
@@ -684,6 +685,10 @@ export default function DashboardPage() {
     pathname,
     `/reports/${worldCupTotoNextPurchaseSheetFileName}`,
   );
+  const worldCupHotExtraSheetHref = resolveArtAsset(
+    pathname,
+    `/reports/${worldCupTotoNextHotExtraSheetFileName}`,
+  );
   const latestPlayHref = latestRound
     ? buildRoundHref(appRoute.play, latestRound.id, {
         user: latestPrimaryUserId,
@@ -1189,6 +1194,9 @@ export default function DashboardPage() {
                   </a>
                   <a href={worldCupPurchaseSheetHref} className={secondaryButtonClassName}>
                     買い目CSV
+                  </a>
+                  <a href={worldCupHotExtraSheetHref} className={secondaryButtonClassName}>
+                    Hot追加10CSV
                   </a>
                 </div>
               </div>

@@ -1,9 +1,25 @@
 {
   "latest": {
+    "baseCsv": "world-cup-toto-latest-base-sheet.csv",
     "csv": "world-cup-toto-latest-purchase-sheet.csv",
+    "hotExtraCsv": "world-cup-toto-latest-hot-extra-sheet.csv",
     "pdf": "world-cup-toto-latest.pdf"
   },
   "versions": [
+    {
+      "baseCsv": "world-cup-toto-1637-base-9000-plan-20260622-v9.csv",
+      "baseCsvSha256": "9A83F58C2EC49A3396DB16153F5F6B9C44993DCE4A742A70EFC9DE112F116FB0",
+      "csv": "world-cup-toto-1637-entry-10000-plan-20260622-v9.csv",
+      "csvSha256": "2885971FAA5DF664731F8E6066D3DDA512A6FA6FF64E36D5544618B8B5C737DA",
+      "hotExtraCsv": "world-cup-toto-1637-hot-extra-1000-plan-20260622-v9.csv",
+      "hotExtraCsvSha256": "C8F1627EE48384D6F30C2F66A47C0DAB73E4225167F41F547B784B1858672F4C",
+      "label": "2026-06-22 v9",
+      "legacyPdf": "world-cup-toto-1634-1636-evolved-plan.pdf",
+      "pdf": "world-cup-toto-1634-1637-evolved-plan-20260622-v9.pdf",
+      "pdfSha256": "FDB0612E69570A7F277FC6919225B2CD63C1A7A115F7C26301808ED7D39501DE",
+      "publishedAt": "2026-06-22 16:30 JST",
+      "summary": "Splits the 1637 10,000 yen purchase workflow into a one-row-per-unit 100-entry sheet, a 90-entry base sheet, and a standalone Hot10 extra sheet so doubled hot picks can be entered separately."
+    },
     {
       "csv": "world-cup-toto-1637-preliminary-10000-plan-20260622-v7.csv",
       "csvSha256": "514593E133130B5CAD6CE9D3E36853E7D4D4129C8E10AA6564B6CFFC2647DB9E",
