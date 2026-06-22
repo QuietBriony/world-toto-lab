@@ -12,13 +12,13 @@ export const worldCupTotoNextPurchaseSheet200FileName =
   "world-cup-toto-latest-200-purchase-sheet.csv";
 
 export const worldCupTotoVersionedReportFileName =
-  "world-cup-toto-1634-1637-evolved-plan-20260622-v15.pdf";
+  "world-cup-toto-1634-1637-evolved-plan-20260622-v16.pdf";
 export const worldCupTotoVersionedPurchaseSheet50FileName =
-  "world-cup-toto-1637-visual-5000-plan-20260622-v15.csv";
+  "world-cup-toto-1637-visual-5000-plan-20260622-v16.csv";
 export const worldCupTotoVersionedPurchaseSheetFileName =
-  "world-cup-toto-1637-visual-10000-plan-20260622-v15.csv";
+  "world-cup-toto-1637-visual-10000-plan-20260622-v16.csv";
 export const worldCupTotoVersionedPurchaseSheet200FileName =
-  "world-cup-toto-1637-visual-20000-plan-20260622-v15.csv";
+  "world-cup-toto-1637-visual-20000-plan-20260622-v16.csv";
 export const worldCupTotoLegacyReportFileName =
   "world-cup-toto-1634-1636-evolved-plan.pdf";
 export const worldCupTotoLegacyPurchaseSheetFileName =
@@ -28,7 +28,7 @@ export const worldCupTotoReportVersion = {
   csv200Sha256: "d8e4eecd5feb9eb765425aa348b56b8bddc041d21bf36c65563e75d3650a94d6",
   csv50Sha256: "b79ff958e777b3882b94c000341bf752e4843feecf1e566aa6d90f5458d15f2a",
   csvSha256: "027e04c3f299ccc3c58cb340ffaf7352583df229476d1f7a9196fcb47d0653f5",
-  label: "2026-06-22 v15",
+  label: "2026-06-22 v16",
   latest200CsvFileName: worldCupTotoNextPurchaseSheet200FileName,
   latestCsvFileName: worldCupTotoNextPurchaseSheetFileName,
   latest50CsvFileName: worldCupTotoNextPurchaseSheet50FileName,
@@ -36,8 +36,8 @@ export const worldCupTotoReportVersion = {
   latestPdfFileName: worldCupTotoLatestReportFileName,
   legacyCsvFileName: worldCupTotoLegacyPurchaseSheetFileName,
   legacyPdfFileName: worldCupTotoLegacyReportFileName,
-  pdfSha256: "84044767a31fcd88dfc4b4d87f42da29b443415c7f8bee523f6441e310dd9947",
-  publishedAtLabel: "2026-06-22 21:55 JST",
+  pdfSha256: "62a00d1c170ccfa6cc12735e8ad89717b897688c1ae689e584f80e75d892ca67",
+  publishedAtLabel: "2026-06-22 22:15 JST",
   versioned200CsvFileName: worldCupTotoVersionedPurchaseSheet200FileName,
   versionedCsvFileName: worldCupTotoVersionedPurchaseSheetFileName,
   versioned50CsvFileName: worldCupTotoVersionedPurchaseSheet50FileName,
@@ -167,6 +167,32 @@ export type Toto1637FinalLogic = {
   summary: string;
 };
 
+export type TotoPolymarketBacktestCoverageStatus =
+  | "blocked_closed_events"
+  | "forward_ready"
+  | "partial_not_strict"
+  | "strict_ready";
+
+export type TotoPolymarketBacktestCoverageRow = {
+  officialSnapshot: string;
+  polyCoverage: string;
+  resultState: string;
+  roundNumber: number;
+  status: TotoPolymarketBacktestCoverageStatus;
+  verdict: string;
+};
+
+export type TotoPolymarketBacktestAudit = {
+  auditAtLabel: string;
+  clobPriceHistoryUrl: string;
+  coverageRows: TotoPolymarketBacktestCoverageRow[];
+  decisionFor1637: string;
+  implementationRules: string[];
+  sportsEventsUrl: string;
+  strictConclusion: string;
+  summary: string;
+};
+
 export type WorldCupContextFactorKey =
   | "country_name_bias"
   | "draw_ok"
@@ -220,6 +246,58 @@ export const worldCupTotoOfficialVoteInterpretation: TotoOfficialVoteInterpretat
     "寄りすぎた本命は当たりやすくても払戻が薄い。外部市場との差が大きい時は分散候補にする。",
     "公式投票率は締切直前ほど重要。購入判断は最終30分の再取得を優先する。",
   ],
+};
+
+export const worldCupTotoPolymarketBacktestAudit: TotoPolymarketBacktestAudit = {
+  auditAtLabel: "2026-06-22 21:50 JST",
+  clobPriceHistoryUrl: "https://docs.polymarket.com/api-reference/markets/get-prices-history",
+  coverageRows: [
+    {
+      officialSnapshot: "販売終了時点の公式投票率あり",
+      polyCoverage: "Sports API通常一覧では対象13試合を再発見できず",
+      resultState: "結果確定済み",
+      roundNumber: 1634,
+      status: "blocked_closed_events",
+      verdict: "同時刻Poly優位とはまだ言えない。token IDが見つかれば再判定。",
+    },
+    {
+      officialSnapshot: "販売終了時点の公式投票率あり",
+      polyCoverage: "Sports API通常一覧では対象13試合を再発見できず",
+      resultState: "結果確定済み",
+      roundNumber: 1635,
+      status: "blocked_closed_events",
+      verdict: "公式人気順は3等圏だったが、Poly比較はtoken ID待ち。",
+    },
+    {
+      officialSnapshot: "2026-06-20 17:02 JST公式投票率あり",
+      polyCoverage: "Sports API通常一覧で7/13試合だけ確認。開始後/終了後が混ざる",
+      resultState: "一部結果進行中",
+      roundNumber: 1636,
+      status: "partial_not_strict",
+      verdict: "厳密比較には使わない。結果確定後、締切前token履歴が取れた分だけ検証。",
+    },
+    {
+      officialSnapshot: "2026-06-22 20:56 JST公式投票率あり。締切直前に再取得予定",
+      polyCoverage: "Sports APIで対象13/13試合を照合済み",
+      resultState: "未開催",
+      roundNumber: 1637,
+      status: "forward_ready",
+      verdict: "前向き利用は可能。6/25 18:25に同時刻で再取得して固定する。",
+    },
+  ],
+  decisionFor1637:
+    "1634/1635でPolyが良かったとはまだ主張しない。一方、1637は全13試合の事前市場が揃っているため、公式人気の歪み検出として市場補強108口を暫定最適にする。",
+  implementationRules: [
+    "過去回に現在価格や決済価格を混ぜない。販売締切前のtimestampだけを採用する。",
+    "Sports APIでevent slugを解決し、CLOB token IDが取れた試合だけprices-historyへ進む。",
+    "token IDが見つからない回は、Poly優位/劣位を断言せず、公式のみバックテストとして残す。",
+    "1637は締切直前に公式投票率、売上、Polymarket価格を同時に保存して、次回以降の厳密バックテスト母集団にする。",
+  ],
+  sportsEventsUrl: worldCupTotoPolymarketSportsEventsUrl,
+  strictConclusion:
+    "現時点では1634/1635のPoly同時刻バックテストは未確定。1637は今から同時刻保存できるので、最適ロジックの検証対象として最優先。",
+  summary:
+    "Polymarketにはprices-historyがあるため厳密バックテストは設計可能。ただし1634/1635は終了済みスポーツイベントのtoken解決がまだできていないため、今は『Polyなら良かった』とは言わない。",
 };
 
 export const worldCupToto1637ContextModel = {

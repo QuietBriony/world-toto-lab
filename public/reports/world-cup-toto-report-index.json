@@ -8,6 +8,21 @@
   },
   "versions": [
     {
+      "csv": "world-cup-toto-1637-visual-10000-plan-20260622-v16.csv",
+      "csv50": "world-cup-toto-1637-visual-5000-plan-20260622-v16.csv",
+      "csv50Sha256": "B79FF958E777B3882B94C000341BF752E4843FEECF1E566AA6D90F5458D15F2A",
+      "csv100Sha256": "027E04C3F299CCC3C58CB340FFAF7352583DF229476D1F7A9196FCB47D0653F5",
+      "csv200": "world-cup-toto-1637-visual-20000-plan-20260622-v16.csv",
+      "csv200Sha256": "D8E4EECD5FEB9EB765425AA348B56B8BDDC041D21BF36C65563E75D3650A94D6",
+      "csvSha256": "027E04C3F299CCC3C58CB340FFAF7352583DF229476D1F7A9196FCB47D0653F5",
+      "label": "2026-06-22 v16",
+      "legacyPdf": "world-cup-toto-1634-1636-evolved-plan.pdf",
+      "pdf": "world-cup-toto-1634-1637-evolved-plan-20260622-v16.pdf",
+      "pdfSha256": "62A00D1C170CCFA6CC12735E8AD89717B897688C1AE689E584F80E75D892CA67",
+      "publishedAt": "2026-06-22 22:15 JST",
+      "summary": "Adds a strict Polymarket same-timestamp backtest audit: 1634/1635 remain token-history blocked, 1636 is partial/not strict, and 1637 is forward-ready with the market-adjusted 108-unit plan retained as the provisional final logic."
+    },
+    {
       "csv": "world-cup-toto-1637-visual-10000-plan-20260622-v15.csv",
       "csv50": "world-cup-toto-1637-visual-5000-plan-20260622-v15.csv",
       "csv50Sha256": "B79FF958E777B3882B94C000341BF752E4843FEECF1E566AA6D90F5458D15F2A",
