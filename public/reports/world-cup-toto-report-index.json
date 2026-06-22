@@ -5,6 +5,16 @@
   },
   "versions": [
     {
+      "csv": "world-cup-toto-1637-preliminary-10000-plan-20260622-v7.csv",
+      "csvSha256": "514593E133130B5CAD6CE9D3E36853E7D4D4129C8E10AA6564B6CFFC2647DB9E",
+      "label": "2026-06-22 v7",
+      "legacyPdf": "world-cup-toto-1634-1636-evolved-plan.pdf",
+      "pdf": "world-cup-toto-1634-1637-evolved-plan-20260622-v7.pdf",
+      "pdfSha256": "0916D011792108F67981DEADF22D09327A5E6D8A916E2B206798EF71ABE8C118",
+      "publishedAt": "2026-06-22 02:20 JST",
+      "summary": "Adds explicit World Cup context adjustments and updates the 1636 replay logic so pre-match draw probabilities at or above 20% stay in the recommendation universe, including Uruguay vs Cape Verde; refreshes 1637 votes/sales and regenerates the preliminary 10,000 yen sheet."
+    },
+    {
       "csv": "world-cup-toto-1637-preliminary-10000-plan-20260621-v6.csv",
       "csvSha256": "28909A5339C77C53617DD0995E7159D84EDA08AE2638F8A762809748BD12281F",
       "label": "2026-06-21 v6",

@@ -21,6 +21,14 @@ import { appRoute, buildOfficialRoundImportHref, buildRoundHref } from "@/lib/ro
 import { resolveArtAsset } from "@/lib/ui-art";
 import { useDashboardData } from "@/lib/use-app-data";
 import {
+  worldCupTotoBacktestRounds,
+  worldCupTotoBacktestSummary,
+  worldCupTotoInstructionSystem,
+  worldCupTotoOptimizationReadiness,
+  worldCupTotoOperatingSystemStatus,
+  worldCupTotoUniverseBacktestRows,
+} from "@/lib/world-cup-toto-backtest";
+import {
   buildWorldCupStrategyDashboard,
   worldCupEvGlossaryRows,
   type WorldCupEvSourceRow,
@@ -46,6 +54,7 @@ import {
   worldCupToto1636NextPlan,
   worldCupToto1636PhaseDecision,
   worldCupToto1636PurchaseRows,
+  worldCupToto1637ContextModel,
   worldCupToto1637Matches,
   worldCupToto1637NextPlan,
   worldCupToto1637PurchaseRows,
@@ -327,6 +336,186 @@ function riskBucketTone(bucket: "flex" | "lock" | "semi" | "spread") {
   return "sky" as const;
 }
 
+function contextFactorLabelList(factors: readonly { label: string }[]) {
+  return factors.map((factor) => factor.label).join(" / ");
+}
+
+function instructionStatusLabel(status: "implemented" | "next" | "partial") {
+  if (status === "implemented") return "反映済み";
+  if (status === "partial") return "途中";
+  return "次に実装";
+}
+
+function instructionStatusTone(status: "implemented" | "next" | "partial") {
+  if (status === "implemented") return "positive" as const;
+  if (status === "partial") return "amber" as const;
+  return "slate" as const;
+}
+
+function OperatingSystemBacktestPanel() {
+  const implementedRows = worldCupTotoInstructionSystem.filter(
+    (row) => row.implementationStatus === "implemented",
+  );
+  const remainingRows = worldCupTotoInstructionSystem.filter(
+    (row) => row.implementationStatus !== "implemented",
+  );
+
+  return (
+    <SectionCard
+      title="指示の棚卸しとバックテスト"
+      description="これまでの要望を、運用原則、実装状態、過去回検証に分けました。次はこの表を見ながら、Haziの感想戦を重みに変えます。"
+      actions={
+        <div className="flex flex-wrap gap-2">
+          <Badge tone="teal">logic system</Badge>
+          <Badge tone="amber">backtest</Badge>
+          <Badge tone="slate">Hazi loop</Badge>
+        </div>
+      }
+    >
+      <div className="grid gap-3 md:grid-cols-4">
+        <MiniFact
+          label="整理状態"
+          value={worldCupTotoOperatingSystemStatus.cleanScoreLabel}
+          hint={worldCupTotoOperatingSystemStatus.summary}
+        />
+        <MiniFact
+          label="反映済み"
+          value={`${worldCupTotoOperatingSystemStatus.implementedCount}件`}
+          hint={implementedRows.map((row) => row.label).join(" / ")}
+        />
+        <MiniFact
+          label="次に詰める"
+          value={`${worldCupTotoOperatingSystemStatus.nextCount}件`}
+          hint={remainingRows.map((row) => row.label).join(" / ")}
+        />
+        <MiniFact
+          label="検証済み回"
+          value={`${worldCupTotoBacktestSummary.knownResultRoundCount}回`}
+          hint="1634/1635は同じ評価関数で再現済み。1636/1637は結果確定後に追加する。"
+        />
+      </div>
+
+      <div className="mt-5 grid gap-4 xl:grid-cols-[1fr_1fr]">
+        <div className="min-w-0 overflow-x-auto rounded-[22px] border border-slate-200 bg-white/82">
+          <table className="min-w-[720px] text-left text-sm">
+            <thead className="bg-slate-100 text-xs uppercase tracking-[0.16em] text-slate-500">
+              <tr>
+                <th className="px-3 py-3">指示</th>
+                <th className="px-3 py-3">状態</th>
+                <th className="px-3 py-3">運用ルール</th>
+              </tr>
+            </thead>
+            <tbody>
+              {worldCupTotoInstructionSystem.map((row) => (
+                <tr key={row.id} className="border-t border-slate-100">
+                  <td className="px-3 py-3 align-top">
+                    <p className="font-semibold text-slate-950">{row.label}</p>
+                    <p className="mt-1 text-xs leading-5 text-slate-500">{row.userNeed}</p>
+                  </td>
+                  <td className="px-3 py-3 align-top">
+                    <Badge tone={instructionStatusTone(row.implementationStatus)}>
+                      {instructionStatusLabel(row.implementationStatus)}
+                    </Badge>
+                  </td>
+                  <td className="px-3 py-3 align-top text-slate-700">{row.operatingRule}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="min-w-0 overflow-x-auto rounded-[22px] border border-slate-200 bg-white/82">
+          <table className="min-w-[680px] text-left text-sm">
+            <thead className="bg-slate-100 text-xs uppercase tracking-[0.16em] text-slate-500">
+              <tr>
+                <th className="px-3 py-3">回</th>
+                <th className="px-3 py-3">比較対象</th>
+                <th className="px-3 py-3">最良ズレ</th>
+                <th className="px-3 py-3">購入額</th>
+                <th className="px-3 py-3">実戻り</th>
+              </tr>
+            </thead>
+            <tbody>
+              {worldCupTotoBacktestRounds.flatMap((round) =>
+                round.portfolios.map((portfolio) => (
+                  <tr key={`${round.roundNumber}-${portfolio.id}`} className="border-t border-slate-100">
+                    <td className="px-3 py-3 align-top font-semibold text-slate-950">
+                      {round.label}
+                      <p className="mt-1 text-xs font-normal text-slate-500">
+                        人気順 {round.publicFavoriteMisses}ズレ
+                      </p>
+                    </td>
+                    <td className="px-3 py-3 align-top text-slate-700">{portfolio.label}</td>
+                    <td className="px-3 py-3 align-top font-semibold text-slate-900">
+                      {portfolio.bestMisses}試合
+                    </td>
+                    <td className="px-3 py-3 align-top text-slate-700">{formatCurrency(portfolio.costYen)}</td>
+                    <td className="px-3 py-3 align-top font-semibold text-slate-900">
+                      {formatCurrency(portfolio.actualReturnYen)}
+                      <p className="mt-1 text-xs font-normal text-slate-500">
+                        {portfolio.realizedMultiple.toFixed(2)}倍 / {portfolio.cashHitCount}本
+                      </p>
+                    </td>
+                  </tr>
+                )),
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="mt-4 min-w-0 overflow-x-auto rounded-[22px] border border-slate-200 bg-white/82">
+        <table className="min-w-[880px] text-left text-sm">
+          <thead className="bg-slate-100 text-xs uppercase tracking-[0.16em] text-slate-500">
+            <tr>
+              <th className="px-3 py-3">回</th>
+              <th className="px-3 py-3">局面</th>
+              <th className="px-3 py-3">候補生成</th>
+              <th className="px-3 py-3">候補数</th>
+              <th className="px-3 py-3">全買い額</th>
+              <th className="px-3 py-3">最良ズレ</th>
+              <th className="px-3 py-3">実結果</th>
+              <th className="px-3 py-3">ルール</th>
+            </tr>
+          </thead>
+          <tbody>
+            {worldCupTotoUniverseBacktestRows.map((row) => (
+              <tr key={`${row.roundNumber}-${row.strategyKind}`} className="border-t border-slate-100">
+                <td className="px-3 py-3 align-top font-semibold text-slate-950">第{row.roundNumber}回</td>
+                <td className="px-3 py-3 align-top text-slate-700">{row.phaseLabel}</td>
+                <td className="px-3 py-3 align-top font-semibold text-slate-900">{row.label}</td>
+                <td className="px-3 py-3 align-top text-slate-700">
+                  {row.universeLineCount.toLocaleString("ja-JP")}口
+                </td>
+                <td className="px-3 py-3 align-top text-slate-700">{formatCurrency(row.fullCoverageCostYen)}</td>
+                <td className="px-3 py-3 align-top font-semibold text-slate-900">{row.bestMisses}試合</td>
+                <td className="px-3 py-3 align-top">
+                  <Badge tone={row.actualIncluded ? "positive" : "slate"}>
+                    {row.actualIncluded ? "含んだ" : "外した"}
+                  </Badge>
+                </td>
+                <td className="px-3 py-3 align-top text-slate-600">{row.policySummary}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <PlainNotice tone="amber" title={worldCupTotoOptimizationReadiness.statusLabel}>
+        <p>{worldCupTotoOptimizationReadiness.summary}</p>
+      </PlainNotice>
+
+      <PlainNotice tone="teal" title="次の最適ロジック">
+        <ul className="list-disc space-y-1 pl-5">
+          {worldCupTotoBacktestSummary.nextOptimizationSteps.map((step) => (
+            <li key={step}>{step}</li>
+          ))}
+        </ul>
+      </PlainNotice>
+    </SectionCard>
+  );
+}
+
 function NextWorldCupToto1637Panel({
   purchaseSheetHref,
   reportHref,
@@ -404,6 +593,18 @@ function NextWorldCupToto1637Panel({
         </p>
       </PlainNotice>
 
+      <PlainNotice tone="teal" title={worldCupToto1637ContextModel.label}>
+        <p>{worldCupToto1637ContextModel.summary}</p>
+        <div className="mt-3 grid gap-2 md:grid-cols-5">
+          {worldCupToto1637ContextModel.factors.map((factor) => (
+            <div key={factor.key} className="rounded-lg border border-slate-200 bg-white px-3 py-2">
+              <p className="text-sm font-semibold text-slate-950">{factor.label}</p>
+              <p className="mt-1 text-xs leading-relaxed text-slate-600">{factor.note}</p>
+            </div>
+          ))}
+        </div>
+      </PlainNotice>
+
       <div className="mt-5 grid gap-4 xl:grid-cols-[0.85fr_1.15fr]">
         <div className="min-w-0 overflow-x-auto rounded-[22px] border border-slate-200 bg-white/82">
           <table className="min-w-[600px] text-left text-sm">
@@ -429,10 +630,11 @@ function NextWorldCupToto1637Panel({
         </div>
 
         <div className="min-w-0 overflow-x-auto rounded-[22px] border border-slate-200 bg-white/82">
-          <table className="min-w-[640px] text-left text-sm">
+          <table className="min-w-[860px] text-left text-sm">
             <thead className="bg-slate-100 text-xs uppercase tracking-[0.16em] text-slate-500">
               <tr>
                 <th className="px-3 py-3">No</th>
+                <th className="px-3 py-3">W杯補正</th>
                 <th className="px-3 py-3">試合</th>
                 <th className="px-3 py-3">公式 1/0/2</th>
                 <th className="px-3 py-3">残す出目</th>
@@ -443,6 +645,10 @@ function NextWorldCupToto1637Panel({
               {worldCupToto1637Matches.map((match) => (
                 <tr key={match.matchNo} className="border-t border-slate-100">
                   <td className="px-3 py-3 font-semibold text-slate-950">{match.matchNo}</td>
+                  <td className="px-3 py-3 text-xs leading-relaxed text-slate-600">
+                    <span className="font-semibold text-slate-800">{match.matchdayContextLabel}</span>
+                    <p className="mt-1">{contextFactorLabelList(match.contextFactors)}</p>
+                  </td>
                   <td className="px-3 py-3 text-slate-700">
                     {match.home} vs {match.away}
                     <p className="mt-1 text-xs text-slate-500">{match.kickoffLabel} / {match.ruleLabel}</p>
@@ -563,7 +769,9 @@ function LatestWorldCupTotoPanel({
           value={`${worldCupToto1636NextPlan.recommendedUnitCount}口 / ${formatCurrency(
             worldCupToto1636NextPlan.recommendedBudgetYen,
           )}`}
-          hint={`36買い目 + 激アツ${worldCupToto1636NextPlan.hotDoublePatternCount}本だけ2口。締切 ${worldCupToto1636NextPlan.purchaseDeadlineLabel}`}
+          hint={`ドロー20%以上を候補化。候補${worldCupToto1636NextPlan.coreLineCount}通り、表示シートは${formatCurrency(
+            worldCupToto1636NextPlan.maxDiscussionBudgetYen,
+          )}上限。締切 ${worldCupToto1636NextPlan.purchaseDeadlineLabel}`}
         />
         <MiniFact
           label="半自動"
@@ -1531,6 +1739,8 @@ export default function WorldCupStrategyPage() {
       />
 
       <StorageModeNotice isChecking={dataMode.isChecking} mode={dataMode.mode} />
+
+      <OperatingSystemBacktestPanel />
 
       <NextWorldCupToto1637Panel
         purchaseSheetHref={purchaseSheetHref}
