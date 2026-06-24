@@ -51,6 +51,7 @@ import {
   parseResearchMemoType,
   stringValue,
 } from "@/lib/forms";
+import { isoToTokyoDateTimeLocal, tokyoDateTimeLocalToIso } from "@/lib/datetime-local";
 import { evaluateMatchReadiness } from "@/lib/probability/readiness";
 import { appRoute, buildRoundHref, getSingleSearchParam } from "@/lib/round-links";
 import { buildResearchMemoPayload, filterResearchMemosForMatch } from "@/lib/research-memos";
@@ -251,10 +252,7 @@ function MatchEditorPageContent() {
         matchNo: match.matchNo,
         homeTeam: stringValue(formData, "homeTeam") || "仮ホーム",
         awayTeam: stringValue(formData, "awayTeam") || "仮アウェイ",
-        kickoffTime: (() => {
-          const value = stringValue(formData, "kickoffTime");
-          return value ? new Date(value).toISOString() : null;
-        })(),
+        kickoffTime: tokyoDateTimeLocalToIso(stringValue(formData, "kickoffTime")),
         venue: nullableString(formData, "venue"),
         stage: nullableString(formData, "stage"),
         officialVote1: parseProbabilityPercent(stringValue(formData, "officialVote1")),
@@ -336,7 +334,9 @@ function MatchEditorPageContent() {
       return;
     }
 
-    const formData = new FormData(event.currentTarget);
+    // event.currentTarget は await を跨ぐと null 化するため、form 参照を先に退避する。
+    const form = event.currentTarget;
+    const formData = new FormData(form);
 
     try {
       const payload = buildResearchMemoPayload({
@@ -364,7 +364,7 @@ function MatchEditorPageContent() {
         message: "Research Memo を保存しました。",
       });
       await refresh();
-      event.currentTarget.reset();
+      form.reset();
     } catch (nextError) {
       setSubmitError({
         scope: currentFormScope,
@@ -642,11 +642,7 @@ function MatchEditorPageContent() {
                     <input
                       name="kickoffTime"
                       type="datetime-local"
-                      defaultValue={
-                        match.kickoffTime
-                          ? new Date(match.kickoffTime).toISOString().slice(0, 16)
-                          : ""
-                      }
+                      defaultValue={isoToTokyoDateTimeLocal(match.kickoffTime)}
                       className={fieldClassName}
                     />
                   </label>

@@ -170,6 +170,34 @@ function SimpleViewPageContent() {
     });
   }, [activeUser, baseIdentity, data, draftIdentity]);
 
+  // 未保存の 1/0/2 があるか（draft をサーバの picks と比較）。
+  // draftIdentity===baseIdentity = draft が現メンバーのサーバ値に同期済み、のときだけ判定し、
+  // 初回同期前の誤検知を避ける。
+  const draftSyncedToActiveUser = draftIdentity === baseIdentity;
+  const hasUnsavedPicks =
+    data && activeUser && draftSyncedToActiveUser
+      ? data.round.matches.some((match) => {
+          const existing = data.round.picks.find(
+            (pick) => pick.matchId === match.id && pick.userId === activeUser.id,
+          );
+          const saved = existing ? enumToOutcomeValue(existing.pick) : "";
+          return (draftValues[match.id] ?? "") !== saved;
+        })
+      : false;
+
+  // 未保存があるうちは離脱（リロード/タブ閉じ）を警告（scout-cards / picks と統一）。
+  useEffect(() => {
+    if (!hasUnsavedPicks) {
+      return;
+    }
+    const handler = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [hasUnsavedPicks]);
+
   const summary = useMemo(() => {
     if (!data) {
       return null;
@@ -265,6 +293,19 @@ function SimpleViewPageContent() {
   });
   const remainingCount = Math.max(data.round.matches.length - summary.filledCount, 0);
 
+  const handleSwitchUser = (userId: string) => {
+    if (userId === activeUser.id) {
+      return;
+    }
+    if (
+      hasUnsavedPicks &&
+      !window.confirm("未保存の予想があります。保存せずにメンバーを切り替えますか？")
+    ) {
+      return;
+    }
+    router.push(buildRoundHref(appRoute.simpleView, data.round.id, { user: userId }));
+  };
+
   const handleSave = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setSaving(true);
@@ -353,9 +394,7 @@ function SimpleViewPageContent() {
               <button
                 key={user.id}
                 type="button"
-                onClick={() =>
-                  router.push(buildRoundHref(appRoute.simpleView, data.round.id, { user: user.id }))
-                }
+                onClick={() => handleSwitchUser(user.id)}
                 className={user.id === activeUser.id ? buttonClassName : secondaryButtonClassName}
               >
                 {user.name}
