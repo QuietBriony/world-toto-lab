@@ -17,10 +17,10 @@ from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer, 
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PDF_NAME = "world-cup-toto-1634-1637-evolved-plan-20260622-v17.pdf"
-CSV_50_NAME = "world-cup-toto-1637-visual-5000-plan-20260622-v17.csv"
-CSV_NAME = "world-cup-toto-1637-visual-10000-plan-20260622-v17.csv"
-CSV_200_NAME = "world-cup-toto-1637-visual-20000-plan-20260622-v17.csv"
+PDF_NAME = "world-cup-toto-1634-1637-evolved-plan-20260624-v18.pdf"
+CSV_50_NAME = "world-cup-toto-1637-visual-5000-plan-20260624-v18.csv"
+CSV_NAME = "world-cup-toto-1637-visual-10000-plan-20260624-v18.csv"
+CSV_200_NAME = "world-cup-toto-1637-visual-20000-plan-20260624-v18.csv"
 PDF_ALIASES = (
     PDF_NAME,
     "world-cup-toto-latest.pdf",
@@ -53,10 +53,10 @@ OUTCOMES = ("1", "0", "2")
 TOTO13_OUTCOME_COUNT = 3**13
 SNAPSHOT_1636_LABEL = "2026-06-20 17:02 JST"
 TOTAL_SALES_1636_YEN = 222_065_900
-SNAPSHOT_1637_VOTE_LABEL = "2026-06-22 22:03 JST"
-SNAPSHOT_1637_SALES_LABEL = "2026-06-22 22:03 JST"
-TOTAL_SALES_1637_YEN = 44_848_500
-VOTE_UNITS_1637 = 448_485
+SNAPSHOT_1637_VOTE_LABEL = "2026-06-24 12:17 JST"
+SNAPSHOT_1637_SALES_LABEL = "2026-06-24 12:17 JST"
+TOTAL_SALES_1637_YEN = 92_607_700
+VOTE_UNITS_1637 = 926_077
 RETURN_RATE = 0.5
 TIER_DEFS = (
     ("1等", 0, 0.70, True),
@@ -81,6 +81,7 @@ SOURCE_1635_RESULT_URL = (
     "PGSSIN00701FwdLotDetailRslttoto.form?holdCntId=1635&commodityId=01&meetingFiscalYear=2026"
 )
 SOURCE_1636_BUY_URL = "https://sp.toto-dream.com/dcs/subos/screen/ss01/sssl021/PGSSSL02101InittotoSP.form"
+SOURCE_1636_INFO_URL = "https://store.toto-dream.com/dcs/subos/screen/pi01/spin000/PGSPIN00001DisptotoLotInfo.form?holdCntId=1636"
 SOURCE_1636_VOTE_URL = (
     "https://sp.toto-dream.com/dcs/subos/screen/si01/ssin025/"
     "PGSSIN02501ForwardVotetotoSP.form?commodityId=01&fromId=SSIN026&gameAssortment=A&holdCntId=1636"
@@ -186,19 +187,19 @@ MATCHES_1636 = [
 ]
 
 MATCHES_1637 = [
-    PlanMatch(1, "エクアドル", "ドイツ", "06/26 05:00", (0.0469, 0.1174, 0.8357), ("2", "0"), "強豪人気 + 第3戦ドロー", "semi"),
-    PlanMatch(2, "日本", "スウェーデン", "06/26 08:00", (0.6474, 0.2455, 0.1071), ("1", "0"), "日本勝ち軸 + ドロー", "flex"),
-    PlanMatch(3, "ウルグアイ", "スペイン", "06/27 09:00", (0.0722, 0.1769, 0.7509), ("2", "0"), "スペイン軸 + 条件戦ドロー", "semi"),
-    PlanMatch(4, "コロンビア", "ポルトガル", "06/28 08:30", (0.2621, 0.3053, 0.4326), ("2", "0", "1"), "30%台を全分散", "spread"),
-    PlanMatch(5, "アルジェリア", "オーストリア", "06/28 11:00", (0.1908, 0.2904, 0.5188), ("2", "0"), "オーストリア軸 + ドロー", "flex"),
-    PlanMatch(6, "チュニジア", "オランダ", "06/26 08:00", (0.0259, 0.0420, 0.9321), ("2", "0"), "90%超人気 + 薄いドロー", "semi"),
-    PlanMatch(7, "パラグアイ", "オーストラリア", "06/26 11:00", (0.3668, 0.3114, 0.3218), ("1", "0", "2"), "ほぼ三分で全分散", "spread"),
-    PlanMatch(8, "ノルウェー", "フランス", "06/27 04:00", (0.0891, 0.1635, 0.7474), ("2", "0"), "フランス軸 + 条件戦ドロー", "semi"),
-    PlanMatch(9, "パナマ", "イングランド", "06/28 06:00", (0.0228, 0.0396, 0.9376), ("2",), "補正ありでも勝ち固定", "lock"),
-    PlanMatch(10, "コンゴ民主共和国", "ウズベキスタン", "06/28 08:30", (0.3960, 0.3397, 0.2643), ("1", "0", "2"), "30%台に散る全分散", "spread"),
-    PlanMatch(11, "ヨルダン", "アルゼンチン", "06/28 11:00", (0.0209, 0.0335, 0.9456), ("2",), "補正ありでも勝ち固定", "lock"),
-    PlanMatch(12, "ニュージーランド", "ベルギー", "06/27 12:00", (0.0402, 0.0933, 0.8665), ("2", "0"), "強豪人気 + 薄いドロー", "semi"),
-    PlanMatch(13, "クロアチア", "ガーナ", "06/28 06:00", (0.7637, 0.1576, 0.0787), ("1", "0"), "クロアチア軸 + 条件戦ドロー", "semi"),
+    PlanMatch(1, "エクアドル", "ドイツ", "06/26 05:00", (0.0656, 0.1282, 0.8062), ("2", "0"), "強豪人気 + 第3戦ドロー", "semi"),
+    PlanMatch(2, "日本", "スウェーデン", "06/26 08:00", (0.6531, 0.2394, 0.1075), ("1", "0"), "日本勝ち軸 + ドロー", "flex"),
+    PlanMatch(3, "ウルグアイ", "スペイン", "06/27 09:00", (0.0820, 0.1858, 0.7322), ("2", "0"), "スペイン軸 + 条件戦ドロー", "semi"),
+    PlanMatch(4, "コロンビア", "ポルトガル", "06/28 08:30", (0.2589, 0.3069, 0.4342), ("2", "0", "1"), "30%台を全分散", "spread"),
+    PlanMatch(5, "アルジェリア", "オーストリア", "06/28 11:00", (0.2031, 0.2959, 0.5010), ("2", "0"), "オーストリア軸 + ドロー", "flex"),
+    PlanMatch(6, "チュニジア", "オランダ", "06/26 08:00", (0.0412, 0.0530, 0.9058), ("2", "0"), "90%超人気 + 薄いドロー", "semi"),
+    PlanMatch(7, "パラグアイ", "オーストラリア", "06/26 11:00", (0.3556, 0.3176, 0.3268), ("1", "0", "2"), "ほぼ三分で全分散", "spread"),
+    PlanMatch(8, "ノルウェー", "フランス", "06/27 04:00", (0.1135, 0.1884, 0.6981), ("2", "0"), "フランス軸 + 条件戦ドロー", "semi"),
+    PlanMatch(9, "パナマ", "イングランド", "06/28 06:00", (0.0408, 0.0580, 0.9012), ("2",), "補正ありでも勝ち固定", "lock"),
+    PlanMatch(10, "コンゴ民主共和国", "ウズベキスタン", "06/28 08:30", (0.4330, 0.3290, 0.2380), ("1", "0", "2"), "30%台に散る全分散", "spread"),
+    PlanMatch(11, "ヨルダン", "アルゼンチン", "06/28 11:00", (0.0387, 0.0496, 0.9117), ("2",), "補正ありでも勝ち固定", "lock"),
+    PlanMatch(12, "ニュージーランド", "ベルギー", "06/27 12:00", (0.0589, 0.1245, 0.8166), ("2", "0"), "強豪人気 + 薄いドロー", "semi"),
+    PlanMatch(13, "クロアチア", "ガーナ", "06/28 06:00", (0.7283, 0.1825, 0.0892), ("1", "0"), "クロアチア軸 + 条件戦ドロー", "semi"),
 ]
 
 MULTI_PLANS_1637 = [
@@ -227,105 +228,105 @@ MULTI_PLANS_1637 = [
 POLYMARKET_1637_ROWS = [
     {
         "no": 1,
-        "market": (0.2637, 0.2338, 0.5025),
-        "delta": (0.2168, 0.1164, -0.3332),
-        "volume": 368_665,
+        "market": (0.2537, 0.2239, 0.5224),
+        "delta": (0.1881, 0.0957, -0.2838),
+        "volume": 650_115,
         "slug": "fwc-ecu-ger-2026-06-25",
         "action": "ドイツ一択ではない。最終市場でも同じなら1/0を足す最優先枠。",
     },
     {
         "no": 2,
-        "market": (0.5124, 0.2736, 0.2139),
-        "delta": (-0.1350, 0.0281, 0.1068),
-        "volume": 125_826,
+        "market": (0.5176, 0.2663, 0.2161),
+        "delta": (-0.1355, 0.0269, 0.1086),
+        "volume": 215_116,
         "slug": "fwc-jpn-swe-2026-06-25",
-        "action": "日本人気がさらに重い。108口では1/0、2は締切上振れで追加候補。",
+        "action": "日本人気が重い。108口では1/0、162口以上なら2追加候補。",
     },
     {
         "no": 3,
-        "market": (0.1256, 0.2161, 0.6583),
-        "delta": (0.0534, 0.0392, -0.0926),
-        "volume": 96_896,
+        "market": (0.1256, 0.2261, 0.6482),
+        "delta": (0.0436, 0.0403, -0.0840),
+        "volume": 121_978,
         "slug": "fwc-uru-esp-2026-06-26",
-        "action": "スペイン本線。ドロー20%超なので締切版で0復活候補。",
+        "action": "スペイン本線。市場ドロー22%超なので1636反省版では0を入れる。",
     },
     {
         "no": 4,
-        "market": (0.2764, 0.2563, 0.4673),
-        "delta": (0.0143, -0.0490, 0.0347),
-        "volume": 64_738,
+        "market": (0.2438, 0.2438, 0.5124),
+        "delta": (-0.0151, -0.0631, 0.0782),
+        "volume": 110_639,
         "slug": "fwc-col-por-2026-06-27",
-        "action": "公式と市場のズレは小さめ。市場版ではここを薄める。",
+        "action": "市場はPortugal寄り。市場補強版では2へ寄せる。",
     },
     {
         "no": 5,
-        "market": (0.3035, 0.3134, 0.3831),
-        "delta": (0.1127, 0.0230, -0.1357),
-        "volume": 38_691,
+        "market": (0.2338, 0.4328, 0.3333),
+        "delta": (0.0307, 0.1369, -0.1677),
+        "volume": 124_066,
         "slug": "fwc-alg-aut-2026-06-27",
-        "action": "公式より接戦。Austria固定でなく1/0/2へ広げる。",
+        "action": "市場はドロー本命。Austria固定でなく1/0/2へ広げる。",
     },
     {
         "no": 6,
         "market": (0.0348, 0.0945, 0.8706),
-        "delta": (0.0089, 0.0525, -0.0615),
-        "volume": 208_214,
+        "delta": (-0.0064, 0.0415, -0.0352),
+        "volume": 271_721,
         "slug": "fwc-tun-ned-2026-06-25",
         "action": "Netherlands本線。200口以内ではまだロック寄り。",
     },
     {
         "no": 7,
-        "market": (0.3300, 0.4286, 0.2414),
-        "delta": (-0.0368, 0.1172, -0.0804),
-        "volume": 159_314,
+        "market": (0.3266, 0.4372, 0.2362),
+        "delta": (-0.0290, 0.1196, -0.0906),
+        "volume": 203_274,
         "slug": "fwc-par-aus-2026-06-25",
         "action": "市場はドロー本命。現行どおり全分散を維持。",
     },
     {
         "no": 8,
-        "market": (0.2118, 0.2414, 0.5468),
-        "delta": (0.1227, 0.0779, -0.2006),
-        "volume": 25_706,
+        "market": (0.2118, 0.2118, 0.5764),
+        "delta": (0.0983, 0.0234, -0.1217),
+        "volume": 163_458,
         "slug": "fwc-nor-fra-2026-06-26",
         "action": "France人気は公式ほど強くない。予算増なら0/1候補。",
     },
     {
         "no": 9,
-        "market": (0.0945, 0.1144, 0.7910),
-        "delta": (0.0708, 0.0836, -0.1543),
-        "volume": 24_782,
+        "market": (0.0547, 0.1144, 0.8308),
+        "delta": (0.0139, 0.0564, -0.0704),
+        "volume": 154_307,
         "slug": "fwc-pan-eng-2026-06-27",
         "action": "England本線。締切ニュースが荒れなら0を検討。",
     },
     {
         "no": 10,
-        "market": (0.4774, 0.2462, 0.2764),
-        "delta": (0.0814, -0.0935, 0.0121),
-        "volume": 13_283,
+        "market": (0.5276, 0.2362, 0.2362),
+        "delta": (0.0946, -0.0928, -0.0018),
+        "volume": 93_029,
         "slug": "fwc-cod-uzb-2026-06-27",
-        "action": "Congo DR寄りを補強。108口以上では0/全分散へ。",
+        "action": "Congo DR寄りを補強。公式ドローは高いが市場補強108では1単独。",
     },
     {
         "no": 11,
-        "market": (0.0746, 0.1144, 0.8109),
-        "delta": (0.0537, 0.0809, -0.1347),
-        "volume": 46_669,
+        "market": (0.0542, 0.1232, 0.8227),
+        "delta": (0.0155, 0.0736, -0.0890),
+        "volume": 123_418,
         "slug": "fwc-jor-arg-2026-06-27",
         "action": "Argentina本線。公式ほど硬くないが2優先。",
     },
     {
         "no": 12,
-        "market": (0.0647, 0.1343, 0.8010),
-        "delta": (0.0245, 0.0410, -0.0655),
-        "volume": 39_297,
+        "market": (0.0653, 0.1256, 0.8090),
+        "delta": (0.0064, 0.0011, -0.0076),
+        "volume": 66_404,
         "slug": "fwc-nzl-bel-2026-06-26",
         "action": "Belgium本線。ドローはM01/M05/M13未満。",
     },
     {
         "no": 13,
-        "market": (0.5980, 0.2462, 0.1558),
-        "delta": (-0.1657, 0.0886, 0.0771),
-        "volume": 21_169,
+        "market": (0.5522, 0.2836, 0.1642),
+        "delta": (-0.1761, 0.1011, 0.0750),
+        "volume": 54_078,
         "slug": "fwc-cro-gha-2026-06-27",
         "action": "Croatia人気が重い。市場反映版では最低でも0を足す。",
     },
@@ -348,9 +349,14 @@ MARKET_ADJUSTED_MULTI_PLANS_1637 = [
         "note": "暫定確定案。M01/M05/M07/M13に加えて、日本人気が重いM02を1/0で受ける。",
     },
     {
+        "label": "1636反省144口",
+        "choices": ("2/0/1", "1/0", "2/0", "2", "2/0/1", "2", "1/0", "2", "2", "1", "2", "2", "1/0"),
+        "note": "強人気ドロー対策。M03の0を足し、M07は市場で薄い2を外す。",
+    },
+    {
         "label": "市場補強162口",
-        "choices": ("2/0/1", "1/0", "2", "2", "2/0/1", "2", "1/0/2", "2", "2", "1", "2", "2", "1/0/2"),
-        "note": "広め案。108口案からM13を全分散へ広げつつ200口以内。",
+        "choices": ("2/0/1", "1/0/2", "2", "2", "2/0/1", "2", "1/0/2", "2", "2", "1", "2", "2", "1/0"),
+        "note": "広め案。M02を全分散へ広げ、Sweden上振れを拾う。",
     },
 ]
 
@@ -821,7 +827,7 @@ def summary_table() -> Table:
     rows = [
         ["質問", "今回の答え"],
         ["1口いくら?", "toto13は1口100円。基本は同じ組み合わせを厚くせず、1口ずつバラで置く。"],
-        ["次の1637はいくら?", "暫定は27口=2,700円、54口=5,400円、108口=10,800円、162口=16,200円。公式マルチで選択数を掛け算する。最終再計算までは買わない。"],
+        ["明日の1637はいくら?", "基本は市場補強108口=10,800円。1636反省を強く入れるなら144口=14,400円。残高が薄ければ54口=5,400円。"],
         ["1636はいくらだった?", f"20%ドロー閾値込みの候補宇宙は{CORE_LINE_COUNT_1636:,}通り = {yen(CORE_BUDGET_1636_YEN)}。表示シートは上位{int(plan['units'])}口 = {yen(plan['cost_yen'])}に制限。"],
         ["当たったら?", "1等は選んだ出目の同時当せん口数で変わる。2等/3等も期待値に足す。"],
         ["EVは上がった?", f"market proxy上の{int(plan['units'])}口はEV {multiple(plan['ev_multiple'])}、期待損益 {signed_yen(plan['expected_profit_yen'])}。ただし実オッズ未接続なのでproxy扱い。"],
@@ -904,12 +910,39 @@ def policy_table() -> Table:
     return table(rows, [9 * mm, 54 * mm, 37 * mm, 16 * mm, 44 * mm])
 
 
+def result_review_1636_table() -> Table:
+    rows = [
+        ["項目", "内容"],
+        ["実出目", "1212010112100。全13試合の結果を反省に反映済み。"],
+        ["ユーザー購入", "64口=6,400円 + 16口=1,600円、合計80口=8,000円。"],
+        ["当たり具合", "64口側はM12/M13を外して11/13、3等圏。16口側は9/13で圏外。"],
+        ["概算払戻", "公式払戻は発表待ち。3等は概算約1,560円として扱う。"],
+        ["学び", "M12 England-Ghana、M13 Ecuador-Curacaoはいずれも80%台強人気のドロー。強人気でも外部市場ドロー20%前後は軽視しない。"],
+    ]
+    result = table(rows, [34 * mm, 134 * mm])
+    result.setStyle(TableStyle([("BACKGROUND", (0, 1), (0, -1), AMBER_LIGHT)]))
+    return result
+
+
+def result_logic_update_1636_table() -> Table:
+    rows = [
+        ["更新ルール", "1637への反映"],
+        ["公式ドロー20%以上", "引き続き買い目候補へ残す。M05/M07/M10型の保険。"],
+        ["強人気 + 外部市場ドロー20%前後", "70%以上の本命でも単独固定を解除候補にする。M03/M13を最終確認。"],
+        ["口数が足りない時", "全分散を増やすより、強人気ドローを先に守る。"],
+        ["明日の分岐", "基本108口。M03市場ドロー20%超が残れば1636反省144口へ上げる。残高優先なら54口へ落とす。"],
+    ]
+    result = table(rows, [46 * mm, 122 * mm])
+    result.setStyle(TableStyle([("BACKGROUND", (0, 1), (0, -1), AMBER_LIGHT)]))
+    return result
+
+
 def strategy_1637_summary_table() -> Table:
     rows = [
         ["項目", "1637の暫定方針"],
         ["ステータス", f"公式投票率 {SNAPSHOT_1637_VOTE_LABEL}、売上 {SNAPSHOT_1637_SALES_LABEL} 時点。売上は {yen(TOTAL_SALES_1637_YEN)}。"],
         ["買うタイミング", "今は買わない。6/25 18:25に再取得、18:35-18:50に購入、18:55で打ち切り。ネット販売締切は19:00。"],
-        ["予算", "分散核27口=2,700円、5千円級54口=5,400円、1万円級108口=10,800円、200口以内広め162口=16,200円。"],
+        ["予算", "基本は市場補強108口=10,800円。1636反省を強く入れるなら144口=14,400円。200口以内広めは162口=16,200円。"],
         ["なぜギリ?", "公式投票率と売上は動く。締切直前ほど払戻推定と人気ズレの推定誤差が小さい。"],
         ["注意", "購入/決済の自動化は対象外。マルチ指定の口数と金額を人が公式画面で確認して入力する。"],
     ]
@@ -922,8 +955,8 @@ def operation_1637_table() -> Table:
     rows = [
         ["時刻", "やること", "担当"],
         ["6/25 18:25", "公式投票率と売上を取り直し、PDFとマルチ選択表を再生成する。", "system"],
-        ["6/25 18:30", "強人気ロック、条件戦ドロー、30%台分散を目視確認する。", "human"],
-        ["6/25 18:35-18:50", "予算に合わせて27/54/108/162口のマルチ指定を公式画面へ入力する。", "human"],
+        ["6/25 18:30", "強人気ロック、条件戦ドロー、30%台分散、M03ドロー20%超を目視確認する。", "human"],
+        ["6/25 18:35-18:50", "予算に合わせて54/108/144/162口のマルチ指定を公式画面へ入力する。", "human"],
         ["6/25 18:55", "購入確定を止める。締切19:00に食い込まない。", "human"],
     ]
     return table(rows, [30 * mm, 104 * mm, 26 * mm])
@@ -967,7 +1000,7 @@ def budget_plan_summary_1637() -> Table:
         ["200口以内プラン", f"{len(PURCHASE_ROWS_1637_200)}通り / {sum(int(row['units']) for row in PURCHASE_ROWS_1637_200)}口 / {yen(len(PURCHASE_ROWS_1637_200) * STAKE_YEN)}。広めに拾うプラン。CSVで全200行を確認する。"],
         ["入力順", "PDFのM01-M13対応表を見て、公式の普通購入画面で試合No.順に1/0/2を押す。CSVは各試合列に「2: ドイツ勝ち」のようなラベルも出す。"],
         ["読み方", "1=ホーム勝ち、0=引き分け、2=アウェイ勝ち。signature はM01からM13までの数字をつなげた確認用。"],
-        ["CSV", "latest-50/100/200-purchase-sheet は検算用に残す。latest-purchase-sheet は100口版の別名。v17ではPDFのマルチ表を主導線にする。"],
+        ["CSV", "latest-50/100/200-purchase-sheet は検算用に残す。latest-purchase-sheet は100口版の別名。v18ではPDFのマルチ表を主導線にする。"],
         ["注意", "CSV/PDFは転記用メモ。購入、決済、自動投票は対象外。締切直前の再計算後に人が公式画面で確認して入力する。"],
     ]
     result = table(rows, [34 * mm, 134 * mm])
@@ -1064,7 +1097,7 @@ def visual_purchase_preview_table_1637(
 
 def external_market_source_table() -> Table:
     rows = [
-        ["ソース", "使い方", "v17での扱い"],
+        ["ソース", "使い方", "v18での扱い"],
         ["公式投票率", "p_public。toto参加者の偏りを見る。", "現行の主ソース。締切直前に再取得。"],
         ["Polymarket", "Sports APIのW杯1X2価格を外部p_model候補にする。", "1637の13試合を公開APIで照合済み。強アカウントより市場価格を優先。"],
         ["Kalshi", "公開market data/orderbookがあれば二値市場の補助確率にする。", "サッカー該当市場がある時だけ採用。"],
@@ -1119,7 +1152,7 @@ def market_adjusted_plan_matrix_table_1637() -> Table:
             *[plan["choices"][index] for plan in MARKET_ADJUSTED_MULTI_PLANS_1637],
             POLYMARKET_1637_ROWS[index]["action"],
         ])
-    return table(rows, [10 * mm, 34 * mm, 20 * mm, 20 * mm, 20 * mm, 22 * mm, 42 * mm])
+    return table(rows, [9 * mm, 30 * mm, 17 * mm, 17 * mm, 18 * mm, 19 * mm, 18 * mm, 40 * mm])
 
 
 def final_market_decision_rule_table() -> Table:
@@ -1140,31 +1173,37 @@ def final_lock_trigger_table_1637() -> Table:
         ["判定軸", "現在の読み", "108口維持", "変える条件"],
         [
             "M01 Ecuador-Germany",
-            "公式Germany 83.6% / 市場Germany 50.3%。強人気を単独固定しない。",
+            "公式Germany 80.6% / 市場Germany 52.2%。強人気を単独固定しない。",
             "市場Germany 55%以下、またはEcuador/Draw合算45%以上なら維持。",
-            "Germany 65%以上へ戻れば54口へ縮小。Germany 50%未満またはDraw 25%以上なら162口も可。",
+            "Germany 65%以上へ戻れば54口へ縮小。Germany 50%未満またはDraw 25%以上なら全案で1/0/2維持。",
         ],
         [
             "M02 Japan-Sweden",
-            "公式Japan 64.7% / 市場Japan 51.2%。日本人気を買いすぎない。",
+            "公式Japan 65.3% / 市場Japan 51.8%。日本人気を買いすぎない。",
             "市場Japan 55%以下、Draw 25%以上なら1/0維持。",
             "Sweden 24%以上または差分+14pt超なら162口で2追加。Japan 60%以上なら54口へ縮小。",
         ],
         [
+            "M03 Uruguay-Spain",
+            "公式Spain 73.2% / 市場Spain 64.8%、Draw 22.6%。1636反省では0候補。",
+            "残高優先なら108口でSpain単独のまま。",
+            "市場Drawが20%以上なら、M07のAustraliaを外した144口で0を入れる。",
+        ],
+        [
             "M05 Algeria-Austria",
-            "公式Austria 51.9% / 市場Austria 38.3%。公式ほど片寄っていない。",
-            "市場Austria 45%以下なら1/0/2維持。",
-            "Austria 50%以上へ戻れば54口へ縮小。DrawまたはAlgeria 33%以上なら162口でも厚め維持。",
+            "公式Austria 50.1% / 市場Draw 43.3%、Austria 33.3%。公式ほど片寄っていない。",
+            "市場Draw 35%以上、またはAustria 45%以下なら1/0/2維持。",
+            "Austria 50%以上へ戻れば54口へ縮小。Draw 40%以上なら144/162口でも厚め維持。",
         ],
         [
             "M07 Paraguay-Australia",
-            "公式は三分割、PolymarketはDraw 42.9%。全分散の核。",
+            "公式は三分割、PolymarketはDraw 43.7%。108口では全分散。",
             "Draw 35%以上、または3出目が30%前後で割れ続けるなら全分散維持。",
-            "Draw 32%未満で片側45%以上なら54口へ縮小。Draw本命が続くなら162口でも維持。",
+            "144口へ上げる場合は、市場で薄いAustraliaを削ってM03ドローへ回す。",
         ],
         [
             "M13 Croatia-Ghana",
-            "公式Croatia 76.4% / 市場Croatia 59.8%。0を外さない。",
+            "公式Croatia 72.8% / 市場Croatia 55.2%、Draw 28.4%。0を外さない。",
             "Croatia 65%以下、またはDraw 20%以上なら1/0維持。",
             "Croatia 68%以上かつDraw 18%未満なら54口へ縮小。Draw+Ghana 40%以上なら162口へ拡張。",
         ],
@@ -1176,11 +1215,11 @@ def final_lock_trigger_table_1637() -> Table:
 
 def final_logic_table_1637() -> Table:
     rows = [
-        ["論点", "v17での読み"],
+        ["論点", "v18での読み"],
         ["公式投票率", "日本のtoto購入者の人気。勝率ではなく、払戻が薄くなる混み具合として読む。"],
-        ["バックテスト", "1634は公式人気順が9ズレ、1635は2ズレで3等相当。公式1点だけでは荒れを拾いにくい。"],
-        ["外部市場", "PolymarketではM01/M05/M07/M13が公式より荒れ側。M02も日本人気が重い。"],
-        ["暫定確定", "22:03公式投票率と22:13外部市場でも推奨は市場補強108口=10,800円で変更なし。広めは162口=16,200円。"],
+        ["バックテスト", "1634は公式人気順が9ズレ、1635は2ズレで3等相当。1636は強人気ドローを外して3等止まり。"],
+        ["外部市場", "PolymarketではM01/M05/M07/M13が公式より荒れ側。M02も日本人気が重く、M03は市場ドローが20%超。"],
+        ["暫定確定", "6/24昼の公式投票率と外部市場では基本は市場補強108口=10,800円。強人気ドロー反省を強く入れるなら144口=14,400円。"],
         ["当日運用", "6/25 18:25に再取得、18:35-18:50に手入力。18:55以降は締切事故を避けて触らない。"],
     ]
     result = table(rows, [36 * mm, 132 * mm])
@@ -1194,7 +1233,7 @@ def polymarket_backtest_audit_table() -> Table:
         ["1634", "締切時点の公式投票率あり / 結果確定", "Sports API通常一覧では対象13試合を再発見できず", "Poly優位とは未判定。token IDが見つかれば再検証。"],
         ["1635", "締切時点の公式投票率あり / 結果確定", "Sports API通常一覧では対象13試合を再発見できず", "公式人気順は3等圏。Poly比較はtoken ID待ち。"],
         ["1636", "2026-06-20 17:02公式投票率あり / 一部進行中", "通常一覧で7/13試合だけ確認。開始後/終了後が混ざる", "厳密比較には使わない。結果確定後に履歴tokenが取れた分だけ検証。"],
-        ["1637", "2026-06-22 22:03公式投票率あり / 未開催", "Sports APIで13/13試合を照合済み", "前向き利用可。6/25 18:25に同時刻保存して本検証対象へ。"],
+        ["1637", "2026-06-24 12:17公式投票率あり / 未開催", "2026-06-24 12:34時点のSports APIで13/13試合を照合済み", "前向き利用可。6/25 18:25に同時刻保存して本検証対象へ。"],
     ]
     result = table(rows, [16 * mm, 48 * mm, 54 * mm, 50 * mm])
     result.setStyle(TableStyle([("BACKGROUND", (0, 1), (0, -1), TEAL_LIGHT)]))
@@ -1267,23 +1306,28 @@ def build_pdf() -> Path:
         leftMargin=12 * mm,
         topMargin=12 * mm,
         bottomMargin=10 * mm,
-        title="W杯toto 1634-1637 EV改善メモ v17",
+        title="W杯toto 1634-1637 EV改善メモ v18",
     )
 
     story = [
-        p("W杯toto 1634-1637 EV改善メモ v17", "title"),
+        p("W杯toto 1634-1637 EV改善メモ v18", "title"),
         p("目的はシンプルです。1口いくらか、当たったらどれくらい戻るか、10口や1万円ならどの出目をどう置くか、そしてランダムよりEVが上がっているのかを見ます。"),
-        p(f"1637の公式投票率は {SNAPSHOT_1637_VOTE_LABEL}、売上は {SNAPSHOT_1637_SALES_LABEL} 時点。現在売上は {yen(TOTAL_SALES_1637_YEN)}、投票数は {VOTE_UNITS_1637:,}口。latest PDFはこのv17へ差し替えます。", "small"),
+        p(f"1637の公式投票率は {SNAPSHOT_1637_VOTE_LABEL}、売上は {SNAPSHOT_1637_SALES_LABEL} 時点。現在売上は {yen(TOTAL_SALES_1637_YEN)}、投票数は {VOTE_UNITS_1637:,}口。latest PDFはこのv18へ差し替えます。", "small"),
         p("公式投票率は勝率そのものではなく、日本のtoto購入者の人気です。払戻の薄さを見るp_publicとして使い、勝率寄りのp_modelはPolymarketなどの外部市場とW杯文脈で補います。", "small"),
         summary_table(),
+        Spacer(1, 4 * mm),
+        p("1636結果からの反省", "h2"),
+        result_review_1636_table(),
+        Spacer(1, 4 * mm),
+        result_logic_update_1636_table(),
         Spacer(1, 4 * mm),
         p("EVをわかりやすく", "h2"),
         ev_glossary_table(),
         Spacer(1, 4 * mm),
         p("総当たりEVより上がったか", "h2"),
-        p("結論: proxy上は上がっています。v17ではPolymarketの試合別1X2を再取得し、22:03公式投票率と比較しています。ただし、ブックメーカー複数社のvig除去やBetfair板はまだ未接続なので、真EVではなく外部市場proxyとして扱います。"),
+        p("結論: proxy上は上がっています。v18ではPolymarketの試合別1X2を再取得し、6/24 12:17公式投票率と比較しています。ただし、ブックメーカー複数社のvig除去やBetfair板はまだ未接続なので、真EVではなく外部市場proxyとして扱います。"),
         market_ev_table(),
-        PageBreak(),
+        Spacer(1, 5 * mm),
         p("1637の最適戦略", "title"),
         p("1637は第3戦寄りの条件戦として扱います。現時点の暫定マルチ選択表は作りますが、買うのは締切直前に公式投票率と売上を取り直してからです。"),
         strategy_1637_summary_table(),
@@ -1292,7 +1336,7 @@ def build_pdf() -> Path:
         operation_1637_table(),
         Spacer(1, 4 * mm),
         p("出目を残すルール", "h2"),
-        p(f"公式人気順だけなら {FAVORITE_1637}。ただし第3戦は中立地、国名人気、勝点条件、温存、引き分けOKで人気順からズレる余地があります。v17ではこの補正とPolymarket差分をマルチ選択の残し方に入れています。"),
+        p(f"公式人気順だけなら {FAVORITE_1637}。ただし第3戦は中立地、国名人気、勝点条件、温存、引き分けOKで人気順からズレる余地があります。v18ではこの補正とPolymarket差分をマルチ選択の残し方に入れています。"),
         policy_table_1637(),
         Spacer(1, 4 * mm),
         p("マルチ指定の合計口数", "h2"),
@@ -1308,14 +1352,14 @@ def build_pdf() -> Path:
         multi_plan_matrix_table_1637(),
         PageBreak(),
         p("外部市場を入れると何が変わるか", "title"),
-        p("Haziコメントは無しとして、人間メモ重みは0にします。ここではPolymarketの公開Sports APIから取得できたW杯1X2価格をp_marketとして、toto公式投票率p_publicとの差を見ます。価格はbid/ask中点を3出目合計100%へ正規化したものです。取得は2026-06-22 22:13 JST相当です。"),
+        p("Haziコメントは無しとして、人間メモ重みは0にします。ここではPolymarketの公開Sports APIから取得できたW杯1X2価格をp_marketとして、toto公式投票率p_publicとの差を見ます。価格はbid/ask中点を3出目合計100%へ正規化したものです。取得は2026-06-24 12:34 JST相当です。"),
         polymarket_overlay_table_1637(),
         Spacer(1, 4 * mm),
         p("最終選択へ折り込むルール", "h2"),
         final_market_decision_rule_table(),
         PageBreak(),
         p("1637 最終ロック判定表", "h2"),
-        p("6/25 18:25に再取得した時、この表の条件で108口を維持するか、162口へ広げるか、54口へ落とすかを決めます。現時点では108口維持です。"),
+        p("6/25 18:25に再取得した時、この表の条件で108口を維持するか、144/162口へ広げるか、54口へ落とすかを決めます。現時点では108口維持です。"),
         final_lock_trigger_table_1637(),
         PageBreak(),
         p("1637 市場補強版マルチ指定", "title"),
@@ -1377,14 +1421,14 @@ def build_pdf() -> Path:
         policy_table(),
         PageBreak(),
         p("1636旧シート先頭", "title"),
-        p("1636では上位を厚くする案も試しましたが、v17の1637方針ではCSV行詳細よりマルチ選択表で口数と金額を確認します。"),
+        p("1636では上位を厚くする案も試しましたが、v18の1637方針ではCSV行詳細よりマルチ選択表で口数と金額を確認します。"),
         hot_table(),
         Spacer(1, 4 * mm),
         p("なるべく自動で買う方法", "h2"),
         automation_table(),
         Spacer(1, 4 * mm),
         p("注意: この資料は購入判断メモであり、購入代行、決済、精算、利益保証ではありません。実購入は公式画面で本人が確認して行います。", "small"),
-        p(f"公式/データソース: 1634結果 {SOURCE_1634_RESULT_URL} / 1634投票 {SOURCE_1634_VOTE_URL} / 1635結果 {SOURCE_1635_RESULT_URL} / 1636購入画面 {SOURCE_1636_BUY_URL} / 1636投票 {SOURCE_1636_VOTE_URL} / 1637投票 {SOURCE_1637_VOTE_URL} / 1637販売 {SOURCE_1637_SALES_URL} / Polymarket docs {SOURCE_POLYMARKET_SPORTS_URL} / Polymarket sample {SOURCE_POLYMARKET_SPORTS_EVENTS_URL} / Kalshi {SOURCE_KALSHI_MARKET_DATA_URL} / Betfair {SOURCE_BETFAIR_EXCHANGE_URL} / Odds API {SOURCE_ODDS_API_URL}", "small"),
+        p(f"公式/データソース: 1634結果 {SOURCE_1634_RESULT_URL} / 1634投票 {SOURCE_1634_VOTE_URL} / 1635結果 {SOURCE_1635_RESULT_URL} / 1636くじ情報 {SOURCE_1636_INFO_URL} / 1636購入画面 {SOURCE_1636_BUY_URL} / 1636投票 {SOURCE_1636_VOTE_URL} / 1637投票 {SOURCE_1637_VOTE_URL} / 1637販売 {SOURCE_1637_SALES_URL} / Polymarket docs {SOURCE_POLYMARKET_SPORTS_URL} / Polymarket sample {SOURCE_POLYMARKET_SPORTS_EVENTS_URL} / Kalshi {SOURCE_KALSHI_MARKET_DATA_URL} / Betfair {SOURCE_BETFAIR_EXCHANGE_URL} / Odds API {SOURCE_ODDS_API_URL}", "small"),
     ]
     doc.build(story)
     copy_report_aliases(pdf_path, OUT_PDF_DIR, PUBLIC_DIR, PDF_ALIASES)
