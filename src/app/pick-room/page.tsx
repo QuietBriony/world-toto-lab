@@ -606,7 +606,10 @@ function PickRoomPageContent() {
           </div>
         </div>
 
-        <div className="-mx-1 overflow-x-auto pb-1">
+        <div
+          data-horizontal-scroll
+          className="-mx-1 min-w-0 max-w-full touch-pan-x overflow-x-auto overscroll-x-contain pb-1 [-webkit-overflow-scrolling:touch]"
+        >
           <div className="flex w-max gap-2 px-1 sm:w-auto sm:flex-wrap">
             {data.users.map((user) => (
               <button
@@ -677,7 +680,10 @@ function PickRoomPageContent() {
             )}
           </div>
         ) : (
-          <div className="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory">
+          <div
+            data-horizontal-scroll
+            className="flex min-w-0 max-w-full touch-pan-x snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain pb-2 [-webkit-overflow-scrolling:touch]"
+          >
             {candidateTickets.map((candidate) => {
               const activeVote =
                 data.round.candidateVotes.find(

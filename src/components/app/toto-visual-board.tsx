@@ -150,7 +150,10 @@ export function TotoVisualBoard({
         </div>
       </div>
 
-      <div className="mt-4 overflow-x-auto overscroll-x-contain pb-2">
+      <div
+        data-horizontal-scroll
+        className="mt-4 min-w-0 max-w-full touch-pan-x overflow-x-auto overscroll-x-contain pb-2 [-webkit-overflow-scrolling:touch]"
+      >
         <div className="grid min-w-[980px] grid-flow-col auto-cols-[72px] gap-2">
           {orderedRows.map((row) => {
             const style = callStyle[row.call];

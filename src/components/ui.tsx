@@ -173,19 +173,27 @@ export function HorizontalScrollTable({
   ...props
 }: HorizontalScrollTableProps) {
   return (
-    <div className={cx("space-y-3", className)} {...props}>
-      <div className="flex items-center justify-between gap-3">
-        <div className="sm:hidden">
-          <Badge tone="slate">横にスワイプ</Badge>
+    <div className={cx("min-w-0 max-w-full space-y-3", className)} {...props}>
+      {hint !== null ? (
+        <div className="flex items-center justify-between gap-3">
+          <div className="sm:hidden">
+            <Badge tone="slate">横にスワイプ</Badge>
+          </div>
+          <p className="text-xs leading-5 text-slate-500 sm:ml-auto">{hint}</p>
         </div>
-        <p className="text-xs leading-5 text-slate-500 sm:ml-auto">{hint}</p>
-      </div>
+      ) : null}
 
-      <div className="relative">
+      <div className="relative min-w-0 max-w-full">
         <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-6 bg-[linear-gradient(90deg,rgba(248,250,252,0.96),rgba(248,250,252,0))] sm:hidden" />
         <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-6 bg-[linear-gradient(270deg,rgba(248,250,252,0.96),rgba(248,250,252,0))] sm:hidden" />
-        <div className={cx("overflow-x-auto overscroll-x-contain pb-2", contentClassName)}>
-          {children}
+        <div
+          data-horizontal-scroll
+          className={cx(
+            "min-w-0 max-w-full touch-pan-x overflow-x-auto overscroll-x-contain pb-2 [-webkit-overflow-scrolling:touch]",
+            contentClassName,
+          )}
+        >
+          <div className="inline-block min-w-full align-top">{children}</div>
         </div>
       </div>
     </div>

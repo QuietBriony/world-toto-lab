@@ -443,7 +443,11 @@ function OperatingSystemBacktestPanel() {
       </div>
 
       <div className="mt-5 grid gap-4 xl:grid-cols-[1fr_1fr]">
-        <div className="min-w-0 overflow-x-auto rounded-[22px] border border-slate-200 bg-white/82">
+        <HorizontalScrollTable
+          className="min-w-0"
+          contentClassName="rounded-[22px] border border-slate-200 bg-white/82"
+          hint={null}
+        >
           <table className="min-w-[720px] text-left text-sm">
             <thead className="bg-slate-100 text-xs uppercase tracking-[0.16em] text-slate-500">
               <tr>
@@ -469,9 +473,13 @@ function OperatingSystemBacktestPanel() {
               ))}
             </tbody>
           </table>
-        </div>
+        </HorizontalScrollTable>
 
-        <div className="min-w-0 overflow-x-auto rounded-[22px] border border-slate-200 bg-white/82">
+        <HorizontalScrollTable
+          className="min-w-0"
+          contentClassName="rounded-[22px] border border-slate-200 bg-white/82"
+          hint={null}
+        >
           <table className="min-w-[680px] text-left text-sm">
             <thead className="bg-slate-100 text-xs uppercase tracking-[0.16em] text-slate-500">
               <tr>
@@ -508,10 +516,14 @@ function OperatingSystemBacktestPanel() {
               )}
             </tbody>
           </table>
-        </div>
+        </HorizontalScrollTable>
       </div>
 
-      <div className="mt-4 min-w-0 overflow-x-auto rounded-[22px] border border-slate-200 bg-white/82">
+      <HorizontalScrollTable
+        className="mt-4 min-w-0"
+        contentClassName="rounded-[22px] border border-slate-200 bg-white/82"
+        hint={null}
+      >
         <table className="min-w-[880px] text-left text-sm">
           <thead className="bg-slate-100 text-xs uppercase tracking-[0.16em] text-slate-500">
             <tr>
@@ -546,7 +558,7 @@ function OperatingSystemBacktestPanel() {
             ))}
           </tbody>
         </table>
-      </div>
+      </HorizontalScrollTable>
 
       <PlainNotice tone="amber" title={worldCupTotoOptimizationReadiness.statusLabel}>
         <p>{worldCupTotoOptimizationReadiness.summary}</p>
@@ -559,7 +571,11 @@ function OperatingSystemBacktestPanel() {
         </p>
       </PlainNotice>
 
-      <div className="mt-4 min-w-0 overflow-x-auto rounded-[22px] border border-teal-200 bg-white/86">
+      <HorizontalScrollTable
+        className="mt-4 min-w-0"
+        contentClassName="rounded-[22px] border border-teal-200 bg-white/86"
+        hint={null}
+      >
         <table className="min-w-[920px] text-left text-sm">
           <thead className="bg-teal-50 text-xs uppercase tracking-[0.16em] text-teal-700">
             <tr>
@@ -587,7 +603,7 @@ function OperatingSystemBacktestPanel() {
             ))}
           </tbody>
         </table>
-      </div>
+      </HorizontalScrollTable>
 
       <PlainNotice tone="teal" title="次の最適ロジック">
         <ul className="list-disc space-y-1 pl-5">
