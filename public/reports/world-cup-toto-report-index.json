@@ -8,6 +8,21 @@
   },
   "versions": [
     {
+      "csv": "world-cup-toto-1637-visual-10000-plan-20260624-v18.csv",
+      "csv50": "world-cup-toto-1637-visual-5000-plan-20260624-v18.csv",
+      "csv50Sha256": "1E835432713777959B1BBD7FE7D2BB7EF4E40FD10064AD5FD312FA8CAD929F59",
+      "csv100Sha256": "D9F00FED8DF20661A9141B191E4923443B0026FF1A4A3863C514439990BA3366",
+      "csv200": "world-cup-toto-1637-visual-20000-plan-20260624-v18.csv",
+      "csv200Sha256": "46E4B414828FB0D5ED72B3D03B8D6275284A8C348051FB7DC29B2C7EAC8CD4F3",
+      "csvSha256": "D9F00FED8DF20661A9141B191E4923443B0026FF1A4A3863C514439990BA3366",
+      "label": "2026-06-24 v18",
+      "legacyPdf": "world-cup-toto-1634-1636-evolved-plan.pdf",
+      "pdf": "world-cup-toto-1634-1637-evolved-plan-20260624-v18.pdf",
+      "pdfSha256": "90107D43CBB226FDB53B973F0DA51AD3FD333153CF197A65751AEBA9D081A9BA",
+      "publishedAt": "2026-06-24 15:45 JST",
+      "summary": "Refreshes round 1637 with the 2026-06-24 12:17 official vote snapshot and 12:34 Polymarket overlay, adds the round 1636 user-slip postmortem, keeps the market-adjusted 108-unit recommendation, and adds a 144-unit strong-favorite-draw reflection plan for purchase day."
+    },
+    {
       "csv": "world-cup-toto-1637-visual-10000-plan-20260622-v17.csv",
       "csv50": "world-cup-toto-1637-visual-5000-plan-20260622-v17.csv",
       "csv50Sha256": "828214875F0809C1EE6258C7689276DF12110B0C11D68542EDF6574913B0E37F",

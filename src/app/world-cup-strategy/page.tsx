@@ -55,6 +55,7 @@ import {
   worldCupToto1636NextPlan,
   worldCupToto1636PhaseDecision,
   worldCupToto1636PurchaseRows,
+  worldCupToto1636ResultReview,
   worldCupToto1637ContextModel,
   worldCupToto1637ExternalMarketOverlay,
   worldCupToto1637FinalLogic,
@@ -355,13 +356,15 @@ function riskBucketTone(bucket: "flex" | "lock" | "semi" | "spread") {
   return "sky" as const;
 }
 
-function finalLockDecisionLabel(decision: "downgrade54" | "expand162" | "keep108") {
+function finalLockDecisionLabel(decision: "downgrade54" | "expand144" | "expand162" | "keep108") {
+  if (decision === "expand144") return "144反省";
   if (decision === "expand162") return "162候補";
   if (decision === "downgrade54") return "54縮小";
   return "108維持";
 }
 
-function finalLockDecisionTone(decision: "downgrade54" | "expand162" | "keep108") {
+function finalLockDecisionTone(decision: "downgrade54" | "expand144" | "expand162" | "keep108") {
+  if (decision === "expand144") return "amber" as const;
   if (decision === "expand162") return "amber" as const;
   if (decision === "downgrade54") return "slate" as const;
   return "teal" as const;
@@ -615,6 +618,9 @@ function NextWorldCupToto1637Panel({
   const marketStandardPlan = worldCupToto1637ExternalMarketOverlay.marketAdjustedPlans.find(
     (plan) => plan.label === "市場補強108口",
   );
+  const marketReflectionPlan = worldCupToto1637ExternalMarketOverlay.marketAdjustedPlans.find(
+    (plan) => plan.label === "1636反省144口",
+  );
   const marketWidePlan = worldCupToto1637ExternalMarketOverlay.marketAdjustedPlans.find(
     (plan) => plan.label === "市場補強162口",
   );
@@ -732,6 +738,67 @@ function NextWorldCupToto1637Panel({
         </ul>
       </PlainNotice>
 
+      <PlainNotice tone="amber" title="1636結果からの反省">
+        <p>{worldCupToto1636ResultReview.summary}</p>
+        <div className="mt-3 grid gap-3 md:grid-cols-4">
+          <MiniFact label="実出目" value={worldCupToto1636ResultReview.actualSignature} hint="M01-M13" />
+          <MiniFact
+            label="投入"
+            value={formatCurrency(worldCupToto1636ResultReview.userStakeYen)}
+            hint="64口 + 16口"
+          />
+          <MiniFact
+            label="概算払戻"
+            value={formatCurrency(worldCupToto1636ResultReview.userEstimatedPayoutYen)}
+            hint={worldCupToto1636ResultReview.officialPayoutStatusLabel}
+          />
+          <MiniFact
+            label="1637反省版"
+            value={`${marketReflectionPlan?.unitCount ?? 144}口 / ${formatCurrency(
+              marketReflectionPlan?.budgetYen ?? 14_400,
+            )}`}
+            hint="M03ドローを追加する案"
+          />
+        </div>
+        <HorizontalScrollTable className="mt-3 min-w-0" contentClassName="rounded-[18px] border border-amber-200 bg-white/86">
+          <table className="min-w-[680px] text-left text-sm">
+            <thead className="bg-amber-50 text-xs uppercase tracking-[0.16em] text-amber-700">
+              <tr>
+                <th className="px-3 py-3">購入</th>
+                <th className="px-3 py-3">口数</th>
+                <th className="px-3 py-3">金額</th>
+                <th className="px-3 py-3">的中数</th>
+                <th className="px-3 py-3">判定</th>
+                <th className="px-3 py-3">外した試合</th>
+              </tr>
+            </thead>
+            <tbody>
+              {worldCupToto1636ResultReview.slips.map((slip) => (
+                <tr key={slip.label} className="border-t border-amber-100">
+                  <td className="px-3 py-3 font-semibold text-slate-950">{slip.label}</td>
+                  <td className="px-3 py-3 text-slate-700">{slip.unitCount.toLocaleString("ja-JP")}口</td>
+                  <td className="px-3 py-3 text-slate-700">{formatCurrency(slip.costYen)}</td>
+                  <td className="px-3 py-3 font-semibold text-slate-900">{slip.hitCount}/13</td>
+                  <td className="px-3 py-3">
+                    <Badge tone={slip.possiblePrizeLabel.includes("圏外") ? "slate" : "positive"}>
+                      {slip.possiblePrizeLabel}
+                    </Badge>
+                  </td>
+                  <td className="px-3 py-3 text-slate-700">
+                    {slip.missedMatchNumbers.map((matchNo) => `M${String(matchNo).padStart(2, "0")}`).join(" / ")}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </HorizontalScrollTable>
+        <ul className="mt-3 list-disc space-y-1 pl-5 text-sm leading-6 text-slate-700">
+          {worldCupToto1636ResultReview.logicUpdates.map((update) => (
+            <li key={update}>{update}</li>
+          ))}
+        </ul>
+      </PlainNotice>
+
       <PlainNotice tone="teal" title={worldCupToto1637ContextModel.label}>
         <p>{worldCupToto1637ContextModel.summary}</p>
         <div className="mt-3 grid gap-2 md:grid-cols-5">
@@ -746,7 +813,7 @@ function NextWorldCupToto1637Panel({
 
       <PlainNotice tone="amber" title="外部市場補強: 公式とどれくらい違うか">
         <p>{worldCupToto1637ExternalMarketOverlay.summary}</p>
-        <div className="mt-3 grid gap-3 md:grid-cols-3">
+        <div className="mt-3 grid gap-3 md:grid-cols-4">
           <MiniFact
             label="外部ソース"
             value="Polymarket"
@@ -760,9 +827,16 @@ function NextWorldCupToto1637Panel({
             hint="M01/M05/M13へ分散を移す"
           />
           <MiniFact
+            label="反省反映"
+            value={`${marketReflectionPlan?.unitCount ?? 144}口 / ${formatCurrency(
+              marketReflectionPlan?.budgetYen ?? 14_400,
+            )}`}
+            hint="M03ドローを足す案"
+          />
+          <MiniFact
             label="広め反映"
             value={`${marketWidePlan?.unitCount ?? 162}口 / ${formatCurrency(marketWidePlan?.budgetYen ?? 16_200)}`}
-            hint="200口以内の市場補強案"
+            hint="M02の2を足す案"
           />
         </div>
         <p className="mt-3 text-sm leading-6 text-slate-700">
