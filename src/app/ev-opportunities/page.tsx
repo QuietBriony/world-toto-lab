@@ -309,7 +309,10 @@ export default function EvOpportunitiesPage() {
         title="見る順を絞る"
         description="友人に見せる時は、まず全部かtotoだけで十分です。公営ウォッチは別枠のネタ帳として扱います。"
       >
-        <div className="-mx-1 overflow-x-auto pb-1">
+        <div
+          data-horizontal-scroll
+          className="-mx-1 min-w-0 max-w-full touch-pan-x overflow-x-auto overscroll-x-contain pb-1 [-webkit-overflow-scrolling:touch]"
+        >
           <div className="flex w-max gap-2 px-1 sm:w-auto sm:flex-wrap">
             {categoryTabs.map((category) => (
               <button

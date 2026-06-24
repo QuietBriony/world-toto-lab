@@ -465,7 +465,10 @@ function PlayPageContent() {
             </div>
           </div>
         ) : (
-          <div className="-mx-2 flex snap-x gap-4 overflow-x-auto px-2 pb-2">
+          <div
+            data-horizontal-scroll
+            className="-mx-2 flex min-w-0 max-w-full touch-pan-x snap-x gap-4 overflow-x-auto overscroll-x-contain px-2 pb-2 [-webkit-overflow-scrolling:touch]"
+          >
             {candidateTickets.map((candidate) => {
               const existingVote = data.round.candidateVotes.find(
                 (entry) =>

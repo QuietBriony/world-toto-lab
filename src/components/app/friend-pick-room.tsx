@@ -234,7 +234,12 @@ export function CandidateCard(props: {
       </div>
 
       <div className="rounded-[22px] border border-slate-200 bg-slate-950 px-4 py-3 text-center font-mono text-base font-semibold tracking-[0.24em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] sm:text-lg sm:tracking-[0.35em]">
-        <div className="overflow-x-auto">{props.candidate.picks.map((pick) => pick.pick).join(" ")}</div>
+        <div
+          data-horizontal-scroll
+          className="min-w-0 max-w-full touch-pan-x overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]"
+        >
+          {props.candidate.picks.map((pick) => pick.pick).join(" ")}
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 text-sm">
