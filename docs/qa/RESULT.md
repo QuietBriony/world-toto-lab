@@ -98,8 +98,11 @@ match-editor / workspace / consensus / edge-board / review / scout-cards / simpl
 - `npm test` = **291 passed / 44 files**（+6 `datetime-local.test.ts`: 往復不変/JST境界/不正値）、`npm run lint` = 0、`npm run build` = 28 pages。
 - preview 実走: `/settings`（『ローカル保存』維持＝local dev で回帰なし）・`/match-editor`・`/simple-view` すべて console error ゼロ・描画緑。
 
-### 未実施（号令待ち）
-- 4件の **コミット/PR 化**（無人 push 保留）。1PR=1目的で D1+D2(match-editor) / D3(simple-view) / D4(settings)+datetime-local lib に分けるのが安全。
+### デプロイ（2026-06-24 完了）
+- PR [#91](https://github.com/QuietBriony/world-toto-lab/pull/91)（branch `fix/qa-cycle2-defects`、fix＋docs の2コミット）を main へマージ（merge commit `7fa4184`）。
+- CI `verify`（lint/test/build）緑 → **GitHub Pages deploy 成功（42s）** → **Cloudflare Pages 本番デプロイ成功**。
+- live 検証: `/api/health`=ok・`/api/state`=200・`/api/rounds`=200（D1 に「第1637回 toto W杯本番」等）・`/`/`/settings/`=200。**D4 の D1 読み取り経路が本番で稼働。**
+- マージ時、origin/main に先行していた Codex の commit（world-cup backtest/review-plan 等）と衝突なく統合され、CI は統合状態で緑。
 
 ## 学び（サイクル2）
 

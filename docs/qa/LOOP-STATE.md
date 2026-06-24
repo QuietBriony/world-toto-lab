@@ -7,12 +7,14 @@
 current_phase: 4          # 1=ストーリー化 / 2=検証 / 3=修正 / 4=再検証（サイクル2完了）
 iteration: 7
 updated: 2026-06-24
-branch: main              # working tree のみ。コミット/PR は号令まで保留
-push_status: held         # 無人 push は号令まで保留
+branch: main              # PR #91 で main へマージ済み
+push_status: deployed     # PR #91 merge → GitHub Pages + Cloudflare Pages 本番デプロイ成功
 loop_status: stopped      # サイクル2完了でループ停止。再開は /loop 再実行
 cycle: 2
-result: 4_defects_fixed   # 残14ルートを監査し confirmed 4件を working tree で修正・全緑
+result: 4_defects_fixed_deployed  # confirmed 4件を修正し PR #91 で本番デプロイ・live検証済み
 ```
+
+> **2026-06-24 デプロイ完了**: PR [#91](https://github.com/QuietBriony/world-toto-lab/pull/91) を main へマージ（merge commit `7fa4184`）。CI verify 緑 → GitHub Pages deploy 成功 → Cloudflare Pages 本番デプロイ成功。live 検証: `/api/health` ok・`/api/state` 200・`/api/rounds` 200（D1 に第1637回等）・`/`/`/settings/` 200。D4 の D1 読み取り経路が本番で稼働。
 
 ## 現在地：**サイクル2完了・ループ停止（4件修正・全緑）**
 

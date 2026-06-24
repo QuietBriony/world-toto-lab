@@ -49,3 +49,6 @@ workers/api/.dev.vars
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local session / launch config (Claude Code, preview launch)
+.claude/
