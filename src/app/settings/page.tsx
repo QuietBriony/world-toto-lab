@@ -18,18 +18,10 @@ import {
   getStorageModeLabel,
   localStorageAdapter,
   readStorageEnv,
+  resolveStorageMode,
   type StorageHealth,
-  type StorageMode,
 } from "@/lib/storage";
-import type { DataMode } from "@/lib/data-mode";
 import type { Round } from "@/lib/types";
-
-function dataModeToStorageMode(mode: DataMode): StorageMode {
-  if (mode === "demo") {
-    return "demo";
-  }
-  return "local";
-}
 
 type StatusTone = "teal" | "amber" | "slate";
 
@@ -78,7 +70,9 @@ export default function SettingsPage() {
     requestJsonImport,
   } = useDataMode();
   const env = readStorageEnv();
-  const storageMode = dataModeToStorageMode(mode);
+  // 共有D1本番では runtime mode==='cloudflare_d1' を尊重して D1 アダプタを使う。
+  // explicitMode は渡さない（provider が health で local に落とした判断を上書きしないため）。
+  const storageMode = resolveStorageMode({ preference: mode, d1ApiBase: env.d1ApiBase });
 
   const [d1Health, setD1Health] = useState<StorageHealth | null>(null);
   const [localHealth, setLocalHealth] = useState<StorageHealth | null>(null);
