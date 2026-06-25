@@ -576,7 +576,7 @@ function OperatingSystemBacktestPanel() {
         contentClassName="rounded-[22px] border border-teal-200 bg-white/86"
         hint={null}
       >
-        <table className="min-w-[920px] text-left text-sm">
+        <table className="min-w-[1060px] text-left text-sm">
           <thead className="bg-teal-50 text-xs uppercase tracking-[0.16em] text-teal-700">
             <tr>
               <th className="px-3 py-3">回</th>
@@ -901,7 +901,7 @@ function NextWorldCupToto1637Panel({
       </HorizontalScrollTable>
 
       <HorizontalScrollTable className="mt-5 min-w-0" contentClassName="rounded-[22px] border border-amber-200 bg-white/86">
-        <table className="min-w-[920px] text-left text-sm">
+        <table className="min-w-[1060px] text-left text-sm">
           <thead className="bg-amber-50 text-xs uppercase tracking-[0.16em] text-amber-700">
             <tr>
               <th className="px-3 py-3">No</th>
@@ -909,6 +909,7 @@ function NextWorldCupToto1637Panel({
               <th className="px-3 py-3">公式 1/0/2</th>
               <th className="px-3 py-3">Polymarket 1/0/2</th>
               <th className="px-3 py-3">最大差分</th>
+              <th className="px-3 py-3">公式との差</th>
               <th className="px-3 py-3">最終選択への反映</th>
             </tr>
           </thead>
@@ -928,6 +929,7 @@ function NextWorldCupToto1637Panel({
                   {outcomeLabel(row.strongestPositiveDeltaOutcome)}{" "}
                   {formatSignedPercentPoint(row.delta[row.strongestPositiveDeltaOutcome])}
                 </td>
+                <td className="px-3 py-3 font-mono text-xs leading-relaxed text-slate-700">{row.deltaSummaryLabel}</td>
                 <td className="px-3 py-3 text-xs leading-relaxed text-slate-700">{row.actionLabel}</td>
               </tr>
             ))}
