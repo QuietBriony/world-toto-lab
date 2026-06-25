@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useMemo, type ReactNode } from "react";
 
 import { useDataMode } from "@/components/app/data-mode-provider";
+import { AppFlowShortcuts } from "@/components/app/app-flow-shortcuts";
 import { ErrorNotice, LoadingNotice } from "@/components/app/states";
 import {
   Badge,
@@ -2235,6 +2236,7 @@ export default function WorldCupStrategyPage() {
     strategy.rounds.find((round) => round.featured.roundNumber === 1636) ??
     strategy.rounds.find((round) => round.featured.roundNumber === 1635) ??
     strategy.rounds[0];
+  const latestRoundId = data?.rounds[0]?.id ?? null;
   const reportHref = resolveArtAsset(pathname, `/reports/${reportFileName}`);
   const legacyPurchaseSheetHref = resolveArtAsset(pathname, `/reports/${worldCupTotoLegacyPurchaseSheetFileName}`);
   const versionedReportHref = resolveArtAsset(pathname, `/reports/${worldCupTotoVersionedReportFileName}`);
@@ -2267,6 +2269,12 @@ export default function WorldCupStrategyPage() {
             </a>
           </div>
         }
+      />
+
+      <AppFlowShortcuts
+        currentPath={appRoute.worldCupStrategy}
+        latestRoundId={latestRoundId}
+        variant="compact"
       />
 
       <StorageModeNotice isChecking={dataMode.isChecking} mode={dataMode.mode} />

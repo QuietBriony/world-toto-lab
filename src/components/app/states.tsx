@@ -7,6 +7,7 @@ import {
   secondaryButtonClassName,
   SectionCard,
 } from "@/components/ui";
+import { AppFlowShortcuts } from "@/components/app/app-flow-shortcuts";
 import { appRoute, buildRoundHref } from "@/lib/round-links";
 import { useDashboardData } from "@/lib/use-app-data";
 
@@ -148,6 +149,11 @@ export function RoundRequiredNotice() {
           Round ID は URL の `?round=&lt;id&gt;` で引き継ぎます。手で path を足す必要はありません。
         </p>
       )}
+      <AppFlowShortcuts
+        className="mt-4"
+        latestRoundId={latestRound?.id ?? null}
+        variant="compact"
+      />
     </SectionCard>
   );
 }
