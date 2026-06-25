@@ -290,7 +290,7 @@ export function DataModeProvider({ children }: { children: ReactNode }) {
 
       {children}
 
-      <div className="fixed bottom-4 right-4 z-[80] flex max-w-[calc(100vw-2rem)] flex-col items-end gap-2">
+      <div className="fixed bottom-4 right-4 z-[80] hidden max-w-[calc(100vw-2rem)] flex-col items-end gap-2 sm:flex">
         <div className="flex flex-wrap justify-end gap-2 rounded-full border border-white/20 bg-slate-950/82 px-3 py-2 shadow-[0_18px_60px_-30px_rgba(0,0,0,0.7)] backdrop-blur-xl">
           <Badge tone={modeTone(mode)}>{modeLabel(mode)}</Badge>
         </div>
