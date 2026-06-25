@@ -9,6 +9,7 @@ import {
   ErrorNotice,
   LoadingNotice,
 } from "@/components/app/states";
+import { AppFlowShortcuts } from "@/components/app/app-flow-shortcuts";
 import { useDataMode } from "@/components/app/data-mode-provider";
 import { FeedbackBoard } from "@/components/feedback-board";
 import {
@@ -606,6 +607,8 @@ export default function DashboardPage() {
   );
   const liveRoundCount = inventoryRounds.length;
   const latestRound = inventoryRounds[0] ?? null;
+  const featuredInventoryRounds = inventoryRounds.slice(0, 2);
+  const hiddenInventoryRoundCount = Math.max(0, inventoryRounds.length - featuredInventoryRounds.length);
   const latestRoundProgress =
     data && latestRound
       ? deriveRoundProgressSummary({
@@ -914,6 +917,7 @@ export default function DashboardPage() {
     winnerRoundTitle: winnerWatchRoundTitle,
     worldCupStrategy,
   });
+  const latestRoundId = data?.rounds[0]?.id ?? null;
   const spotlightHeroImageSrc = resolveArtAsset(
     pathname,
     candidateStrategyArt.public_favorite.src,
@@ -928,6 +932,8 @@ export default function DashboardPage() {
         <ErrorNotice error={error} onRetry={() => void refresh()} />
       ) : data ? (
         <>
+          <AppFlowShortcuts latestRoundId={latestRoundId} />
+
           <SectionCard
             title="Haziの予想を入れる"
             description="ここが最初に押す入口です。第1634〜1637回totoのW杯対象52試合を作り、Haziの初期予想を入れてレビューへ進みます。"
@@ -2554,8 +2560,14 @@ export default function DashboardPage() {
                       </Link>
                     ))}
                   </div>
+                  {hiddenInventoryRoundCount > 0 ? (
+                    <p className="mt-3 text-sm leading-6 text-slate-500">
+                      ホーム上の詳細カードは直近{featuredInventoryRounds.length}件だけ表示します。
+                      それ以前の{hiddenInventoryRoundCount}件は上のリンクから開けます。
+                    </p>
+                  ) : null}
                 </SectionCard>
-                {inventoryRounds.map((round) => {
+                {featuredInventoryRounds.map((round) => {
                   const roundUsers = resolveRoundParticipantUsers(data.users, round.participantIds);
                   const progress = deriveRoundProgressSummary({
                     matches: round.matches,

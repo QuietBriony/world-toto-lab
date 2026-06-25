@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { ErrorNotice, LoadingNotice } from "@/components/app/states";
+import { AppFlowShortcuts } from "@/components/app/app-flow-shortcuts";
 import {
   ArtBannerPanel,
   Badge,
@@ -263,6 +264,7 @@ export default function EvOpportunitiesPage() {
       ? cards
       : cards.filter((card) => card.category === activeCategory);
   const heroImageSrc = resolveArtAsset(pathname, candidateStrategyArt.ev_hunter.src);
+  const latestRoundId = dashboard.data?.rounds[0]?.id ?? null;
 
   if (dashboard.loading && !dashboard.data) {
     return <LoadingNotice title="EVネタ帳を読み込み中" />;
@@ -288,6 +290,12 @@ export default function EvOpportunitiesPage() {
             </Link>
           </div>
         }
+      />
+
+      <AppFlowShortcuts
+        currentPath={appRoute.evOpportunities}
+        latestRoundId={latestRoundId}
+        variant="compact"
       />
 
       <ArtBannerPanel

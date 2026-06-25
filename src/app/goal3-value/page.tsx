@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
+import { AppFlowShortcuts } from "@/components/app/app-flow-shortcuts";
 import { RouteGlossaryCard } from "@/components/app/round-guides";
 import { ErrorNotice, LoadingNotice } from "@/components/app/states";
 import {
@@ -222,6 +223,11 @@ export default function Goal3ValuePage() {
         }
       />
 
+      <AppFlowShortcuts
+        currentPath={appRoute.goal3Value}
+        variant="compact"
+      />
+
       <ArtBannerPanel
         badge={<Badge tone="sky">{boardHeroArt.goal3.accentLabel}</Badge>}
         description={boardHeroArt.goal3.description}
@@ -229,7 +235,7 @@ export default function Goal3ValuePage() {
         title={boardHeroArt.goal3.title}
       />
 
-      <RouteGlossaryCard currentPath={appRoute.goal3Value} defaultOpen />
+      <RouteGlossaryCard currentPath={appRoute.goal3Value} />
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense, useMemo, useState } from "react";
 
+import { AppFlowShortcuts } from "@/components/app/app-flow-shortcuts";
 import { RouteGlossaryCard } from "@/components/app/round-guides";
 import {
   ArtBannerPanel,
@@ -302,6 +303,11 @@ function BigCarryoverPageContent() {
         }
       />
 
+      <AppFlowShortcuts
+        currentPath={appRoute.bigCarryover}
+        variant="compact"
+      />
+
       <ArtBannerPanel
         badge={<Badge tone="amber">{boardHeroArt.big.accentLabel}</Badge>}
         description={boardHeroArt.big.description}
@@ -309,7 +315,7 @@ function BigCarryoverPageContent() {
         title={boardHeroArt.big.title}
       />
 
-      <RouteGlossaryCard currentPath={appRoute.bigCarryover} defaultOpen />
+      <RouteGlossaryCard currentPath={appRoute.bigCarryover} />
 
       <SectionCard
         title="最初に確認"
