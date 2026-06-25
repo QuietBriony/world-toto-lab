@@ -15,6 +15,8 @@ import {
   worldCupToto1636PhaseDecision,
   worldCupToto1636PurchaseRows,
   worldCupToto1636ResultReview,
+  worldCupToto1637ActualPurchaseSummary,
+  worldCupToto1637CloseMarketSnapshot,
   worldCupToto1637ContextModel,
   worldCupToto1637ExternalMarketOverlay,
   worldCupToto1637FinalLogic,
@@ -121,8 +123,8 @@ describe("world cup toto review plan", () => {
 
     expect(worldCupToto1637NextPlan.purchaseDeadlineLabel).toBe("2026-06-25 19:00 JST");
     expect(worldCupToto1637NextPlan.recommendedPurchaseWindowLabel).toBe("2026-06-25 18:35-18:50 JST");
-    expect(worldCupToto1637NextPlan.totalSalesYen).toBe(322_946_700);
-    expect(worldCupToto1637NextPlan.voteUnits).toBe(3_229_467);
+    expect(worldCupToto1637NextPlan.totalSalesYen).toBe(357_285_900);
+    expect(worldCupToto1637NextPlan.voteUnits).toBe(3_572_859);
     expect(worldCupToto1637NextPlan.coreLineCount).toBe(6_912);
     expect(worldCupToto1637NextPlan.preliminaryUniqueLineCount).toBe(100);
     expect(worldCupToto1637NextPlan.recommendedUnitCount).toBe(100);
@@ -160,7 +162,7 @@ describe("world cup toto review plan", () => {
     expect(worldCupToto1637NextPlan.workflow.map((step) => step.timeLabel)).toContain("2026-06-25 18:33");
     expect(worldCupToto1637Matches.every((match) => match.contextFactors.length > 0)).toBe(true);
     expect(worldCupToto1637Matches.find((match) => match.matchNo === 1)?.recommendedOutcomes).toContain("0");
-    expect(worldCupToto1637Matches.find((match) => match.matchNo === 2)?.votes["1"]).toBeCloseTo(0.654, 4);
+    expect(worldCupToto1637Matches.find((match) => match.matchNo === 2)?.votes["1"]).toBeCloseTo(0.6563, 4);
     expect(worldCupToto1637Matches.find((match) => match.matchNo === 6)?.riskBucket).toBe("semi");
     expect(worldCupToto1637PurchaseRows50).toHaveLength(50);
     expect(worldCupToto1637PurchaseRows).toHaveLength(100);
@@ -212,6 +214,35 @@ describe("world cup toto review plan", () => {
     expect(marketPlans[3]?.choices[2]).toBe("2/0");
   });
 
+  it("stores the 1637 close snapshot and anonymized actual purchase slips", () => {
+    expect(worldCupToto1637CloseMarketSnapshot.salesYen).toBe(357_285_900);
+    expect(worldCupToto1637CloseMarketSnapshot.voteUnits).toBe(3_572_859);
+    expect(worldCupToto1637CloseMarketSnapshot.rows).toHaveLength(13);
+    expect(worldCupToto1637CloseMarketSnapshot.rows.find((row) => row.matchNo === 2)?.delta["2"]).toBeGreaterThan(0.1);
+    expect(worldCupToto1637CloseMarketSnapshot.rows.find((row) => row.matchNo === 5)?.marketProb["0"]).toBeGreaterThan(0.42);
+    expect(worldCupToto1637CloseMarketSnapshot.privacyNote).toContain("reference numbers");
+
+    expect(worldCupToto1637ActualPurchaseSummary.slips.map((slip) => slip.unitCount)).toEqual([144, 162, 64]);
+    expect(worldCupToto1637ActualPurchaseSummary.totalUnitCount).toBe(370);
+    expect(worldCupToto1637ActualPurchaseSummary.totalCostYen).toBe(37_000);
+    expect(worldCupToto1637ActualPurchaseSummary.slips[0]?.choices).toEqual([
+      "2",
+      "1/0",
+      "0/2",
+      "1/0/2",
+      "1/0/2",
+      "2",
+      "1/0",
+      "2",
+      "2",
+      "1",
+      "2",
+      "2",
+      "1/0",
+    ]);
+    expect(worldCupToto1637ActualPurchaseSummary.privacyNote).not.toContain("9203");
+  });
+
   it("keeps Polymarket historical backtests strict about same-timestamp data", () => {
     const auditRows = worldCupTotoPolymarketBacktestAudit.coverageRows;
 
@@ -220,7 +251,7 @@ describe("world cup toto review plan", () => {
     expect(auditRows.find((row) => row.roundNumber === 1634)?.status).toBe("blocked_closed_events");
     expect(auditRows.find((row) => row.roundNumber === 1635)?.verdict).toContain("Poly比較はtoken ID待ち");
     expect(auditRows.find((row) => row.roundNumber === 1636)?.status).toBe("partial_not_strict");
-    expect(auditRows.find((row) => row.roundNumber === 1637)?.status).toBe("forward_ready");
+    expect(auditRows.find((row) => row.roundNumber === 1637)?.status).toBe("strict_ready");
     expect(worldCupTotoPolymarketBacktestAudit.implementationRules[0]).toContain("現在価格や決済価格を混ぜない");
     expect(worldCupTotoPolymarketBacktestAudit.decisionFor1637).toContain("市場補強108口");
   });

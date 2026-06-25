@@ -56,6 +56,8 @@ import {
   worldCupToto1636PhaseDecision,
   worldCupToto1636PurchaseRows,
   worldCupToto1636ResultReview,
+  worldCupToto1637ActualPurchaseSummary,
+  worldCupToto1637CloseMarketSnapshot,
   worldCupToto1637ContextModel,
   worldCupToto1637ExternalMarketOverlay,
   worldCupToto1637FinalLogic,
@@ -651,6 +653,14 @@ function NextWorldCupToto1637Panel({
         row.actionLabel.includes("薄め"),
     )
     .slice(0, 5);
+  const closeSnapshotRows = [...worldCupToto1637CloseMarketSnapshot.rows]
+    .sort((left, right) => {
+      const leftMax = Math.max(...Object.values(left.delta).map((value) => Math.abs(value)));
+      const rightMax = Math.max(...Object.values(right.delta).map((value) => Math.abs(value)));
+
+      return rightMax - leftMax;
+    })
+    .slice(0, 8);
 
   return (
     <SectionCard
@@ -936,6 +946,118 @@ function NextWorldCupToto1637Panel({
           </tbody>
         </table>
       </HorizontalScrollTable>
+
+      <PlainNotice tone="teal" title="1637締切スナップショット">
+        <p>
+          公式は販売終了時点、Polymarketは19:00 JST前後の履歴価格で固定しています。以後の試合開始後価格や結果後価格は、
+          公式vsPoly検証には混ぜません。
+        </p>
+        <div className="mt-3 grid gap-3 md:grid-cols-4">
+          <MiniFact
+            label="公式売上"
+            value={formatCurrency(worldCupToto1637CloseMarketSnapshot.salesYen)}
+            hint={worldCupToto1637CloseMarketSnapshot.officialAsOfLabel}
+          />
+          <MiniFact
+            label="公式投票口数"
+            value={`${worldCupToto1637CloseMarketSnapshot.voteUnits.toLocaleString("ja-JP")}口`}
+            hint="販売終了時点"
+          />
+          <MiniFact
+            label="Poly履歴"
+            value="13/13試合"
+            hint={worldCupToto1637CloseMarketSnapshot.polymarketAsOfLabel}
+          />
+          <MiniFact
+            label="判定"
+            value="108/144/162維持"
+            hint="M01は観察メモ"
+          />
+        </div>
+      </PlainNotice>
+
+      <HorizontalScrollTable className="mt-4 min-w-0" contentClassName="rounded-[22px] border border-sky-200 bg-white/86">
+        <table className="min-w-[980px] text-left text-sm">
+          <thead className="bg-sky-50 text-xs uppercase text-sky-700">
+            <tr>
+              <th className="px-3 py-3">No</th>
+              <th className="px-3 py-3">試合</th>
+              <th className="px-3 py-3">公式 1/0/2</th>
+              <th className="px-3 py-3">Poly 1/0/2</th>
+              <th className="px-3 py-3">最大差分</th>
+              <th className="px-3 py-3">凍結時刻</th>
+            </tr>
+          </thead>
+          <tbody>
+            {closeSnapshotRows.map((row) => {
+              const strongest = (["1", "0", "2"] as const)
+                .map((outcome) => ({ outcome, value: row.delta[outcome] }))
+                .sort((left, right) => Math.abs(right.value) - Math.abs(left.value))[0];
+
+              return (
+                <tr key={row.matchNo} className="border-t border-sky-100">
+                  <td className="px-3 py-3 font-semibold text-slate-950">{row.matchNo}</td>
+                  <td className="px-3 py-3 text-slate-700">{row.matchLabel}</td>
+                  <td className="px-3 py-3 font-mono text-xs text-slate-600">{compactProbabilities(row.officialProb)}</td>
+                  <td className="px-3 py-3 font-mono text-xs text-slate-900">{compactProbabilities(row.marketProb)}</td>
+                  <td className="px-3 py-3 font-semibold text-sky-800">
+                    {outcomeLabel(strongest.outcome)} {formatSignedPercentPoint(strongest.value)}
+                  </td>
+                  <td className="px-3 py-3 font-mono text-xs text-slate-600">{row.asOfUtc.replace("T", " ").replace("Z", " UTC")}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </HorizontalScrollTable>
+
+      <PlainNotice tone="teal" title="実購入ログ（匿名）">
+        <p>
+          検証用に3枚だけ保存しています。照会番号は保存せず、買い目・口数・購入時刻だけで結果照合します。
+          合計は {worldCupToto1637ActualPurchaseSummary.totalUnitCount.toLocaleString("ja-JP")}口 /{" "}
+          {formatCurrency(worldCupToto1637ActualPurchaseSummary.totalCostYen)} です。
+        </p>
+      </PlainNotice>
+
+      <HorizontalScrollTable className="mt-4 min-w-0" contentClassName="rounded-[22px] border border-teal-200 bg-white/86">
+        <table className="min-w-[980px] text-left text-sm">
+          <thead className="bg-teal-50 text-xs uppercase text-teal-700">
+            <tr>
+              <th className="px-3 py-3">シート</th>
+              <th className="px-3 py-3">M01-M04</th>
+              <th className="px-3 py-3">M05-M08</th>
+              <th className="px-3 py-3">M09-M13</th>
+              <th className="px-3 py-3">口数</th>
+              <th className="px-3 py-3">金額</th>
+              <th className="px-3 py-3">メモ</th>
+            </tr>
+          </thead>
+          <tbody>
+            {worldCupToto1637ActualPurchaseSummary.slips.map((slip) => (
+              <tr key={slip.label} className="border-t border-teal-100">
+                <td className="px-3 py-3 font-semibold text-slate-950">
+                  {slip.label}
+                  <p className="mt-1 text-xs font-normal text-slate-500">{slip.purchaseTimeLabel}</p>
+                </td>
+                <td className="px-3 py-3 font-mono text-sm text-slate-900">{slip.choices.slice(0, 4).join(" ")}</td>
+                <td className="px-3 py-3 font-mono text-sm text-slate-900">{slip.choices.slice(4, 8).join(" ")}</td>
+                <td className="px-3 py-3 font-mono text-sm text-slate-900">{slip.choices.slice(8, 13).join(" ")}</td>
+                <td className="px-3 py-3 font-semibold text-slate-900">{slip.unitCount.toLocaleString("ja-JP")}口</td>
+                <td className="px-3 py-3 font-semibold text-slate-900">{formatCurrency(slip.costYen)}</td>
+                <td className="px-3 py-3 text-xs leading-relaxed text-slate-700">{slip.note}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </HorizontalScrollTable>
+
+      <PlainNotice tone="slate" title="W杯後の普通totoへの持ち越し">
+        <p>
+          仕組み自体は通常totoでも使えます。ただし外部市場がない回で公式投票率だけを見ると、公式画面をなぞるだけに近くなります。
+          価値を出すには、Jリーグ向けのブックメーカー確率、順位/日程/怪我/ホームアウェイ、Haziメモなどを別ソースとして足して、
+          公式人気との差分を取る運用にします。
+        </p>
+      </PlainNotice>
 
       <div className="mt-5 grid gap-4 xl:grid-cols-[0.85fr_1.15fr]">
         <HorizontalScrollTable className="min-w-0" contentClassName="rounded-[22px] border border-slate-200 bg-white/82">
