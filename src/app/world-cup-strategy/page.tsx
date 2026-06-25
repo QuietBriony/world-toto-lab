@@ -250,47 +250,48 @@ function SecondPrizeCoveragePanel({ coverage }: { coverage: WorldCupSecondPrizeC
     <div className="rounded-[24px] border border-cyan-200 bg-cyan-50/80 px-5 py-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-800">
-            バラ買い2等保証チェック
-          </p>
-          <h3 className="mt-1 text-lg font-semibold text-slate-950">{coverage.label}</h3>
+          <p className="text-xs font-semibold uppercase text-cyan-800">2等・3等の拾いやすさ</p>
+          <h3 className="mt-1 text-lg font-semibold text-slate-950">
+            {coverage.guaranteedSecondPrize ? "候補内なら2等以上を拾う設計" : coverage.label}
+          </h3>
         </div>
         <Badge tone={coverage.guaranteedSecondPrize ? "positive" : "sky"}>
           {coverage.guaranteedSecondPrize ? "2等保証" : "カバー率"}
         </Badge>
       </div>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <MiniFact
-          label="2等カバー"
+          label="2等以上"
           value={coverage.ready ? formatPercent(coverage.secondPrizeCoverageRate, 1) : "未計算"}
           hint={
             coverage.ready
-              ? `${coverage.secondPrizeCoveredCount}/${coverage.universeCount}通りが距離1以内`
+              ? `候補内で12/13以上を拾える面`
               : coverage.skippedReason ?? "候補不足"
           }
         />
         <MiniFact
-          label="3等圏内"
+          label="3等以上"
           value={coverage.ready ? formatPercent(coverage.thirdPrizeCoverageRate, 1) : "未計算"}
-          hint="距離2以内まで含めた面の広さ"
-        />
-        <MiniFact
-          label="候補宇宙"
-          value={coverage.ready ? `${coverage.universeCount.toLocaleString("ja-JP")}通り` : "未計算"}
-          hint="結果固定/ロック/分散後の探索範囲"
-        />
-        <MiniFact
-          label="最大ズレ"
-          value={coverageDistanceLabel(coverage)}
-          hint="100%なら候補宇宙内で最低2等"
+          hint="候補内で11/13以上まで含めた面"
         />
       </div>
 
       <p className="mt-4 text-sm leading-6 text-cyan-950/85">
-        これは全3^13通りの万能保証ではなく、この画面で宣言した候補宇宙に対するカバー率です。
-        買い目と合わせて、どの面を広げるべきかを感想戦で議論します。
+        全3^13通りの保証ではありません。ここで残した「現実的に買う候補」の中で、1つ外し・2つ外しまでどれくらい拾えるかです。
       </p>
+
+      <details className="mt-3 rounded-[18px] border border-cyan-200 bg-white/70 px-4 py-3">
+        <summary className="cursor-pointer text-sm font-semibold text-cyan-900">計算の細かい内訳</summary>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <MiniFact
+            label="候補宇宙"
+            value={coverage.ready ? `${coverage.universeCount.toLocaleString("ja-JP")}通り` : "未計算"}
+            hint="結果固定/ロック/分散後の探索範囲"
+          />
+          <MiniFact label="最大ズレ" value={coverageDistanceLabel(coverage)} hint="100%なら候補宇宙内で最低2等" />
+        </div>
+      </details>
     </div>
   );
 }
@@ -316,6 +317,40 @@ function PlainNotice({
       <p className="font-semibold">{title}</p>
       <div className="mt-2 text-sm leading-6 opacity-85">{children}</div>
     </div>
+  );
+}
+
+function DetailBlock({
+  children,
+  defaultOpen = false,
+  summary,
+  title,
+}: {
+  children: ReactNode;
+  defaultOpen?: boolean;
+  summary: string;
+  title: string;
+}) {
+  return (
+    <details
+      className="group rounded-[24px] border border-slate-200 bg-white/88 px-5 py-4 shadow-[0_20px_54px_-42px_rgba(15,23,42,0.3)]"
+      open={defaultOpen}
+    >
+      <summary className="cursor-pointer list-none">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase text-slate-500">詳細</p>
+            <h2 className="mt-1 text-lg font-semibold text-slate-950">{title}</h2>
+            <p className="mt-1 text-sm leading-6 text-slate-600">{summary}</p>
+          </div>
+          <Badge tone="slate">
+            <span className="group-open:hidden">開く</span>
+            <span className="hidden group-open:inline">閉じる</span>
+          </Badge>
+        </div>
+      </summary>
+      <div className="mt-5 space-y-6">{children}</div>
+    </details>
   );
 }
 
@@ -1692,16 +1727,17 @@ function CommandCenterPanel({ round }: { round: WorldCupRoundStrategy }) {
 }
 
 function PortfolioAnswerCard({ plan }: { plan: WorldCupPortfolioPlan }) {
+  const usesPartialBudget = plan.unallocatedBudgetYen > 0 && plan.costYen < plan.budgetYen;
+  const title = usesPartialBudget
+    ? `${formatCurrency(plan.costYen)}だけ使う`
+    : `${plan.lineCount}通りを1口ずつ買う`;
+
   return (
     <div className="rounded-[24px] border border-emerald-200 bg-emerald-50/82 px-5 py-4 shadow-[0_20px_54px_-38px_rgba(15,23,42,0.34)]">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
-            {plan.label}の答え
-          </p>
-          <h3 className="mt-1 text-lg font-semibold text-slate-950">
-            {plan.lineCount}通りを1口ずつ買う
-          </h3>
+          <p className="text-xs font-semibold uppercase text-emerald-700">{plan.label}プラン</p>
+          <h3 className="mt-1 text-lg font-semibold text-slate-950">{title}</h3>
         </div>
         <Badge tone={plan.meetsBudget ? "positive" : "warning"}>
           {plan.meetsBudget ? "購入額以上" : "購入額未満"}
@@ -1713,20 +1749,30 @@ function PortfolioAnswerCard({ plan }: { plan: WorldCupPortfolioPlan }) {
         <MiniFact label="1〜3等EV" value={formatCurrency(plan.expectedReturnYen)} hint={`期待損益 ${formatSignedCurrency(plan.expectedProfitYen)}`} />
         <MiniFact label="13試合当たったら" value={formatPayoutRange(plan)} hint="選んだ出目ごとに払戻見込みは変わる" />
         <MiniFact label="払戻圏内" value={formatPercent(plan.cashProbabilityUpperBound, 4)} hint="1等/2等/3等の合計目安" />
-        <MiniFact
-          label="2等カバー"
-          value={plan.secondPrizeCoverage.ready ? formatPercent(plan.secondPrizeCoverage.secondPrizeCoverageRate, 1) : "未計算"}
-          hint={plan.secondPrizeCoverage.guaranteedSecondPrize ? "候補宇宙内2等保証" : "距離1以内の面"}
-        />
-        <MiniFact label="100円が期待値で" value={formatCurrency(plan.expectedReturnYen / plan.lineCount)} hint={`EV ${formatMultiple(plan.evMultiple)} / 1等分 ${formatCurrency(plan.firstPrizeExpectedReturnYen / plan.lineCount)}`} />
       </div>
 
       <p className="mt-4 text-sm leading-6 text-slate-700">{plan.description}</p>
       {plan.unallocatedBudgetYen > 0 ? (
         <p className="mt-2 text-sm leading-6 text-amber-900">
-          プラス期待値候補だけに絞るため、{formatCurrency(plan.unallocatedBudgetYen)}は無理に使いません。
+          プラス期待値候補だけに絞るため、予算の残り{formatCurrency(plan.unallocatedBudgetYen)}は無理に使いません。
         </p>
       ) : null}
+
+      <details className="mt-3 rounded-[18px] border border-emerald-200 bg-white/70 px-4 py-3">
+        <summary className="cursor-pointer text-sm font-semibold text-emerald-900">EVの細かい内訳</summary>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <MiniFact
+            label="2等カバー"
+            value={plan.secondPrizeCoverage.ready ? formatPercent(plan.secondPrizeCoverage.secondPrizeCoverageRate, 1) : "未計算"}
+            hint={plan.secondPrizeCoverage.guaranteedSecondPrize ? "候補宇宙内2等保証" : "距離1以内の面"}
+          />
+          <MiniFact
+            label="100円あたり"
+            value={formatCurrency(plan.expectedReturnYen / plan.lineCount)}
+            hint={`EV ${formatMultiple(plan.evMultiple)} / 1等分 ${formatCurrency(plan.firstPrizeExpectedReturnYen / plan.lineCount)}`}
+          />
+        </div>
+      </details>
     </div>
   );
 }
@@ -2129,16 +2175,11 @@ function RoundStrategyCard({
         </div>
       </div>
 
-      {round.portfolioPlans.length > 0 ? (
-        <div className="grid gap-3 lg:grid-cols-3">
-          {round.portfolioPlans.map((plan) => (
-            <PortfolioAnswerCard key={plan.label} plan={plan} />
-          ))}
-        </div>
-      ) : null}
-
       {round.primaryPortfolioPlan ? (
-        <div className="space-y-3">
+        <DetailBlock
+          title="買い目一覧と2等カバー"
+          summary="ここは検証用です。普段は上の結論だけ見れば十分で、候補一覧や2等カバー率は感想戦で開きます。"
+        >
           <SecondPrizeCoveragePanel coverage={round.primaryPortfolioPlan.secondPrizeCoverage} />
           <div className="flex flex-wrap items-center gap-2">
             <Badge tone={round.windowStatus === "closed" ? "slate" : "positive"}>
@@ -2151,7 +2192,7 @@ function RoundStrategyCard({
             </p>
           </div>
           <TicketsTable rows={round.primaryPortfolioPlan.rows} />
-        </div>
+        </DetailBlock>
       ) : round.positiveEv.ready ? (
         <PlainNotice tone="slate" title="購入額を超える候補なし">
           <p>この前提では、1口100円を期待回収で上回る組み合わせは見つかっていません。</p>
@@ -2261,56 +2302,61 @@ export default function WorldCupStrategyPage() {
         versionedReportHref={versionedReportHref}
       />
 
-      <FirstAnswerPanel round={primaryRound} reportHref={reportHref} />
+      <DetailBlock
+        title="EV詳細・過去回の検証"
+        summary="2等カバー、EV内訳、過去回カード、ロジック説明はここにまとめました。買う前は上の1637導線だけ見れば十分です。"
+      >
+        <FirstAnswerPanel round={primaryRound} reportHref={reportHref} />
 
-      <MarketEvExplainerPanel round={primaryRound} />
+        <MarketEvExplainerPanel round={primaryRound} />
 
-      <LogicWorkbenchPanel round={primaryRound} />
+        <LogicWorkbenchPanel round={primaryRound} />
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          label="W杯回作成"
-          value={`${strategy.createdCount}/4`}
-          hint="保存済みRound数。未作成でも内蔵プリセットで第1634回は試算します。"
-          tone={strategy.createdCount === 4 ? "positive" : "warning"}
-        />
-        <StatCard
-          label="買える回"
-          value={strategy.buyableCount}
-          hint={`${strategy.closedCount}回は販売終了`}
-          tone={strategy.buyableCount > 0 ? "positive" : "default"}
-        />
-        <StatCard
-          label="EV計算可"
-          value={strategy.strictReadyCount}
-          hint="売上・公式投票率・モデル確率が揃った回"
-          tone={strategy.strictReadyCount > 0 ? "positive" : "warning"}
-        />
-        <StatCard
-          label="購入額超え候補"
-          value={formatCount(strategy.positiveEvComboCount)}
-          hint={`保存時点 ${strategy.snapshotLabel}`}
-          tone={strategy.positiveEvComboCount && strategy.positiveEvComboCount > 0 ? "positive" : "warning"}
-        />
-      </section>
-
-      <PlainNotice tone="amber" title="読み方">
-        <p>
-          「期待回収」は平均的に何円戻る見込みかです。実際の利益を保証しません。
-          この画面では、toto13の1口100円に対して、1等・2等・3等の推定払戻を足したEVを表示します。
-          13試合すべて当てる1等分は、内訳として別に出しています。
-        </p>
-      </PlainNotice>
-
-      <div className="space-y-6">
-        {strategy.rounds.map((round) => (
-          <RoundStrategyCard
-            key={round.featured.roundNumber}
-            round={round}
-            showCommandCenter={round.featured.roundNumber !== primaryRound.featured.roundNumber}
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <StatCard
+            label="W杯回作成"
+            value={`${strategy.createdCount}/4`}
+            hint="保存済みRound数。未作成でも内蔵プリセットで第1634回は試算します。"
+            tone={strategy.createdCount === 4 ? "positive" : "warning"}
           />
-        ))}
-      </div>
+          <StatCard
+            label="買える回"
+            value={strategy.buyableCount}
+            hint={`${strategy.closedCount}回は販売終了`}
+            tone={strategy.buyableCount > 0 ? "positive" : "default"}
+          />
+          <StatCard
+            label="EV計算可"
+            value={strategy.strictReadyCount}
+            hint="売上・公式投票率・モデル確率が揃った回"
+            tone={strategy.strictReadyCount > 0 ? "positive" : "warning"}
+          />
+          <StatCard
+            label="購入額超え候補"
+            value={formatCount(strategy.positiveEvComboCount)}
+            hint={`保存時点 ${strategy.snapshotLabel}`}
+            tone={strategy.positiveEvComboCount && strategy.positiveEvComboCount > 0 ? "positive" : "warning"}
+          />
+        </section>
+
+        <PlainNotice tone="amber" title="読み方">
+          <p>
+            「期待回収」は平均的に何円戻る見込みかです。実際の利益を保証しません。
+            この画面では、toto13の1口100円に対して、1等・2等・3等の推定払戻を足したEVを表示します。
+            13試合すべて当てる1等分は、内訳として別に出しています。
+          </p>
+        </PlainNotice>
+
+        <div className="space-y-6">
+          {strategy.rounds.map((round) => (
+            <RoundStrategyCard
+              key={round.featured.roundNumber}
+              round={round}
+              showCommandCenter={round.featured.roundNumber !== primaryRound.featured.roundNumber}
+            />
+          ))}
+        </div>
+      </DetailBlock>
     </div>
   );
 }
