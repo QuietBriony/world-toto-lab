@@ -121,8 +121,8 @@ describe("world cup toto review plan", () => {
 
     expect(worldCupToto1637NextPlan.purchaseDeadlineLabel).toBe("2026-06-25 19:00 JST");
     expect(worldCupToto1637NextPlan.recommendedPurchaseWindowLabel).toBe("2026-06-25 18:35-18:50 JST");
-    expect(worldCupToto1637NextPlan.totalSalesYen).toBe(298_465_800);
-    expect(worldCupToto1637NextPlan.voteUnits).toBe(2_984_658);
+    expect(worldCupToto1637NextPlan.totalSalesYen).toBe(322_946_700);
+    expect(worldCupToto1637NextPlan.voteUnits).toBe(3_229_467);
     expect(worldCupToto1637NextPlan.coreLineCount).toBe(6_912);
     expect(worldCupToto1637NextPlan.preliminaryUniqueLineCount).toBe(100);
     expect(worldCupToto1637NextPlan.recommendedUnitCount).toBe(100);
@@ -157,10 +157,10 @@ describe("world cup toto review plan", () => {
       "draw_ok",
       "rotation_risk",
     ]);
-    expect(worldCupToto1637NextPlan.workflow.map((step) => step.timeLabel)).toContain("2026-06-25 18:27");
+    expect(worldCupToto1637NextPlan.workflow.map((step) => step.timeLabel)).toContain("2026-06-25 18:33");
     expect(worldCupToto1637Matches.every((match) => match.contextFactors.length > 0)).toBe(true);
     expect(worldCupToto1637Matches.find((match) => match.matchNo === 1)?.recommendedOutcomes).toContain("0");
-    expect(worldCupToto1637Matches.find((match) => match.matchNo === 2)?.votes["1"]).toBeCloseTo(0.6578, 4);
+    expect(worldCupToto1637Matches.find((match) => match.matchNo === 2)?.votes["1"]).toBeCloseTo(0.654, 4);
     expect(worldCupToto1637Matches.find((match) => match.matchNo === 6)?.riskBucket).toBe("semi");
     expect(worldCupToto1637PurchaseRows50).toHaveLength(50);
     expect(worldCupToto1637PurchaseRows).toHaveLength(100);
@@ -191,6 +191,7 @@ describe("world cup toto review plan", () => {
     expect(marketRows.find((row) => row.matchNo === 5)?.marketFavoriteOutcome).toBe("0");
     expect(marketRows.find((row) => row.matchNo === 7)?.marketFavoriteOutcome).toBe("0");
     expect(marketRows.find((row) => row.matchNo === 13)?.actionLabel).toContain("0は残す");
+    expect(marketRows.find((row) => row.matchNo === 2)?.deltaSummaryLabel).toContain("厚い 2");
     expect(worldCupToto1637ExternalMarketOverlay.decisionRules.some((rule) => rule.includes("+8pt"))).toBe(true);
     expect(marketPlans.map((plan) => plan.unitCount)).toEqual([27, 54, 108, 144, 162]);
     expect(marketPlans[2]?.choices).toEqual([
@@ -229,12 +230,12 @@ describe("world cup toto review plan", () => {
     expect(worldCupTotoNextPurchaseSheetFileName).toBe("world-cup-toto-latest-purchase-sheet.csv");
     expect(worldCupTotoNextPurchaseSheet50FileName).toBe("world-cup-toto-latest-50-purchase-sheet.csv");
     expect(worldCupTotoNextPurchaseSheet200FileName).toBe("world-cup-toto-latest-200-purchase-sheet.csv");
-    expect(worldCupTotoVersionedReportFileName).toBe("world-cup-toto-1634-1637-evolved-plan-20260625-v19.pdf");
-    expect(worldCupTotoVersionedPurchaseSheet50FileName).toBe("world-cup-toto-1637-visual-5000-plan-20260625-v19.csv");
-    expect(worldCupTotoVersionedPurchaseSheetFileName).toBe("world-cup-toto-1637-visual-10000-plan-20260625-v19.csv");
-    expect(worldCupTotoVersionedPurchaseSheet200FileName).toBe("world-cup-toto-1637-visual-20000-plan-20260625-v19.csv");
-    expect(worldCupTotoReportVersion.label).toBe("2026-06-25 v19");
-    expect(worldCupTotoReportVersion.publishedAtLabel).toBe("2026-06-25 17:40 JST");
+    expect(worldCupTotoVersionedReportFileName).toBe("world-cup-toto-1634-1637-evolved-plan-20260625-v21.pdf");
+    expect(worldCupTotoVersionedPurchaseSheet50FileName).toBe("world-cup-toto-1637-visual-5000-plan-20260625-v21.csv");
+    expect(worldCupTotoVersionedPurchaseSheetFileName).toBe("world-cup-toto-1637-visual-10000-plan-20260625-v21.csv");
+    expect(worldCupTotoVersionedPurchaseSheet200FileName).toBe("world-cup-toto-1637-visual-20000-plan-20260625-v21.csv");
+    expect(worldCupTotoReportVersion.label).toBe("2026-06-25 v21");
+    expect(worldCupTotoReportVersion.publishedAtLabel).toBe("2026-06-25 18:35 JST");
     expect(worldCupTotoReportVersion.pdfSha256).toHaveLength(64);
     expect(worldCupTotoReportVersion.csv50Sha256).toHaveLength(64);
     expect(worldCupTotoReportVersion.csvSha256).toHaveLength(64);
