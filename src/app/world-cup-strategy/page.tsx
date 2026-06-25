@@ -970,8 +970,8 @@ function NextWorldCupToto1637Panel({
           />
           <MiniFact
             label="判定"
-            value="108/144/162維持"
-            hint="M01は観察メモ"
+            value="実購入370口"
+            hint="108/144/162口を匿名保存"
           />
         </div>
       </PlainNotice>
@@ -2229,6 +2229,20 @@ export default function WorldCupStrategyPage() {
       />
 
       <StorageModeNotice isChecking={dataMode.isChecking} mode={dataMode.mode} />
+
+      <PlainNotice tone="teal" title="1637締切/実購入ログ">
+        <p>
+          公式販売終了は {worldCupToto1637CloseMarketSnapshot.officialAsOfLabel}、売上は{" "}
+          {formatCurrency(worldCupToto1637CloseMarketSnapshot.salesYen)} /{" "}
+          {worldCupToto1637CloseMarketSnapshot.voteUnits.toLocaleString("ja-JP")}口です。
+          Polymarketは19:00 JST前後の履歴価格だけを固定し、試合開始後や結果後の価格は検証に混ぜません。
+        </p>
+        <p className="mt-2">
+          実購入は3枚合計 {worldCupToto1637ActualPurchaseSummary.totalUnitCount.toLocaleString("ja-JP")}口 /{" "}
+          {formatCurrency(worldCupToto1637ActualPurchaseSummary.totalCostYen)} を匿名保存済みです。
+          照会番号は保存せず、結果確定後に1等/2等/3等の勝ち目だけ照合します。
+        </p>
+      </PlainNotice>
 
       <OperatingSystemBacktestPanel />
 
