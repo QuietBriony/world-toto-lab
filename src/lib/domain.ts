@@ -893,48 +893,6 @@ export function majorityHumanOutcome(picks: Array<{ pick: Outcome }>): OutcomeVa
   return favoriteOutcome(counts);
 }
 
-export function buildEdgeRows(matches: MatchLike[]): EdgeRow[] {
-  const rows = matches.flatMap((match) =>
-    OUTCOME_VALUES.map((outcome) => {
-      const edge = getEdge(match, outcome);
-      const officialVoteShare = getProbability(match, "official", outcome);
-      const modelProbability = getProbability(match, "model", outcome);
-      const marketProbability = getProbability(match, "market", outcome);
-      const confidenceWeight = 0.7 + (match.confidence ?? 0.5);
-      const humanBonus = humanConsensusOutcomes(match).includes(outcome) ? 0.06 : 0;
-      const contrarianBonus =
-        officialVoteShare !== null &&
-        officialVoteShare < 0.25 &&
-        ((modelProbability ?? 0) >= 0.28 || humanBonus > 0)
-          ? 0.08
-          : 0;
-      const drawBonus =
-        outcome === "0" && (match.consensusD ?? 0) >= 1.5 ? 0.08 : 0;
-      const valueScore =
-        (edge ?? 0) * confidenceWeight + contrarianBonus + drawBonus + humanBonus;
-
-      return {
-        matchNo: match.matchNo,
-        fixture: `${match.homeTeam} 対 ${match.awayTeam}`,
-        outcome,
-        modelProbability,
-        officialVoteShare,
-        marketProbability,
-        edge,
-        humanConsensus: outcomeSupportLabel(match, outcome),
-        confidence: match.confidence,
-        valueScore,
-        include:
-          valueScore >= 0.08 ||
-          (edge ?? Number.NEGATIVE_INFINITY) >= 0.08 ||
-          (outcome === "0" && (match.consensusD ?? 0) >= 1.5),
-      };
-    }),
-  );
-
-  return rows.sort((left, right) => right.valueScore - left.valueScore);
-}
-
 export function buildAdvantageRows(input: {
   matches: Array<MatchLike & { id: string }>;
   picks: Pick[];
