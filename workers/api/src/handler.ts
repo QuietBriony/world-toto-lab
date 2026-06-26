@@ -302,7 +302,9 @@ async function handlePatchRound(
   const patch = (await request.json().catch(() => ({}))) as AnyRecord;
   const current = roundRowToDomain(row);
   const extras = roundExtras(row);
-  const next = { ...current, ...patch, id: roundId, updatedAt: nowIso() };
+  // patch は AnyRecord（動的キー）。spread 後は index signature が落ちるため
+  // title/status の動的アクセスを許すよう明示的に AnyRecord 型にする（実体は不変）。
+  const next: AnyRecord = { ...current, ...patch, id: roundId, updatedAt: nowIso() };
 
   await env.DB.prepare(
     "UPDATE rounds SET title = ?, status = ?, data = ?, updated_at = ? WHERE id = ?",
@@ -377,7 +379,7 @@ async function handleUpsertMatches(
       match_no: matchNo,
       home_team: merged.homeTeam,
       away_team: merged.awayTeam,
-      actual_result: merged.actualResult ?? null,
+      actual_result: (merged as AnyRecord).actualResult ?? null,
     });
   }
 
@@ -783,7 +785,9 @@ async function handleImport(
     issuedAdminToken = tokens.adminToken;
   }
 
-  const round = {
+  // sourceRound は AnyRecord（動的キー）。spread 後は index signature が落ちるため
+  // title/status の動的アクセスを許すよう明示的に AnyRecord 型にする（実体は不変）。
+  const round: AnyRecord = {
     ...sourceRound,
     id: roundId,
     createdAt: (sourceRound.createdAt as string) ?? timestamp,
