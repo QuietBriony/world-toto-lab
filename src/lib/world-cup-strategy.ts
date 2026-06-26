@@ -26,6 +26,7 @@ import {
 } from "@/lib/featured-world-toto";
 import { calculateModelProbabilities } from "@/lib/probability/engine";
 import type { DashboardRoundSummary, Match, RoundEvAssumption, TotoOfficialRoundLibraryMatch } from "@/lib/types";
+import { worldCupMarketSignalByMatchNo } from "@/lib/world-cup-market-signal";
 import {
   worldCupTotoOfficialResult1635Url,
   worldCupTotoOfficialVote1635Url,
@@ -780,9 +781,14 @@ function buildBaseMatch(roundId: string, row: TotoOfficialRoundLibraryMatch, ind
 
 function buildModeledFeaturedMatches(featured: FeaturedRound): Match[] {
   const roundId = `featured-world-toto-${featured.roundNumber}`;
+  // 市場(Polymarket)シグナルがある回（現状 第1637回）はモデル土台に実市場を使う。
+  // 公式票は既存パイプライン（featured source / 確定スナップショット）に委ね、ここでは
+  // 上書きしない（marketProb の通電だけ）。無い回は空 Map ＝従来の強度シードで挙動不変。
+  const marketSignals = worldCupMarketSignalByMatchNo(featured.roundNumber);
 
   return featured.matches.map((row, index) => {
     const base = buildBaseMatch(roundId, row, index);
+    const signal = marketSignals.get(row.officialMatchNo);
     const seed = modelSeed({
       awayTeam: base.awayTeam,
       homeTeam: base.homeTeam,
@@ -790,20 +796,25 @@ function buildModeledFeaturedMatches(featured: FeaturedRound): Match[] {
       officialVote1: base.officialVote1,
       officialVote2: base.officialVote2,
     });
+    // 実市場があれば土台を Polymarket に差し替え（engine が market を base にするので
+    // 公衆過信の本命が自動で割り引かれる）。無ければ従来どおり国別強度シード。
+    const marketProb0 = signal?.marketProb0 ?? seed.marketProb0;
+    const marketProb1 = signal?.marketProb1 ?? seed.marketProb1;
+    const marketProb2 = signal?.marketProb2 ?? seed.marketProb2;
     const estimated = calculateModelProbabilities({
       ...base,
-      marketProb0: seed.marketProb0,
-      marketProb1: seed.marketProb1,
-      marketProb2: seed.marketProb2,
+      marketProb0,
+      marketProb1,
+      marketProb2,
       competitionType: "world_cup",
       dataProfile: "manual_light",
     });
 
     return {
       ...base,
-      marketProb0: seed.marketProb0,
-      marketProb1: seed.marketProb1,
-      marketProb2: seed.marketProb2,
+      marketProb0,
+      marketProb1,
+      marketProb2,
       modelProb0: estimated.modelProb0,
       modelProb1: estimated.modelProb1,
       modelProb2: estimated.modelProb2,
@@ -936,7 +947,15 @@ function probabilityRows(match: MatchLike, bucket: ProbabilityBucket) {
   })).sort((left, right) => (right.probability ?? -1) - (left.probability ?? -1));
 }
 
-function outcomePolicyFor(match: Match): WorldCupOutcomePolicy {
+// 公衆過信ヘッジの閾値。公式人気が本命に集中(>=FLOOR)しているのに、市場ベースのモデルが
+// 同じ本命を公衆より GAP 以上低く見ている＝公衆だけ過信、という gap で発火する。
+// ドイツ戦の教訓（第1637回 M01: 公衆ドイツ73.8% vs Polymarket 64.3% = -9.5pt）を一般化。
+// GAP=0.08 は overlay 自身の公開ルール「p_market - p_public が +8pt 以上で出目を昇格」と整合
+// （絶対 cap でなく gap にすることで、スナップショットのスケールに依存しないデータ堅牢な閾値）。
+const CROWD_OVERCONFIDENCE_OFFICIAL_FLOOR = 0.7;
+const CROWD_OVERCONFIDENCE_GAP = 0.08;
+
+export function outcomePolicyFor(match: Match): WorldCupOutcomePolicy {
   const actualOutcome = enumToOutcome(match.actualResult);
   const modelRows = probabilityRows(match, "model");
   const officialRows = probabilityRows(match, "official");
@@ -1033,6 +1052,41 @@ function outcomePolicyFor(match: Match): WorldCupOutcomePolicy {
       officialFavorite,
       officialFavoriteProbability,
       reason: `公式人気は ${officialFavorite} に ${(officialFavoriteProbability * 100).toFixed(1)}% 集中、モデル本命は ${modelFavorite}。人気側を厚く買わない。`,
+    };
+  }
+
+  // 本命過信ヘッジ: 公式人気は本命に集中(>=70%)だが、市場ベースのモデルは「同じ本命」を
+  // 公衆より GAP(>=8pt) 以上低く見ている＝公衆だけが過信。value_fade は「本命がズレる」専用
+  // なので、ここは「本命は同じだが市場が冷めている」過信ギャップを拾う。単独ロックせず
+  // 分(0)と次点を残す（ドイツ戦: 公衆ドイツ73.8% / 市場64.3% → 0とエクアドルをシートに残す）。
+  if (
+    officialFavorite &&
+    modelFavorite &&
+    officialFavorite === modelFavorite &&
+    isKnownNumber(officialFavoriteProbability) &&
+    officialFavoriteProbability >= CROWD_OVERCONFIDENCE_OFFICIAL_FLOOR &&
+    isKnownNumber(modelFavoriteProbability) &&
+    officialFavoriteProbability - modelFavoriteProbability >= CROWD_OVERCONFIDENCE_GAP
+  ) {
+    const allowed = Array.from(
+      new Set<OutcomeValue>(
+        [modelFavorite, "0", modelRows[1]?.outcome].filter(
+          (outcome): outcome is OutcomeValue => Boolean(outcome),
+        ),
+      ),
+    );
+
+    return {
+      allowedOutcomes: allowed,
+      fixture,
+      kind: "value_fade",
+      label: "本命過信ヘッジ",
+      matchNo: match.matchNo,
+      modelFavorite,
+      modelFavoriteProbability,
+      officialFavorite,
+      officialFavoriteProbability,
+      reason: `公式人気は ${officialFavorite} に ${(officialFavoriteProbability * 100).toFixed(1)}% 集中だが、市場ベースのモデル本命は ${(modelFavoriteProbability * 100).toFixed(1)}% 止まり（-${((officialFavoriteProbability - modelFavoriteProbability) * 100).toFixed(1)}pt）。単独ロックせず分(0)と次点を残す。`,
     };
   }
 

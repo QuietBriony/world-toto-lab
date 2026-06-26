@@ -6,6 +6,7 @@ import {
   calculateWorldCupSecondPrizeCoverage,
   enumeratePositiveEvCombos,
   hammingDistance,
+  outcomePolicyFor,
   resolveFeaturedWorldTotoRoundNumber,
   worldCupEvGlossaryRows,
 } from "@/lib/world-cup-strategy";
@@ -529,5 +530,44 @@ describe("world cup strategy", () => {
     expect(round1637.strictEvReady).toBe(false);
     expect(round1637.strictEvMissingReasons).toContain("売上総額が未確定");
     expect(round1637.strictEvMissingReasons).toContain("公式投票率が不足");
+  });
+
+  it("hedges crowd overconfidence when the market is cooler on the same favorite", () => {
+    // 公式人気は本命(2)に78%集中だが、市場ベースのモデルは同じ本命を58%止まり(-20pt)。
+    // value_fade(人気過剰外し)は「本命がズレる」専用なので拾えない過信ギャップを本命過信ヘッジで拾う。
+    const policy = outcomePolicyFor(
+      buildMatch(1, {
+        modelProb0: 0.24,
+        modelProb1: 0.18,
+        modelProb2: 0.58,
+        officialVote0: 0.12,
+        officialVote1: 0.1,
+        officialVote2: 0.78,
+      }),
+    );
+
+    expect(policy.kind).toBe("value_fade");
+    expect(policy.label).toBe("本命過信ヘッジ");
+    // 単独ロックせず、分(0) と本命(2) を残す。
+    expect(policy.allowedOutcomes).toContain("0");
+    expect(policy.allowedOutcomes).toContain("2");
+    expect(policy.allowedOutcomes).not.toHaveLength(1);
+  });
+
+  it("does not hedge when market and public agree the favorite is strong (gap < 8pt)", () => {
+    // 公式70% / モデル64% = gap 6pt < 8pt。市場も本命を強いと見ているのでヘッジしない。
+    const policy = outcomePolicyFor(
+      buildMatch(1, {
+        modelProb0: 0.2,
+        modelProb1: 0.16,
+        modelProb2: 0.64,
+        officialVote0: 0.15,
+        officialVote1: 0.15,
+        officialVote2: 0.7,
+      }),
+    );
+
+    expect(policy.label).not.toBe("本命過信ヘッジ");
+    expect(policy.kind).toBe("open");
   });
 });
