@@ -1,9 +1,9 @@
 # World Cup Toto Operating System
 
-This document keeps the user instructions, Hazi comments, model logic, and
-postmortem loop in one place. The goal is not to claim profitable betting. The
-goal is to make each assumption visible, testable, and easy to improve after
-results are known.
+This document keeps the user instructions, model logic, external-market
+signals, strong-account watch rules, and postmortem loop in one place. The goal
+is not to claim profitable betting. The goal is to make each assumption visible,
+testable, and easy to improve after results are known.
 
 ## Current State
 
@@ -11,9 +11,9 @@ The stack is usable, but the optimization layer is still early.
 
 - Clean enough: UI, PDF, CSV, official vote shares, sales snapshots, W杯 context,
   1st/2nd/3rd EV, and portfolio rows are connected.
-- Not clean enough yet: Hazi voice memo distillation, external odds, Elo/goal
-  model inputs, and enough historical rounds for statistical weight fitting are
-  not connected.
+- Not clean enough yet: external odds beyond Polymarket, Elo/goal model inputs,
+  strong-account evidence scoring, and enough historical rounds for statistical
+  weight fitting are not connected.
 - The immediate best next step is backtesting: every closed round should replay
   the public favorite, the at-the-time generated sheet, and the current strategy
   under one evaluator.
@@ -28,7 +28,7 @@ The stack is usable, but the optimization layer is still early.
 | W杯 context | Explicitly model neutral venue, country-name bias, group situation, draw-ok incentives, and rotation risk. | Implemented |
 | Prize tiers | Include 1st, 2nd, and 3rd expected return. Track second-prize coverage separately from first-prize hit probability. | Implemented |
 | Backtest loop | Re-score closed rounds using public favorite, past PDFs, and current logic. | Partial |
-| Hazi distillation | Convert voice notes into reason tags, factor weights, and confidence adjustments. | Next |
+| External signal scoring | Convert Polymarket gaps, strong-account clues, and postmortem notes into reason tags, factor weights, and confidence adjustments. | Next |
 
 ## Backtest Contract
 

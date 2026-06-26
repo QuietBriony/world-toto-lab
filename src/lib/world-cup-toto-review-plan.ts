@@ -12,13 +12,13 @@ export const worldCupTotoNextPurchaseSheet200FileName =
   "world-cup-toto-latest-200-purchase-sheet.csv";
 
 export const worldCupTotoVersionedReportFileName =
-  "world-cup-toto-1634-1637-evolved-plan-20260625-v21.pdf";
+  "world-cup-toto-1634-1637-evolved-plan-20260626-v22.pdf";
 export const worldCupTotoVersionedPurchaseSheet50FileName =
-  "world-cup-toto-1637-visual-5000-plan-20260625-v21.csv";
+  "world-cup-toto-1637-visual-5000-plan-20260626-v22.csv";
 export const worldCupTotoVersionedPurchaseSheetFileName =
-  "world-cup-toto-1637-visual-10000-plan-20260625-v21.csv";
+  "world-cup-toto-1637-visual-10000-plan-20260626-v22.csv";
 export const worldCupTotoVersionedPurchaseSheet200FileName =
-  "world-cup-toto-1637-visual-20000-plan-20260625-v21.csv";
+  "world-cup-toto-1637-visual-20000-plan-20260626-v22.csv";
 export const worldCupTotoLegacyReportFileName =
   "world-cup-toto-1634-1636-evolved-plan.pdf";
 export const worldCupTotoLegacyPurchaseSheetFileName =
@@ -28,7 +28,7 @@ export const worldCupTotoReportVersion = {
   csv200Sha256: "15915090b59d90fbada7be30b4d071c5bf44d4d65c4cfdd3f4812da7a8a898d4",
   csv50Sha256: "312e99aafbde9489e53b95eb35203e2db9e2809df18c201a0be98334b5eb7295",
   csvSha256: "fc03005ea940a7b702e0b90af4314f1bf84b9ba5b69616a51738bdd0892670f8",
-  label: "2026-06-25 v21",
+  label: "2026-06-26 v22",
   latest200CsvFileName: worldCupTotoNextPurchaseSheet200FileName,
   latestCsvFileName: worldCupTotoNextPurchaseSheetFileName,
   latest50CsvFileName: worldCupTotoNextPurchaseSheet50FileName,
@@ -36,8 +36,8 @@ export const worldCupTotoReportVersion = {
   latestPdfFileName: worldCupTotoLatestReportFileName,
   legacyCsvFileName: worldCupTotoLegacyPurchaseSheetFileName,
   legacyPdfFileName: worldCupTotoLegacyReportFileName,
-  pdfSha256: "f681052039f0bf851c628d6cac69741be5d50ca60a21245111412b49e510930a",
-  publishedAtLabel: "2026-06-25 18:35 JST",
+  pdfSha256: "428fe386b087d2cb7bdc70dd149ef251a8d0cf870c8e854186692aeda48d4021",
+  publishedAtLabel: "2026-06-26 12:31 JST",
   versioned200CsvFileName: worldCupTotoVersionedPurchaseSheet200FileName,
   versionedCsvFileName: worldCupTotoVersionedPurchaseSheetFileName,
   versioned50CsvFileName: worldCupTotoVersionedPurchaseSheet50FileName,
@@ -944,7 +944,7 @@ export const worldCupTotoPhaseHeuristics: WorldCupTotoPhaseHeuristic[] = [
 export const worldCupToto1636PhaseDecision = {
   label: "1636は第2戦寄りとして扱う",
   summary:
-    "Haziの読みを採用して、1636は大荒れ前提へ寄せすぎない。ただしCape Verde型の反省として、事前ドロー確率20%以上は強人気でも買い目候補に残す。",
+    "W杯フェーズ仮説として、1636は大荒れ前提へ寄せすぎない。ただしCape Verde型の反省として、事前ドロー確率20%以上は強人気でも買い目候補に残す。",
 };
 
 function normalizeVoteShares(values: number[]) {
@@ -1480,11 +1480,12 @@ export const worldCupToto1637ExternalMarketOverlay: Toto1637ExternalMarketOverla
       weakestNegativeDeltaOutcome,
     };
   }),
-  dataStatusLabel: "Polymarket close-aligned 1X2 history 13/13 refreshed on 2026-06-25; Hazi comment not included",
+  dataStatusLabel: "Polymarket close-aligned 1X2 history 13/13 refreshed on 2026-06-25; Hazi input disabled; strong-account watch is advisory",
   decisionRules: [
     "p_market - p_public が +8pt 以上なら、公式で薄い出目でも昇格候補にする。",
     "公式人気の本命が p_market で -12pt 以上なら、単独ロックを解除する。",
     "p_market のドローが20%以上なら、締切版で0を残す候補に戻す。",
+    "強アカWatchはPolymarket価格を上書きしない。同一試合で人気国No/ドロー/弱者側に大口痕跡がある時だけ、ロック解除やヘッジ維持の補助に使う。",
     "1636反省として、公式70%超の本命でも p_market ドローが20%前後なら144口以上の反省版で0を足す。",
     "200口以内では M05/M07/M04、日本戦M02、M13ドロー、M03反省ドローを優先し、M01は市場Germany62%未満かDraw20%以上の時だけ広げる。",
   ],
@@ -1538,7 +1539,7 @@ export const worldCupToto1637CloseMarketSnapshot: Toto1637CloseMarketSnapshot = 
     "User purchase reference numbers and account-specific fields are intentionally excluded. Only round, choices, unit counts, and costs are retained for model review.",
   salesYen: 357_285_900,
   summary:
-    "The close-aligned Polymarket read keeps the v21 direction: M05/M07 draw remain valuable, M02 Japan public bias remains visible, M13 draw stays in, and M01 Ecuador becomes a watch signal but not a core add.",
+    "The close-aligned Polymarket read keeps the v22 direction: M05/M07 draw remain valuable, M02 Japan public bias remains visible, M13 draw stays in, and M01 Ecuador becomes a watch signal but not a core add.",
   voteUnits: 3_572_859,
   rows: [
     {
@@ -1800,7 +1801,7 @@ export const worldCupToto1637FinalLogic: Toto1637FinalLogic = {
   ],
   selectedPlanLabel: "市場補強108口",
   summary:
-    "公式投票率は日本の購入人気、Polymarketは実勝率寄りの市場価格、W杯文脈は第3戦の条件補正として分ける。6/25締切確定値でも基本候補は市場補強108口=10,800円。1636反省を強める場合だけ144口=14,400円へ上げる。",
+    "公式投票率は日本の購入人気、Polymarketは実勝率寄りの市場価格、強アカWatchは価格を上書きしない補助線、W杯文脈は第3戦の条件補正として分ける。6/25締切確定値でも基本候補は市場補強108口=10,800円。1636反省を強める場合だけ144口=14,400円へ上げる。",
 };
 
 export const worldCupToto1637NextPlan = {

@@ -5,8 +5,11 @@ import {
   buildPolymarketLeaderboardRequest,
   buildPolymarketTraderSnapshotRequests,
   createBlunttedgeSeedSignal,
+  createPolymarketSeedTraderSignals,
+  findPolymarketStrongAccountCandidate,
   normalizePolymarketTraderSnapshot,
   POLYMARKET_DATA_API_BASE,
+  POLYMARKET_STRONG_ACCOUNT_CANDIDATES,
 } from "@/lib/market-sources/polymarket";
 
 const ADDRESS = BLUNTTEDGE_WATCH_CANDIDATE.address;
@@ -96,5 +99,28 @@ describe("polymarket trader signals", () => {
     expect(seed.predictionCount).toBe(3);
     expect(seed.biggestWin).toBe(4_100_000);
     expect(seed.notes).toContain("Japan vs Sweden");
+  });
+
+  it("keeps a curated read-only strong-account watch list", () => {
+    expect(POLYMARKET_STRONG_ACCOUNT_CANDIDATES.length).toBeGreaterThanOrEqual(8);
+    expect(
+      POLYMARKET_STRONG_ACCOUNT_CANDIDATES.some(
+        (candidate) => candidate.role === "sharp_cluster" && candidate.displayName === "mintblade",
+      ),
+    ).toBe(true);
+    expect(
+      POLYMARKET_STRONG_ACCOUNT_CANDIDATES.some(
+        (candidate) => candidate.role === "contrarian_sharp" && candidate.displayName === "fishalive",
+      ),
+    ).toBe(true);
+    expect(findPolymarketStrongAccountCandidate(ADDRESS)?.displayName).toBe("blunttedge");
+  });
+
+  it("creates one seed signal per strong-account candidate", () => {
+    const seeds = createPolymarketSeedTraderSignals("2026-06-26T00:00:00.000Z");
+    expect(seeds).toHaveLength(POLYMARKET_STRONG_ACCOUNT_CANDIDATES.length);
+    expect(new Set(seeds.map((seed) => seed.address)).size).toBe(seeds.length);
+    expect(seeds.every((seed) => seed.source === "polymarket")).toBe(true);
+    expect(seeds.every((seed) => seed.notes?.includes("Toto use:"))).toBe(true);
   });
 });

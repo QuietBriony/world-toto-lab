@@ -448,12 +448,12 @@ function OperatingSystemBacktestPanel() {
   return (
     <SectionCard
       title="指示の棚卸しとバックテスト"
-      description="これまでの要望を、運用原則、実装状態、過去回検証に分けました。次はこの表を見ながら、Haziの感想戦を重みに変えます。"
+      description="これまでの要望を、運用原則、実装状態、過去回検証に分けました。現行運用はHazi入力なしで、公式人気・Polymarket・強アカWatch・W杯文脈を見ます。"
       actions={
         <div className="flex flex-wrap gap-2">
           <Badge tone="teal">logic system</Badge>
           <Badge tone="amber">backtest</Badge>
-          <Badge tone="slate">Hazi loop</Badge>
+          <Badge tone="slate">no Hazi input</Badge>
         </div>
       }
     >
@@ -902,7 +902,7 @@ function NextWorldCupToto1637Panel({
           />
         </div>
         <p className="mt-3 text-sm leading-6 text-slate-700">
-          Haziコメントなしの前提では、人間メモ重みは0にして、公式投票率、Polymarket価格、W杯コンテキストだけで見る。
+          Hazi入力は使わず、人間メモ重みは0にする。公式投票率、Polymarket価格、強アカWatch、W杯コンテキストだけで見る。
           締切直前も同じ差分なら、通常の1万円級より市場補強108口を優先候補にする。
         </p>
       </PlainNotice>
@@ -1090,7 +1090,7 @@ function NextWorldCupToto1637Panel({
       <PlainNotice tone="slate" title="W杯後の普通totoへの持ち越し">
         <p>
           仕組み自体は通常totoでも使えます。ただし外部市場がない回で公式投票率だけを見ると、公式画面をなぞるだけに近くなります。
-          価値を出すには、Jリーグ向けのブックメーカー確率、順位/日程/怪我/ホームアウェイ、Haziメモなどを別ソースとして足して、
+          価値を出すには、Jリーグ向けのブックメーカー確率、順位/日程/怪我/ホームアウェイ、Research Memoなどを別ソースとして足して、
           公式人気との差分を取る運用にします。
         </p>
       </PlainNotice>
@@ -1304,7 +1304,7 @@ function LatestWorldCupTotoPanel({
         />
       </div>
 
-      <PlainNotice tone="teal" title="Haziロジック: W杯の何戦目かで荒れ方を見る">
+      <PlainNotice tone="teal" title="W杯フェーズ仮説: 何戦目かで荒れ方を見る">
         <p>
           {worldCupToto1636PhaseDecision.summary}
           これは買い目を変える絶対ルールではなく、強人気を固定するか、ドローや逆側を残すかを決めるための補助線です。
@@ -1694,7 +1694,7 @@ function CommandCenterPanel({ round }: { round: WorldCupRoundStrategy }) {
           <p className="text-lg font-semibold text-slate-950">{round.recommendedActionLabel}</p>
           {!memoHref ? (
             <p className="mt-2 text-sm leading-6">
-              Round作成後、ここからボイスメモ文字起こしを貼って、Haziロジックの材料にできます。
+              Round作成後、ここからResearch Memoを貼って、外部市場・強アカWatchでは拾えない材料を残せます。
             </p>
           ) : null}
           <div className="mt-3 flex flex-wrap gap-2">
@@ -2261,8 +2261,8 @@ export default function WorldCupStrategyPage() {
             <Link href={appRoute.dashboard} className={cx(secondaryButtonClassName, "justify-center")}>
               ダッシュボードへ
             </Link>
-            <Link href={appRoute.hazi} className={cx(secondaryButtonClassName, "justify-center")}>
-              Haziレビュー
+            <Link href={appRoute.marketSources} className={cx(secondaryButtonClassName, "justify-center")}>
+              市場ソース
             </Link>
             <a href={reportHref} className={cx(buttonClassName, "justify-center")}>
               PDF

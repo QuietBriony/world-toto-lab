@@ -17,10 +17,10 @@ from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer, 
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PDF_NAME = "world-cup-toto-1634-1637-evolved-plan-20260625-v21.pdf"
-CSV_50_NAME = "world-cup-toto-1637-visual-5000-plan-20260625-v21.csv"
-CSV_NAME = "world-cup-toto-1637-visual-10000-plan-20260625-v21.csv"
-CSV_200_NAME = "world-cup-toto-1637-visual-20000-plan-20260625-v21.csv"
+PDF_NAME = "world-cup-toto-1634-1637-evolved-plan-20260626-v22.pdf"
+CSV_50_NAME = "world-cup-toto-1637-visual-5000-plan-20260626-v22.csv"
+CSV_NAME = "world-cup-toto-1637-visual-10000-plan-20260626-v22.csv"
+CSV_200_NAME = "world-cup-toto-1637-visual-20000-plan-20260626-v22.csv"
 PDF_ALIASES = (
     PDF_NAME,
     "world-cup-toto-latest.pdf",
@@ -843,7 +843,7 @@ def ev_glossary_table() -> Table:
     rows = [
         ["用語", "ざっくり意味", "式/読み方"],
         ["EV", "平均でいくら戻る見込みか。利益保証ではない。", "EV倍率 = 期待回収額 / 購入額"],
-        ["p_model", "モデルが見た実際の当たりやすさ。", "予測市場、オッズ、Elo、得点モデル、Hazi補正で作る"],
+        ["p_model", "モデルが見た実際の当たりやすさ。", "予測市場、オッズ、Elo、得点モデル、強アカWatchで作る"],
         ["p_public", "公式投票率から見た混み具合。", "同じ出目に人が多いほど払戻が薄くなる"],
         ["予測市場EV", "当たりそうなのに人が少ない出目を拾う見方。", "p_model x 推定払戻"],
         ["期待損益", "期待回収から購入額を引いたもの。", "プラスなら理論上は購入額超え"],
@@ -1000,7 +1000,7 @@ def budget_plan_summary_1637() -> Table:
         ["200口以内プラン", f"{len(PURCHASE_ROWS_1637_200)}通り / {sum(int(row['units']) for row in PURCHASE_ROWS_1637_200)}口 / {yen(len(PURCHASE_ROWS_1637_200) * STAKE_YEN)}。広めに拾うプラン。CSVで全200行を確認する。"],
         ["入力順", "PDFのM01-M13対応表を見て、公式の普通購入画面で試合No.順に1/0/2を押す。CSVは各試合列に「2: ドイツ勝ち」のようなラベルも出す。"],
         ["読み方", "1=ホーム勝ち、0=引き分け、2=アウェイ勝ち。signature はM01からM13までの数字をつなげた確認用。"],
-        ["CSV", "latest-50/100/200-purchase-sheet は検算用に残す。latest-purchase-sheet は100口版の別名。v21ではPDFのマルチ表を主導線にする。"],
+        ["CSV", "latest-50/100/200-purchase-sheet は検算用に残す。latest-purchase-sheet は100口版の別名。v22ではPDFのマルチ表を主導線にする。"],
         ["注意", "CSV/PDFは転記用メモ。購入、決済、自動投票は対象外。締切直前の再計算後に人が公式画面で確認して入力する。"],
     ]
     result = table(rows, [34 * mm, 134 * mm])
@@ -1097,7 +1097,7 @@ def visual_purchase_preview_table_1637(
 
 def external_market_source_table() -> Table:
     rows = [
-        ["ソース", "使い方", "v21での扱い"],
+        ["ソース", "使い方", "v22での扱い"],
         ["公式投票率", "p_public。toto参加者の偏りを見る。", "現行の主ソース。締切直前に再取得。"],
         ["Polymarket", "Sports APIのW杯1X2価格を外部p_model候補にする。", "1637の13試合を公開APIで照合済み。強アカウントより市場価格を優先。"],
         ["Kalshi", "公開market data/orderbookがあれば二値市場の補助確率にする。", "サッカー該当市場がある時だけ採用。"],
@@ -1218,7 +1218,7 @@ def final_lock_trigger_table_1637() -> Table:
 
 def final_logic_table_1637() -> Table:
     rows = [
-        ["論点", "v21での読み"],
+        ["論点", "v22での読み"],
         ["公式投票率", "日本のtoto購入者の人気。勝率ではなく、払戻が薄くなる混み具合として読む。"],
         ["バックテスト", "1634は公式人気順が9ズレ、1635は2ズレで3等相当。1636は強人気ドローを外して3等止まり。"],
         ["外部市場", "18:22公式と18:31 PolymarketではM05/M07のドロー、M02の日本人気、M13のドローを重視。M01全分散は下げる。"],
@@ -1260,9 +1260,9 @@ def source_blend_table() -> Table:
     rows = [
         ["入力", "重みの目安", "理由"],
         ["公式投票率", "35%", "toto内の混み具合。配当側の歪みを読むため必須。"],
-        ["Polymarket/ブック/取引所", "45%", "実勝率の近似。Haziコメントなしの今回は外部市場を厚めに見る。"],
+        ["Polymarket/ブック/取引所", "50%", "実勝率の近似。Hazi入力なしの今回は外部市場を厚めに見る。"],
         ["W杯コンテキスト", "20%", "中立地、国名人気、勝点条件、引き分けOK、温存を反映。"],
-        ["Hazi/人間メモ", "0%", "今回は無し。コメントがある時だけ最大10%を市場重みから移す。"],
+        ["強アカWatch", "補助", "価格は上書きしない。人気国No、ドロー、弱者側の大口痕跡がある時だけロック解除やヘッジ維持に使う。"],
     ]
     return table(rows, [38 * mm, 28 * mm, 102 * mm])
 
@@ -1309,13 +1309,13 @@ def build_pdf() -> Path:
         leftMargin=12 * mm,
         topMargin=12 * mm,
         bottomMargin=10 * mm,
-        title="W杯toto 1634-1637 EV改善メモ v21",
+        title="W杯toto 1634-1637 EV改善メモ v22",
     )
 
     story = [
-        p("W杯toto 1634-1637 EV改善メモ v21", "title"),
+        p("W杯toto 1634-1637 EV改善メモ v22", "title"),
         p("目的はシンプルです。1口いくらか、当たったらどれくらい戻るか、10口や1万円ならどの出目をどう置くか、そしてランダムよりEVが上がっているのかを見ます。"),
-        p(f"1637の公式投票率は {SNAPSHOT_1637_VOTE_LABEL}、売上は {SNAPSHOT_1637_SALES_LABEL} 時点。現在売上は {yen(TOTAL_SALES_1637_YEN)}、投票数は {VOTE_UNITS_1637:,}口。latest PDFはこのv21へ差し替えます。", "small"),
+        p(f"1637の公式投票率は {SNAPSHOT_1637_VOTE_LABEL}、売上は {SNAPSHOT_1637_SALES_LABEL} 時点。現在売上は {yen(TOTAL_SALES_1637_YEN)}、投票数は {VOTE_UNITS_1637:,}口。latest PDFはこのv22へ差し替えます。", "small"),
         p("公式投票率は勝率そのものではなく、日本のtoto購入者の人気です。払戻の薄さを見るp_publicとして使い、勝率寄りのp_modelはPolymarketなどの外部市場とW杯文脈で補います。", "small"),
         summary_table(),
         Spacer(1, 4 * mm),
@@ -1328,7 +1328,7 @@ def build_pdf() -> Path:
         ev_glossary_table(),
         Spacer(1, 4 * mm),
         p("総当たりEVより上がったか", "h2"),
-        p("結論: proxy上は上がっています。v21ではPolymarketの試合別1X2を再取得し、6/25 18:22公式投票率と比較しています。ただし、ブックメーカー複数社のvig除去やBetfair板はまだ未接続なので、真EVではなく外部市場proxyとして扱います。"),
+        p("結論: proxy上は上がっています。v22ではPolymarketの試合別1X2を再取得し、6/25 18:22公式投票率と比較しています。ただし、ブックメーカー複数社のvig除去やBetfair板はまだ未接続なので、真EVではなく外部市場proxyとして扱います。"),
         market_ev_table(),
         Spacer(1, 5 * mm),
         p("1637の最適戦略", "title"),
@@ -1339,7 +1339,7 @@ def build_pdf() -> Path:
         operation_1637_table(),
         Spacer(1, 4 * mm),
         p("出目を残すルール", "h2"),
-        p(f"公式人気順だけなら {FAVORITE_1637}。ただし第3戦は中立地、国名人気、勝点条件、温存、引き分けOKで人気順からズレる余地があります。v21ではこの補正とPolymarket差分をマルチ選択の残し方に入れています。"),
+        p(f"公式人気順だけなら {FAVORITE_1637}。ただし第3戦は中立地、国名人気、勝点条件、温存、引き分けOKで人気順からズレる余地があります。v22ではこの補正とPolymarket差分をマルチ選択の残し方に入れています。"),
         policy_table_1637(),
         Spacer(1, 4 * mm),
         p("マルチ指定の合計口数", "h2"),
@@ -1355,7 +1355,7 @@ def build_pdf() -> Path:
         multi_plan_matrix_table_1637(),
         PageBreak(),
         p("外部市場を入れると何が変わるか", "title"),
-        p("Haziコメントは無しとして、人間メモ重みは0にします。ここではPolymarketの公開Sports APIから取得できたW杯1X2価格をp_marketとして、toto公式投票率p_publicとの差を見ます。価格はSports APIの1X2価格を3出目合計100%へ正規化したものです。取得は2026-06-25 18:31 JST相当です。"),
+        p("Hazi入力は使わず、人間メモ重みは0にします。ここではPolymarketの公開Sports APIから取得できたW杯1X2価格をp_marketとして、toto公式投票率p_publicとの差を見ます。価格はSports APIの1X2価格を3出目合計100%へ正規化したものです。取得は2026-06-25 18:31 JST相当です。"),
         polymarket_overlay_table_1637(),
         Spacer(1, 4 * mm),
         p("最終選択へ折り込むルール", "h2"),
@@ -1371,7 +1371,7 @@ def build_pdf() -> Path:
         market_adjusted_plan_matrix_table_1637(),
         PageBreak(),
         p("外部市場で推奨を補強する", "title"),
-        p("強アカウントを丸ごとコピーするより、公開市場価格、板の厚み、出来高、ブックメーカーの1X2確率をp_modelへ混ぜる方が再現性があります。今回の1637ではPolymarketの試合別1X2が取れたので、外部市場サンプルとして使っています。特定アカウントは、履歴が取れる場合だけ補助シグナルにします。"),
+        p("強アカウントを丸ごとコピーするより、公開市場価格、板の厚み、出来高、ブックメーカーの1X2確率をp_modelへ混ぜる方が再現性があります。今回の1637ではPolymarketの試合別1X2が取れたので、外部市場サンプルとして使っています。強アカWatchは、履歴が取れる場合だけ人気国No・ドロー・弱者側を残す補助シグナルにします。"),
         external_market_source_table(),
         Spacer(1, 4 * mm),
         p("Poly同時刻バックテスト監査", "h2"),
@@ -1409,7 +1409,7 @@ def build_pdf() -> Path:
         p("1634で人気出目とズレた試合", "h2"),
         mismatch_table(MATCHES_1634, "1634試合"),
         Spacer(1, 4 * mm),
-        p(f"1635実結果は {ACTUAL_1635}。公式人気順 {FAVORITE_1635} は2試合ズレで3等相当。第2戦寄りは順当が増える、というHaziコメントと整合します。"),
+        p(f"1635実結果は {ACTUAL_1635}。公式人気順 {FAVORITE_1635} は2試合ズレで3等相当。第2戦寄りは順当が増える、というフェーズ仮説と整合します。"),
         mismatch_table(MATCHES_1635, "1635試合"),
         PageBreak(),
         p("1636の買い方", "title"),
@@ -1423,7 +1423,7 @@ def build_pdf() -> Path:
         policy_table(),
         PageBreak(),
         p("1636旧シート先頭", "title"),
-        p("1636では上位を厚くする案も試しましたが、v21の1637方針ではCSV行詳細よりマルチ選択表で口数と金額を確認します。"),
+        p("1636では上位を厚くする案も試しましたが、v22の1637方針ではCSV行詳細よりマルチ選択表で口数と金額を確認します。"),
         hot_table(),
         Spacer(1, 4 * mm),
         p("なるべく自動で買う方法", "h2"),

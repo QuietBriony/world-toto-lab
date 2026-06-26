@@ -112,7 +112,7 @@ export const worldCupTotoInstructionSystem = [
     implementationStatus: "implemented",
     label: "p_model と p_public を分ける",
     operatingRule: "当たりやすさはモデル側、払戻の薄さは公式投票側として分け、同じ出目に人が多いほど払戻が薄くなる前提でEVを見る。",
-    source: "ユーザー/Hazi要望: totoはみんなとズラすゲーム",
+    source: "ユーザー要望: totoはみんなとズラすゲーム",
     userNeed: "当てに行くだけでなく、人気過剰を避けたい。",
   },
   {
@@ -120,7 +120,7 @@ export const worldCupTotoInstructionSystem = [
     implementationStatus: "implemented",
     label: "W杯補正",
     operatingRule: "中立地、国名人気、グループ状況、引き分けOK、主力温存を試合別に持ち、proxy確率と買い目ランキングに反映する。",
-    source: "Haziコメントとユーザー確認",
+    source: "ユーザー確認: W杯フェーズ/条件戦の補正",
     userNeed: "第1戦/第2戦/第3戦の荒れ方をロジックに入れたい。",
   },
   {
@@ -140,12 +140,12 @@ export const worldCupTotoInstructionSystem = [
     userNeed: "ロジックを磨いたら過去回で即検証したい。",
   },
   {
-    id: "hazi_distillation",
+    id: "strong_account_weighting",
     implementationStatus: "next",
-    label: "Hazi感想戦の蒸留",
-    operatingRule: "ボイスメモを、試合タグ、外した理由、次回補正、信頼度に分解して次回の重みに入れる。",
-    source: "ユーザー要望: ボイスメモ抽出元として",
-    userNeed: "友人の肌感を、あとから学習可能な形で残したい。",
+    label: "強アカ/外部市場の重み検証",
+    operatingRule: "強アカWatchを価格上書きではなく、ロック解除・ドロー維持・人気国Noの補助線としてタグ化し、結果後に重みを検証する。",
+    source: "ユーザー要望: Hazi入力なしで外部市場を厚く見る",
+    userNeed: "その時点で勝率の高いアカウントがいれば、Polymarket指標へ補助的に織り込みたい。",
   },
 ] satisfies WorldCupTotoInstructionRow[];
 
@@ -461,7 +461,7 @@ export const worldCupTotoBacktestSummary = {
   knownResultRoundCount: worldCupTotoBacktestRounds.length,
   lessons: [
     "1634は公開人気順が9試合ズレ。強豪ドローと低人気ドローを拾えず、W杯第1戦の荒れ方を過小評価した。",
-    "1635は公開人気順が2試合ズレで3等相当。第2戦寄りは順当が増えやすい、というHaziコメントと整合する。",
+    "1635は公開人気順が2試合ズレで3等相当。第2戦寄りは順当が増えやすい、というフェーズ仮説と整合する。",
     "最適化は、的中率だけでなく、公開票とズラした時の払戻、2/3等カバー、予算内の面の広さを同時に評価する必要がある。",
   ],
   nextOptimizationSteps: [

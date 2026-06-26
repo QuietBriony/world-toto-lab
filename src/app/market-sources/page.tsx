@@ -25,16 +25,18 @@ import {
   BLUNTTEDGE_WATCH_CANDIDATE,
   calculateModelProbabilitiesWithUpstream,
   computeUpstreamTeamPriorAdjustments,
-  createBlunttedgeSeedSignal,
+  createPolymarketSeedTraderSignals,
   createMarketNodeFromHyperliquidUrl,
   deleteMarketNode,
   deleteTraderSignal,
+  findPolymarketStrongAccountCandidate,
   fetchHyperliquidL2Book,
   fetchPolymarketTraderSnapshot,
   listTraderMarketSignals,
   listMarketNodes,
   listTraderSignals,
   marketNodeWarnings,
+  POLYMARKET_STRONG_ACCOUNT_CANDIDATES,
   previewHyperliquidUrl,
   saveMarketNode,
   saveTraderMarketSignal,
@@ -116,6 +118,21 @@ function signalDirectionLabel(signal: TraderMarketSignal): string {
   return "方向未確定";
 }
 
+function traderRoleTone(
+  role: NonNullable<ReturnType<typeof findPolymarketStrongAccountCandidate>>["role"],
+) {
+  if (role === "sharp_cluster") {
+    return "teal" as const;
+  }
+  if (role === "contrarian_sharp") {
+    return "amber" as const;
+  }
+  if (role === "whale_liquidity") {
+    return "sky" as const;
+  }
+  return "slate" as const;
+}
+
 function TraderSignalCard({
   busy,
   marketSignals,
@@ -129,6 +146,10 @@ function TraderSignalCard({
   onRefresh: (address: string) => void;
   signal: TraderSignal;
 }) {
+  const candidate = useMemo(
+    () => findPolymarketStrongAccountCandidate(signal.address),
+    [signal.address],
+  );
   const warnings = useMemo(
     () => traderSignalWarnings(signal, marketSignals),
     [marketSignals, signal],
@@ -148,6 +169,9 @@ function TraderSignalCard({
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <Badge tone="teal">強アカWatch</Badge>
+            {candidate ? (
+              <Badge tone={traderRoleTone(candidate.role)}>{candidate.roleLabel}</Badge>
+            ) : null}
             <Badge tone={confidenceTone(signal.dataConfidence)}>
               confidence {signal.dataConfidence}
             </Badge>
@@ -190,6 +214,12 @@ function TraderSignalCard({
       {signal.notes ? (
         <p className="mt-3 rounded-2xl border border-emerald-100 bg-emerald-50/80 px-3 py-2 text-sm leading-6 text-emerald-950">
           {signal.notes}
+        </p>
+      ) : null}
+
+      {candidate ? (
+        <p className="mt-2 rounded-2xl border border-sky-100 bg-sky-50/80 px-3 py-2 text-sm leading-6 text-sky-950">
+          Toto反映: {candidate.useInToto}
         </p>
       ) : null}
 
@@ -440,9 +470,9 @@ function MarketSourcesPageContent() {
   );
 
   const handleSeedStrongAccount = useCallback(() => {
-    const saved = saveTraderSignal(createBlunttedgeSeedSignal());
+    const saved = createPolymarketSeedTraderSignals().map((signal) => saveTraderSignal(signal));
     reloadTraderSignals();
-    setTraderMessage(`強アカ候補を追加しました: ${saved.displayName ?? shortAddress(saved.address)}`);
+    setTraderMessage(`強アカ候補を追加しました: ${saved.length}件`);
   }, [reloadTraderSignals]);
 
   const handleFetchTraderSignal = useCallback(
@@ -646,7 +676,7 @@ function MarketSourcesPageContent() {
 
       <SectionCard
         title="強アカWatch"
-        description="Polymarketの公開Data APIから、強いトレーダー候補の順位、PnL、直近の市場フットプリントを読むだけの観測欄です。買い目へ直接コピーせず、公式人気とのズレを議論する材料にします。"
+        description="Polymarketの公開Data APIから、強いトレーダー候補の順位、PnL、直近の市場フットプリントを読むだけの観測欄です。Hazi入力は使わず、公式人気・Polymarket価格・強アカのズレだけを補助シグナルにします。"
         actions={
           <div className="flex flex-wrap gap-2">
             <Badge tone="teal">read-only</Badge>
@@ -677,14 +707,22 @@ function MarketSourcesPageContent() {
               onClick={handleSeedStrongAccount}
               className={secondaryButtonClassName}
             >
-              Blunttedge候補を置く
+              強アカ候補をまとめて置く
             </button>
           </div>
 
           <p className="text-sm leading-6 text-slate-600">
-            初期候補はスクショ照合で最有力の {BLUNTTEDGE_WATCH_CANDIDATE.displayName}
-            です。Japan vs Sweden の日本勝ちNoで、Biggest Win 約$4.1Mに近い公開API痕跡があります。
+            候補セットはPolymarket Sportsの直近PnL上位、W杯ショックでの逆張り痕跡、
+            流動性の大きいwalletを分けて置きます。買い目へコピーせず、人気国No・ドロー・弱者側を残すかの判断材料にします。
           </p>
+
+          <div className="flex flex-wrap gap-2">
+            {POLYMARKET_STRONG_ACCOUNT_CANDIDATES.slice(0, 8).map((candidate) => (
+              <Badge key={candidate.address} tone={traderRoleTone(candidate.role)}>
+                {candidate.displayName}
+              </Badge>
+            ))}
+          </div>
 
           {traderMessage ? (
             <p className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-700">
@@ -694,7 +732,7 @@ function MarketSourcesPageContent() {
 
           {traderSignalsByRank.length === 0 ? (
             <div className="rounded-[22px] border border-dashed border-slate-300 bg-white/70 px-4 py-5 text-sm leading-6 text-slate-600">
-              強アカ候補はまだありません。まず「Blunttedge候補を置く」か、公開APIでwalletを読んでください。
+              強アカ候補はまだありません。まず「強アカ候補をまとめて置く」か、公開APIでwalletを読んでください。
             </div>
           ) : (
             <div className="grid gap-3 xl:grid-cols-2">

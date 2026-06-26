@@ -18,7 +18,7 @@ describe("world cup toto backtest", () => {
       "world_cup_context",
       "tier_ev",
       "backtest_loop",
-      "hazi_distillation",
+      "strong_account_weighting",
     ]);
     expect(worldCupTotoOperatingSystemStatus.implementedCount).toBe(5);
     expect(worldCupTotoOperatingSystemStatus.nextCount).toBe(2);

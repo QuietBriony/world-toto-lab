@@ -208,7 +208,7 @@ export function traderSignalWarnings(
       code: "inferred_identity",
       tone: "slate",
       message:
-        "SNSスクショと公開APIの照合による推定一致です。ウォレット本人確認ではありません。",
+        "候補リストまたは公開APIの照合による監視対象です。ウォレット本人確認ではありません。",
     });
   }
 
