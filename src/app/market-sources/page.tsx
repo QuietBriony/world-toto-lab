@@ -22,21 +22,32 @@ import { appRoute, getSingleSearchParam } from "@/lib/round-links";
 import { useRoundWorkspace } from "@/lib/use-app-data";
 import {
   buildSignalBoard,
+  BLUNTTEDGE_WATCH_CANDIDATE,
   calculateModelProbabilitiesWithUpstream,
   computeUpstreamTeamPriorAdjustments,
+  createBlunttedgeSeedSignal,
   createMarketNodeFromHyperliquidUrl,
   deleteMarketNode,
+  deleteTraderSignal,
   fetchHyperliquidL2Book,
+  fetchPolymarketTraderSnapshot,
+  listTraderMarketSignals,
   listMarketNodes,
+  listTraderSignals,
   marketNodeWarnings,
   previewHyperliquidUrl,
   saveMarketNode,
+  saveTraderMarketSignal,
+  saveTraderSignal,
+  traderSignalWarnings,
   updateMarketNode,
   MARKET_SOURCE_LABEL,
   MARKET_TYPE_LABEL,
   SIGNAL_LAYER_LABEL,
   type MarketNode,
   type SignalBoardRow,
+  type TraderMarketSignal,
+  type TraderSignal,
 } from "@/lib/market-sources";
 
 const HYPERLIQUID_PLACEHOLDER =
@@ -76,6 +87,173 @@ function PreviewRow({ label, value }: { label: string; value: React.ReactNode })
     <div className="flex items-baseline justify-between gap-3 border-b border-slate-100 py-1.5 last:border-b-0">
       <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">{label}</span>
       <span className="text-right text-sm font-semibold text-slate-900">{value}</span>
+    </div>
+  );
+}
+
+function formatUsd(value: number | null | undefined, maximumFractionDigits = 0): string {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return "-";
+  }
+  return new Intl.NumberFormat("en-US", {
+    currency: "USD",
+    maximumFractionDigits,
+    style: "currency",
+  }).format(value);
+}
+
+function shortAddress(address: string): string {
+  return address.length > 14 ? `${address.slice(0, 8)}...${address.slice(-6)}` : address;
+}
+
+function signalDirectionLabel(signal: TraderMarketSignal): string {
+  if (signal.signalDirection === "supports_outcome") {
+    return "Yes寄り";
+  }
+  if (signal.signalDirection === "opposes_outcome") {
+    return "No寄り";
+  }
+  return "方向未確定";
+}
+
+function TraderSignalCard({
+  busy,
+  marketSignals,
+  onDelete,
+  onRefresh,
+  signal,
+}: {
+  busy: boolean;
+  marketSignals: TraderMarketSignal[];
+  onDelete: (id: string) => void;
+  onRefresh: (address: string) => void;
+  signal: TraderSignal;
+}) {
+  const warnings = useMemo(
+    () => traderSignalWarnings(signal, marketSignals),
+    [marketSignals, signal],
+  );
+  const topSignals = useMemo(
+    () =>
+      marketSignals
+        .slice()
+        .sort((left, right) => Math.abs(right.cashPnl ?? 0) - Math.abs(left.cashPnl ?? 0))
+        .slice(0, 3),
+    [marketSignals],
+  );
+
+  return (
+    <div className="rounded-[22px] border border-slate-200 bg-white/88 p-4 shadow-[0_18px_42px_-34px_rgba(15,23,42,0.25)]">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge tone="teal">強アカWatch</Badge>
+            <Badge tone={confidenceTone(signal.dataConfidence)}>
+              confidence {signal.dataConfidence}
+            </Badge>
+            {signal.rank !== null ? <Badge tone="sky">rank {signal.rank}</Badge> : null}
+          </div>
+          <h3 className="mt-3 text-base font-semibold text-slate-950">
+            {signal.displayName ?? shortAddress(signal.address)}
+          </h3>
+          <a
+            href={signal.profileUrl ?? `https://polymarket.com/profile/${signal.address}`}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-1 inline-block break-all text-xs text-sky-700 underline"
+          >
+            {shortAddress(signal.address)}
+          </a>
+        </div>
+        <div className="grid grid-cols-2 gap-2 text-right text-sm">
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
+            <p className="text-xs text-slate-500">PnL</p>
+            <p className="font-semibold text-slate-950">{formatUsd(signal.pnl)}</p>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
+            <p className="text-xs text-slate-500">Biggest</p>
+            <p className="font-semibold text-slate-950">{formatUsd(signal.biggestWin)}</p>
+          </div>
+        </div>
+      </div>
+
+      <dl className="mt-4 grid gap-x-4 gap-y-1 text-sm sm:grid-cols-2">
+        <PreviewRow label="Predictions" value={signal.predictionCount ?? "-"} />
+        <PreviewRow label="Volume" value={formatUsd(signal.volume)} />
+        <PreviewRow label="Value" value={formatUsd(signal.currentValue)} />
+        <PreviewRow
+          label="Last seen"
+          value={signal.lastActivityAt ? new Date(signal.lastActivityAt).toLocaleString("ja-JP") : "-"}
+        />
+      </dl>
+
+      {signal.notes ? (
+        <p className="mt-3 rounded-2xl border border-emerald-100 bg-emerald-50/80 px-3 py-2 text-sm leading-6 text-emerald-950">
+          {signal.notes}
+        </p>
+      ) : null}
+
+      {warnings.length > 0 ? (
+        <ul className="mt-3 space-y-1">
+          {warnings.map((warning) => (
+            <li key={warning.code} className="flex items-start gap-2 text-xs leading-5">
+              <span
+                className={cx(
+                  "mt-0.5 inline-block h-2 w-2 shrink-0 rounded-full",
+                  warning.tone === "amber" ? "bg-amber-500" : "bg-slate-400",
+                )}
+              />
+              <span className={warning.tone === "amber" ? "text-amber-800" : "text-slate-600"}>
+                {warning.message}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
+      {topSignals.length > 0 ? (
+        <div className="mt-4 space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+            Market footprints
+          </p>
+          {topSignals.map((marketSignal) => (
+            <div
+              key={marketSignal.id}
+              className="rounded-2xl border border-slate-200 bg-slate-50/90 px-3 py-3 text-sm"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="font-semibold text-slate-950">{marketSignal.title}</p>
+                <Badge tone={marketSignal.signalDirection === "unknown" ? "slate" : "amber"}>
+                  {signalDirectionLabel(marketSignal)}
+                </Badge>
+              </div>
+              <div className="mt-2 grid gap-x-3 gap-y-1 text-xs text-slate-600 sm:grid-cols-3">
+                <span>Outcome: {marketSignal.outcome ?? "-"}</span>
+                <span>Price: {marketSignal.price !== null ? marketSignal.price.toFixed(3) : "-"}</span>
+                <span>PnL: {formatUsd(marketSignal.cashPnl)}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => onRefresh(signal.address)}
+          disabled={busy}
+          className={secondaryButtonClassName}
+        >
+          {busy ? "更新中..." : "公開APIで更新"}
+        </button>
+        <button
+          type="button"
+          onClick={() => onDelete(signal.id)}
+          className="inline-flex min-h-[44px] items-center rounded-full border border-rose-200 bg-rose-50 px-4 text-sm font-semibold text-rose-800 transition hover:bg-rose-100"
+        >
+          外す
+        </button>
+      </div>
     </div>
   );
 }
@@ -221,23 +399,88 @@ function MarketSourcesPageContent() {
   const [urlInput, setUrlInput] = useState("");
   const [priceInput, setPriceInput] = useState("");
   const [nodes, setNodes] = useState<MarketNode[]>([]);
+  const [traderSignals, setTraderSignals] = useState<TraderSignal[]>([]);
+  const [traderMarketSignals, setTraderMarketSignals] = useState<TraderMarketSignal[]>([]);
+  const [traderAddressInput, setTraderAddressInput] = useState<string>(
+    BLUNTTEDGE_WATCH_CANDIDATE.address,
+  );
+  const [traderMessage, setTraderMessage] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [busyNodeId, setBusyNodeId] = useState<string | null>(null);
+  const [busyTraderAddress, setBusyTraderAddress] = useState<string | null>(null);
 
   const reloadNodes = useCallback(() => {
     setNodes(listMarketNodes());
   }, []);
 
+  const reloadTraderSignals = useCallback(() => {
+    setTraderSignals(listTraderSignals());
+    setTraderMarketSignals(listTraderMarketSignals());
+  }, []);
+
   useEffect(() => {
     // localStorage 読み出しは microtask へ逃がす（effect 内の同期 setState を避ける）。
     queueMicrotask(() => {
-      setNodes(listMarketNodes());
+      reloadNodes();
+      reloadTraderSignals();
     });
-  }, []);
+  }, [reloadNodes, reloadTraderSignals]);
 
   const preview = useMemo(
     () => (urlInput.trim() ? previewHyperliquidUrl(urlInput.trim()) : null),
     [urlInput],
+  );
+
+  const traderSignalsByRank = useMemo(
+    () =>
+      traderSignals
+        .slice()
+        .sort((left, right) => (right.biggestWin ?? right.pnl ?? 0) - (left.biggestWin ?? left.pnl ?? 0)),
+    [traderSignals],
+  );
+
+  const handleSeedStrongAccount = useCallback(() => {
+    const saved = saveTraderSignal(createBlunttedgeSeedSignal());
+    reloadTraderSignals();
+    setTraderMessage(`強アカ候補を追加しました: ${saved.displayName ?? shortAddress(saved.address)}`);
+  }, [reloadTraderSignals]);
+
+  const handleFetchTraderSignal = useCallback(
+    async (addressInput: string) => {
+      const address = addressInput.trim() || BLUNTTEDGE_WATCH_CANDIDATE.address;
+      setBusyTraderAddress(address.toLowerCase());
+      setTraderMessage(null);
+      try {
+        const snapshot = await fetchPolymarketTraderSnapshot(address, { limit: 50 });
+        const saved = saveTraderSignal(snapshot.trader);
+        for (const marketSignal of snapshot.marketSignals) {
+          saveTraderMarketSignal(marketSignal);
+        }
+        reloadTraderSignals();
+        setTraderAddressInput(saved.address);
+        setTraderMessage(
+          `Polymarket公開APIから更新しました: ${saved.displayName ?? shortAddress(saved.address)} / signals ${snapshot.marketSignals.length}`,
+        );
+      } catch (error) {
+        setTraderMessage(
+          error instanceof Error
+            ? `Polymarket公開APIの取得に失敗しました: ${error.message}`
+            : "Polymarket公開APIの取得に失敗しました。",
+        );
+      } finally {
+        setBusyTraderAddress(null);
+      }
+    },
+    [reloadTraderSignals],
+  );
+
+  const handleDeleteTraderSignal = useCallback(
+    (id: string) => {
+      deleteTraderSignal(id);
+      reloadTraderSignals();
+      setTraderMessage("強アカ候補を外しました。");
+    },
+    [reloadTraderSignals],
   );
 
   const tryFetch = useCallback(
@@ -400,6 +643,80 @@ function MarketSourcesPageContent() {
           </div>
         }
       />
+
+      <SectionCard
+        title="強アカWatch"
+        description="Polymarketの公開Data APIから、強いトレーダー候補の順位、PnL、直近の市場フットプリントを読むだけの観測欄です。買い目へ直接コピーせず、公式人気とのズレを議論する材料にします。"
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <Badge tone="teal">read-only</Badge>
+            <Badge tone="amber">copyしない</Badge>
+            <Badge tone="sky">toto補助シグナル</Badge>
+          </div>
+        }
+      >
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <input
+              value={traderAddressInput}
+              onChange={(event) => setTraderAddressInput(event.target.value)}
+              placeholder={BLUNTTEDGE_WATCH_CANDIDATE.address}
+              className={fieldClassName}
+              inputMode="text"
+            />
+            <button
+              type="button"
+              onClick={() => void handleFetchTraderSignal(traderAddressInput)}
+              disabled={busyTraderAddress !== null}
+              className={buttonClassName}
+            >
+              {busyTraderAddress ? "取得中..." : "公開APIで読む"}
+            </button>
+            <button
+              type="button"
+              onClick={handleSeedStrongAccount}
+              className={secondaryButtonClassName}
+            >
+              Blunttedge候補を置く
+            </button>
+          </div>
+
+          <p className="text-sm leading-6 text-slate-600">
+            初期候補はスクショ照合で最有力の {BLUNTTEDGE_WATCH_CANDIDATE.displayName}
+            です。Japan vs Sweden の日本勝ちNoで、Biggest Win 約$4.1Mに近い公開API痕跡があります。
+          </p>
+
+          {traderMessage ? (
+            <p className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-700">
+              {traderMessage}
+            </p>
+          ) : null}
+
+          {traderSignalsByRank.length === 0 ? (
+            <div className="rounded-[22px] border border-dashed border-slate-300 bg-white/70 px-4 py-5 text-sm leading-6 text-slate-600">
+              強アカ候補はまだありません。まず「Blunttedge候補を置く」か、公開APIでwalletを読んでください。
+            </div>
+          ) : (
+            <div className="grid gap-3 xl:grid-cols-2">
+              {traderSignalsByRank.map((signal) => {
+                const linkedSignals = traderMarketSignals.filter(
+                  (marketSignal) => marketSignal.traderSignalId === signal.id,
+                );
+                return (
+                  <TraderSignalCard
+                    key={signal.id}
+                    busy={busyTraderAddress?.toLowerCase() === signal.address.toLowerCase()}
+                    marketSignals={linkedSignals}
+                    onDelete={handleDeleteTraderSignal}
+                    onRefresh={(address) => void handleFetchTraderSignal(address)}
+                    signal={signal}
+                  />
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </SectionCard>
 
       <SectionCard
         title="Hyperliquid 市場を追加"

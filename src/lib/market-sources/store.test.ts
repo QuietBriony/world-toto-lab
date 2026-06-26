@@ -4,11 +4,19 @@ import { createMarketNodeFromHyperliquidUrl } from "@/lib/market-sources/hyperli
 import {
   clearMarketSources,
   deleteMarketNode,
+  deleteTraderSignal,
   getMarketNode,
+  getTraderSignal,
+  listTraderMarketSignals,
   listMarketNodes,
+  listTraderSignals,
   saveMarketNode,
+  saveTraderMarketSignal,
+  saveTraderSignal,
   updateMarketNode,
+  updateTraderSignal,
 } from "@/lib/market-sources/store";
+import { createBlunttedgeSeedSignal } from "@/lib/market-sources/polymarket";
 
 class MemoryStorage implements Storage {
   private values = new Map<string, string>();
@@ -75,5 +83,46 @@ describe("market sources store", () => {
   it("is SSR-safe: returns empty when window is unavailable", () => {
     vi.unstubAllGlobals();
     expect(listMarketNodes()).toEqual([]);
+  });
+
+  it("saves, updates and deletes TraderSignal rows with linked market signals", () => {
+    const trader = createBlunttedgeSeedSignal("2026-06-26T00:00:00.000Z");
+    saveTraderSignal(trader);
+
+    expect(listTraderSignals()).toHaveLength(1);
+    expect(getTraderSignal(trader.id)?.displayName).toBe("blunttedge");
+
+    const updated = updateTraderSignal(trader.id, { predictionCount: 4 });
+    expect(updated?.predictionCount).toBe(4);
+
+    saveTraderMarketSignal({
+      id: "market-signal-1",
+      traderSignalId: trader.id,
+      source: "polymarket",
+      address: trader.address,
+      title: "Will Japan win on 2026-06-25?",
+      slug: "fifwc-jpn-swe-2026-06-25-jpn",
+      eventSlug: "fifwc-jpn-swe-2026-06-25",
+      outcome: "No",
+      side: "BUY",
+      price: 0.61,
+      size: 10,
+      usdcSize: 6.1,
+      currentValue: null,
+      cashPnl: 4_100_000,
+      initialValue: 6_000_000,
+      timestamp: "2026-06-25T19:00:00.000Z",
+      conditionId: "condition-1",
+      asset: "asset-1",
+      signalDirection: "opposes_outcome",
+      observedAt: "2026-06-26T00:00:00.000Z",
+      createdAt: "2026-06-26T00:00:00.000Z",
+      updatedAt: "2026-06-26T00:00:00.000Z",
+    });
+    expect(listTraderMarketSignals()).toHaveLength(1);
+
+    deleteTraderSignal(trader.id);
+    expect(listTraderSignals()).toEqual([]);
+    expect(listTraderMarketSignals()).toEqual([]);
   });
 });

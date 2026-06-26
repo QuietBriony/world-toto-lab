@@ -156,6 +156,67 @@ export type MarketRelation = {
   updatedAt: string;
 };
 
+/** Strong-account / trader source. Read-only observation only. */
+export type TraderSignalSource = "polymarket";
+
+/** A watched public trader/account signal. This is not an execution account. */
+export type TraderSignal = {
+  id: string;
+  source: TraderSignalSource;
+  /** Public proxy address used by the external source. */
+  address: string;
+  displayName: string | null;
+  pseudonym: string | null;
+  profileImageUrl: string | null;
+  profileUrl: string | null;
+  category: string | null;
+  timePeriod: string | null;
+  rank: number | null;
+  pnl: number | null;
+  volume: number | null;
+  currentValue: number | null;
+  predictionCount: number | null;
+  biggestWin: number | null;
+  biggestWinTitle: string | null;
+  lastActivityAt: string | null;
+  observedAt: string;
+  dataConfidence: MarketDataConfidence;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TraderMarketSignalDirection =
+  | "supports_outcome"
+  | "opposes_outcome"
+  | "unknown";
+
+/** A trader's public read-only footprint in one external market. */
+export type TraderMarketSignal = {
+  id: string;
+  traderSignalId: string;
+  source: TraderSignalSource;
+  address: string;
+  title: string;
+  slug: string | null;
+  eventSlug: string | null;
+  outcome: string | null;
+  side: string | null;
+  price: number | null;
+  size: number | null;
+  usdcSize: number | null;
+  currentValue: number | null;
+  cashPnl: number | null;
+  initialValue: number | null;
+  timestamp: string | null;
+  conditionId: string | null;
+  asset: string | null;
+  signalDirection: TraderMarketSignalDirection;
+  observedAt: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 /**
  * marketType ごとの既定 weight。
  *
@@ -233,6 +294,10 @@ export const MARKET_SOURCE_LABEL: Record<MarketSource, string> = {
  * UI の slug（例: 2026-world-cup-champion-france-yes）と、API の coin 名は
  * 一致しない可能性があるため、明示的な mapping を持つ。最初は手入力で良い。
  */
+export const TRADER_SIGNAL_SOURCE_LABEL: Record<TraderSignalSource, string> = {
+  polymarket: "Polymarket",
+};
+
 export type HyperliquidSymbolMapping = {
   slug: string;
   coin: string;

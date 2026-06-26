@@ -7,13 +7,20 @@
  *   専用の localStorage キーに保存する（既存機能を壊さない追加方式）。
  * - SSR / static export 安全のため、window が無い環境では空配列を返し書き込みは破棄する。
  */
-import type { MarketNode, MarketRelation } from "@/lib/market-sources/types";
+import type {
+  MarketNode,
+  MarketRelation,
+  TraderMarketSignal,
+  TraderSignal,
+} from "@/lib/market-sources/types";
 
 const NAMESPACE = "world-toto-lab:market-sources:v1";
 
 const KEYS = {
   nodes: `${NAMESPACE}:nodes`,
   relations: `${NAMESPACE}:relations`,
+  traderMarketSignals: `${NAMESPACE}:trader-market-signals`,
+  traderSignals: `${NAMESPACE}:trader-signals`,
 } as const;
 
 function nowIso(): string {
@@ -137,10 +144,101 @@ export function deleteMarketRelation(id: string): void {
   writeArray(KEYS.relations, relations);
 }
 
+// --- TraderSignal -------------------------------------------------------------
+
+export function listTraderSignals(): TraderSignal[] {
+  return readArray<TraderSignal>(KEYS.traderSignals);
+}
+
+export function getTraderSignal(id: string): TraderSignal | null {
+  return listTraderSignals().find((signal) => signal.id === id) ?? null;
+}
+
+export function saveTraderSignal(signal: TraderSignal): TraderSignal {
+  const signals = listTraderSignals();
+  const timestamp = nowIso();
+  const next: TraderSignal = {
+    ...signal,
+    id: signal.id || localId("trader-signal"),
+    createdAt: signal.createdAt || timestamp,
+    updatedAt: timestamp,
+  };
+  const index = signals.findIndex((entry) => entry.id === next.id);
+  if (index >= 0) {
+    signals[index] = next;
+  } else {
+    signals.push(next);
+  }
+  writeArray(KEYS.traderSignals, signals);
+  return next;
+}
+
+export function updateTraderSignal(
+  id: string,
+  patch: Partial<Omit<TraderSignal, "id" | "createdAt">>,
+): TraderSignal | null {
+  const signals = listTraderSignals();
+  const index = signals.findIndex((entry) => entry.id === id);
+  if (index < 0) {
+    return null;
+  }
+  const updated: TraderSignal = {
+    ...signals[index],
+    ...patch,
+    id,
+    createdAt: signals[index].createdAt,
+    updatedAt: nowIso(),
+  };
+  signals[index] = updated;
+  writeArray(KEYS.traderSignals, signals);
+  return updated;
+}
+
+export function deleteTraderSignal(id: string): void {
+  const signals = listTraderSignals().filter((signal) => signal.id !== id);
+  const marketSignals = listTraderMarketSignals().filter(
+    (signal) => signal.traderSignalId !== id,
+  );
+  writeArray(KEYS.traderSignals, signals);
+  writeArray(KEYS.traderMarketSignals, marketSignals);
+}
+
+// --- TraderMarketSignal -------------------------------------------------------
+
+export function listTraderMarketSignals(): TraderMarketSignal[] {
+  return readArray<TraderMarketSignal>(KEYS.traderMarketSignals);
+}
+
+export function saveTraderMarketSignal(signal: TraderMarketSignal): TraderMarketSignal {
+  const signals = listTraderMarketSignals();
+  const timestamp = nowIso();
+  const next: TraderMarketSignal = {
+    ...signal,
+    id: signal.id || localId("trader-market-signal"),
+    createdAt: signal.createdAt || timestamp,
+    updatedAt: timestamp,
+  };
+  const index = signals.findIndex((entry) => entry.id === next.id);
+  if (index >= 0) {
+    signals[index] = next;
+  } else {
+    signals.push(next);
+  }
+  writeArray(KEYS.traderMarketSignals, signals);
+  return next;
+}
+
+export function deleteTraderMarketSignal(id: string): void {
+  const signals = listTraderMarketSignals().filter((signal) => signal.id !== id);
+  writeArray(KEYS.traderMarketSignals, signals);
+}
+
 /** テスト/リセット用。保存済みの市場データを全消去する。 */
 export function clearMarketSources(): void {
   writeArray(KEYS.nodes, []);
   writeArray(KEYS.relations, []);
+  writeArray(KEYS.traderMarketSignals, []);
+  writeArray(KEYS.traderSignals, []);
 }
 
 /** localStorage キー（デバッグ/テスト参照用）。 */

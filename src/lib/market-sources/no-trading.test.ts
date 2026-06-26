@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import * as marketSources from "@/lib/market-sources";
 import * as hyperliquid from "@/lib/market-sources/hyperliquid";
+import * as polymarket from "@/lib/market-sources/polymarket";
 
 /**
  * この連携は read-only な市場データソースである。
@@ -14,7 +15,11 @@ const FORBIDDEN_SURFACE =
 
 describe("[no-trading] market sources expose only read-only surface", () => {
   it("has no export resembling a trading / wallet / order action", () => {
-    const names = [...Object.keys(marketSources), ...Object.keys(hyperliquid)];
+    const names = [
+      ...Object.keys(marketSources),
+      ...Object.keys(hyperliquid),
+      ...Object.keys(polymarket),
+    ];
     const offenders = names.filter((name) => FORBIDDEN_SURFACE.test(name));
     expect(offenders).toEqual([]);
   });
@@ -55,6 +60,19 @@ describe("[no-trading] market sources expose only read-only surface", () => {
     for (const body of bodies) {
       const parsed = JSON.parse(body) as { type: string };
       expect(readTypes.has(parsed.type)).toBe(true);
+    }
+  });
+
+  it("Polymarket requests are GET-only public Data API reads", () => {
+    const requests = polymarket.buildPolymarketTraderSnapshotRequests(
+      polymarket.BLUNTTEDGE_WATCH_CANDIDATE.address,
+    );
+    for (const request of requests) {
+      expect(request.method).toBe("GET");
+      expect(request.readOnly).toBe(true);
+      expect(request.url).toContain(polymarket.POLYMARKET_DATA_API_BASE);
+      expect(request.url).not.toContain("clob");
+      expect(request.url).not.toContain("exchange");
     }
   });
 });

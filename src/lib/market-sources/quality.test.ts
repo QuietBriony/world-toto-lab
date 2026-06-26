@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import { createMarketNodeFromHyperliquidUrl } from "@/lib/market-sources/hyperliquid";
-import { marketNodeWarnings } from "@/lib/market-sources/quality";
+import { createBlunttedgeSeedSignal } from "@/lib/market-sources/polymarket";
+import { marketNodeWarnings, traderSignalWarnings } from "@/lib/market-sources/quality";
 
 const FRANCE_URL =
   "https://app.hyperliquid.xyz/trade/2026-world-cup-champion-france-yes";
@@ -60,5 +61,59 @@ describe("marketNodeWarnings", () => {
       signalLayer: "downstream_match_signal" as const,
     };
     expect(codes(node)).not.toContain("upstream_only");
+  });
+});
+
+describe("traderSignalWarnings", () => {
+  it("flags a screenshot-derived strong account as low-sample and inferred", () => {
+    const trader = createBlunttedgeSeedSignal(NOW);
+    const warnings = traderSignalWarnings(trader, [], { now: NOW }).map(
+      (warning) => warning.code,
+    );
+    expect(warnings).toContain("sample_size_low");
+    expect(warnings).toContain("no_recent_activity");
+    expect(warnings).toContain("inferred_identity");
+  });
+
+  it("flags concentration when one public market dominates PnL", () => {
+    const trader = {
+      ...createBlunttedgeSeedSignal(NOW),
+      dataConfidence: "high" as const,
+      lastActivityAt: NOW,
+      predictionCount: 10,
+    };
+    const warnings = traderSignalWarnings(
+      trader,
+      [
+        {
+          id: "signal-1",
+          traderSignalId: trader.id,
+          source: "polymarket",
+          address: trader.address,
+          title: "Will Japan win on 2026-06-25?",
+          slug: "fifwc-jpn-swe-2026-06-25-jpn",
+          eventSlug: "fifwc-jpn-swe-2026-06-25",
+          outcome: "No",
+          side: "BUY",
+          price: 0.61,
+          size: 10,
+          usdcSize: 6.1,
+          currentValue: null,
+          cashPnl: 4_000_000,
+          initialValue: 6_000_000,
+          timestamp: NOW,
+          conditionId: "condition-1",
+          asset: "asset-1",
+          signalDirection: "opposes_outcome",
+          observedAt: NOW,
+          createdAt: NOW,
+          updatedAt: NOW,
+        },
+      ],
+      { now: NOW },
+    ).map((warning) => warning.code);
+
+    expect(warnings).toContain("concentration_high");
+    expect(warnings).not.toContain("sample_size_low");
   });
 });

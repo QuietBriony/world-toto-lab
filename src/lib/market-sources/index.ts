@@ -13,6 +13,7 @@
 export * from "@/lib/market-sources/types";
 export * from "@/lib/market-sources/team-names";
 export * from "@/lib/market-sources/hyperliquid";
+export * from "@/lib/market-sources/polymarket";
 export * from "@/lib/market-sources/signal";
 export * from "@/lib/market-sources/quality";
 export * from "@/lib/market-sources/store";
