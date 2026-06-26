@@ -17,10 +17,10 @@ from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer, 
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PDF_NAME = "world-cup-toto-1634-1637-evolved-plan-20260626-v22.pdf"
-CSV_50_NAME = "world-cup-toto-1637-visual-5000-plan-20260626-v22.csv"
-CSV_NAME = "world-cup-toto-1637-visual-10000-plan-20260626-v22.csv"
-CSV_200_NAME = "world-cup-toto-1637-visual-20000-plan-20260626-v22.csv"
+PDF_NAME = "world-cup-toto-1634-1637-evolved-plan-20260626-v23.pdf"
+CSV_50_NAME = "world-cup-toto-1637-visual-5000-plan-20260626-v23.csv"
+CSV_NAME = "world-cup-toto-1637-visual-10000-plan-20260626-v23.csv"
+CSV_200_NAME = "world-cup-toto-1637-visual-20000-plan-20260626-v23.csv"
 PDF_ALIASES = (
     PDF_NAME,
     "world-cup-toto-latest.pdf",
@@ -52,11 +52,13 @@ RECOMMENDED_1636_UNIT_CAP = 200
 OUTCOMES = ("1", "0", "2")
 TOTO13_OUTCOME_COUNT = 3**13
 SNAPSHOT_1636_LABEL = "2026-06-20 17:02 JST"
-TOTAL_SALES_1636_YEN = 222_065_900
+SNAPSHOT_1636_PRE_CLOSE_SALES_YEN = 222_065_900
+FINAL_SALES_1636_YEN = 273_312_700
+TOTAL_SALES_1636_YEN = SNAPSHOT_1636_PRE_CLOSE_SALES_YEN
 SNAPSHOT_1637_VOTE_LABEL = "2026-06-25 18:22 JST"
-SNAPSHOT_1637_SALES_LABEL = "2026-06-25 18:22 JST"
-TOTAL_SALES_1637_YEN = 322_946_700
-VOTE_UNITS_1637 = 3_229_467
+SNAPSHOT_1637_SALES_LABEL = "2026-06-25 sales close"
+TOTAL_SALES_1637_YEN = 357_285_900
+VOTE_UNITS_1637 = 3_572_859
 RETURN_RATE = 0.5
 TIER_DEFS = (
     ("1等", 0, 0.70, True),
@@ -82,6 +84,10 @@ SOURCE_1635_RESULT_URL = (
 )
 SOURCE_1636_BUY_URL = "https://sp.toto-dream.com/dcs/subos/screen/ss01/sssl021/PGSSSL02101InittotoSP.form"
 SOURCE_1636_INFO_URL = "https://store.toto-dream.com/dcs/subos/screen/pi01/spin000/PGSPIN00001DisptotoLotInfo.form?holdCntId=1636"
+SOURCE_1636_RESULT_URL = (
+    "https://sp.toto-dream.com/dcs/subos/screen/si04/ssin007/"
+    "PGSSIN00701FwdLotDetailRslttoto.form?holdCntId=1636&commodityId=01&meetingFiscalYear=2026"
+)
 SOURCE_1636_VOTE_URL = (
     "https://sp.toto-dream.com/dcs/subos/screen/si01/ssin025/"
     "PGSSIN02501ForwardVotetotoSP.form?commodityId=01&fromId=SSIN026&gameAssortment=A&holdCntId=1636"
@@ -913,10 +919,11 @@ def policy_table() -> Table:
 def result_review_1636_table() -> Table:
     rows = [
         ["項目", "内容"],
-        ["実出目", "1212010112100。全13試合の結果を反省に反映済み。"],
+        ["実出目", "1212110112100。公式第1636回toto結果で確定。"],
+        ["最終売上", f"{yen(FINAL_SALES_1636_YEN)}。購入前EV再現は {SNAPSHOT_1636_LABEL} の {yen(SNAPSHOT_1636_PRE_CLOSE_SALES_YEN)} を使う。"],
         ["ユーザー購入", "64口=6,400円 + 16口=1,600円、合計80口=8,000円。"],
-        ["当たり具合", "64口側はM12/M13を外して11/13、3等圏。16口側は9/13で圏外。"],
-        ["概算払戻", "公式払戻は発表待ち。3等は概算約1,560円として扱う。"],
+        ["当たり具合", "64口側はM12/M13を外して11/13、3等。16口側はM07/M12/M13を外して10/13で圏外。"],
+        ["確定払戻", "3等650円。1等956,590円、2等6,750円、3等650円で公式確定。ユーザー合計は650円、差引-7,350円。"],
         ["学び", "M12 England-Ghana、M13 Ecuador-Curacaoはいずれも80%台強人気のドロー。強人気でも外部市場ドロー20%前後は軽視しない。"],
     ]
     result = table(rows, [34 * mm, 134 * mm])
@@ -1000,7 +1007,7 @@ def budget_plan_summary_1637() -> Table:
         ["200口以内プラン", f"{len(PURCHASE_ROWS_1637_200)}通り / {sum(int(row['units']) for row in PURCHASE_ROWS_1637_200)}口 / {yen(len(PURCHASE_ROWS_1637_200) * STAKE_YEN)}。広めに拾うプラン。CSVで全200行を確認する。"],
         ["入力順", "PDFのM01-M13対応表を見て、公式の普通購入画面で試合No.順に1/0/2を押す。CSVは各試合列に「2: ドイツ勝ち」のようなラベルも出す。"],
         ["読み方", "1=ホーム勝ち、0=引き分け、2=アウェイ勝ち。signature はM01からM13までの数字をつなげた確認用。"],
-        ["CSV", "latest-50/100/200-purchase-sheet は検算用に残す。latest-purchase-sheet は100口版の別名。v22ではPDFのマルチ表を主導線にする。"],
+        ["CSV", "latest-50/100/200-purchase-sheet は検算用に残す。latest-purchase-sheet は100口版の別名。v23ではPDFのマルチ表を主導線にする。"],
         ["注意", "CSV/PDFは転記用メモ。購入、決済、自動投票は対象外。締切直前の再計算後に人が公式画面で確認して入力する。"],
     ]
     result = table(rows, [34 * mm, 134 * mm])
@@ -1097,7 +1104,7 @@ def visual_purchase_preview_table_1637(
 
 def external_market_source_table() -> Table:
     rows = [
-        ["ソース", "使い方", "v22での扱い"],
+        ["ソース", "使い方", "v23での扱い"],
         ["公式投票率", "p_public。toto参加者の偏りを見る。", "現行の主ソース。締切直前に再取得。"],
         ["Polymarket", "Sports APIのW杯1X2価格を外部p_model候補にする。", "1637の13試合を公開APIで照合済み。強アカウントより市場価格を優先。"],
         ["Kalshi", "公開market data/orderbookがあれば二値市場の補助確率にする。", "サッカー該当市場がある時だけ採用。"],
@@ -1218,7 +1225,7 @@ def final_lock_trigger_table_1637() -> Table:
 
 def final_logic_table_1637() -> Table:
     rows = [
-        ["論点", "v22での読み"],
+        ["論点", "v23での読み"],
         ["公式投票率", "日本のtoto購入者の人気。勝率ではなく、払戻が薄くなる混み具合として読む。"],
         ["バックテスト", "1634は公式人気順が9ズレ、1635は2ズレで3等相当。1636は強人気ドローを外して3等止まり。"],
         ["外部市場", "18:22公式と18:31 PolymarketではM05/M07のドロー、M02の日本人気、M13のドローを重視。M01全分散は下げる。"],
@@ -1298,6 +1305,21 @@ def automation_table() -> Table:
     return table(rows, [28 * mm, 97 * mm, 43 * mm])
 
 
+def actual_purchase_progress_1637_table() -> Table:
+    rows = [
+        ["Item", "Current read"],
+        ["Official toto status", "Round 1637 official toto result is pending until 2026-06-28. This page uses soccer FT scores only."],
+        ["Known FT scores", "M01 Ecuador 2-1 Germany = 1 / M02 Japan 1-1 Sweden = 0 / M06 Tunisia 1-3 Netherlands = 2 / M07 Paraguay 0-0 Australia = 0."],
+        ["Slip A 144 units", "Known 3/4 hit, M01 miss. Max final is 12/13. Need remaining 9/9 for 2nd, 8/9+ for 3rd."],
+        ["Slip B 162 units", "Known 3/4 hit, M01 miss. Max final is 12/13. Need remaining 9/9 for 2nd, 8/9+ for 3rd."],
+        ["Slip C 64 units", "Known 3/4 hit, M01 miss. Max final is 12/13. Need remaining 9/9 for 2nd, 8/9+ for 3rd."],
+        ["Learning", "The Germany lock was too strong. Keep matchday-3 motivation, draw-ok states, and rotation risk separate from official popularity."],
+    ]
+    result = table(rows, [42 * mm, 126 * mm])
+    result.setStyle(TableStyle([("BACKGROUND", (0, 1), (0, -1), TEAL_LIGHT)]))
+    return result
+
+
 def build_pdf() -> Path:
     OUT_PDF_DIR.mkdir(parents=True, exist_ok=True)
     PUBLIC_DIR.mkdir(parents=True, exist_ok=True)
@@ -1309,13 +1331,13 @@ def build_pdf() -> Path:
         leftMargin=12 * mm,
         topMargin=12 * mm,
         bottomMargin=10 * mm,
-        title="W杯toto 1634-1637 EV改善メモ v22",
+        title="W杯toto 1634-1637 EV改善メモ v23",
     )
 
     story = [
-        p("W杯toto 1634-1637 EV改善メモ v22", "title"),
+        p("W杯toto 1634-1637 EV改善メモ v23", "title"),
         p("目的はシンプルです。1口いくらか、当たったらどれくらい戻るか、10口や1万円ならどの出目をどう置くか、そしてランダムよりEVが上がっているのかを見ます。"),
-        p(f"1637の公式投票率は {SNAPSHOT_1637_VOTE_LABEL}、売上は {SNAPSHOT_1637_SALES_LABEL} 時点。現在売上は {yen(TOTAL_SALES_1637_YEN)}、投票数は {VOTE_UNITS_1637:,}口。latest PDFはこのv22へ差し替えます。", "small"),
+        p(f"1637の公式投票率は {SNAPSHOT_1637_VOTE_LABEL}、売上は {SNAPSHOT_1637_SALES_LABEL} 時点。現在売上は {yen(TOTAL_SALES_1637_YEN)}、投票数は {VOTE_UNITS_1637:,}口。latest PDFはこのv23へ差し替えます。", "small"),
         p("公式投票率は勝率そのものではなく、日本のtoto購入者の人気です。払戻の薄さを見るp_publicとして使い、勝率寄りのp_modelはPolymarketなどの外部市場とW杯文脈で補います。", "small"),
         summary_table(),
         Spacer(1, 4 * mm),
@@ -1328,7 +1350,7 @@ def build_pdf() -> Path:
         ev_glossary_table(),
         Spacer(1, 4 * mm),
         p("総当たりEVより上がったか", "h2"),
-        p("結論: proxy上は上がっています。v22ではPolymarketの試合別1X2を再取得し、6/25 18:22公式投票率と比較しています。ただし、ブックメーカー複数社のvig除去やBetfair板はまだ未接続なので、真EVではなく外部市場proxyとして扱います。"),
+        p("結論: proxy上は上がっています。v23ではPolymarketの試合別1X2を再取得し、6/25 18:22公式投票率と比較しています。ただし、ブックメーカー複数社のvig除去やBetfair板はまだ未接続なので、真EVではなく外部市場proxyとして扱います。"),
         market_ev_table(),
         Spacer(1, 5 * mm),
         p("1637の最適戦略", "title"),
@@ -1338,8 +1360,11 @@ def build_pdf() -> Path:
         p("当日の回し方", "h2"),
         operation_1637_table(),
         Spacer(1, 4 * mm),
+        p("1637実購入の途中チェック", "h2"),
+        actual_purchase_progress_1637_table(),
+        Spacer(1, 4 * mm),
         p("出目を残すルール", "h2"),
-        p(f"公式人気順だけなら {FAVORITE_1637}。ただし第3戦は中立地、国名人気、勝点条件、温存、引き分けOKで人気順からズレる余地があります。v22ではこの補正とPolymarket差分をマルチ選択の残し方に入れています。"),
+        p(f"公式人気順だけなら {FAVORITE_1637}。ただし第3戦は中立地、国名人気、勝点条件、温存、引き分けOKで人気順からズレる余地があります。v23ではこの補正とPolymarket差分をマルチ選択の残し方に入れています。"),
         policy_table_1637(),
         Spacer(1, 4 * mm),
         p("マルチ指定の合計口数", "h2"),
@@ -1423,14 +1448,14 @@ def build_pdf() -> Path:
         policy_table(),
         PageBreak(),
         p("1636旧シート先頭", "title"),
-        p("1636では上位を厚くする案も試しましたが、v22の1637方針ではCSV行詳細よりマルチ選択表で口数と金額を確認します。"),
+        p("1636では上位を厚くする案も試しましたが、v23の1637方針ではCSV行詳細よりマルチ選択表で口数と金額を確認します。"),
         hot_table(),
         Spacer(1, 4 * mm),
         p("なるべく自動で買う方法", "h2"),
         automation_table(),
         Spacer(1, 4 * mm),
         p("注意: この資料は購入判断メモであり、購入代行、決済、精算、利益保証ではありません。実購入は公式画面で本人が確認して行います。", "small"),
-        p(f"公式/データソース: 1634結果 {SOURCE_1634_RESULT_URL} / 1634投票 {SOURCE_1634_VOTE_URL} / 1635結果 {SOURCE_1635_RESULT_URL} / 1636くじ情報 {SOURCE_1636_INFO_URL} / 1636購入画面 {SOURCE_1636_BUY_URL} / 1636投票 {SOURCE_1636_VOTE_URL} / 1637投票 {SOURCE_1637_VOTE_URL} / 1637販売 {SOURCE_1637_SALES_URL} / Polymarket docs {SOURCE_POLYMARKET_SPORTS_URL} / Polymarket sample {SOURCE_POLYMARKET_SPORTS_EVENTS_URL} / Kalshi {SOURCE_KALSHI_MARKET_DATA_URL} / Betfair {SOURCE_BETFAIR_EXCHANGE_URL} / Odds API {SOURCE_ODDS_API_URL}", "small"),
+        p(f"公式/データソース: 1634結果 {SOURCE_1634_RESULT_URL} / 1634投票 {SOURCE_1634_VOTE_URL} / 1635結果 {SOURCE_1635_RESULT_URL} / 1636結果 {SOURCE_1636_RESULT_URL} / 1636くじ情報 {SOURCE_1636_INFO_URL} / 1636購入画面 {SOURCE_1636_BUY_URL} / 1636投票 {SOURCE_1636_VOTE_URL} / 1637投票 {SOURCE_1637_VOTE_URL} / 1637販売 {SOURCE_1637_SALES_URL} / Polymarket docs {SOURCE_POLYMARKET_SPORTS_URL} / Polymarket sample {SOURCE_POLYMARKET_SPORTS_EVENTS_URL} / Kalshi {SOURCE_KALSHI_MARKET_DATA_URL} / Betfair {SOURCE_BETFAIR_EXCHANGE_URL} / Odds API {SOURCE_ODDS_API_URL}", "small"),
     ]
     doc.build(story)
     copy_report_aliases(pdf_path, OUT_PDF_DIR, PUBLIC_DIR, PDF_ALIASES)

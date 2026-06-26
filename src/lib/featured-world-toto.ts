@@ -342,7 +342,7 @@ export const featuredWorldTotoRounds: FeaturedWorldTotoRound[] = [
     salesStartAt: "2026-06-12T08:00:00+09:00",
     sourceUrl: worldCupTotoOfficialSales1636Url,
     title: "第1636回 toto W杯本番",
-    totalSalesYen: 222065900,
+    totalSalesYen: 273312700,
   },
   {
     matches: featuredWorldToto1637Matches,

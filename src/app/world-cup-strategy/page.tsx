@@ -810,7 +810,7 @@ function NextWorldCupToto1637Panel({
             hint="64口 + 16口"
           />
           <MiniFact
-            label="概算払戻"
+            label="確定払戻"
             value={formatCurrency(worldCupToto1636ResultReview.userEstimatedPayoutYen)}
             hint={worldCupToto1636ResultReview.officialPayoutStatusLabel}
           />
@@ -1053,7 +1053,72 @@ function NextWorldCupToto1637Panel({
           合計は {worldCupToto1637ActualPurchaseSummary.totalUnitCount.toLocaleString("ja-JP")}口 /{" "}
           {formatCurrency(worldCupToto1637ActualPurchaseSummary.totalCostYen)} です。
         </p>
+        <p className="mt-2 text-sm leading-6 text-slate-700">{worldCupToto1637ActualPurchaseSummary.summary}</p>
+        <p className="mt-1 text-xs leading-5 text-slate-500">{worldCupToto1637ActualPurchaseSummary.officialTotoStatusLabel}</p>
       </PlainNotice>
+
+      <div className="mt-4 grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+        <HorizontalScrollTable className="min-w-0" contentClassName="rounded-[18px] border border-sky-200 bg-white/86">
+          <table className="min-w-[620px] text-left text-sm">
+            <thead className="bg-sky-50 text-xs uppercase text-sky-700">
+              <tr>
+                <th className="px-3 py-3">No</th>
+                <th className="px-3 py-3">Match</th>
+                <th className="px-3 py-3">Score</th>
+                <th className="px-3 py-3">toto</th>
+                <th className="px-3 py-3">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {worldCupToto1637ActualPurchaseSummary.knownResults.map((result) => (
+                <tr key={result.matchNo} className="border-t border-sky-100">
+                  <td className="px-3 py-3 font-semibold text-slate-950">M{String(result.matchNo).padStart(2, "0")}</td>
+                  <td className="px-3 py-3 text-slate-700">{result.matchLabel}</td>
+                  <td className="px-3 py-3 font-semibold text-slate-900">{result.score}</td>
+                  <td className="px-3 py-3 font-semibold text-sky-800">
+                    {result.actual} / {outcomeLabel(result.actual)}
+                  </td>
+                  <td className="px-3 py-3 text-xs leading-relaxed text-slate-600">{result.sourceLabel}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </HorizontalScrollTable>
+
+        <HorizontalScrollTable className="min-w-0" contentClassName="rounded-[18px] border border-teal-200 bg-white/86">
+          <table className="min-w-[760px] text-left text-sm">
+            <thead className="bg-teal-50 text-xs uppercase text-teal-700">
+              <tr>
+                <th className="px-3 py-3">Sheet</th>
+                <th className="px-3 py-3">Known</th>
+                <th className="px-3 py-3">Max</th>
+                <th className="px-3 py-3">Best</th>
+                <th className="px-3 py-3">2nd</th>
+                <th className="px-3 py-3">3rd</th>
+              </tr>
+            </thead>
+            <tbody>
+              {worldCupToto1637ActualPurchaseSummary.progressRows.map((row) => (
+                <tr key={row.slipLabel} className="border-t border-teal-100">
+                  <td className="px-3 py-3 font-semibold text-slate-950">{row.slipLabel}</td>
+                  <td className="px-3 py-3 text-slate-700">
+                    {row.knownHitCount}/{worldCupToto1637ActualPurchaseSummary.knownResults.length} hit
+                    <p className="mt-1 text-xs text-slate-500">
+                      miss {row.knownMissMatchNumbers.map((matchNo) => `M${String(matchNo).padStart(2, "0")}`).join(" / ")}
+                    </p>
+                  </td>
+                  <td className="px-3 py-3 font-semibold text-slate-900">{row.maxFinalHitCount}/13</td>
+                  <td className="px-3 py-3">
+                    <Badge tone={row.maxFinalHitCount >= 12 ? "teal" : "slate"}>{row.bestPrizeLabel}</Badge>
+                  </td>
+                  <td className="px-3 py-3 text-xs leading-relaxed text-slate-700">{row.remainingForSecondPrizeLabel}</td>
+                  <td className="px-3 py-3 text-xs leading-relaxed text-slate-700">{row.remainingForThirdPrizeLabel}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </HorizontalScrollTable>
+      </div>
 
       <HorizontalScrollTable className="mt-4 min-w-0" contentClassName="rounded-[22px] border border-teal-200 bg-white/86">
         <table className="min-w-[980px] text-left text-sm">
