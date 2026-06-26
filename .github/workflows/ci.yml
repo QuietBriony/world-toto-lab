@@ -32,6 +32,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Type-check edge code (Workers + Pages Functions)
+        run: npm run typecheck:edge
+
       - name: Test
         run: npm run test
 
