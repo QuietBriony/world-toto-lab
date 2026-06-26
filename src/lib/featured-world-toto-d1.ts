@@ -17,6 +17,7 @@ import {
 import { placeholderMatches } from "@/lib/local-repository";
 import { calculateModelProbabilities } from "@/lib/probability/engine";
 import { bulkUpdateRoundMatches, createRound } from "@/lib/repository-d1";
+import { worldCupMarketSignalByMatchNo } from "@/lib/world-cup-market-signal";
 import { modelSeed } from "@/lib/world-toto-strength";
 import type { Match, TotoOfficialRoundLibraryMatch } from "@/lib/types";
 
@@ -42,9 +43,14 @@ function recommendedOutcomesFrom(
 export function buildFeaturedWorldTotoMatchRows(
   roundId: string,
   rows: TotoOfficialRoundLibraryMatch[],
+  officialRoundNumber?: number,
 ): Match[] {
+  // 市場(Polymarket)シグナルがある回（現状 第1637回）は matchNo→{公衆票, 市場確率} を取得。
+  // 無い回は空 Map ＝従来どおり国別強度シードのみで挙動不変。
+  const marketSignals = worldCupMarketSignalByMatchNo(officialRoundNumber ?? -1);
   const bases = placeholderMatches(roundId, rows.length);
   return rows.map((row, index) => {
+    const signal = marketSignals.get(row.officialMatchNo);
     const merged: Match = {
       ...bases[index],
       actualResult: row.actualResult,
@@ -53,15 +59,17 @@ export function buildFeaturedWorldTotoMatchRows(
       homeTeam: row.homeTeam,
       kickoffTime: row.kickoffTime,
       officialMatchNo: row.officialMatchNo,
-      officialVote0: row.officialVote0,
-      officialVote1: row.officialVote1,
-      officialVote2: row.officialVote2,
+      // 市場シグナルに公衆票があれば充填（featured 1637 は scheduledMatch で票 null）。
+      officialVote0: signal?.officialVote0 ?? row.officialVote0,
+      officialVote1: signal?.officialVote1 ?? row.officialVote1,
+      officialVote2: signal?.officialVote2 ?? row.officialVote2,
       stage: row.stage,
       venue: row.venue,
     };
 
-    // 公式票が揃えば票ベース、無ければ国別強度モデルで market 確率を作り（/hazi 軽量版と
-    // 同じ最適ロジック）、それを基に engine でモデル本命を推定する。
+    // モデル土台: 実市場(Polymarket)があればそれを採用。無ければ国別強度シード
+    // （/hazi 軽量版と同じ最適ロジック）。engine は marketProb を base にするので、
+    // 市場を渡すだけで「公衆過信の本命」を自動で割り引いたモデルになる（ドイツ戦の教訓）。
     const seed = modelSeed({
       awayTeam: merged.awayTeam,
       homeTeam: merged.homeTeam,
@@ -71,15 +79,19 @@ export function buildFeaturedWorldTotoMatchRows(
     });
     const estimated = calculateModelProbabilities({
       ...merged,
-      marketProb0: seed.marketProb0,
-      marketProb1: seed.marketProb1,
-      marketProb2: seed.marketProb2,
+      marketProb0: signal?.marketProb0 ?? seed.marketProb0,
+      marketProb1: signal?.marketProb1 ?? seed.marketProb1,
+      marketProb2: signal?.marketProb2 ?? seed.marketProb2,
       competitionType: "world_cup",
       dataProfile: "manual_light",
     });
 
     return {
       ...merged,
+      // 実市場(Polymarket)のみ marketProb 列に保存（強度シードは synthetic なので保存しない）。
+      marketProb0: signal?.marketProb0 ?? merged.marketProb0,
+      marketProb1: signal?.marketProb1 ?? merged.marketProb1,
+      marketProb2: signal?.marketProb2 ?? merged.marketProb2,
       modelProb0: estimated.modelProb0,
       modelProb1: estimated.modelProb1,
       modelProb2: estimated.modelProb2,
@@ -129,7 +141,11 @@ export async function createFeaturedWorldTotoRoundInD1(input: {
 
   const matches = await bulkUpdateRoundMatches({
     roundId,
-    rows: buildFeaturedWorldTotoMatchRows(roundId, input.payload.rows),
+    rows: buildFeaturedWorldTotoMatchRows(
+      roundId,
+      input.payload.rows,
+      input.payload.officialRoundNumber,
+    ),
   });
 
   return { matches, roundId };
