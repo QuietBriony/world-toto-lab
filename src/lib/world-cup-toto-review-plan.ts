@@ -12,13 +12,13 @@ export const worldCupTotoNextPurchaseSheet200FileName =
   "world-cup-toto-latest-200-purchase-sheet.csv";
 
 export const worldCupTotoVersionedReportFileName =
-  "world-cup-toto-1634-1637-evolved-plan-20260626-v22.pdf";
+  "world-cup-toto-1634-1637-evolved-plan-20260626-v23.pdf";
 export const worldCupTotoVersionedPurchaseSheet50FileName =
-  "world-cup-toto-1637-visual-5000-plan-20260626-v22.csv";
+  "world-cup-toto-1637-visual-5000-plan-20260626-v23.csv";
 export const worldCupTotoVersionedPurchaseSheetFileName =
-  "world-cup-toto-1637-visual-10000-plan-20260626-v22.csv";
+  "world-cup-toto-1637-visual-10000-plan-20260626-v23.csv";
 export const worldCupTotoVersionedPurchaseSheet200FileName =
-  "world-cup-toto-1637-visual-20000-plan-20260626-v22.csv";
+  "world-cup-toto-1637-visual-20000-plan-20260626-v23.csv";
 export const worldCupTotoLegacyReportFileName =
   "world-cup-toto-1634-1636-evolved-plan.pdf";
 export const worldCupTotoLegacyPurchaseSheetFileName =
@@ -28,7 +28,7 @@ export const worldCupTotoReportVersion = {
   csv200Sha256: "15915090b59d90fbada7be30b4d071c5bf44d4d65c4cfdd3f4812da7a8a898d4",
   csv50Sha256: "312e99aafbde9489e53b95eb35203e2db9e2809df18c201a0be98334b5eb7295",
   csvSha256: "fc03005ea940a7b702e0b90af4314f1bf84b9ba5b69616a51738bdd0892670f8",
-  label: "2026-06-26 v22",
+  label: "2026-06-26 v23",
   latest200CsvFileName: worldCupTotoNextPurchaseSheet200FileName,
   latestCsvFileName: worldCupTotoNextPurchaseSheetFileName,
   latest50CsvFileName: worldCupTotoNextPurchaseSheet50FileName,
@@ -36,8 +36,8 @@ export const worldCupTotoReportVersion = {
   latestPdfFileName: worldCupTotoLatestReportFileName,
   legacyCsvFileName: worldCupTotoLegacyPurchaseSheetFileName,
   legacyPdfFileName: worldCupTotoLegacyReportFileName,
-  pdfSha256: "428fe386b087d2cb7bdc70dd149ef251a8d0cf870c8e854186692aeda48d4021",
-  publishedAtLabel: "2026-06-26 12:31 JST",
+  pdfSha256: "c2057d16fc3108d3a7204b8aa00d1e933d063861ae14cc09b6387d2380966596",
+  publishedAtLabel: "2026-06-26 13:19 JST",
   versioned200CsvFileName: worldCupTotoVersionedPurchaseSheet200FileName,
   versionedCsvFileName: worldCupTotoVersionedPurchaseSheetFileName,
   versioned50CsvFileName: worldCupTotoVersionedPurchaseSheet50FileName,
@@ -58,6 +58,8 @@ export const worldCupTotoOfficialSales1636Url =
   "https://sp.toto-dream.com/dcs/subos/screen/si01/ssin025/PGSSIN02501ForwardSalesTermtotoSP.form?holdCntId=1636";
 export const worldCupTotoOfficialInfo1636Url =
   "https://store.toto-dream.com/dcs/subos/screen/pi01/spin000/PGSPIN00001DisptotoLotInfo.form?holdCntId=1636";
+export const worldCupTotoOfficialResult1636Url =
+  "https://sp.toto-dream.com/dcs/subos/screen/si04/ssin007/PGSSIN00701FwdLotDetailRslttoto.form?holdCntId=1636&commodityId=01&meetingFiscalYear=2026";
 export const worldCupTotoOfficialVote1637Url =
   "https://sp.toto-dream.com/dcs/subos/screen/si01/ssin025/PGSSIN02501ForwardVotetotoSP.form?commodityId=01&fromId=SSIN026&gameAssortment=A&holdCntId=1637";
 export const worldCupTotoOfficialSales1637Url =
@@ -193,10 +195,35 @@ export type Toto1637ActualPurchaseSlip = {
   unitCount: number;
 };
 
+export type Toto1637KnownResultRow = {
+  actual: OutcomeValue;
+  matchLabel: string;
+  matchNo: number;
+  score: string;
+  sourceLabel: string;
+  statusLabel: string;
+};
+
+export type Toto1637ActualPurchaseProgress = {
+  bestPrizeLabel: string;
+  knownHitCount: number;
+  knownMissCount: number;
+  knownMissMatchNumbers: number[];
+  maxFinalHitCount: number;
+  remainingForSecondPrizeLabel: string;
+  remainingForThirdPrizeLabel: string;
+  remainingMatchCount: number;
+  slipLabel: string;
+};
+
 export type Toto1637ActualPurchaseSummary = {
+  knownResults: Toto1637KnownResultRow[];
   labels: string[];
+  officialTotoStatusLabel: string;
   privacyNote: string;
+  progressRows: Toto1637ActualPurchaseProgress[];
   slips: Toto1637ActualPurchaseSlip[];
+  summary: string;
   totalCostYen: number;
   totalUnitCount: number;
   verificationRule: string;
@@ -215,13 +242,19 @@ export type Toto1636ResultReview = {
   actualSignature: string;
   estimatedThirdPrizeYen: number;
   finalSalesYen: number;
+  firstPrizeWinners: number;
+  firstPrizeYen: number;
   logicUpdates: string[];
   officialPayoutStatusLabel: string;
   payoutStartLabel: string;
   resultStatusLabel: string;
+  secondPrizeWinners: number;
+  secondPrizeYen: number;
   slips: Toto1636UserSlipReview[];
   sourceUrl: string;
   summary: string;
+  thirdPrizeWinners: number;
+  thirdPrizeYen: number;
   userEstimatedNetYen: number;
   userEstimatedPayoutYen: number;
   userStakeYen: number;
@@ -618,7 +651,7 @@ export const worldCupToto1636Matches: TotoNextPlanMatch[] = [
   { matchNo: 13, kickoffLabel: "06/21 09:00", home: "Ecuador", away: "Curacao", votes: { "1": 0.85, "0": 0.1122, "2": 0.0378 }, recommendedOutcomes: ["1"], ruleLabel: "lock favorite over 80%", note: "Use as a lock." },
 ];
 
-const worldCupToto1636ActualSignature = "1212010112100";
+const worldCupToto1636ActualSignature = "1212110112100";
 
 function reviewUserSlip1636(
   label: string,
@@ -644,9 +677,9 @@ function reviewUserSlip1636(
   };
 }
 
-export const worldCupToto1636ResultReview: Toto1636ResultReview = {
+const worldCupToto1636ResultReviewDraft = {
   actualSignature: worldCupToto1636ActualSignature,
-  estimatedThirdPrizeYen: 1_560,
+  estimatedThirdPrizeYen: 650,
   finalSalesYen: 273_312_700,
   logicUpdates: [
     "70%以上の強人気でも、公式ドローが10-12%以上かつ外部市場ドローが20%前後なら単独固定を解除する。",
@@ -654,9 +687,9 @@ export const worldCupToto1636ResultReview: Toto1636ResultReview = {
     "第3戦は勝点条件、引き分けOK、主力温存を強めに見る。1637ではM01/M03/M13の強人気ドローを最終確認する。",
     "口数を増やせない場合は、全分散を増やすより、強人気ドローを先に守る。",
   ],
-  officialPayoutStatusLabel: "公式払戻は結果発表待ち。3等は概算で約1,560円として扱う。",
+  officialPayoutStatusLabel: "公式確定: 1等956,590円 / 2等6,750円 / 3等650円。",
   payoutStartLabel: "2026-06-26",
-  resultStatusLabel: "全13試合の実出目は 1212010112100 として反省に反映済み。",
+  resultStatusLabel: "全13試合の公式実出目は 1212110112100 として反省に反映済み。",
   slips: [
     reviewUserSlip1636(
       "64口 / 6,400円",
@@ -671,10 +704,36 @@ export const worldCupToto1636ResultReview: Toto1636ResultReview = {
   ],
   sourceUrl: worldCupTotoOfficialInfo1636Url,
   summary:
-    "ユーザー購入80口は、64口側がM12 England-GhanaとM13 Ecuador-Curacaoの強人気ドローを外して11/13、3等圏。16口側は9/13で圏外。次回は強人気でもドローを外す条件を厳しくする。",
-  userEstimatedNetYen: 1_560 - 8_000,
-  userEstimatedPayoutYen: 1_560,
+    "ユーザー購入80口は、64口側がM12 England-GhanaとM13 Ecuador-Curacaoの強人気ドローを外して11/13、3等。16口側はM07/M12/M13を外して10/13で圏外。次回は強人気でもドローを外す条件を厳しくする。",
+  userEstimatedNetYen: 650 - 8_000,
+  userEstimatedPayoutYen: 650,
   userStakeYen: 8_000,
+};
+
+export const worldCupToto1636ResultReview: Toto1636ResultReview = {
+  ...worldCupToto1636ResultReviewDraft,
+  estimatedThirdPrizeYen: 650,
+  finalSalesYen: 273_312_700,
+  firstPrizeWinners: 100,
+  firstPrizeYen: 956_590,
+  logicUpdates: [
+    "Round 1636 official result is fixed at 1212110112100. The prior memo had M05 as draw; official result is Colombia win.",
+    "The 64-unit slip hit 11/13 and lands 3rd prize. The 16-unit slip hit 10/13 and is out.",
+    "Strong-favorite draws still matter: M07, M12, and M13 were the actual miss pattern to protect against.",
+    "For round 1637 review, keep matchday-3 motivation, draw-ok states, and rotation risk separated from official popularity.",
+  ],
+  officialPayoutStatusLabel: "Official fixed: 1st 956,590 yen / 2nd 6,750 yen / 3rd 650 yen.",
+  payoutStartLabel: "2026-06-26",
+  resultStatusLabel: "Official result fixed: 1212110112100. Payout starts 2026-06-26.",
+  secondPrizeWinners: 3_034,
+  secondPrizeYen: 6_750,
+  sourceUrl: worldCupTotoOfficialResult1636Url,
+  summary:
+    "User purchase was 80 units / 8,000 yen. The 64-unit slip hit 11/13 and gets 3rd prize 650 yen; the 16-unit slip hit 10/13 and is out. Net result is -7,350 yen.",
+  thirdPrizeWinners: 31_414,
+  thirdPrizeYen: 650,
+  userEstimatedNetYen: 650 - 8_000,
+  userEstimatedPayoutYen: 650,
 };
 
 export const worldCupToto1637Matches: Toto1637PlanMatch[] = [
@@ -1167,7 +1226,7 @@ export const worldCupToto1636NextPlan = {
   maxDiscussionBudgetYen: 20_000,
   purchaseDeadlineLabel: "2026-06-20 19:00 JST",
   recommendedBudgetYen: worldCupToto1636PurchaseRows.reduce((sum, row) => sum + row.unitCount, 0) * TOTO13_STAKE_YEN,
-  salesAsOfLabel: "2026-06-20 17:02 JST",
+  salesAsOfLabel: "2026-06-20 17:02 JST pre-close snapshot",
   totalSalesYen: 222_065_900,
   summary:
     "Replayed recommendation now keeps every pre-match draw at 20% or higher, including Uruguay vs Cape Verde. The candidate core is 288 unique rows / 28,800 yen, so the visible sheet is capped at 200 units / 20,000 yen and ranked by proxy EV instead of buying every core row.",
@@ -1539,7 +1598,7 @@ export const worldCupToto1637CloseMarketSnapshot: Toto1637CloseMarketSnapshot = 
     "User purchase reference numbers and account-specific fields are intentionally excluded. Only round, choices, unit counts, and costs are retained for model review.",
   salesYen: 357_285_900,
   summary:
-    "The close-aligned Polymarket read keeps the v22 direction: M05/M07 draw remain valuable, M02 Japan public bias remains visible, M13 draw stays in, and M01 Ecuador becomes a watch signal but not a core add.",
+    "The close-aligned Polymarket read keeps the v23 direction: M05/M07 draw remain valuable, M02 Japan public bias remains visible, M13 draw stays in, and M01 Ecuador becomes a watch signal but not a core add.",
   voteUnits: 3_572_859,
   rows: [
     {
@@ -1728,11 +1787,87 @@ export const worldCupToto1637ActualPurchaseSlips: Toto1637ActualPurchaseSlip[] =
   ),
 ];
 
+export const worldCupToto1637KnownResults: Toto1637KnownResultRow[] = [
+  {
+    actual: "1",
+    matchLabel: "Ecuador vs Germany",
+    matchNo: 1,
+    score: "2-1",
+    sourceLabel: "soccer FT; toto official result pending",
+    statusLabel: "score confirmed",
+  },
+  {
+    actual: "0",
+    matchLabel: "Japan vs Sweden",
+    matchNo: 2,
+    score: "1-1",
+    sourceLabel: "soccer FT; toto official result pending",
+    statusLabel: "score confirmed",
+  },
+  {
+    actual: "2",
+    matchLabel: "Tunisia vs Netherlands",
+    matchNo: 6,
+    score: "1-3",
+    sourceLabel: "soccer FT; toto official result pending",
+    statusLabel: "score confirmed",
+  },
+  {
+    actual: "0",
+    matchLabel: "Paraguay vs Australia",
+    matchNo: 7,
+    score: "0-0",
+    sourceLabel: "soccer FT; toto official result pending",
+    statusLabel: "score confirmed",
+  },
+];
+
+function evaluateToto1637ActualPurchaseProgress(
+  slip: Toto1637ActualPurchaseSlip,
+): Toto1637ActualPurchaseProgress {
+  const knownMissMatchNumbers = worldCupToto1637KnownResults
+    .filter((result) => !slip.choices[result.matchNo - 1]?.split("/").includes(result.actual))
+    .map((result) => result.matchNo);
+  const knownMissCount = knownMissMatchNumbers.length;
+  const knownHitCount = worldCupToto1637KnownResults.length - knownMissCount;
+  const remainingMatchCount = 13 - worldCupToto1637KnownResults.length;
+  const maxFinalHitCount = knownHitCount + remainingMatchCount;
+  const bestPrizeLabel =
+    maxFinalHitCount >= 13
+      ? "1st still possible"
+      : maxFinalHitCount === 12
+        ? "2nd only; 1st is gone"
+        : maxFinalHitCount === 11
+          ? "3rd only"
+          : "No prize path";
+  const secondHitsNeeded = Math.max(0, 12 - knownHitCount);
+  const thirdHitsNeeded = Math.max(0, 11 - knownHitCount);
+
+  return {
+    bestPrizeLabel,
+    knownHitCount,
+    knownMissCount,
+    knownMissMatchNumbers,
+    maxFinalHitCount,
+    remainingForSecondPrizeLabel:
+      secondHitsNeeded <= remainingMatchCount ? `Need ${secondHitsNeeded}/${remainingMatchCount} remaining hits for 2nd` : "2nd is gone",
+    remainingForThirdPrizeLabel:
+      thirdHitsNeeded <= remainingMatchCount ? `Need ${thirdHitsNeeded}/${remainingMatchCount} remaining hits for 3rd` : "3rd is gone",
+    remainingMatchCount,
+    slipLabel: slip.label,
+  };
+}
+
 export const worldCupToto1637ActualPurchaseSummary: Toto1637ActualPurchaseSummary = {
+  knownResults: worldCupToto1637KnownResults,
   labels: worldCupToto1637ActualPurchaseSlips.map((slip) => slip.label),
+  officialTotoStatusLabel: "Round 1637 official toto result is pending until 2026-06-28; this uses soccer FT scores only.",
   privacyNote:
     "Inquiry/reference numbers from screenshots are not stored in the repo. This is enough to evaluate 1st/2nd/3rd prize paths after results.",
+  progressRows: worldCupToto1637ActualPurchaseSlips.map(evaluateToto1637ActualPurchaseProgress),
   slips: worldCupToto1637ActualPurchaseSlips,
+  summary:
+    "Known FT scores are M01=1, M02=0, M06=2, M07=0. All three saved slips missed M01, so 1st prize is gone; 2nd remains only if every remaining match hits, and 3rd needs at least 8 of the remaining 9.",
   totalCostYen: worldCupToto1637ActualPurchaseSlips.reduce((sum, slip) => sum + slip.costYen, 0),
   totalUnitCount: worldCupToto1637ActualPurchaseSlips.reduce((sum, slip) => sum + slip.unitCount, 0),
   verificationRule:

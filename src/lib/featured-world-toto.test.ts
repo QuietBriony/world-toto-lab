@@ -43,7 +43,7 @@ describe("featured world toto preset", () => {
   it("keeps the round 1636 preset aligned to the latest official snapshot", () => {
     const round1636 = featuredWorldTotoRounds.find((round) => round.roundNumber === 1636);
 
-    expect(round1636?.totalSalesYen).toBe(222_065_900);
+    expect(round1636?.totalSalesYen).toBe(273_312_700);
     expect(round1636?.matches[0]?.officialVote1).toBeCloseTo(0.7125, 4);
     expect(round1636?.matches[1]?.officialVote2).toBeCloseTo(0.691, 4);
   });
