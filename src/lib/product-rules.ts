@@ -16,8 +16,6 @@ export const productTypeOptions: ProductType[] = [
   "custom",
 ];
 
-export const primaryProductTypeOptions: ProductType[] = ["toto13", "mini_toto"];
-
 export const voidHandlingLabel: Record<VoidHandling, string> = {
   manual: "要公式確認",
   all_outcomes_valid: "全 outcome 有効",

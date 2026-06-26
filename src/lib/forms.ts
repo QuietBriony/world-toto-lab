@@ -8,7 +8,6 @@ import type {
   PrimaryUse,
   ProductType,
   ProvisionalCall,
-  ProbabilityReadiness,
   ResearchMemoConfidence,
   ResearchMemoType,
   RoundSource,
@@ -130,14 +129,6 @@ export function parseDataProfile(raw: string): DataProfile {
   return values.includes(raw as DataProfile)
     ? (raw as DataProfile)
     : "worldcup_rich";
-}
-
-export function parseProbabilityReadiness(raw: string): ProbabilityReadiness {
-  const values: ProbabilityReadiness[] = ["ready", "partial", "low_confidence", "not_ready"];
-
-  return values.includes(raw as ProbabilityReadiness)
-    ? (raw as ProbabilityReadiness)
-    : "not_ready";
 }
 
 export function parseVoidHandling(raw: string): VoidHandling {

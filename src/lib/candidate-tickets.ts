@@ -421,19 +421,6 @@ function buildHumanAlignmentSummary(input: {
   } satisfies HumanAlignmentSummary;
 }
 
-export function summarizeCandidateHumanAlignment(input: {
-  candidate: { picks: CandidateTicket["picks"] };
-  matches: Match[];
-  picks: Pick[];
-  users: User[];
-}) {
-  return buildHumanAlignmentSummary({
-    picks: input.candidate.picks,
-    matches: input.matches,
-    predictorSummaries: buildPredictorSummaries(input.matches, input.picks, input.users),
-  });
-}
-
 function dataQualityForCandidate(input: {
   evAssumption: RoundEvAssumption | null;
   isDemoData: boolean;
