@@ -258,7 +258,7 @@ export default function DashboardPage() {
   const { data, error, loading, refresh } = useDashboardData();
   const goal3Library = useTotoOfficialRoundLibrary({ productType: "custom" });
   const bigOfficialWatch = useBigOfficialWatch();
-  const [busy, setBusy] = useState<"demo" | "hazi" | "members" | "round" | null>(null);
+  const [busy, setBusy] = useState<"demo" | "members" | "round" | "worldCupSetup" | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [addingMember, setAddingMember] = useState(false);
   const [savingMemberId, setSavingMemberId] = useState<string | null>(null);
@@ -442,41 +442,41 @@ export default function DashboardPage() {
     }
   };
 
-  const ensureHaziUserId = async () => {
+  const ensureBaselineUserId = async () => {
     const currentData = await listDashboardData();
-    const currentHaziUser = currentData.users.find((user) => user.name.trim().toLowerCase() === "hazi");
-    if (currentHaziUser) {
-      return currentHaziUser.id;
+    const currentBaselineUser = currentData.users.find((user) => user.name.trim() === "AI基準");
+    if (currentBaselineUser) {
+      return currentBaselineUser.id;
     }
 
     await createUser({
-      name: "Hazi",
+      name: "AI基準",
       role: "admin",
     });
     const nextData = await listDashboardData();
-    const nextHaziUser = nextData.users.find((user) => user.name.trim().toLowerCase() === "hazi");
-    return nextHaziUser?.id ?? null;
+    const nextBaselineUser = nextData.users.find((user) => user.name.trim() === "AI基準");
+    return nextBaselineUser?.id ?? null;
   };
 
-  const saveHaziInitialPicks = async (roundId: string, haziUserId: string | null) => {
+  const saveBaselineInitialPicks = async (roundId: string, baselineUserId: string | null) => {
     const workspace = await getRoundWorkspace(roundId);
     if (!workspace) {
       return null;
     }
 
-    const haziUser =
-      workspace.users.find((user) => user.id === haziUserId) ??
-      workspace.users.find((user) => user.name.trim().toLowerCase() === "hazi") ??
+    const baselineUser =
+      workspace.users.find((user) => user.id === baselineUserId) ??
+      workspace.users.find((user) => user.name.trim() === "AI基準") ??
       workspace.users.find((user) => isPredictorRole(user.role)) ??
       workspace.users[0];
 
-    if (!haziUser) {
+    if (!baselineUser) {
       return null;
     }
 
     await replacePicks({
       roundId,
-      userId: haziUser.id,
+      userId: baselineUser.id,
       picks: workspace.round.matches.map((match) => {
         const pick =
           favoriteOutcomeForBucket(match, "model") ??
@@ -485,18 +485,18 @@ export default function DashboardPage() {
 
         return {
           matchId: match.id,
-          note: "Hazi初期予想: AI初期線から自動入力。あとで手動調整してください。",
+          note: "AI基準初期線: モデル初期線から自動入力。あとで手動調整してください。",
           pick: outcomeToEnum(pick),
           support: { kind: "manual" as const },
         };
       }),
     });
 
-    return haziUser.id;
+    return baselineUser.id;
   };
 
-  const handleCreateHaziWorldToto = async () => {
-    setBusy("hazi");
+  const handleCreateWorldCupToto = async () => {
+    setBusy("worldCupSetup");
     setActionError(null);
 
     try {
@@ -506,8 +506,8 @@ export default function DashboardPage() {
       if (!useSharedD1) {
         dataMode.setMode("local");
       }
-      const haziUserId = await ensureHaziUserId();
-      const haziParticipantIds = haziUserId ? [haziUserId] : undefined;
+      const baselineUserId = await ensureBaselineUserId();
+      const baselineParticipantIds = baselineUserId ? [baselineUserId] : undefined;
 
       const currentData = await listDashboardData();
       const currentInventoryRounds = currentData.rounds.filter(
@@ -519,8 +519,8 @@ export default function DashboardPage() {
           return roundNumber ? [[roundNumber, round.id] as const] : [];
         }),
       );
-      const haziNoteSuffix =
-        "\nHaziレビュー待ちの軽量セットです。候補カード生成はスマホ負荷を避けるため後で必要な時だけ行います。";
+      const setupNoteSuffix =
+        "\n市場ソースとEV検証用の軽量セットです。候補カード生成はスマホ負荷を避けるため後で必要な時だけ行います。";
       const resolveExistingRoundId = (officialRoundNumber: number | null) =>
         officialRoundNumber !== null
           ? existingRoundsByNumber.get(officialRoundNumber) ?? null
@@ -538,7 +538,7 @@ export default function DashboardPage() {
         return tokens?.editToken || tokens?.adminToken ? existingId : null;
       };
       const payloads = buildFeaturedWorldTotoImportPayloads();
-      const roundRefs: Array<{ haziUserId: string | null; roundId: string }> = [];
+      const roundRefs: Array<{ baselineUserId: string | null; roundId: string }> = [];
 
       if (useSharedD1) {
         // 共有D1は fetch ベースで各回が独立（storeRoundTokens は await を挟まず同期 write =
@@ -547,11 +547,11 @@ export default function DashboardPage() {
           payloads.map(async (payload) => {
             const { roundId } = await createFeaturedWorldTotoRoundInD1({
               existingRoundId: resolveEditableExistingRoundId(payload.officialRoundNumber),
-              participantIds: haziParticipantIds,
-              payload: { ...payload, notes: `${payload.notes}${haziNoteSuffix}` },
+              participantIds: baselineParticipantIds,
+              payload: { ...payload, notes: `${payload.notes}${setupNoteSuffix}` },
             });
-            const savedHaziUserId = await saveHaziInitialPicks(roundId, haziUserId);
-            return { haziUserId: savedHaziUserId, roundId };
+            const savedBaselineUserId = await saveBaselineInitialPicks(roundId, baselineUserId);
+            return { baselineUserId: savedBaselineUserId, roundId };
           }),
         );
         roundRefs.push(...refs);
@@ -560,18 +560,18 @@ export default function DashboardPage() {
         for (const payload of payloads) {
           const roundId = await saveTotoOfficialRoundImport({
             ...payload,
-            notes: `${payload.notes}${haziNoteSuffix}`,
-            participantIds: haziParticipantIds,
+            notes: `${payload.notes}${setupNoteSuffix}`,
+            participantIds: baselineParticipantIds,
             roundId: resolveExistingRoundId(payload.officialRoundNumber),
           });
           await estimateRoundAiModel({ overwriteExisting: false, roundId });
-          const savedHaziUserId = await saveHaziInitialPicks(roundId, haziUserId);
-          roundRefs.push({ haziUserId: savedHaziUserId, roundId });
+          const savedBaselineUserId = await saveBaselineInitialPicks(roundId, baselineUserId);
+          roundRefs.push({ baselineUserId: savedBaselineUserId, roundId });
         }
       }
 
       await refresh();
-      router.push(appRoute.hazi);
+      router.push(appRoute.worldCupStrategy);
     } catch (nextError) {
       setActionError(errorMessage(nextError));
     } finally {
@@ -648,7 +648,7 @@ export default function DashboardPage() {
         user: haziWorldTotoUser?.id,
       })
     : null;
-  const haziWorldTotoReviewHref = appRoute.hazi;
+  const haziWorldTotoReviewHref = appRoute.worldCupStrategy;
   const haziWorldTotoPickRoomHref = haziWorldTotoRound
     ? buildRoundHref(appRoute.pickRoom, haziWorldTotoRound.id, {
         user: haziWorldTotoUser?.id,
@@ -935,8 +935,8 @@ export default function DashboardPage() {
           <AppFlowShortcuts latestRoundId={latestRoundId} />
 
           <SectionCard
-            title="Haziの予想を入れる"
-            description="ここが最初に押す入口です。第1634〜1637回totoのW杯対象52試合を作り、Haziの初期予想を入れてレビューへ進みます。"
+            title="W杯totoを準備する"
+            description="第1634〜1637回totoのW杯対象52試合を作り、公式人気・外部市場・強アカWatchを見ながらEV司令塔で確認します。"
             actions={
               <div className="flex flex-wrap gap-2">
                 <Badge tone="teal">最短導線</Badge>
@@ -958,34 +958,34 @@ export default function DashboardPage() {
                 </div>
                 <h3 className="mt-4 text-xl font-semibold tracking-tight text-slate-950">
                   {haziWorldTotoComplete
-                    ? "Haziレビューを各回で並走する"
-                    : "4回分を作ってHaziレビューへ"}
+                    ? "W杯ラウンドを各回で確認する"
+                    : "4回分を作ってEV司令塔へ"}
                 </h3>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
                   {haziWorldTotoComplete
-                    ? "4回分は作成済みです。各回のレビュー画面でHaziの初期予想を確認し、必要な試合だけ手動で直せます。"
+                    ? "4回分は作成済みです。EV司令塔で推奨、外部市場差分、振り返りを確認できます。"
                     : dataMode.mode === "cloudflare_d1"
-                      ? "公式で公開されている第1634〜1637回totoを、みんなが見られる共有D1に作ります。Haziの初期AI予想つきで、友達も同じ画面で確認できます。"
+                      ? "公式で公開されている第1634〜1637回totoを、みんなが見られる共有D1に作ります。Hazi入力は使わず、AI初期線と市場ソースを同じ画面で確認できます。"
                       : "公式で公開されている第1634〜1637回totoを、このブラウザのローカル保存に作ります。アカウント登録なしで、すぐに始められます。"}
                 </p>
                 <div className="mt-5 flex flex-wrap gap-2">
                   {haziWorldTotoComplete && haziWorldTotoReviewHref ? (
                     <Link href={haziWorldTotoReviewHref} className={buttonClassName}>
-                      Haziレビューを開く
+                      EV司令塔を開く
                     </Link>
                   ) : (
                     <button
                       type="button"
-                      onClick={() => void handleCreateHaziWorldToto()}
-                      disabled={busy === "hazi"}
+                      onClick={() => void handleCreateWorldCupToto()}
+                      disabled={busy === "worldCupSetup"}
                       className={buttonClassName}
                     >
-                      {busy === "hazi" ? "AI予想を作成中..." : "4回分を作ってHaziレビューへ"}
+                      {busy === "worldCupSetup" ? "AI初期線を作成中..." : "4回分を作ってEV司令塔へ"}
                     </button>
                   )}
                   {haziWorldTotoComplete && haziWorldTotoPicksHref ? (
                     <Link href={haziWorldTotoPicksHref} className={secondaryButtonClassName}>
-                      Hazi予想を調整
+                      予想を調整
                     </Link>
                   ) : haziWorldTotoPickRoomHref ? (
                     <Link href={haziWorldTotoPickRoomHref} className={secondaryButtonClassName}>
@@ -1018,7 +1018,7 @@ export default function DashboardPage() {
                           user: slotUser?.id,
                         })
                       : null;
-                    const slotReviewHref = slot.round ? appRoute.hazi : null;
+                    const slotReviewHref = slot.round ? appRoute.worldCupStrategy : null;
 
                     return (
                       <div
@@ -1055,8 +1055,8 @@ export default function DashboardPage() {
               <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
                 {[
                   ["1", "4回作成", "第1634〜1637回の指定13試合をそれぞれ入れる"],
-                  ["2", "52試合予想済み", "AI初期線でHaziの1 / 0 / 2をブラウザ保存する"],
-                  ["3", "レビュー待ち", "候補カード生成は後回しにして軽く開く"],
+                  ["2", "52試合の初期線", "AI初期線と公式人気をブラウザ保存する"],
+                  ["3", "市場確認へ", "EV司令塔と市場ソースでズレを確認する"],
                 ].map(([step, title, body]) => (
                   <div key={step} className="rounded-[22px] border border-slate-200 bg-white/88 px-4 py-4">
                     <p className="text-xs font-semibold uppercase tracking-[0.2em] text-teal-700/70">
@@ -1070,7 +1070,7 @@ export default function DashboardPage() {
             </div>
           </SectionCard>
 
-          {/* EVネタ帳プレビューは主導線『Haziの予想を入れる』の下に置く
+          {/* EVネタ帳プレビューは主導線『W杯totoを準備する』の下に置く
               （上に置くとスマホで4枚縦積み≈900pxが主CTAを画面外へ押し下げるため）。 */}
           <EvOpportunityPreviewPanel cards={evOpportunityCards} />
 
@@ -1179,8 +1179,8 @@ export default function DashboardPage() {
                   <Link href={appRoute.worldCupStrategy} className={buttonClassName}>
                     EV司令塔を開く
                   </Link>
-                  <Link href={appRoute.hazi} className={secondaryButtonClassName}>
-                    Haziレビュー
+                  <Link href={appRoute.marketSources} className={secondaryButtonClassName}>
+                    市場ソース
                   </Link>
                   <a href={worldCupCloseReportHref} className={secondaryButtonClassName}>
                     最新PDF
@@ -1628,14 +1628,14 @@ export default function DashboardPage() {
                 {
                   step: "01",
                   title: "本番ラウンドを作成",
-                  body: "まず対象回を1つ作ります。初回なら `hazi` と空き枠もここで一緒に準備できます。",
+                  body: "まず対象回を1つ作ります。初回なら初期予想者と空き枠もここで一緒に準備できます。",
                   tone: liveRoundCount > 0 ? "teal" : "amber",
                   status: liveRoundCount > 0 ? "済み" : "次にやる",
                 },
                 {
                   step: "02",
                   title: "共有メンバーを確認",
-                  body: "`hazi` を起点に、必要な人だけ名前や役割を変えます。ほかは空き枠のままで始めて大丈夫です。",
+                  body: "初期予想者を起点に、必要な人だけ名前や役割を変えます。ほかは空き枠のままで始めて大丈夫です。",
                   tone: data.users.length > 0 ? "teal" : "amber",
                   status: data.users.length > 0 ? "確認可" : "作成待ち",
                 },
@@ -1982,7 +1982,7 @@ export default function DashboardPage() {
             {data.users.length === 0 ? (
               <div className="grid gap-4">
                 <p className="text-sm text-slate-600">
-                  まず `ラウンドを作成` から始めると、必要なら `hazi` と空き枠を一緒に準備できます。
+                  まず `ラウンドを作成` から始めると、必要なら初期予想者と空き枠を一緒に準備できます。
                 </p>
                 <div className="flex flex-wrap gap-2">
                   <button
@@ -1991,7 +1991,7 @@ export default function DashboardPage() {
                     onClick={handleCreateInitialUsers}
                     disabled={busy === "members"}
                   >
-                    {busy === "members" ? "準備中..." : "hazi と空き枠を先に準備"}
+                    {busy === "members" ? "準備中..." : "初期予想者と空き枠を先に準備"}
                   </button>
                   <a href="#create-round" className={secondaryButtonClassName}>
                     ラウンド作成へ
@@ -2193,7 +2193,7 @@ export default function DashboardPage() {
                   </p>
                   <p className="mt-2 text-sm leading-6 text-slate-600">
                     同じ予想者で複数ラインを出したいときは、左側の `別ライン追加` を使うと
-                    `hazi 2` のように増やせます。
+                    `AI 2` のように増やせます。
                   </p>
                   <form onSubmit={handleAddMember} className="mt-4 grid gap-3">
                     <label className="grid gap-2 text-sm font-medium text-slate-700">
@@ -2475,7 +2475,7 @@ export default function DashboardPage() {
                       className="mt-1 h-4 w-4 rounded border-slate-300 text-emerald-700 focus:ring-emerald-300"
                     />
                     <span className="leading-6">
-                      このラウンド作成時に、初回メンバーとして `hazi` を予想者、ほか 9 枠を `空き`
+                      このラウンド作成時に、初回メンバーとして初期予想者、ほか 9 枠を `空き`
                       として一緒に準備する
                     </span>
                   </label>

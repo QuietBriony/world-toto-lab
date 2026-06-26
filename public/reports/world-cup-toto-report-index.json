@@ -8,6 +8,21 @@
   },
   "versions": [
     {
+      "csv": "world-cup-toto-1637-visual-10000-plan-20260626-v22.csv",
+      "csv50": "world-cup-toto-1637-visual-5000-plan-20260626-v22.csv",
+      "csv50Sha256": "312E99AAFBDE9489E53B95EB35203E2DB9E2809DF18C201A0BE98334B5EB7295",
+      "csv100Sha256": "FC03005EA940A7B702E0B90AF4314F1BF84B9BA5B69616A51738BDD0892670F8",
+      "csv200": "world-cup-toto-1637-visual-20000-plan-20260626-v22.csv",
+      "csv200Sha256": "15915090B59D90FBADA7BE30B4D071C5BF44D4D65C4CFDD3F4812DA7A8A898D4",
+      "csvSha256": "FC03005EA940A7B702E0B90AF4314F1BF84B9BA5B69616A51738BDD0892670F8",
+      "label": "2026-06-26 v22",
+      "legacyPdf": "world-cup-toto-1634-1636-evolved-plan.pdf",
+      "pdf": "world-cup-toto-1634-1637-evolved-plan-20260626-v22.pdf",
+      "pdfSha256": "428FE386B087D2CB7BDC70DD149EF251A8D0CF870C8E854186692AEDA48D4021",
+      "publishedAt": "2026-06-26 12:31 JST",
+      "summary": "Removes Hazi input from the active strategy overlay, promotes official vote plus Polymarket plus strong-account watch as the current read, and refreshes the latest PDF while keeping the 50/100/200-unit purchase sheets unchanged."
+    },
+    {
       "csv": "world-cup-toto-1637-visual-10000-plan-20260625-v21.csv",
       "csv50": "world-cup-toto-1637-visual-5000-plan-20260625-v21.csv",
       "csv50Sha256": "312E99AAFBDE9489E53B95EB35203E2DB9E2809DF18C201A0BE98334B5EB7295",

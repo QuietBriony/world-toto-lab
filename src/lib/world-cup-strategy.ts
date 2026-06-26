@@ -429,7 +429,7 @@ export const worldCupEvGlossaryRows: WorldCupEvGlossaryRow[] = [
   },
   {
     formula: "p_model = モデルが見た実際の当たりやすさ",
-    plain: "予測市場、外部オッズ、Elo、得点モデル、Hazi補正などから作る勝率です。ここを当てに行きます。",
+    plain: "予測市場、外部オッズ、Elo、得点モデル、強アカWatchなどから作る勝率です。ここを当てに行きます。",
     term: "p_model",
   },
   {
@@ -1230,10 +1230,10 @@ function buildPredictionLogicRows(input: {
     },
     {
       currentUse:
-        "候補宇宙に対する距離1以内カバー率を表示。買い目は議論できるように表示し、Hazi側の未共有ロジックは別メモとして扱います。",
+        "候補宇宙に対する距離1以内カバー率を表示。買い目は議論できるように表示し、強アカWatchや外部市場で残した出目をタグ化します。",
       label: "バラ買い2等保証/口数削減",
       nextRefinement:
-        "Haziの予想軸で候補宇宙を絞ったうえで、2等カバー100%に近づける最小口数探索を次回実装する。",
+        "公式人気、Polymarket、強アカWatch、W杯文脈で候補宇宙を絞ったうえで、2等カバー100%に近づける最小口数探索を次回実装する。",
       sourceLabel: "totomo / トトバラ",
       sourceUrl: totoBaraSourceUrl,
       status: "research",
@@ -1245,7 +1245,7 @@ function buildPredictionLogicRows(input: {
         "確定結果を固定し、買える時点のモデル/公式人気/最終投票との差分を同じ画面で確認。",
       label: "感想戦で校正する",
       nextRefinement:
-        "Brier/log loss、外した理由タグ、Haziメモの反映有無を残し、次回の予想重みを調整する。",
+        "Brier/log loss、外した理由タグ、強アカWatch/市場差分の反映有無を残し、次回の予想重みを調整する。",
       sourceLabel: "World Toto Lab review loop",
       sourceUrl: null,
       status: "model",
@@ -2033,7 +2033,7 @@ function buildMarketEvComparisonRows(input: {
       status: input.primaryPlan ? "model" : "missing",
       verdict:
         input.primaryPlan && input.primaryPlan.evMultiple >= 1
-          ? "購入額を上回る試算です。実オッズやHazi補正でp_modelを検証する価値があります。"
+          ? "購入額を上回る試算です。実オッズや強アカWatchでp_modelを検証する価値があります。"
           : "ポートフォリオ全体ではまだ購入額超えを断言しません。議論用の候補として扱います。",
     }),
   ];
