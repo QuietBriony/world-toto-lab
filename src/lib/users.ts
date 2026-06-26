@@ -18,18 +18,8 @@ export function isPredictorRole(role: UserRole) {
   return role === "admin";
 }
 
-export function isPredictorUser(
-  user: Pick<User, "role"> | null | undefined,
-): user is Pick<User, "role"> {
-  return Boolean(user && isPredictorRole(user.role));
-}
-
 export function filterPredictors<T extends { role: UserRole }>(users: T[]) {
   return users.filter((user) => isPredictorRole(user.role));
-}
-
-export function filterWatchers<T extends { role: UserRole }>(users: T[]) {
-  return users.filter((user) => !isPredictorRole(user.role));
 }
 
 export function nextPredictorLineName(users: Array<Pick<User, "name">>, baseName: string) {

@@ -5,7 +5,6 @@ import type {
   PrimaryUse,
   ProbabilityReadiness,
   ProductType,
-  Round,
   RoundSource,
   SportContext,
 } from "@/lib/types";
@@ -38,63 +37,6 @@ export const dataProfileLabel: Record<DataProfile, string> = {
   manual_light: "Manual Light",
   demo: "Demo",
 };
-
-export const dataSourceMatrix = [
-  {
-    commonization: "Fixture / Round",
-    domestic: "toto公式対象 / Jリーグ日程",
-    item: "日程",
-    worldCup: "FIFA公式日程",
-  },
-  {
-    commonization: "Official Vote",
-    domestic: "toto公式投票率",
-    item: "公式人気",
-    worldCup: "toto公式投票率",
-  },
-  {
-    commonization: "Market Prob",
-    domestic: "Bookmaker / 手入力",
-    item: "市場確率",
-    worldCup: "予測市場 / Bookmaker",
-  },
-  {
-    commonization: "Strength",
-    domestic: "順位 / 直近成績 / Elo風",
-    item: "地力",
-    worldCup: "Elo / FIFA / 代表実績",
-  },
-  {
-    commonization: "Availability",
-    domestic: "怪我 / 出場停止",
-    item: "戦力",
-    worldCup: "招集 / 怪我",
-  },
-  {
-    commonization: "Conditions",
-    domestic: "ホーム / 休養 / 移動",
-    item: "条件",
-    worldCup: "移動 / 気候 / 会場",
-  },
-  {
-    commonization: "Tactical",
-    domestic: "クラブ戦術",
-    item: "戦術",
-    worldCup: "代表戦術",
-  },
-  {
-    commonization: "Human Signal",
-    domestic: "Scout Card",
-    item: "人力",
-    worldCup: "Scout Card",
-  },
-  {
-    commonization: "EV Engine",
-    domestic: "公式人気との差",
-    item: "EV",
-    worldCup: "公式人気との差",
-  },
-] as const;
 
 function looksLikeWorldCupText(...values: Array<string | null | undefined>) {
   return values.some((value) => WORLD_TOTO_PATTERN.test(value ?? ""));
@@ -161,25 +103,6 @@ export function resolveRoundModeDefaults(input: {
     primaryUse: PrimaryUse;
     sportContext: SportContext;
   };
-}
-
-export function roundModeDescription(round: Pick<
-  Round,
-  "competitionType" | "dataProfile" | "primaryUse" | "sportContext"
->) {
-  if (round.competitionType === "world_cup") {
-    return "W杯モードです。代表戦の公式日程、グループ状況、移動/気候、予測市場、チームニュースを重視します。";
-  }
-
-  if (round.competitionType === "domestic_toto") {
-    return "通常totoモードです。Jリーグの直近成績、ホーム/アウェイ、順位、休養、怪我、公式人気を重視します。外部市場確率が不足する場合は、検索メモ・人力Scout Card・手入力補正を使います。";
-  }
-
-  if (round.competitionType === "winner") {
-    return "WINNERモードです。1試合ごとの差分と人気の偏りを軽く見る用途に寄せています。";
-  }
-
-  return "カスタムモードです。入力済みの材料に応じて、共通ロジックで差分を見ます。";
 }
 
 export function probabilityReadinessDescription(
