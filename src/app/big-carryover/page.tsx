@@ -38,10 +38,13 @@ import {
 import {
   bigCarryoverProductDefaults,
   bigCarryoverProductTypeFromOfficialKey,
+  bigOpportunityStatusLabel,
   bigTrueEvStatusLabel,
   buildBigCarryoverSalesScenarios,
   calculateBigCarryover,
+  calculateBigTrueEv,
   classifyBigCarryoverPosition,
+  minimumCancellationsForPositiveEv,
   normalizeBigCarryoverProductType,
   type BigCarryoverProductType,
 } from "@/lib/big-carryover/calculator";
@@ -150,6 +153,7 @@ function BigCarryoverPageContent() {
   );
   const [sourceUrl, setSourceUrl] = useState(searchParams.get("sourceUrl")?.trim() || "");
   const [eventNote, setEventNote] = useState(searchParams.get("note")?.trim() || "");
+  const [cancelledMatches, setCancelledMatches] = useState(0);
   const officialWatch = useBigOfficialWatch();
 
   const productDefaults = bigCarryoverProductDefaults[productType];
@@ -241,6 +245,50 @@ function BigCarryoverPageContent() {
     [detectedShockSignal, summary],
   );
   const positionLabel = classifyBigCarryoverPosition(calculation);
+
+  // 造船太郎レバー: 試合中止×キャリーの真EV（中止数 cancelledMatches を反映）。
+  const trueEv = useMemo(
+    () =>
+      calculateBigTrueEv({
+        cancelledMatches,
+        carryoverYen: numericCarryoverYen,
+        firstPrizeCapYen: numericFirstPrizeCapYen ?? productDefaults.firstPrizeCapYen,
+        productType,
+        projectedFinalSalesYen: numericProjectedFinalSalesYen,
+        returnRate: numericReturnRate,
+        ticketPriceYen: numericTicketPriceYen,
+      }),
+    [
+      cancelledMatches,
+      numericCarryoverYen,
+      numericFirstPrizeCapYen,
+      numericProjectedFinalSalesYen,
+      numericReturnRate,
+      numericTicketPriceYen,
+      productDefaults.firstPrizeCapYen,
+      productType,
+    ],
+  );
+  const minCancellationsForEv = useMemo(
+    () =>
+      minimumCancellationsForPositiveEv({
+        carryoverYen: numericCarryoverYen,
+        firstPrizeCapYen: numericFirstPrizeCapYen ?? productDefaults.firstPrizeCapYen,
+        productType,
+        projectedFinalSalesYen: numericProjectedFinalSalesYen,
+        returnRate: numericReturnRate,
+        ticketPriceYen: numericTicketPriceYen,
+      }),
+    [
+      numericCarryoverYen,
+      numericFirstPrizeCapYen,
+      numericProjectedFinalSalesYen,
+      numericReturnRate,
+      numericTicketPriceYen,
+      productDefaults.firstPrizeCapYen,
+      productType,
+    ],
+  );
 
   const shareHref = buildHref(appRoute.bigCarryover, {
     carryover: numericCarryoverYen ?? undefined,
@@ -743,6 +791,100 @@ function BigCarryoverPageContent() {
           tone={positionLabel === "見送り" ? "warning" : positionLabel === "要公式確認" ? "warning" : "draw"}
         />
       </section>
+
+      <SectionCard
+        title="造船太郎窓: 試合中止 × 真EV"
+        description="台風などで試合が中止(全員的中扱い)になると1等の的中条件が緩み確率が跳ね、大型キャリーと噛み合うと1口の期待値が1倍を超えます(2024年第1476回 MEGA BIGがこれ)。中止試合数を入れて真EVを見ます。"
+      >
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="flex items-center gap-2 text-sm">
+            <span className="font-medium text-slate-700">中止試合数</span>
+            <select
+              value={cancelledMatches}
+              onChange={(event) => setCancelledMatches(Number(event.currentTarget.value))}
+              className={fieldClassName}
+            >
+              {[0, 1, 2, 3, 4, 5].map((value) => (
+                <option key={value} value={value}>
+                  {value}試合{value >= 5 ? "（不成立=払戻）" : ""}
+                </option>
+              ))}
+            </select>
+          </label>
+          <Badge
+            tone={
+              trueEv.status === "positive_ev"
+                ? "teal"
+                : trueEv.status === "near_breakeven"
+                  ? "sky"
+                  : trueEv.status === "void_refund"
+                    ? "slate"
+                    : "warning"
+            }
+          >
+            {bigOpportunityStatusLabel[trueEv.status]}
+          </Badge>
+        </div>
+        <section className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <StatCard
+            label="真EV (1口)"
+            value={trueEv.trueEvMultiple !== null ? `${trueEv.trueEvMultiple.toFixed(2)}倍` : "—"}
+            hint="1.00倍超で+EV。買い目エッジは無く、+EV回に量で入れる戦略。"
+            tone={
+              trueEv.status === "positive_ev"
+                ? "positive"
+                : trueEv.status === "near_breakeven"
+                  ? "draw"
+                  : "warning"
+            }
+          />
+          <StatCard
+            label="1等確率"
+            value={
+              trueEv.adjustedFirstPrizeOdds !== null
+                ? `1/${trueEv.adjustedFirstPrizeOdds.toLocaleString("ja-JP")}`
+                : "—"
+            }
+            hint={
+              trueEv.cancelBoostMultiple !== null
+                ? `中止ブースト ×${trueEv.cancelBoostMultiple.toLocaleString("ja-JP")}`
+                : "中止数を入れると上昇します。"
+            }
+            tone="draw"
+          />
+          <StatCard
+            label="1口払戻見込"
+            value={
+              trueEv.estimatedFirstPrizePayoutYen !== null
+                ? `${Math.round(trueEv.estimatedFirstPrizePayoutYen).toLocaleString("ja-JP")}円`
+                : "—"
+            }
+            hint={
+              trueEv.expectedCoWinners !== null
+                ? `期待同時当選 ${trueEv.expectedCoWinners.toFixed(1)}人で按分`
+                : "売上が増えるほど薄まります。"
+            }
+            tone="draw"
+          />
+          <StatCard
+            label="+EV化に必要な中止数"
+            value={minCancellationsForEv !== null ? `${minCancellationsForEv}試合` : "届かず"}
+            hint={
+              minCancellationsForEv !== null
+                ? "この中止数で1口EVが1倍超に。荒天時は締切前に要確認。"
+                : "中止4でも+EVに届かない＝キャリー不足。"
+            }
+            tone={minCancellationsForEv !== null ? "positive" : "warning"}
+          />
+        </section>
+        {trueEv.warnings.length > 0 ? (
+          <ul className="mt-4 space-y-1 text-sm leading-6 text-slate-600">
+            {trueEv.warnings.map((warning) => (
+              <li key={warning}>・{warning}</li>
+            ))}
+          </ul>
+        ) : null}
+      </SectionCard>
 
       <SectionCard
         title="最終売上シナリオ"
