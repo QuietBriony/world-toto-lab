@@ -67,4 +67,28 @@ describe("buildFeaturedWorldTotoMatchRows", () => {
     expect(m?.officialVote1).toBeNull();
     expect(m?.recommendedOutcomes?.startsWith("2")).toBe(true);
   });
+
+  it("feeds Polymarket market signal into the 1637 model (ドイツ戦の教訓: 公衆が捨てた穴を surface)", () => {
+    // round 番号を渡すと市場(Polymarket)シグナルが通電する。
+    const rows1637 = buildFeaturedWorldTotoMatchRows(
+      "round-1637",
+      buildFeaturedWorldTotoImportPayload(1637).rows,
+      1637,
+    );
+    // 第1637回 第1試合 エクアドル(home) vs ドイツ(away)。
+    // 公衆: ドイツ(2)=80.6% / Polymarket: ドイツ(2)=52.2%・エクアドル(1)=25.4%・分(0)=22.4%。
+    const m = rows1637.find(
+      (match) => match.homeTeam === "エクアドル" && match.awayTeam === "ドイツ",
+    );
+    expect(m).toBeDefined();
+    // 公衆票が市場シグナルから載る（null から 80.6% へ）。
+    expect(m?.officialVote2).toBeCloseTo(0.8062, 3);
+    // 実市場(Polymarket)が marketProb 列に保存される。
+    expect(m?.marketProb2).toBeCloseTo(0.5224, 3);
+    // モデルは市場ベース＝ドイツ過信が解け 60% 未満に。
+    expect(m?.modelProb2).toBeLessThan(0.6);
+    // エクアドル(1)＝公衆が捨てた側が推奨上位2に surface する（本命2は維持）。
+    expect(m?.recommendedOutcomes?.startsWith("2")).toBe(true);
+    expect(m?.recommendedOutcomes).toContain("1");
+  });
 });

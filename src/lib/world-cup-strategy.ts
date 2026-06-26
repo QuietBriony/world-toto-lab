@@ -936,7 +936,13 @@ function probabilityRows(match: MatchLike, bucket: ProbabilityBucket) {
   })).sort((left, right) => (right.probability ?? -1) - (left.probability ?? -1));
 }
 
-function outcomePolicyFor(match: Match): WorldCupOutcomePolicy {
+// 公衆過信ヘッジの閾値: 公式人気が本命に集中(>=FLOOR)しているのに、市場ベースのモデルは
+// その同じ本命を CAP 以下しか見ていない＝公衆だけが過信。ドイツ戦の教訓（公衆ドイツ80.6% vs
+// Polymarket 52.2%）を一般化し、本命単独に寄せず分(0)＋次点を残す。閾値は PR3 で backtest 較正予定。
+const CROWD_OVERCONFIDENCE_OFFICIAL_FLOOR = 0.7;
+const CROWD_OVERCONFIDENCE_MODEL_CAP = 0.62;
+
+export function outcomePolicyFor(match: Match): WorldCupOutcomePolicy {
   const actualOutcome = enumToOutcome(match.actualResult);
   const modelRows = probabilityRows(match, "model");
   const officialRows = probabilityRows(match, "official");
@@ -1033,6 +1039,40 @@ function outcomePolicyFor(match: Match): WorldCupOutcomePolicy {
       officialFavorite,
       officialFavoriteProbability,
       reason: `公式人気は ${officialFavorite} に ${(officialFavoriteProbability * 100).toFixed(1)}% 集中、モデル本命は ${modelFavorite}。人気側を厚く買わない。`,
+    };
+  }
+
+  // 公衆過信ヘッジ: 公式人気は本命に集中(>=70%)だが、市場ベースのモデルは同じ本命に
+  // 確信が薄い（<=62%）。value_fade は「本命がズレる」場合専用なので、ここは「本命は同じ
+  // だが市場が冷めている」ギャップを拾う。本命単独に寄せず、分(0)と次点を残す。
+  if (
+    officialFavorite &&
+    modelFavorite &&
+    officialFavorite === modelFavorite &&
+    isKnownNumber(officialFavoriteProbability) &&
+    officialFavoriteProbability >= CROWD_OVERCONFIDENCE_OFFICIAL_FLOOR &&
+    isKnownNumber(modelFavoriteProbability) &&
+    modelFavoriteProbability <= CROWD_OVERCONFIDENCE_MODEL_CAP
+  ) {
+    const allowed = Array.from(
+      new Set<OutcomeValue>(
+        ["0", modelFavorite, modelRows[1]?.outcome].filter(
+          (outcome): outcome is OutcomeValue => Boolean(outcome),
+        ),
+      ),
+    );
+
+    return {
+      allowedOutcomes: allowed,
+      fixture,
+      kind: "value_fade",
+      label: "本命過信ヘッジ",
+      matchNo: match.matchNo,
+      modelFavorite,
+      modelFavoriteProbability,
+      officialFavorite,
+      officialFavoriteProbability,
+      reason: `公式人気は ${officialFavorite} に ${(officialFavoriteProbability * 100).toFixed(1)}% 集中だが、市場ベースのモデル本命は ${(modelFavoriteProbability * 100).toFixed(1)}% 止まり。本命に寄せず分(0)と次点を残す。`,
     };
   }
 

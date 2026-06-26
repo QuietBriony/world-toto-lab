@@ -1378,6 +1378,46 @@ const worldCupToto1637ExternalMarketRawRows = [
   >
 >;
 
+export type WorldCupMarketSignal = {
+  marketProb0: number;
+  marketProb1: number;
+  marketProb2: number;
+  officialVote0: number;
+  officialVote1: number;
+  officialVote2: number;
+};
+
+/**
+ * featured ラウンドの matchNo → 公衆(公式票) + 市場(Polymarket)確率。
+ * これを featured ラウンド構築（featured-world-toto-d1）に流すと、モデルの土台が
+ * 市場ベースになり Edge=市場−公衆になる（ドイツ戦の教訓: 公衆はドイツ80.6%だが
+ * Polymarket は52.2%。市場をモデルに通電すれば本命過信が自動で解ける）。
+ * 現状データがあるのは第1637回のみ。他の回は空 Map ＝従来の国別強度シードのまま。
+ */
+export function worldCupMarketSignalByMatchNo(
+  roundNumber: number,
+): Map<number, WorldCupMarketSignal> {
+  const map = new Map<number, WorldCupMarketSignal>();
+  if (roundNumber !== 1637) {
+    return map;
+  }
+  for (const row of worldCupToto1637ExternalMarketRawRows) {
+    const plan = worldCupToto1637Matches.find((match) => match.matchNo === row.matchNo);
+    if (!plan) {
+      continue;
+    }
+    map.set(row.matchNo, {
+      marketProb1: row.marketProb["1"],
+      marketProb0: row.marketProb["0"],
+      marketProb2: row.marketProb["2"],
+      officialVote1: plan.votes["1"],
+      officialVote0: plan.votes["0"],
+      officialVote2: plan.votes["2"],
+    });
+  }
+  return map;
+}
+
 export const worldCupToto1637ExternalMarketOverlay: Toto1637ExternalMarketOverlay = {
   comparisonRows: worldCupToto1637ExternalMarketRawRows.map((row) => {
     const match = worldCupToto1637Matches.find((item) => item.matchNo === row.matchNo);

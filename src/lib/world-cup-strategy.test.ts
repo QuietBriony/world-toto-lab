@@ -6,6 +6,7 @@ import {
   calculateWorldCupSecondPrizeCoverage,
   enumeratePositiveEvCombos,
   hammingDistance,
+  outcomePolicyFor,
   resolveFeaturedWorldTotoRoundNumber,
   worldCupEvGlossaryRows,
 } from "@/lib/world-cup-strategy";
@@ -529,5 +530,43 @@ describe("world cup strategy", () => {
     expect(round1637.strictEvReady).toBe(false);
     expect(round1637.strictEvMissingReasons).toContain("売上総額が未確定");
     expect(round1637.strictEvMissingReasons).toContain("公式投票率が不足");
+  });
+
+  it("hedges a crowd-overconfident favorite the market is lukewarm on (ドイツ戦の教訓)", () => {
+    // 公衆は本命(2)に80.6%集中だが、市場ベースのモデルは2を52.2%しか見ていない
+    // （エクアドル1=25.4%・分0=22.4%）。本命ロックも value_fade（本命ズレ）にも該当しないが、
+    // 「公衆だけ過信」のギャップを拾って分(0)と次点(1)を universe に残す。
+    const policy = outcomePolicyFor(
+      buildMatch(1, {
+        modelProb0: 0.224,
+        modelProb1: 0.254,
+        modelProb2: 0.522,
+        officialVote0: 0.128,
+        officialVote1: 0.066,
+        officialVote2: 0.806,
+      }),
+    );
+
+    expect(policy.label).toBe("本命過信ヘッジ");
+    expect(policy.kind).toBe("value_fade");
+    expect(policy.allowedOutcomes).toContain("0"); // 分を残す
+    expect(policy.allowedOutcomes).toContain("1"); // 次点（公衆が捨てたエクアドル）を残す
+    expect(policy.allowedOutcomes).not.toEqual(["2"]); // 本命単独ロックではない
+  });
+
+  it("does not over-hedge when the market also backs the heavy favorite", () => {
+    // 公衆も市場も本命(2)に確信（市場0.78）＝過信ギャップ無し → ヘッジしない（ロック/通常）。
+    const policy = outcomePolicyFor(
+      buildMatch(2, {
+        modelProb0: 0.1,
+        modelProb1: 0.12,
+        modelProb2: 0.78,
+        officialVote0: 0.1,
+        officialVote1: 0.08,
+        officialVote2: 0.82,
+      }),
+    );
+
+    expect(policy.label).not.toBe("本命過信ヘッジ");
   });
 });
