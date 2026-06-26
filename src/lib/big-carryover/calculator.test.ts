@@ -6,6 +6,8 @@ import { describe, expect, it } from "vitest";
 import {
   bigTrueEvStatusLabel,
   calculateBigCarryover,
+  calculateBigTrueEv,
+  minimumCancellationsForPositiveEv,
 } from "@/lib/big-carryover/calculator";
 
 describe("BIG carryover calculator", () => {
@@ -147,5 +149,97 @@ describe("BIG carryover calculator", () => {
 
     expect(joined).not.toMatch(/買えば.{0,12}(30倍|33倍)/u);
     expect(joined).not.toMatch(/全力買い|必勝|利益保証|激アツ確定|特大上振れ候補/u);
+  });
+});
+
+describe("calculateBigTrueEv（造船太郎レバー: 試合中止×キャリー）", () => {
+  // 2024-08-31 第1476回 MEGA BIG 相当（台風で4試合中止・キャリー58.3億）。
+  const round1476 = {
+    productType: "MEGA_BIG" as const,
+    carryoverYen: 5_830_000_000,
+    projectedFinalSalesYen: 4_710_000_000,
+    returnRate: 0.5,
+    ticketPriceYen: 300,
+    firstPrizeCapYen: 1_200_000_000,
+  };
+
+  it("4試合中止で1等確率が256倍・1/65536になる（MEGA BIGは×4/中止）", () => {
+    const r = calculateBigTrueEv({ ...round1476, cancelledMatches: 4 });
+    expect(r.cancelBoostMultiple).toBe(256);
+    expect(r.adjustedFirstPrizeOdds).toBe(65_536);
+    expect(r.firstPrizeWinProbability).toBeCloseTo(1 / 65_536, 10);
+  });
+
+  it("第1476回相当は +EV（trueEV>1）になり buy-in 候補として検出される", () => {
+    const r = calculateBigTrueEv({ ...round1476, cancelledMatches: 4 });
+    expect(r.status).toBe("positive_ev");
+    expect(r.trueEvMultiple).toBeGreaterThan(1);
+    // 値はハードコードせず、実例の桁（1.4〜2.1倍／1口払戻 数千万円）に収まることを確認。
+    expect(r.trueEvMultiple).toBeLessThan(2.1);
+    expect(r.estimatedFirstPrizePayoutYen).toBeGreaterThan(10_000_000); // 1000万超
+    expect(r.estimatedFirstPrizePayoutYen).toBeLessThan(100_000_000);
+  });
+
+  it("中止が無ければ同じ大型キャリーでも +EV にならない（確率ブースト必須）", () => {
+    const r = calculateBigTrueEv({ ...round1476, cancelledMatches: 0 });
+    expect(r.status).toBe("sub_breakeven");
+    expect(r.trueEvMultiple).toBeLessThan(1);
+  });
+
+  it("キャリーが無ければ中止4でも +EV にならない（据え置き原資必須）", () => {
+    const r = calculateBigTrueEv({ ...round1476, carryoverYen: 0, cancelledMatches: 4 });
+    expect(r.status).toBe("sub_breakeven");
+    expect(r.trueEvMultiple).toBeLessThan(1); // ≒ 還元率どまり
+  });
+
+  it("売上が膨らむほど（同時当選増で）EVは低下する", () => {
+    const early = calculateBigTrueEv({ ...round1476, projectedFinalSalesYen: 2_000_000_000, cancelledMatches: 4 });
+    const late = calculateBigTrueEv({ ...round1476, projectedFinalSalesYen: 8_000_000_000, cancelledMatches: 4 });
+    expect(early.trueEvMultiple!).toBeGreaterThan(late.trueEvMultiple!);
+    expect(early.expectedCoWinners!).toBeLessThan(late.expectedCoWinners!);
+  });
+
+  it("5試合以上中止はくじ不成立＝全額払戻（実質EV1.0）", () => {
+    const r = calculateBigTrueEv({ ...round1476, cancelledMatches: 5 });
+    expect(r.status).toBe("void_refund");
+    expect(r.trueEvMultiple).toBe(1);
+  });
+
+  it("通常BIGは3択ベース（×3/中止・1/3^(14-M)）", () => {
+    const r = calculateBigTrueEv({
+      productType: "BIG",
+      carryoverYen: 2_000_000_000,
+      projectedFinalSalesYen: 1_000_000_000,
+      returnRate: 0.5,
+      ticketPriceYen: 300,
+      firstPrizeCapYen: 600_000_000,
+      cancelledMatches: 3,
+    });
+    expect(r.cancelBoostMultiple).toBe(27); // 3^3
+    expect(r.adjustedFirstPrizeOdds).toBe(3 ** 11);
+  });
+
+  it("監視シグナル: 大型キャリーは少ない中止数で+EV窓が開く / 小型キャリーは届かない", () => {
+    const big = minimumCancellationsForPositiveEv(round1476); // キャリー58.3億
+    expect(big).not.toBeNull();
+    expect(big!).toBeGreaterThanOrEqual(1);
+    expect(big!).toBeLessThanOrEqual(4);
+
+    const tiny = minimumCancellationsForPositiveEv({ ...round1476, carryoverYen: 100_000_000 });
+    expect(tiny).toBeNull(); // 中止4でも届かない
+  });
+
+  it("入力不足は真EV未計算（unavailable）", () => {
+    const r = calculateBigTrueEv({
+      productType: "MEGA_BIG",
+      carryoverYen: null,
+      projectedFinalSalesYen: 4_710_000_000,
+      returnRate: 0.5,
+      ticketPriceYen: 300,
+      firstPrizeCapYen: 1_200_000_000,
+      cancelledMatches: 4,
+    });
+    expect(r.status).toBe("unavailable");
+    expect(r.trueEvMultiple).toBeNull();
   });
 });

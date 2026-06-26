@@ -261,6 +261,170 @@ export function calculateBigCarryover(input: BigCarryoverCalculatorInput): BigCa
   };
 }
 
+// ── 造船太郎レバー: 試合中止 × キャリーオーバー の真EV検出 ───────────────────
+// 各商品の「試合数 × 1試合あたりの択数」。中止M試合は全員的中扱い＝必要的中数が減り、
+// P(1等)=1/outcomes^(matches-M) に跳ね上がる（MEGA=×4/中止, BIG=×3/中止）。
+export const BIG_MATCH_STRUCTURE: Record<
+  BigCarryoverProductType,
+  { matches: number; outcomesPerMatch: number } | null
+> = {
+  BIG: { matches: 14, outcomesPerMatch: 3 },
+  MEGA_BIG: { matches: 12, outcomesPerMatch: 4 },
+  "100YEN_BIG": { matches: 14, outcomesPerMatch: 3 },
+  custom: null,
+};
+
+// 5試合以上中止はくじ不成立＝全額払戻。狙い目は中止1〜4試合。
+export const BIG_VOID_CANCEL_THRESHOLD = 5;
+// 1等配分（還元のうち1等へ回る割合）。公式の等級配分確認が要る暫定値。
+export const BIG_DEFAULT_FIRST_PRIZE_SHARE = 0.5;
+
+export type BigOpportunityStatus =
+  | "void_refund"
+  | "positive_ev"
+  | "near_breakeven"
+  | "sub_breakeven"
+  | "unavailable";
+
+export const bigOpportunityStatusLabel: Record<BigOpportunityStatus, string> = {
+  void_refund: "くじ不成立（全額払戻）",
+  positive_ev: "+EV 買い向かい候補",
+  near_breakeven: "損益分岐手前・監視",
+  sub_breakeven: "見送り（EV<1）",
+  unavailable: "真EV未計算",
+};
+
+export type BigTrueEvInput = {
+  carryoverYen: number | null;
+  cancelledMatches?: number | null;
+  firstPrizeCapYen: number | null;
+  firstPrizeShare?: number | null;
+  productType: BigCarryoverProductType;
+  projectedFinalSalesYen: number | null;
+  returnRate: number | null;
+  ticketPriceYen: number | null;
+};
+
+export type BigTrueEvResult = {
+  adjustedFirstPrizeOdds: number | null;
+  cancelBoostMultiple: number | null;
+  cancelledMatches: number;
+  estimatedFirstPrizePayoutYen: number | null;
+  expectedCoWinners: number | null;
+  firstPrizeEvMultiple: number | null;
+  firstPrizeWinProbability: number | null;
+  lowerTierEvFloor: number | null;
+  status: BigOpportunityStatus;
+  trueEvMultiple: number | null;
+  warnings: string[];
+};
+
+/**
+ * 試合中止数 M とキャリーオーバーから 1口の真EV（倍率）を算出する。
+ * EV = 1等EV + 下位等の概算還元。1等EV = P(1等) × 1口払戻見込 / 口単価。
+ *   P(1等) = 1 / outcomes^(matches - M)
+ *   1口払戻見込 = min( (予想売上×還元率×1等配分 + キャリー) / (1+期待同時当選者), 1等上限/口 )
+ *   期待同時当選者 = (予想売上/口単価 - 1) × P(1等)   ← 売上殺到で薄まる
+ * ※上限は「1口あたりの最高当せん額」（同時当選で按分した後に適用）。
+ */
+export function calculateBigTrueEv(input: BigTrueEvInput): BigTrueEvResult {
+  const warnings: string[] = [];
+  const cancelledMatches = Math.max(0, Math.floor(asFiniteNumber(input.cancelledMatches) ?? 0));
+  const base: Omit<BigTrueEvResult, "status" | "trueEvMultiple"> = {
+    adjustedFirstPrizeOdds: null,
+    cancelBoostMultiple: null,
+    cancelledMatches,
+    estimatedFirstPrizePayoutYen: null,
+    expectedCoWinners: null,
+    firstPrizeEvMultiple: null,
+    firstPrizeWinProbability: null,
+    lowerTierEvFloor: null,
+    warnings,
+  };
+
+  if (cancelledMatches >= BIG_VOID_CANCEL_THRESHOLD) {
+    warnings.push(
+      `中止 ${cancelledMatches} 試合は ${BIG_VOID_CANCEL_THRESHOLD} 以上＝くじ不成立で全額払戻（実質EV 1.00倍）。`,
+    );
+    return { ...base, status: "void_refund", trueEvMultiple: 1 };
+  }
+
+  const struct = BIG_MATCH_STRUCTURE[input.productType];
+  const carryoverYen = asFiniteNumber(input.carryoverYen);
+  const projectedFinalSalesYen = asPositiveNumber(input.projectedFinalSalesYen);
+  const returnRate = asFiniteNumber(input.returnRate);
+  const ticketPriceYen = asPositiveNumber(input.ticketPriceYen);
+  const firstPrizeCapYen = asPositiveNumber(input.firstPrizeCapYen);
+  const firstPrizeShare = asFiniteNumber(input.firstPrizeShare) ?? BIG_DEFAULT_FIRST_PRIZE_SHARE;
+
+  if (!struct) {
+    warnings.push("custom は試合数・択数が未確定のため真EVを計算できません。");
+    return { ...base, status: "unavailable", trueEvMultiple: null };
+  }
+  if (carryoverYen === null || projectedFinalSalesYen === null || returnRate === null || ticketPriceYen === null) {
+    warnings.push("キャリー・予想売上・還元率・口単価のいずれかが未入力のため真EV未計算。");
+    return { ...base, status: "unavailable", trueEvMultiple: null };
+  }
+
+  const adjustedFirstPrizeOdds = Math.pow(struct.outcomesPerMatch, struct.matches - cancelledMatches);
+  const cancelBoostMultiple = Math.pow(struct.outcomesPerMatch, cancelledMatches);
+  const p1 = 1 / adjustedFirstPrizeOdds;
+  const ticketCount = projectedFinalSalesYen / ticketPriceYen;
+  const expectedCoWinners = Math.max(0, (ticketCount - 1) * p1);
+  const firstPrizePool = projectedFinalSalesYen * returnRate * firstPrizeShare + carryoverYen;
+  const rawPayout = firstPrizePool / (1 + expectedCoWinners);
+  const payoutPerUnit = firstPrizeCapYen !== null ? Math.min(rawPayout, firstPrizeCapYen) : rawPayout;
+  const firstPrizeEvMultiple = (p1 * payoutPerUnit) / ticketPriceYen;
+  const lowerTierEvFloor = returnRate * (1 - firstPrizeShare); // 下位等で常に戻る概算
+  const trueEvMultiple = firstPrizeEvMultiple + lowerTierEvFloor;
+
+  if (firstPrizeCapYen !== null && rawPayout > firstPrizeCapYen) {
+    warnings.push(
+      `1口払戻が上限 ${firstPrizeCapYen.toLocaleString("ja-JP")}円 に張り付き、超過分はEVに反映されません。`,
+    );
+  }
+  if (cancelledMatches === 0) {
+    warnings.push("中止0試合＝確率ブースト無し。大型キャリーでも+EV化しにくい（造船太郎条件は中止1〜4＋大型キャリー）。");
+  }
+  if (carryoverYen <= 0) {
+    warnings.push("キャリー無し＝中止で確率が上がっても原資は還元率止まり。EVは最大でも還元率程度。");
+  }
+  warnings.push(`1等配分 ${(firstPrizeShare * 100).toFixed(0)}% は暫定値。公式の等級配分確認で精度が上がります。`);
+  warnings.push("BIG/MEGA BIGはランダム発券。買い目選択のエッジは無く、+EV回に量を入れる戦略です。");
+
+  const status: BigOpportunityStatus =
+    trueEvMultiple >= 1 ? "positive_ev" : trueEvMultiple >= 0.85 ? "near_breakeven" : "sub_breakeven";
+
+  return {
+    ...base,
+    adjustedFirstPrizeOdds,
+    cancelBoostMultiple,
+    estimatedFirstPrizePayoutYen: payoutPerUnit,
+    expectedCoWinners,
+    firstPrizeEvMultiple,
+    firstPrizeWinProbability: p1,
+    lowerTierEvFloor,
+    status,
+    trueEvMultiple,
+  };
+}
+
+/**
+ * 監視用: 現在のキャリー/予想売上で「中止が何試合あれば +EV になるか」を返す。
+ * 1〜(不成立閾値-1) で最小の中止数。中止4でも+EVに届かなければ null（キャリー不足）。
+ * → "この回は荒天で N 試合中止すれば造船太郎窓が開く" という監視シグナル。
+ */
+export function minimumCancellationsForPositiveEv(
+  input: Omit<BigTrueEvInput, "cancelledMatches">,
+): number | null {
+  for (let m = 1; m < BIG_VOID_CANCEL_THRESHOLD; m += 1) {
+    if (calculateBigTrueEv({ ...input, cancelledMatches: m }).status === "positive_ev") {
+      return m;
+    }
+  }
+  return null;
+}
+
 export function classifyBigCarryoverPosition(
   calculation: Pick<BigCarryoverCalculation, "naiveCarryPressure" | "trueEvStatus">,
 ): BigCarryoverPositionLabel {
