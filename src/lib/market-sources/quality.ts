@@ -10,7 +10,11 @@
  *  - old price
  *  - source market is upstream only
  */
-import type { MarketNode } from "@/lib/market-sources/types";
+import type {
+  MarketNode,
+  TraderMarketSignal,
+  TraderSignal,
+} from "@/lib/market-sources/types";
 
 export type MarketWarningCode =
   | "mapping_missing"
@@ -35,6 +39,19 @@ export type MarketWarningOptions = {
   oldPriceHours?: number;
   /** これより広い spread を wide とみなす（0..1 の確率価格想定、既定 0.08）。 */
   wideSpread?: number;
+};
+
+export type TraderSignalWarningCode =
+  | "sample_size_low"
+  | "concentration_high"
+  | "no_recent_activity"
+  | "stale_activity"
+  | "inferred_identity";
+
+export type TraderSignalWarning = {
+  code: TraderSignalWarningCode;
+  message: string;
+  tone: "amber" | "slate";
 };
 
 function ageHours(lastFetchedAt: string, now: string): number | null {
@@ -128,6 +145,71 @@ export function marketNodeWarnings(
         message: `価格が古い可能性があります（最終取得から約${Math.round(age)}時間）。`,
       });
     }
+  }
+
+  return warnings;
+}
+
+export function traderSignalWarnings(
+  signal: TraderSignal,
+  marketSignals: readonly TraderMarketSignal[] = [],
+  options: MarketWarningOptions = {},
+): TraderSignalWarning[] {
+  const warnings: TraderSignalWarning[] = [];
+  const now = options.now ?? new Date().toISOString();
+  const oldPriceHours = options.oldPriceHours ?? 24;
+  const sampleSize = signal.predictionCount ?? marketSignals.length;
+
+  if (sampleSize > 0 && sampleSize <= 3) {
+    warnings.push({
+      code: "sample_size_low",
+      tone: "amber",
+      message:
+        "予測件数が少ないため、強アカウントとしては検証中です。大勝1回をそのまま買い目へコピーしません。",
+    });
+  }
+
+  const totalAbsPnl = marketSignals.reduce(
+    (total, marketSignal) => total + Math.abs(marketSignal.cashPnl ?? 0),
+    0,
+  );
+  const maxAbsPnl = marketSignals.reduce(
+    (max, marketSignal) => Math.max(max, Math.abs(marketSignal.cashPnl ?? 0)),
+    0,
+  );
+  if (totalAbsPnl > 0 && maxAbsPnl / totalAbsPnl >= 0.8) {
+    warnings.push({
+      code: "concentration_high",
+      tone: "amber",
+      message:
+        "損益が1市場に集中しています。市場全般に強い人というより、単発イベントの大口シグナルとして扱います。",
+    });
+  }
+
+  if (!signal.lastActivityAt) {
+    warnings.push({
+      code: "no_recent_activity",
+      tone: "slate",
+      message: "直近アクティビティ時刻が未取得です。公開APIで更新してから判断します。",
+    });
+  } else {
+    const age = ageHours(signal.lastActivityAt, now);
+    if (age !== null && age > oldPriceHours) {
+      warnings.push({
+        code: "stale_activity",
+        tone: "amber",
+        message: `直近アクティビティから約${Math.round(age)}時間経過しています。締切前に再取得してください。`,
+      });
+    }
+  }
+
+  if (signal.dataConfidence !== "high") {
+    warnings.push({
+      code: "inferred_identity",
+      tone: "slate",
+      message:
+        "SNSスクショと公開APIの照合による推定一致です。ウォレット本人確認ではありません。",
+    });
   }
 
   return warnings;
