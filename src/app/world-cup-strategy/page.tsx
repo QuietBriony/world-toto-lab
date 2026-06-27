@@ -67,6 +67,7 @@ import {
   worldCupToto1637NextPlan,
   worldCupTotoLatestReportFileName,
   worldCupTotoLegacyPurchaseSheetFileName,
+  worldCupTotoNextLongshotInsuranceSheetFileName,
   worldCupTotoOfficialVoteInterpretation,
   worldCupTotoOfficialSales1637Url,
   worldCupTotoOfficialVote1637Url,
@@ -76,6 +77,7 @@ import {
   worldCupTotoVersionedPurchaseSheet200FileName,
   worldCupTotoVersionedPurchaseSheet50FileName,
   worldCupTotoVersionedPurchaseSheetFileName,
+  worldCupTotoVersionedLongshotInsuranceSheetFileName,
   worldCupTotoVersionedReportFileName,
 } from "@/lib/world-cup-toto-review-plan";
 
@@ -655,13 +657,17 @@ function OperatingSystemBacktestPanel() {
 }
 
 function NextWorldCupToto1637Panel({
+  longshotInsuranceSheetHref,
   reportHref,
+  versionedLongshotInsuranceSheetHref,
   versionedPurchaseSheet200Href,
   versionedPurchaseSheet50Href,
   versionedPurchaseSheetHref,
   versionedReportHref,
 }: {
+  longshotInsuranceSheetHref: string;
   reportHref: string;
+  versionedLongshotInsuranceSheetHref: string;
   versionedPurchaseSheet200Href: string;
   versionedPurchaseSheet50Href: string;
   versionedPurchaseSheetHref: string;
@@ -678,6 +684,8 @@ function NextWorldCupToto1637Panel({
   const marketWidePlan = worldCupToto1637ExternalMarketOverlay.marketAdjustedPlans.find(
     (plan) => plan.label === "市場補強162口",
   );
+  const longshotInsurancePlan = worldCupToto1637ExternalMarketOverlay.longshotInsurancePlans[0];
+  const longshotInsuranceRule = worldCupToto1637ExternalMarketOverlay.longshotInsuranceRules[0];
   const externalPriorityRows = worldCupToto1637ExternalMarketOverlay.comparisonRows
     .filter(
       (row) =>
@@ -707,6 +715,9 @@ function NextWorldCupToto1637Panel({
           <a href={reportHref} className={buttonClassName}>
             最新PDF
           </a>
+          <a href={longshotInsuranceSheetHref} className={secondaryButtonClassName}>
+            長穴保険CSV
+          </a>
           <a href={worldCupTotoOfficialVote1637Url} className={secondaryButtonClassName} rel="noreferrer" target="_blank">
             公式投票率
           </a>
@@ -733,6 +744,13 @@ function NextWorldCupToto1637Panel({
             marketStandardPlan?.budgetYen ?? 10_800,
           )}`}
           hint={worldCupToto1637FinalLogic.selectedPlanLabel}
+        />
+        <MiniFact
+          label="別枠長穴保険"
+          value={`${longshotInsurancePlan?.unitCount ?? 128}口 / ${formatCurrency(
+            longshotInsurancePlan?.budgetYen ?? 12_800,
+          )}`}
+          hint="通常枠とは混ぜない"
         />
         <MiniFact
           label="標準マルチ"
@@ -787,6 +805,10 @@ function NextWorldCupToto1637Panel({
           /{" "}
           <a className="font-semibold underline underline-offset-4" href={versionedPurchaseSheet200Href}>
             200
+          </a>{" "}
+          / 長穴保険{" "}
+          <a className="font-semibold underline underline-offset-4" href={versionedLongshotInsuranceSheetHref}>
+            128/192
           </a>
         </p>
       </PlainNotice>
@@ -1279,6 +1301,61 @@ function NextWorldCupToto1637Panel({
                 <td className="px-3 py-3 font-semibold text-slate-900">{plan.unitCount.toLocaleString("ja-JP")}口</td>
                 <td className="px-3 py-3 font-semibold text-slate-900">{formatCurrency(plan.budgetYen)}</td>
                 <td className="px-3 py-3 text-xs leading-relaxed text-slate-700">{plan.note}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </HorizontalScrollTable>
+
+      <PlainNotice tone="amber" title="別枠: ダブル長穴保険シート">
+        <p>
+          通常の市場補強108/144/162口には混ぜません。公式人気が本命へ寄りすぎ、外部市場が弱者側を持ち上げた時だけ、
+          人力64口のような低口数シートをベースに M01 などの長穴をダブルで足します。
+        </p>
+        {longshotInsuranceRule ? (
+          <p className="mt-2 text-sm leading-6 text-amber-950/80">
+            {`M${String(longshotInsuranceRule.matchNo).padStart(2, "0")} ${longshotInsuranceRule.matchLabel}: `}
+            {`公式 ${formatPercent(longshotInsuranceRule.officialProb, 1)} / 市場 ${formatPercent(
+              longshotInsuranceRule.marketProb,
+              1,
+            )} / 差 ${formatSignedPercentPoint(longshotInsuranceRule.delta)} / 市場÷公式 ${longshotInsuranceRule.marketToOfficialRatio.toFixed(2)}x`}
+          </p>
+        ) : null}
+        <div className="mt-3 flex flex-wrap gap-2">
+          <a className={secondaryButtonClassName} href={longshotInsuranceSheetHref}>
+            latest 長穴保険CSV
+          </a>
+          <a className={secondaryButtonClassName} href={versionedLongshotInsuranceSheetHref}>
+            固定版 CSV
+          </a>
+        </div>
+      </PlainNotice>
+
+      <HorizontalScrollTable className="mt-4 min-w-0" contentClassName="rounded-[22px] border border-amber-200 bg-white/86">
+        <table className="min-w-[860px] text-left text-sm">
+          <thead className="bg-amber-50 text-xs uppercase tracking-[0.16em] text-amber-700">
+            <tr>
+              <th className="px-3 py-3">保険プラン</th>
+              <th className="px-3 py-3">M01-M04</th>
+              <th className="px-3 py-3">M05-M08</th>
+              <th className="px-3 py-3">M09-M13</th>
+              <th className="px-3 py-3">口数</th>
+              <th className="px-3 py-3">金額</th>
+              <th className="px-3 py-3">通常枠との関係</th>
+            </tr>
+          </thead>
+          <tbody>
+            {worldCupToto1637ExternalMarketOverlay.longshotInsurancePlans.map((plan) => (
+              <tr key={plan.label} className="border-t border-amber-100">
+                <td className="px-3 py-3 font-semibold text-slate-950">{plan.label}</td>
+                <td className="px-3 py-3 font-mono text-sm text-slate-900">{plan.choices.slice(0, 4).join(" ")}</td>
+                <td className="px-3 py-3 font-mono text-sm text-slate-900">{plan.choices.slice(4, 8).join(" ")}</td>
+                <td className="px-3 py-3 font-mono text-sm text-slate-900">{plan.choices.slice(8, 13).join(" ")}</td>
+                <td className="px-3 py-3 font-semibold text-slate-900">{plan.unitCount.toLocaleString("ja-JP")}口</td>
+                <td className="px-3 py-3 font-semibold text-slate-900">{formatCurrency(plan.budgetYen)}</td>
+                <td className="px-3 py-3 text-xs leading-relaxed text-slate-700">
+                  {plan.basePlanLabel}ベース。{plan.note}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -2304,7 +2381,12 @@ export default function WorldCupStrategyPage() {
   const latestRoundId = data?.rounds[0]?.id ?? null;
   const reportHref = resolveArtAsset(pathname, `/reports/${reportFileName}`);
   const legacyPurchaseSheetHref = resolveArtAsset(pathname, `/reports/${worldCupTotoLegacyPurchaseSheetFileName}`);
+  const longshotInsuranceSheetHref = resolveArtAsset(pathname, `/reports/${worldCupTotoNextLongshotInsuranceSheetFileName}`);
   const versionedReportHref = resolveArtAsset(pathname, `/reports/${worldCupTotoVersionedReportFileName}`);
+  const versionedLongshotInsuranceSheetHref = resolveArtAsset(
+    pathname,
+    `/reports/${worldCupTotoVersionedLongshotInsuranceSheetFileName}`,
+  );
   const versionedPurchaseSheet50Href = resolveArtAsset(
     pathname,
     `/reports/${worldCupTotoVersionedPurchaseSheet50FileName}`,
@@ -2361,7 +2443,9 @@ export default function WorldCupStrategyPage() {
       <OperatingSystemBacktestPanel />
 
       <NextWorldCupToto1637Panel
+        longshotInsuranceSheetHref={longshotInsuranceSheetHref}
         reportHref={reportHref}
+        versionedLongshotInsuranceSheetHref={versionedLongshotInsuranceSheetHref}
         versionedPurchaseSheet200Href={versionedPurchaseSheet200Href}
         versionedPurchaseSheet50Href={versionedPurchaseSheet50Href}
         versionedPurchaseSheetHref={versionedPurchaseSheetHref}

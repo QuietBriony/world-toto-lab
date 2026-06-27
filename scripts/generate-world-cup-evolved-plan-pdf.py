@@ -21,6 +21,7 @@ PDF_NAME = "world-cup-toto-1634-1637-evolved-plan-20260626-v23.pdf"
 CSV_50_NAME = "world-cup-toto-1637-visual-5000-plan-20260626-v23.csv"
 CSV_NAME = "world-cup-toto-1637-visual-10000-plan-20260626-v23.csv"
 CSV_200_NAME = "world-cup-toto-1637-visual-20000-plan-20260626-v23.csv"
+LONGSHOT_INSURANCE_CSV_NAME = "world-cup-toto-1637-longshot-insurance-20260628-v24.csv"
 PDF_ALIASES = (
     PDF_NAME,
     "world-cup-toto-latest.pdf",
@@ -41,6 +42,10 @@ CSV_200_ALIASES = (
     CSV_200_NAME,
     "world-cup-toto-latest-200-purchase-sheet.csv",
     "world-cup-toto-latest-20000-purchase-sheet.csv",
+)
+LONGSHOT_INSURANCE_CSV_ALIASES = (
+    LONGSHOT_INSURANCE_CSV_NAME,
+    "world-cup-toto-latest-longshot-insurance-sheet.csv",
 )
 OUT_PDF_DIR = ROOT / "output" / "pdf"
 OUT_CSV_DIR = ROOT / "output" / "purchase-sheets"
@@ -363,6 +368,21 @@ MARKET_ADJUSTED_MULTI_PLANS_1637 = [
         "label": "市場補強162口",
         "choices": ("2", "1/0/2", "2", "2/0/1", "0/2/1", "2", "1/0/2", "2", "2", "1", "2", "2", "1/0"),
         "note": "広め案。108口案からM02を全分散へ広げ、Sweden上振れを200口以内で拾う。",
+    },
+]
+
+LONGSHOT_INSURANCE_PLANS_1637 = [
+    {
+        "label": "Longshot insurance 128",
+        "base": "Manual 64 units",
+        "choices": ("1/2", "1/0", "2", "0/2", "0/2", "2", "0/2", "2", "2", "1/0", "2", "2", "1/0"),
+        "note": "Separate from normal plans. Add M01 Ecuador win to the manual 64-style sheet.",
+    },
+    {
+        "label": "Longshot insurance 192",
+        "base": "1636 reflection 144 units",
+        "choices": ("1/2", "1/0", "0/2", "0/2", "1/0/2", "2", "1/0", "2", "2", "1", "2", "2", "1/0"),
+        "note": "Add M01 Ecuador win, then cut M04 to 0/2 so the sheet stays under 200 units.",
     },
 ]
 
@@ -1165,6 +1185,26 @@ def market_adjusted_plan_matrix_table_1637() -> Table:
     return table(rows, [9 * mm, 30 * mm, 17 * mm, 17 * mm, 18 * mm, 19 * mm, 18 * mm, 40 * mm])
 
 
+def longshot_insurance_plan_table_1637() -> Table:
+    rows = [["Plan", "Base", "M01-M04", "M05-M08", "M09-M13", "Units", "Cost", "Note"]]
+    for plan in LONGSHOT_INSURANCE_PLANS_1637:
+        choices = tuple(str(choice) for choice in plan["choices"])
+        units = multi_plan_units(plan)
+        rows.append([
+            plan["label"],
+            plan["base"],
+            " ".join(choices[:4]),
+            " ".join(choices[4:8]),
+            " ".join(choices[8:13]),
+            f"{units:,}",
+            yen(units * STAKE_YEN),
+            plan["note"],
+        ])
+    result = table(rows, [22 * mm, 24 * mm, 25 * mm, 25 * mm, 30 * mm, 14 * mm, 18 * mm, 32 * mm])
+    result.setStyle(TableStyle([("BACKGROUND", (0, 1), (0, -1), AMBER_LIGHT)]))
+    return result
+
+
 def final_market_decision_rule_table() -> Table:
     rows = [
         ["ルール", "実行"],
@@ -1394,6 +1434,10 @@ def build_pdf() -> Path:
         market_adjusted_plan_summary_table_1637(),
         Spacer(1, 4 * mm),
         market_adjusted_plan_matrix_table_1637(),
+        Spacer(1, 4 * mm),
+        p("1637 separate longshot insurance sheet", "h2"),
+        p("Do not mix this with the normal market-adjusted plans. Use it only when a public favorite is over-concentrated and the external market lifts the non-draw longshot."),
+        longshot_insurance_plan_table_1637(),
         PageBreak(),
         p("外部市場で推奨を補強する", "title"),
         p("強アカウントを丸ごとコピーするより、公開市場価格、板の厚み、出来高、ブックメーカーの1X2確率をp_modelへ混ぜる方が再現性があります。今回の1637ではPolymarketの試合別1X2が取れたので、外部市場サンプルとして使っています。強アカWatchは、履歴が取れる場合だけ人気国No・ドロー・弱者側を残す補助シグナルにします。"),
@@ -1515,21 +1559,53 @@ def write_purchase_csv(csv_path: Path, rows: list[dict[str, object]], aliases: t
     copy_report_aliases(csv_path, OUT_CSV_DIR, PUBLIC_DIR, aliases)
 
 
+def write_longshot_insurance_csv(csv_path: Path, aliases: tuple[str, ...]) -> None:
+    with csv_path.open("w", newline="", encoding="utf-8-sig") as output:
+        writer = csv.writer(output, lineterminator="\n")
+        writer.writerow([
+            "plan_label",
+            "base_plan",
+            "unit_count",
+            "cost_yen",
+            *[match_label(match) for match in MATCHES_1637],
+            *[f"match_{index}" for index in range(1, 14)],
+            "trigger",
+            "note",
+        ])
+        for plan in LONGSHOT_INSURANCE_PLANS_1637:
+            choices = tuple(str(choice) for choice in plan["choices"])
+            units = multi_plan_units(plan)
+            writer.writerow([
+                plan["label"],
+                plan["base"],
+                units,
+                units * STAKE_YEN,
+                *[choices[index] for index in range(13)],
+                *choices,
+                "M01 Ecuador win market-over-public insurance",
+                plan["note"],
+            ])
+    copy_report_aliases(csv_path, OUT_CSV_DIR, PUBLIC_DIR, aliases)
+
+
 def build_csv() -> dict[str, Path]:
     OUT_CSV_DIR.mkdir(parents=True, exist_ok=True)
     PUBLIC_DIR.mkdir(parents=True, exist_ok=True)
     csv_50_path = OUT_CSV_DIR / CSV_50_NAME
     csv_path = OUT_CSV_DIR / CSV_NAME
     csv_200_path = OUT_CSV_DIR / CSV_200_NAME
+    longshot_csv_path = OUT_CSV_DIR / LONGSHOT_INSURANCE_CSV_NAME
 
     write_purchase_csv(csv_50_path, entry_rows_1637(PURCHASE_ROWS_1637_50), CSV_50_ALIASES)
     write_purchase_csv(csv_path, entry_rows_1637(PURCHASE_ROWS_1637), CSV_ALIASES)
     write_purchase_csv(csv_200_path, entry_rows_1637(PURCHASE_ROWS_1637_200), CSV_200_ALIASES)
+    write_longshot_insurance_csv(longshot_csv_path, LONGSHOT_INSURANCE_CSV_ALIASES)
 
     return {
         "all_50": csv_50_path,
         "all": csv_path,
         "all_200": csv_200_path,
+        "longshot": longshot_csv_path,
     }
 
 
@@ -1540,6 +1616,7 @@ def main() -> None:
     print(f"CSV_50: {csv_paths['all_50']}")
     print(f"CSV: {csv_paths['all']}")
     print(f"CSV_200: {csv_paths['all_200']}")
+    print(f"CSV_LONGSHOT: {csv_paths['longshot']}")
     print(f"purchase_rows={len(PURCHASE_ROWS_1636)} units={sum(int(row['units']) for row in PURCHASE_ROWS_1636)}")
     print(f"purchase_rows_1637_50={len(PURCHASE_ROWS_1637_50)} units={sum(int(row['units']) for row in PURCHASE_ROWS_1637_50)}")
     print(f"purchase_rows_1637={len(PURCHASE_ROWS_1637)} units={sum(int(row['units']) for row in PURCHASE_ROWS_1637)}")

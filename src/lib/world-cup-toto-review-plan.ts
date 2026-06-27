@@ -10,6 +10,8 @@ export const worldCupTotoNextPurchaseSheet100FileName =
   "world-cup-toto-latest-100-purchase-sheet.csv";
 export const worldCupTotoNextPurchaseSheet200FileName =
   "world-cup-toto-latest-200-purchase-sheet.csv";
+export const worldCupTotoNextLongshotInsuranceSheetFileName =
+  "world-cup-toto-latest-longshot-insurance-sheet.csv";
 
 export const worldCupTotoVersionedReportFileName =
   "world-cup-toto-1634-1637-evolved-plan-20260626-v23.pdf";
@@ -19,6 +21,8 @@ export const worldCupTotoVersionedPurchaseSheetFileName =
   "world-cup-toto-1637-visual-10000-plan-20260626-v23.csv";
 export const worldCupTotoVersionedPurchaseSheet200FileName =
   "world-cup-toto-1637-visual-20000-plan-20260626-v23.csv";
+export const worldCupTotoVersionedLongshotInsuranceSheetFileName =
+  "world-cup-toto-1637-longshot-insurance-20260628-v24.csv";
 export const worldCupTotoLegacyReportFileName =
   "world-cup-toto-1634-1636-evolved-plan.pdf";
 export const worldCupTotoLegacyPurchaseSheetFileName =
@@ -32,6 +36,7 @@ export const worldCupTotoReportVersion = {
   latest200CsvFileName: worldCupTotoNextPurchaseSheet200FileName,
   latestCsvFileName: worldCupTotoNextPurchaseSheetFileName,
   latest50CsvFileName: worldCupTotoNextPurchaseSheet50FileName,
+  latestLongshotInsuranceCsvFileName: worldCupTotoNextLongshotInsuranceSheetFileName,
   latest100CsvFileName: worldCupTotoNextPurchaseSheet100FileName,
   latestPdfFileName: worldCupTotoLatestReportFileName,
   legacyCsvFileName: worldCupTotoLegacyPurchaseSheetFileName,
@@ -41,6 +46,7 @@ export const worldCupTotoReportVersion = {
   versioned200CsvFileName: worldCupTotoVersionedPurchaseSheet200FileName,
   versionedCsvFileName: worldCupTotoVersionedPurchaseSheetFileName,
   versioned50CsvFileName: worldCupTotoVersionedPurchaseSheet50FileName,
+  versionedLongshotInsuranceCsvFileName: worldCupTotoVersionedLongshotInsuranceSheetFileName,
   versionedPdfFileName: worldCupTotoVersionedReportFileName,
 };
 
@@ -129,6 +135,28 @@ export type Toto1637MultiPlan = {
   unitCount: number;
 };
 
+export type Toto1637LongshotInsuranceRule = {
+  delta: number;
+  favoriteDelta: number;
+  favoriteMarketProb: number;
+  favoriteOfficialProb: number;
+  favoriteOutcome: OutcomeValue;
+  marketProb: number;
+  marketToOfficialRatio: number;
+  matchLabel: string;
+  matchNo: number;
+  note: string;
+  officialProb: number;
+  qualifies: boolean;
+  triggerOutcome: OutcomeValue;
+};
+
+export type Toto1637LongshotInsurancePlan = Toto1637MultiPlan & {
+  basePlanLabel: string;
+  insuranceRule: Toto1637LongshotInsuranceRule;
+  strategyTag: "longshot_insurance";
+};
+
 export type Toto1637ExternalMarketRow = {
   actionLabel: string;
   delta: Record<OutcomeValue, number>;
@@ -153,6 +181,8 @@ export type Toto1637ExternalMarketOverlay = {
   decisionRules: string[];
   fetchedAtLabel: string;
   finalSelectionSummary: string;
+  longshotInsurancePlans: Toto1637LongshotInsurancePlan[];
+  longshotInsuranceRules: Toto1637LongshotInsuranceRule[];
   marketAdjustedPlans: Toto1637MultiPlan[];
   sourceDocs: { label: string; url: string }[];
   sourceUrl: string;
@@ -1321,6 +1351,21 @@ function buildToto1637MultiPlan(
   };
 }
 
+function buildToto1637LongshotInsurancePlan(
+  label: string,
+  choices: string[],
+  note: string,
+  basePlanLabel: string,
+  insuranceRule: Toto1637LongshotInsuranceRule,
+): Toto1637LongshotInsurancePlan {
+  return {
+    ...buildToto1637MultiPlan(label, choices, note),
+    basePlanLabel,
+    insuranceRule,
+    strategyTag: "longshot_insurance",
+  };
+}
+
 function buildToto1637ActualPurchaseSlip(
   label: string,
   purchaseTimeLabel: string,
@@ -1385,6 +1430,63 @@ function weakestNegativeDelta(delta: Record<OutcomeValue, number>) {
 function signedDeltaPoint(delta: Record<OutcomeValue, number>, outcome: OutcomeValue) {
   const point = delta[outcome] * 100;
   return `${point >= 0 ? "+" : ""}${point.toFixed(1)}pt`;
+}
+
+function buildToto1637LongshotInsuranceRule(
+  row: (typeof worldCupToto1637ExternalMarketRawRows)[number],
+): Toto1637LongshotInsuranceRule {
+  const match = worldCupToto1637Matches.find((item) => item.matchNo === row.matchNo);
+  const officialProb = match?.votes ?? { "1": 0, "0": 0, "2": 0 };
+  const favoriteOutcome = favoriteFromVotes(officialProb);
+  const candidate = (["1", "2"] as const)
+    .filter((outcome) => outcome !== favoriteOutcome)
+    .map((outcome) => {
+      const official = officialProb[outcome];
+      const market = row.marketProb[outcome];
+
+      return {
+        delta: row.delta[outcome],
+        market,
+        marketToOfficialRatio: official > 0 ? market / official : Number.POSITIVE_INFINITY,
+        official,
+        outcome,
+      };
+    })
+    .sort((left, right) => right.delta - left.delta)[0];
+
+  const favoriteOfficialProb = officialProb[favoriteOutcome];
+  const favoriteMarketProb = row.marketProb[favoriteOutcome];
+  const triggerOutcome = candidate?.outcome ?? "1";
+  const delta = candidate?.delta ?? 0;
+  const marketProb = candidate?.market ?? 0;
+  const official = candidate?.official ?? 0;
+  const marketToOfficialRatio = candidate?.marketToOfficialRatio ?? 0;
+  const qualifies =
+    favoriteOfficialProb >= 0.7 &&
+    favoriteMarketProb <= 0.66 &&
+    row.delta[favoriteOutcome] <= -0.08 &&
+    delta >= 0.08 &&
+    official <= 0.12 &&
+    marketProb >= 0.15 &&
+    marketToOfficialRatio >= 1.5;
+
+  return {
+    delta,
+    favoriteDelta: row.delta[favoriteOutcome],
+    favoriteMarketProb,
+    favoriteOfficialProb,
+    favoriteOutcome,
+    marketProb,
+    marketToOfficialRatio,
+    matchLabel: match ? planMatchLabel(match) : `M${String(row.matchNo).padStart(2, "0")}`,
+    matchNo: row.matchNo,
+    note: qualifies
+      ? "Official favorite is over-concentrated and the market lifts the non-draw longshot; keep this as a separate insurance sheet."
+      : "Longshot signal is tracked, but it does not pass the separate-sheet threshold.",
+    officialProb: official,
+    qualifies,
+    triggerOutcome,
+  };
 }
 
 const worldCupToto1637ExternalMarketRawRows = [
@@ -1519,6 +1621,35 @@ const worldCupToto1637ExternalMarketRawRows = [
   >
 >;
 
+export const worldCupToto1637LongshotInsuranceRules: Toto1637LongshotInsuranceRule[] =
+  worldCupToto1637ExternalMarketRawRows.map(buildToto1637LongshotInsuranceRule);
+
+const worldCupToto1637PrimaryLongshotInsuranceRule =
+  worldCupToto1637LongshotInsuranceRules.find((rule) => rule.matchNo === 1 && rule.qualifies) ??
+  worldCupToto1637LongshotInsuranceRules.find((rule) => rule.qualifies) ??
+  worldCupToto1637LongshotInsuranceRules[0];
+
+if (!worldCupToto1637PrimaryLongshotInsuranceRule) {
+  throw new Error("1637 longshot insurance rule is missing");
+}
+
+export const worldCupToto1637LongshotInsurancePlans: Toto1637LongshotInsurancePlan[] = [
+  buildToto1637LongshotInsurancePlan(
+    "長穴保険128口",
+    ["1/2", "1/0", "2", "0/2", "0/2", "2", "0/2", "2", "2", "1/0", "2", "2", "1/0"],
+    "人力64口の通常枠とは別に、M01 Ecuador win を Germany single へ足す保険。通常108/144/162とは混ぜない。",
+    "人力64口",
+    worldCupToto1637PrimaryLongshotInsuranceRule,
+  ),
+  buildToto1637LongshotInsurancePlan(
+    "長穴保険192口",
+    ["1/2", "1/0", "0/2", "0/2", "1/0/2", "2", "1/0", "2", "2", "1", "2", "2", "1/0"],
+    "144口反省型に M01 Ecuador win を足し、M04を0/2へ絞って200口以内へ収める広め保険。",
+    "1636反省144口",
+    worldCupToto1637PrimaryLongshotInsuranceRule,
+  ),
+];
+
 export const worldCupToto1637ExternalMarketOverlay: Toto1637ExternalMarketOverlay = {
   comparisonRows: worldCupToto1637ExternalMarketRawRows.map((row) => {
     const match = worldCupToto1637Matches.find((item) => item.matchNo === row.matchNo);
@@ -1541,6 +1672,7 @@ export const worldCupToto1637ExternalMarketOverlay: Toto1637ExternalMarketOverla
   }),
   dataStatusLabel: "Polymarket close-aligned 1X2 history 13/13 refreshed on 2026-06-25; Hazi input disabled; strong-account watch is advisory",
   decisionRules: [
+    "Longshot insurance: public favorite >=70%, market favorite <=66%, favorite delta <=-8pt, non-draw longshot delta >=+8pt, market/public ratio >=1.5 => make a separate double-insurance sheet.",
     "p_market - p_public が +8pt 以上なら、公式で薄い出目でも昇格候補にする。",
     "公式人気の本命が p_market で -12pt 以上なら、単独ロックを解除する。",
     "p_market のドローが20%以上なら、締切版で0を残す候補に戻す。",
@@ -1551,6 +1683,8 @@ export const worldCupToto1637ExternalMarketOverlay: Toto1637ExternalMarketOverla
   fetchedAtLabel: "2026-06-25 19:00 JST",
   finalSelectionSummary:
     "締切19:00の市場履歴でも市場補強108口を本線にする。M04/M05/M07を全分散、M02とM13をダブルにし、M03ドローまで拾うなら144口、Sweden上振れまで拾うなら162口。",
+  longshotInsurancePlans: worldCupToto1637LongshotInsurancePlans,
+  longshotInsuranceRules: worldCupToto1637LongshotInsuranceRules.filter((rule) => rule.qualifies),
   marketAdjustedPlans: [
     buildToto1637MultiPlan(
       "市場補強27口",
@@ -1944,6 +2078,10 @@ export const worldCupToto1637NextPlan = {
   hardStopLabel: "2026-06-25 18:55 JST",
   directPurchasePlanUnitCounts: [50, 100, 200],
   hotDoublePatternCount: 0,
+  longshotInsurancePlanUnitCounts: worldCupToto1637LongshotInsurancePlans.map((plan) => plan.unitCount),
+  longshotInsuranceRecommendedBudgetYen: worldCupToto1637LongshotInsurancePlans[0]?.budgetYen ?? 0,
+  longshotInsuranceRecommendedUnitCount: worldCupToto1637LongshotInsurancePlans[0]?.unitCount ?? 0,
+  longshotInsuranceSheetFileName: worldCupTotoNextLongshotInsuranceSheetFileName,
   multiPurchasePlanUnitCounts: worldCupToto1637MultiPlans.map((plan) => plan.unitCount),
   maxRecommendedBudgetYen:
     worldCupToto1637PurchaseRows200.reduce((sum, row) => sum + row.unitCount, 0) * TOTO13_STAKE_YEN,

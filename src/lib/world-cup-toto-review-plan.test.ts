@@ -20,6 +20,8 @@ import {
   worldCupToto1637ContextModel,
   worldCupToto1637ExternalMarketOverlay,
   worldCupToto1637FinalLogic,
+  worldCupToto1637LongshotInsurancePlans,
+  worldCupToto1637LongshotInsuranceRules,
   worldCupToto1637Matches,
   worldCupToto1637MultiPlans,
   worldCupToto1637NextPlan,
@@ -27,6 +29,7 @@ import {
   worldCupToto1637PurchaseRows200,
   worldCupToto1637PurchaseRows50,
   worldCupTotoLatestReportFileName,
+  worldCupTotoNextLongshotInsuranceSheetFileName,
   worldCupTotoNextPurchaseSheet200FileName,
   worldCupTotoNextPurchaseSheet50FileName,
   worldCupTotoNextPurchaseSheetFileName,
@@ -37,6 +40,7 @@ import {
   worldCupTotoVersionedPurchaseSheet200FileName,
   worldCupTotoVersionedPurchaseSheet50FileName,
   worldCupTotoVersionedPurchaseSheetFileName,
+  worldCupTotoVersionedLongshotInsuranceSheetFileName,
   worldCupTotoVersionedReportFileName,
 } from "@/lib/world-cup-toto-review-plan";
 
@@ -140,7 +144,29 @@ describe("world cup toto review plan", () => {
     expect(worldCupToto1637NextPlan.directPurchasePlanUnitCounts).toEqual([50, 100, 200]);
     expect(worldCupToto1637NextPlan.hotDoublePatternCount).toBe(0);
     expect(worldCupToto1637NextPlan.multiPurchasePlanUnitCounts).toEqual([27, 54, 108, 162]);
+    expect(worldCupToto1637NextPlan.longshotInsurancePlanUnitCounts).toEqual([128, 192]);
+    expect(worldCupToto1637NextPlan.longshotInsuranceRecommendedUnitCount).toBe(128);
+    expect(worldCupToto1637NextPlan.longshotInsuranceRecommendedBudgetYen).toBe(12_800);
+    expect(worldCupToto1637NextPlan.longshotInsuranceSheetFileName).toBe(
+      worldCupTotoNextLongshotInsuranceSheetFileName,
+    );
     expect(worldCupToto1637MultiPlans.map((plan) => plan.budgetYen)).toEqual([2_700, 5_400, 10_800, 16_200]);
+    expect(worldCupToto1637LongshotInsurancePlans.map((plan) => plan.budgetYen)).toEqual([12_800, 19_200]);
+    expect(worldCupToto1637LongshotInsurancePlans[0]?.choices).toEqual([
+      "1/2",
+      "1/0",
+      "2",
+      "0/2",
+      "0/2",
+      "2",
+      "0/2",
+      "2",
+      "2",
+      "1/0",
+      "2",
+      "2",
+      "1/0",
+    ]);
     expect(worldCupToto1637MultiPlans[2]?.choices).toEqual([
       "2",
       "1/0",
@@ -202,6 +228,19 @@ describe("world cup toto review plan", () => {
     expect(marketRows.find((row) => row.matchNo === 2)?.deltaSummaryLabel).toContain("厚い 2");
     expect(worldCupToto1637ExternalMarketOverlay.decisionRules.some((rule) => rule.includes("+8pt"))).toBe(true);
     expect(worldCupToto1637ExternalMarketOverlay.decisionRules.some((rule) => rule.includes("強アカWatch"))).toBe(true);
+    expect(worldCupToto1637ExternalMarketOverlay.decisionRules.some((rule) => rule.includes("Longshot insurance"))).toBe(
+      true,
+    );
+    const m1LongshotRule = worldCupToto1637LongshotInsuranceRules.find((rule) => rule.matchNo === 1);
+    expect(m1LongshotRule?.qualifies).toBe(true);
+    expect(m1LongshotRule?.triggerOutcome).toBe("1");
+    expect(m1LongshotRule?.favoriteOutcome).toBe("2");
+    expect(m1LongshotRule?.marketToOfficialRatio).toBeGreaterThan(1.8);
+    expect(worldCupToto1637ExternalMarketOverlay.longshotInsuranceRules.map((rule) => rule.matchNo)).toEqual([1]);
+    expect(worldCupToto1637ExternalMarketOverlay.longshotInsurancePlans.map((plan) => plan.unitCount)).toEqual([
+      128,
+      192,
+    ]);
     expect(marketPlans.map((plan) => plan.unitCount)).toEqual([27, 54, 108, 144, 162]);
     expect(marketPlans[2]?.choices).toEqual([
       "2",
@@ -279,10 +318,16 @@ describe("world cup toto review plan", () => {
     expect(worldCupTotoNextPurchaseSheetFileName).toBe("world-cup-toto-latest-purchase-sheet.csv");
     expect(worldCupTotoNextPurchaseSheet50FileName).toBe("world-cup-toto-latest-50-purchase-sheet.csv");
     expect(worldCupTotoNextPurchaseSheet200FileName).toBe("world-cup-toto-latest-200-purchase-sheet.csv");
+    expect(worldCupTotoNextLongshotInsuranceSheetFileName).toBe(
+      "world-cup-toto-latest-longshot-insurance-sheet.csv",
+    );
     expect(worldCupTotoVersionedReportFileName).toBe("world-cup-toto-1634-1637-evolved-plan-20260626-v23.pdf");
     expect(worldCupTotoVersionedPurchaseSheet50FileName).toBe("world-cup-toto-1637-visual-5000-plan-20260626-v23.csv");
     expect(worldCupTotoVersionedPurchaseSheetFileName).toBe("world-cup-toto-1637-visual-10000-plan-20260626-v23.csv");
     expect(worldCupTotoVersionedPurchaseSheet200FileName).toBe("world-cup-toto-1637-visual-20000-plan-20260626-v23.csv");
+    expect(worldCupTotoVersionedLongshotInsuranceSheetFileName).toBe(
+      "world-cup-toto-1637-longshot-insurance-20260628-v24.csv",
+    );
     expect(worldCupTotoReportVersion.label).toBe("2026-06-26 v23");
     expect(worldCupTotoReportVersion.publishedAtLabel).toBe("2026-06-26 13:19 JST");
     expect(worldCupTotoReportVersion.pdfSha256).toHaveLength(64);
@@ -313,10 +358,24 @@ describe("world cup toto review plan", () => {
     )
       .trim()
       .split(/\r?\n/);
+    const longshotCsv = readFileSync(
+      resolve(process.cwd(), "public", "reports", worldCupTotoVersionedLongshotInsuranceSheetFileName),
+      "utf8",
+    )
+      .trim()
+      .split(/\r?\n/);
+    const latestLongshotCsv = readFileSync(
+      resolve(process.cwd(), "public", "reports", worldCupTotoNextLongshotInsuranceSheetFileName),
+      "utf8",
+    )
+      .trim()
+      .split(/\r?\n/);
 
     expect(csv).toHaveLength(worldCupToto1637NextPlan.recommendedUnitCount + 1);
     expect(csv50).toHaveLength(51);
     expect(csv200).toHaveLength(worldCupToto1637NextPlan.maxRecommendedUnitCount + 1);
+    expect(longshotCsv).toHaveLength(worldCupToto1637LongshotInsurancePlans.length + 1);
+    expect(latestLongshotCsv).toEqual(longshotCsv);
     expect(csv[0]?.split(",").slice(0, 17)).toEqual([
       "rank",
       "amount_cumulative_yen",
@@ -348,5 +407,13 @@ describe("world cup toto review plan", () => {
     expect(csv50[50]?.split(",")[1]).toBe("5000");
     expect(csv200[200]?.split(",")[1]).toBe("20000");
     expect(csv.every((line, index) => index === 0 || line.split(",")[30] === "direct")).toBe(true);
+    expect(longshotCsv[1]?.split(",").slice(0, 4)).toEqual([
+      "Longshot insurance 128",
+      "Manual 64 units",
+      "128",
+      "12800",
+    ]);
+    expect(longshotCsv[1]?.split(",").slice(17, 30)).toEqual(worldCupToto1637LongshotInsurancePlans[0]?.choices);
+    expect(longshotCsv[2]?.split(",").slice(17, 30)).toEqual(worldCupToto1637LongshotInsurancePlans[1]?.choices);
   });
 });
