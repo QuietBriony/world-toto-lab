@@ -319,11 +319,16 @@ describe("world cup toto review plan", () => {
     expect(worldCupToto1637ActualPurchaseSummary.progressRows.every((row) => row.maxFinalHitCount === 12)).toBe(true);
     expect(worldCupToto1637ActualPurchaseSummary.progressRows.map((row) => row.secondPrizeUnitCount)).toEqual([1, 1, 1]);
     expect(worldCupToto1637ActualPurchaseSummary.progressRows.map((row) => row.thirdPrizeUnitCount)).toEqual([8, 9, 6]);
-    expect(worldCupToto1637ActualPurchaseSummary.estimatedSecondPrizeYen).toBe(4_344);
-    expect(worldCupToto1637ActualPurchaseSummary.estimatedThirdPrizeYen).toBe(527);
-    expect(worldCupToto1637ActualPurchaseSummary.estimatedPayoutYen).toBe(25_153);
+    expect(worldCupToto1637ActualPurchaseSummary.estimatedFirstPrizeYen).toBe(589_850);
+    expect(worldCupToto1637ActualPurchaseSummary.estimatedSecondPrizeYen).toBe(4_200);
+    expect(worldCupToto1637ActualPurchaseSummary.estimatedThirdPrizeYen).toBe(480);
+    expect(worldCupToto1637ActualPurchaseSummary.estimatedPayoutYen).toBe(23_640);
+    expect(worldCupToto1637ActualPurchaseSummary.estimatedNetYen).toBe(-13_360);
     expect(worldCupToto1637ActualPurchaseSummary.summary).toContain("2nd prize 3 units");
-    expect(worldCupToto1637ActualPurchaseSummary.strategyUpdates[0]).toContain("longshot insurance");
+    expect(worldCupToto1637ActualPurchaseSummary.strategyUpdates[0]).toContain("23,640 yen");
+    expect(worldCupToto1637ActualPurchaseSummary.strategyUpdates.some((update) => update.includes("longshot insurance"))).toBe(
+      true,
+    );
     expect(worldCupToto1637ActualPurchaseSummary.privacyNote).not.toContain("9203");
   });
 
@@ -348,15 +353,15 @@ describe("world cup toto review plan", () => {
     expect(worldCupTotoNextLongshotInsuranceSheetFileName).toBe(
       "world-cup-toto-latest-longshot-insurance-sheet.csv",
     );
-    expect(worldCupTotoVersionedReportFileName).toBe("world-cup-toto-1634-1637-evolved-plan-20260628-v26.pdf");
+    expect(worldCupTotoVersionedReportFileName).toBe("world-cup-toto-1634-1637-evolved-plan-20260628-v27.pdf");
     expect(worldCupTotoVersionedPurchaseSheet50FileName).toBe("world-cup-toto-1637-visual-5000-plan-20260626-v23.csv");
     expect(worldCupTotoVersionedPurchaseSheetFileName).toBe("world-cup-toto-1637-visual-10000-plan-20260626-v23.csv");
     expect(worldCupTotoVersionedPurchaseSheet200FileName).toBe("world-cup-toto-1637-visual-20000-plan-20260626-v23.csv");
     expect(worldCupTotoVersionedLongshotInsuranceSheetFileName).toBe(
       "world-cup-toto-1637-longshot-insurance-20260628-v24.csv",
     );
-    expect(worldCupTotoReportVersion.label).toBe("2026-06-28 v26");
-    expect(worldCupTotoReportVersion.publishedAtLabel).toBe("2026-06-28 14:12 JST");
+    expect(worldCupTotoReportVersion.label).toBe("2026-06-28 v27");
+    expect(worldCupTotoReportVersion.publishedAtLabel).toBe("2026-06-28 15:25 JST");
     expect(worldCupTotoReportVersion.pdfSha256).toHaveLength(64);
     expect(worldCupTotoReportVersion.csv50Sha256).toHaveLength(64);
     expect(worldCupTotoReportVersion.csvSha256).toHaveLength(64);

@@ -14,7 +14,7 @@ export const worldCupTotoNextLongshotInsuranceSheetFileName =
   "world-cup-toto-latest-longshot-insurance-sheet.csv";
 
 export const worldCupTotoVersionedReportFileName =
-  "world-cup-toto-1634-1637-evolved-plan-20260628-v26.pdf";
+  "world-cup-toto-1634-1637-evolved-plan-20260628-v27.pdf";
 export const worldCupTotoVersionedPurchaseSheet50FileName =
   "world-cup-toto-1637-visual-5000-plan-20260626-v23.csv";
 export const worldCupTotoVersionedPurchaseSheetFileName =
@@ -32,7 +32,7 @@ export const worldCupTotoReportVersion = {
   csv200Sha256: "15915090b59d90fbada7be30b4d071c5bf44d4d65c4cfdd3f4812da7a8a898d4",
   csv50Sha256: "312e99aafbde9489e53b95eb35203e2db9e2809df18c201a0be98334b5eb7295",
   csvSha256: "fc03005ea940a7b702e0b90af4314f1bf84b9ba5b69616a51738bdd0892670f8",
-  label: "2026-06-28 v26",
+  label: "2026-06-28 v27",
   latest200CsvFileName: worldCupTotoNextPurchaseSheet200FileName,
   latestCsvFileName: worldCupTotoNextPurchaseSheetFileName,
   latest50CsvFileName: worldCupTotoNextPurchaseSheet50FileName,
@@ -41,8 +41,8 @@ export const worldCupTotoReportVersion = {
   latestPdfFileName: worldCupTotoLatestReportFileName,
   legacyCsvFileName: worldCupTotoLegacyPurchaseSheetFileName,
   legacyPdfFileName: worldCupTotoLegacyReportFileName,
-  pdfSha256: "49998119f337e791fec8b2206fe23fafc489e4ea13e10de8d6cd23bf20f59092",
-  publishedAtLabel: "2026-06-28 14:12 JST",
+  pdfSha256: "ab297e8f616a8d61f0cd2dcd755c4daabb21f16cfb9a1dfd72ff460105647c3c",
+  publishedAtLabel: "2026-06-28 15:25 JST",
   versioned200CsvFileName: worldCupTotoVersionedPurchaseSheet200FileName,
   versionedCsvFileName: worldCupTotoVersionedPurchaseSheetFileName,
   versioned50CsvFileName: worldCupTotoVersionedPurchaseSheet50FileName,
@@ -70,6 +70,8 @@ export const worldCupTotoOfficialVote1637Url =
   "https://sp.toto-dream.com/dcs/subos/screen/si01/ssin025/PGSSIN02501ForwardVotetotoSP.form?commodityId=01&fromId=SSIN026&gameAssortment=A&holdCntId=1637";
 export const worldCupTotoOfficialSales1637Url =
   "https://sp.toto-dream.com/dcs/subos/screen/si01/ssin025/PGSSIN02501ForwardSalesTermtotoSP.form?holdCntId=1637";
+export const worldCupTotoOfficialResult1637Url =
+  "https://sp.toto-dream.com/dcs/subos/screen/si04/ssin007/PGSSIN00701FwdLotDetailRslttoto.form?holdCntId=1637&commodityId=01&meetingFiscalYear=2026";
 export const worldCupTotoPolymarketSportsEventsUrl =
   "https://gateway.polymarket.us/v2/sports/soccer/events?limit=100&offset=0&type=sport&section=general";
 export const worldCupTotoPolymarketSportsDocsUrl =
@@ -2056,104 +2058,104 @@ export const worldCupToto1637KnownResults: Toto1637KnownResultRow[] = [
     matchLabel: "Ecuador vs Germany",
     matchNo: 1,
     score: "2-1",
-    sourceLabel: "soccer FT; toto official result pending",
-    statusLabel: "score confirmed",
+    sourceLabel: "toto official fixed result",
+    statusLabel: "official fixed",
   },
   {
     actual: "0",
     matchLabel: "Japan vs Sweden",
     matchNo: 2,
     score: "1-1",
-    sourceLabel: "soccer FT; toto official result pending",
-    statusLabel: "score confirmed",
+    sourceLabel: "toto official fixed result",
+    statusLabel: "official fixed",
   },
   {
     actual: "2",
     matchLabel: "Uruguay vs Spain",
     matchNo: 3,
     score: "0-1",
-    sourceLabel: "soccer FT; toto official result pending",
-    statusLabel: "score confirmed",
+    sourceLabel: "toto official fixed result",
+    statusLabel: "official fixed",
   },
   {
     actual: "0",
     matchLabel: "Colombia vs Portugal",
     matchNo: 4,
     score: "0-0",
-    sourceLabel: "soccer FT; toto official result pending",
-    statusLabel: "score confirmed",
+    sourceLabel: "toto official fixed result",
+    statusLabel: "official fixed",
   },
   {
     actual: "0",
     matchLabel: "Algeria vs Austria",
     matchNo: 5,
     score: "3-3",
-    sourceLabel: "soccer FT; toto official result pending",
-    statusLabel: "score confirmed",
+    sourceLabel: "toto official fixed result",
+    statusLabel: "official fixed",
   },
   {
     actual: "2",
     matchLabel: "Tunisia vs Netherlands",
     matchNo: 6,
     score: "1-3",
-    sourceLabel: "soccer FT; toto official result pending",
-    statusLabel: "score confirmed",
+    sourceLabel: "toto official fixed result",
+    statusLabel: "official fixed",
   },
   {
     actual: "0",
     matchLabel: "Paraguay vs Australia",
     matchNo: 7,
     score: "0-0",
-    sourceLabel: "soccer FT; toto official result pending",
-    statusLabel: "score confirmed",
+    sourceLabel: "toto official fixed result",
+    statusLabel: "official fixed",
   },
   {
     actual: "2",
     matchLabel: "Norway vs France",
     matchNo: 8,
     score: "1-4",
-    sourceLabel: "soccer FT; toto official result pending",
-    statusLabel: "score confirmed",
+    sourceLabel: "toto official fixed result",
+    statusLabel: "official fixed",
   },
   {
     actual: "2",
     matchLabel: "Panama vs England",
     matchNo: 9,
     score: "0-2",
-    sourceLabel: "soccer FT; toto official result pending",
-    statusLabel: "score confirmed",
+    sourceLabel: "toto official fixed result",
+    statusLabel: "official fixed",
   },
   {
     actual: "1",
     matchLabel: "DR Congo vs Uzbekistan",
     matchNo: 10,
     score: "3-1",
-    sourceLabel: "soccer FT; toto official result pending",
-    statusLabel: "score confirmed",
+    sourceLabel: "toto official fixed result",
+    statusLabel: "official fixed",
   },
   {
     actual: "2",
     matchLabel: "Jordan vs Argentina",
     matchNo: 11,
     score: "1-3",
-    sourceLabel: "soccer FT; toto official result pending",
-    statusLabel: "score confirmed",
+    sourceLabel: "toto official fixed result",
+    statusLabel: "official fixed",
   },
   {
     actual: "2",
     matchLabel: "New Zealand vs Belgium",
     matchNo: 12,
     score: "1-5",
-    sourceLabel: "soccer FT; toto official result pending",
-    statusLabel: "score confirmed",
+    sourceLabel: "toto official fixed result",
+    statusLabel: "official fixed",
   },
   {
     actual: "1",
     matchLabel: "Croatia vs Ghana",
     matchNo: 13,
     score: "2-1",
-    sourceLabel: "soccer FT; toto official result pending",
-    statusLabel: "score confirmed",
+    sourceLabel: "toto official fixed result",
+    statusLabel: "official fixed",
   },
 ];
 
@@ -2196,6 +2198,17 @@ function countToto1637PrizeUnits(choices: string[], actualSignature: string) {
 }
 
 function estimateToto1637Payouts(actualSignature: string) {
+  if (actualSignature === worldCupToto1637OfficialPayouts.actualSignature) {
+    return {
+      estimatedFirstPrizeWinners: worldCupToto1637OfficialPayouts.firstPrizeWinners,
+      estimatedFirstPrizeYen: worldCupToto1637OfficialPayouts.firstPrizeYen,
+      estimatedSecondPrizeWinners: worldCupToto1637OfficialPayouts.secondPrizeWinners,
+      estimatedSecondPrizeYen: worldCupToto1637OfficialPayouts.secondPrizeYen,
+      estimatedThirdPrizeWinners: worldCupToto1637OfficialPayouts.thirdPrizeWinners,
+      estimatedThirdPrizeYen: worldCupToto1637OfficialPayouts.thirdPrizeYen,
+    };
+  }
+
   const probabilities = actualSignature.split("").map((outcome, index) => {
     const row = worldCupToto1637CloseMarketSnapshot.rows.find((item) => item.matchNo === index + 1);
     return row?.officialProb[outcome as OutcomeValue] ?? 0;
@@ -2289,6 +2302,15 @@ function evaluateToto1637ActualPurchaseProgress(
 }
 
 const worldCupToto1637ActualSignature = buildToto1637ActualSignature();
+const worldCupToto1637OfficialPayouts = {
+  actualSignature: "1020020221221",
+  firstPrizeWinners: 363,
+  firstPrizeYen: 589_850,
+  secondPrizeWinners: 10_136,
+  secondPrizeYen: 4_200,
+  thirdPrizeWinners: 188_473,
+  thirdPrizeYen: 480,
+};
 const worldCupToto1637EstimatedPayouts = estimateToto1637Payouts(worldCupToto1637ActualSignature);
 const worldCupToto1637ActualProgressRows =
   worldCupToto1637ActualPurchaseSlips.map(evaluateToto1637ActualPurchaseProgress);
@@ -2323,16 +2345,17 @@ export const worldCupToto1637ActualPurchaseSummary: Toto1637ActualPurchaseSummar
   knownResults: worldCupToto1637KnownResults,
   labels: worldCupToto1637ActualPurchaseSlips.map((slip) => slip.label),
   officialPayoutStatusLabel:
-    "Official toto payout table was still pending at 2026-06-28 13:05 JST; payout figures here are close-vote estimates.",
+    "Official fixed: 1st 589,850 yen / 2nd 4,200 yen / 3rd 480 yen. Saved 370 units return 23,640 yen.",
   officialTotoStatusLabel:
-    "Round 1637 soccer FT scores are complete; official toto payout table is pending and must be checked before settlement.",
+    "Round 1637 official toto result is fixed: signature 1020020221221, 1st 363 units, 2nd 10,136 units, 3rd 188,473 units.",
   privacyNote:
     "Inquiry/reference numbers from screenshots are not stored in the repo. This is enough to evaluate 1st/2nd/3rd prize paths after results.",
   progressRows: worldCupToto1637ActualProgressRows,
   resultStatusLabel:
-    "Final soccer signature is 1020020221221. The saved 370 units hit 2nd prize 3 units and 3rd prize 23 units; 1st was missed on M01 Ecuador.",
+    "Official signature is 1020020221221. The saved 370 units hit 2nd prize 3 units and 3rd prize 23 units; 1st was missed on M01 Ecuador.",
   slips: worldCupToto1637ActualPurchaseSlips,
   strategyUpdates: [
+    "Official payout confirms the practical lesson: lower prizes recovered 23,640 yen, but the 37,000 yen stake still lost 13,360 yen without 1st prize.",
     "Promote triggered longshot insurance from optional to funded default: the 128-unit insurance sheet would have hit 1st on 1020020221221.",
     "When a famous favorite is official >=70%, market favorite is <=66%, and a non-draw longshot is +8pt with market/official >=1.5x, buy the insurance sheet before adding broad low-edge rows.",
     "Under a 200-unit cap, combine market-adjusted 54 units with longshot insurance 128 units for 182 units / 18,200 yen before expanding the main sheet.",
@@ -2340,7 +2363,7 @@ export const worldCupToto1637ActualPurchaseSummary: Toto1637ActualPurchaseSummar
     "Use normal market-adjusted 108/162 as the core, then allocate incremental budget to longshot insurance rather than duplicate broad coverage.",
   ],
   summary:
-    "Final FT scores make signature 1020020221221. The saved slips missed only M01 at sheet level, producing 2nd prize 3 units and 3rd prize 23 units by multi expansion. The separate longshot-insurance design would have covered M01=1 and reached 1st.",
+    "Official result is signature 1020020221221. The saved slips missed only M01 at sheet level, producing 2nd prize 3 units and 3rd prize 23 units by multi expansion. Official payout is 23,640 yen against 37,000 yen staked. The separate longshot-insurance design would have covered M01=1 and reached 1st.",
   totalCostYen: worldCupToto1637ActualTotalCostYen,
   totalUnitCount: worldCupToto1637ActualTotalUnitCount,
   verificationRule:
