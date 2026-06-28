@@ -289,14 +289,30 @@ describe("world cup toto review plan", () => {
     expect(worldCupToto1637ActualPurchaseSummary.knownResults.map((row) => [row.matchNo, row.actual])).toEqual([
       [1, "1"],
       [2, "0"],
+      [3, "2"],
+      [4, "0"],
+      [5, "0"],
       [6, "2"],
       [7, "0"],
+      [8, "2"],
+      [9, "2"],
+      [10, "1"],
+      [11, "2"],
+      [12, "2"],
+      [13, "1"],
     ]);
+    expect(worldCupToto1637ActualPurchaseSummary.actualSignature).toBe("1020020221221");
     expect(worldCupToto1637ActualPurchaseSummary.progressRows).toHaveLength(3);
-    expect(worldCupToto1637ActualPurchaseSummary.progressRows.every((row) => row.knownHitCount === 3)).toBe(true);
+    expect(worldCupToto1637ActualPurchaseSummary.progressRows.map((row) => row.knownHitCount)).toEqual([12, 12, 12]);
     expect(worldCupToto1637ActualPurchaseSummary.progressRows.every((row) => row.knownMissMatchNumbers.includes(1))).toBe(true);
     expect(worldCupToto1637ActualPurchaseSummary.progressRows.every((row) => row.maxFinalHitCount === 12)).toBe(true);
-    expect(worldCupToto1637ActualPurchaseSummary.summary).toContain("1st prize is gone");
+    expect(worldCupToto1637ActualPurchaseSummary.progressRows.map((row) => row.secondPrizeUnitCount)).toEqual([1, 1, 1]);
+    expect(worldCupToto1637ActualPurchaseSummary.progressRows.map((row) => row.thirdPrizeUnitCount)).toEqual([8, 9, 6]);
+    expect(worldCupToto1637ActualPurchaseSummary.estimatedSecondPrizeYen).toBe(4_344);
+    expect(worldCupToto1637ActualPurchaseSummary.estimatedThirdPrizeYen).toBe(527);
+    expect(worldCupToto1637ActualPurchaseSummary.estimatedPayoutYen).toBe(25_153);
+    expect(worldCupToto1637ActualPurchaseSummary.summary).toContain("2nd prize 3 units");
+    expect(worldCupToto1637ActualPurchaseSummary.strategyUpdates[0]).toContain("longshot insurance");
     expect(worldCupToto1637ActualPurchaseSummary.privacyNote).not.toContain("9203");
   });
 
@@ -321,15 +337,15 @@ describe("world cup toto review plan", () => {
     expect(worldCupTotoNextLongshotInsuranceSheetFileName).toBe(
       "world-cup-toto-latest-longshot-insurance-sheet.csv",
     );
-    expect(worldCupTotoVersionedReportFileName).toBe("world-cup-toto-1634-1637-evolved-plan-20260626-v23.pdf");
+    expect(worldCupTotoVersionedReportFileName).toBe("world-cup-toto-1634-1637-evolved-plan-20260628-v25.pdf");
     expect(worldCupTotoVersionedPurchaseSheet50FileName).toBe("world-cup-toto-1637-visual-5000-plan-20260626-v23.csv");
     expect(worldCupTotoVersionedPurchaseSheetFileName).toBe("world-cup-toto-1637-visual-10000-plan-20260626-v23.csv");
     expect(worldCupTotoVersionedPurchaseSheet200FileName).toBe("world-cup-toto-1637-visual-20000-plan-20260626-v23.csv");
     expect(worldCupTotoVersionedLongshotInsuranceSheetFileName).toBe(
       "world-cup-toto-1637-longshot-insurance-20260628-v24.csv",
     );
-    expect(worldCupTotoReportVersion.label).toBe("2026-06-26 v23");
-    expect(worldCupTotoReportVersion.publishedAtLabel).toBe("2026-06-26 13:19 JST");
+    expect(worldCupTotoReportVersion.label).toBe("2026-06-28 v25");
+    expect(worldCupTotoReportVersion.publishedAtLabel).toBe("2026-06-28 13:05 JST");
     expect(worldCupTotoReportVersion.pdfSha256).toHaveLength(64);
     expect(worldCupTotoReportVersion.csv50Sha256).toHaveLength(64);
     expect(worldCupTotoReportVersion.csvSha256).toHaveLength(64);

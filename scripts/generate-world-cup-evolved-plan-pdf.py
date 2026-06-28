@@ -17,7 +17,7 @@ from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer, 
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PDF_NAME = "world-cup-toto-1634-1637-evolved-plan-20260626-v23.pdf"
+PDF_NAME = "world-cup-toto-1634-1637-evolved-plan-20260628-v25.pdf"
 CSV_50_NAME = "world-cup-toto-1637-visual-5000-plan-20260626-v23.csv"
 CSV_NAME = "world-cup-toto-1637-visual-10000-plan-20260626-v23.csv"
 CSV_200_NAME = "world-cup-toto-1637-visual-20000-plan-20260626-v23.csv"
@@ -1347,13 +1347,13 @@ def automation_table() -> Table:
 
 def actual_purchase_progress_1637_table() -> Table:
     rows = [
-        ["Item", "Current read"],
-        ["Official toto status", "Round 1637 official toto result is pending until 2026-06-28. This page uses soccer FT scores only."],
-        ["Known FT scores", "M01 Ecuador 2-1 Germany = 1 / M02 Japan 1-1 Sweden = 0 / M06 Tunisia 1-3 Netherlands = 2 / M07 Paraguay 0-0 Australia = 0."],
-        ["Slip A 144 units", "Known 3/4 hit, M01 miss. Max final is 12/13. Need remaining 9/9 for 2nd, 8/9+ for 3rd."],
-        ["Slip B 162 units", "Known 3/4 hit, M01 miss. Max final is 12/13. Need remaining 9/9 for 2nd, 8/9+ for 3rd."],
-        ["Slip C 64 units", "Known 3/4 hit, M01 miss. Max final is 12/13. Need remaining 9/9 for 2nd, 8/9+ for 3rd."],
-        ["Learning", "The Germany lock was too strong. Keep matchday-3 motivation, draw-ok states, and rotation risk separate from official popularity."],
+        ["Item", "Post-result read"],
+        ["Official toto status", "Soccer FT scores are complete. Official toto payout table was still pending at 2026-06-28 13:05 JST."],
+        ["Final signature", "1020020221221. M04 Colombia-Portugal and M05 Algeria-Austria both finished draw; M10 DR Congo and M11 Argentina won."],
+        ["Actual purchase", "370 units total. Slip A hit 2nd x1 + 3rd x8. Slip B hit 2nd x1 + 3rd x9. Slip C hit 2nd x1 + 3rd x6."],
+        ["Payout estimate", "Close-vote estimate: 2nd about 4,344 yen, 3rd about 527 yen. User estimate: about 25,153 yen before official payout table."],
+        ["Strategy update", "The 128-unit longshot insurance sheet would have hit 1st. When its trigger fires, fund it before broad low-edge add-ons."],
+        ["Next rule", "Core market-adjusted 108/162 remains useful for 2nd/3rd coverage, but triggered longshot insurance becomes the default upside sleeve."],
     ]
     result = table(rows, [42 * mm, 126 * mm])
     result.setStyle(TableStyle([("BACKGROUND", (0, 1), (0, -1), TEAL_LIGHT)]))
@@ -1371,13 +1371,13 @@ def build_pdf() -> Path:
         leftMargin=12 * mm,
         topMargin=12 * mm,
         bottomMargin=10 * mm,
-        title="W杯toto 1634-1637 EV改善メモ v23",
+        title="W杯toto 1634-1637 EV改善メモ v25",
     )
 
     story = [
-        p("W杯toto 1634-1637 EV改善メモ v23", "title"),
+        p("W杯toto 1634-1637 EV改善メモ v25", "title"),
         p("目的はシンプルです。1口いくらか、当たったらどれくらい戻るか、10口や1万円ならどの出目をどう置くか、そしてランダムよりEVが上がっているのかを見ます。"),
-        p(f"1637の公式投票率は {SNAPSHOT_1637_VOTE_LABEL}、売上は {SNAPSHOT_1637_SALES_LABEL} 時点。現在売上は {yen(TOTAL_SALES_1637_YEN)}、投票数は {VOTE_UNITS_1637:,}口。latest PDFはこのv23へ差し替えます。", "small"),
+        p(f"1637の公式投票率は {SNAPSHOT_1637_VOTE_LABEL}、売上は {SNAPSHOT_1637_SALES_LABEL} 時点。現在売上は {yen(TOTAL_SALES_1637_YEN)}、投票数は {VOTE_UNITS_1637:,}口。latest PDFはこのv25へ差し替えます。", "small"),
         p("公式投票率は勝率そのものではなく、日本のtoto購入者の人気です。払戻の薄さを見るp_publicとして使い、勝率寄りのp_modelはPolymarketなどの外部市場とW杯文脈で補います。", "small"),
         summary_table(),
         Spacer(1, 4 * mm),

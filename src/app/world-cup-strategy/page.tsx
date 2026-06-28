@@ -1077,6 +1077,17 @@ function NextWorldCupToto1637Panel({
         </p>
         <p className="mt-2 text-sm leading-6 text-slate-700">{worldCupToto1637ActualPurchaseSummary.summary}</p>
         <p className="mt-1 text-xs leading-5 text-slate-500">{worldCupToto1637ActualPurchaseSummary.officialTotoStatusLabel}</p>
+        <p className="mt-2 text-sm font-semibold leading-6 text-teal-900">
+          概算払戻 {formatCurrency(worldCupToto1637ActualPurchaseSummary.estimatedPayoutYen)} / 概算損益{" "}
+          {formatSignedCurrency(worldCupToto1637ActualPurchaseSummary.estimatedNetYen)}。公式当せん金が出たら差し替えます。
+        </p>
+        <ul className="mt-3 grid gap-2 text-xs leading-5 text-slate-600 md:grid-cols-2">
+          {worldCupToto1637ActualPurchaseSummary.strategyUpdates.map((update) => (
+            <li key={update} className="rounded-md border border-teal-100 bg-teal-50/60 px-3 py-2">
+              {update}
+            </li>
+          ))}
+        </ul>
       </PlainNotice>
 
       <div className="mt-4 grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
@@ -1108,13 +1119,14 @@ function NextWorldCupToto1637Panel({
         </HorizontalScrollTable>
 
         <HorizontalScrollTable className="min-w-0" contentClassName="rounded-[18px] border border-teal-200 bg-white/86">
-          <table className="min-w-[760px] text-left text-sm">
+          <table className="min-w-[860px] text-left text-sm">
             <thead className="bg-teal-50 text-xs uppercase text-teal-700">
               <tr>
                 <th className="px-3 py-3">Sheet</th>
                 <th className="px-3 py-3">Known</th>
                 <th className="px-3 py-3">Max</th>
                 <th className="px-3 py-3">Best</th>
+                <th className="px-3 py-3">Prize units</th>
                 <th className="px-3 py-3">2nd</th>
                 <th className="px-3 py-3">3rd</th>
               </tr>
@@ -1132,6 +1144,9 @@ function NextWorldCupToto1637Panel({
                   <td className="px-3 py-3 font-semibold text-slate-900">{row.maxFinalHitCount}/13</td>
                   <td className="px-3 py-3">
                     <Badge tone={row.maxFinalHitCount >= 12 ? "teal" : "slate"}>{row.bestPrizeLabel}</Badge>
+                  </td>
+                  <td className="px-3 py-3 text-xs leading-relaxed text-slate-700">
+                    1st {row.firstPrizeUnitCount} / 2nd {row.secondPrizeUnitCount} / 3rd {row.thirdPrizeUnitCount}
                   </td>
                   <td className="px-3 py-3 text-xs leading-relaxed text-slate-700">{row.remainingForSecondPrizeLabel}</td>
                   <td className="px-3 py-3 text-xs leading-relaxed text-slate-700">{row.remainingForThirdPrizeLabel}</td>
