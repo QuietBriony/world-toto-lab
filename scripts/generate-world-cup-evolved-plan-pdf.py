@@ -17,7 +17,7 @@ from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer, 
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PDF_NAME = "world-cup-toto-1634-1637-evolved-plan-20260628-v25.pdf"
+PDF_NAME = "world-cup-toto-1634-1637-evolved-plan-20260628-v26.pdf"
 CSV_50_NAME = "world-cup-toto-1637-visual-5000-plan-20260626-v23.csv"
 CSV_NAME = "world-cup-toto-1637-visual-10000-plan-20260626-v23.csv"
 CSV_200_NAME = "world-cup-toto-1637-visual-20000-plan-20260626-v23.csv"
@@ -72,6 +72,7 @@ TIER_DEFS = (
 )
 
 SOURCE_TOTO_RULE_URL = "https://www.toto-dream.com/toto/about/"
+SOURCE_TOTO_TOP_URL = "https://www.toto-dream.com/"
 SOURCE_SPANN_SKIERA_URL = "https://onlinelibrary.wiley.com/doi/10.1002/for.1091"
 SOURCE_DIXON_COLES_URL = "https://rss.onlinelibrary.wiley.com/doi/abs/10.1111/1467-9876.00065"
 SOURCE_FAVORITE_LONGSHOT_URL = "https://www.nber.org/papers/w15923"
@@ -373,17 +374,71 @@ MARKET_ADJUSTED_MULTI_PLANS_1637 = [
 
 LONGSHOT_INSURANCE_PLANS_1637 = [
     {
-        "label": "Longshot insurance 128",
-        "base": "Manual 64 units",
+        "label": "長穴保険128口",
+        "base": "人力64口",
         "choices": ("1/2", "1/0", "2", "0/2", "0/2", "2", "0/2", "2", "2", "1/0", "2", "2", "1/0"),
-        "note": "Separate from normal plans. Add M01 Ecuador win to the manual 64-style sheet.",
+        "note": "通常枠とは別。M01エクアドル勝ちを人力64口風シートに足す。",
     },
     {
-        "label": "Longshot insurance 192",
-        "base": "1636 reflection 144 units",
+        "label": "長穴保険192口",
+        "base": "1636反省144口",
         "choices": ("1/2", "1/0", "0/2", "0/2", "1/0/2", "2", "1/0", "2", "2", "1", "2", "2", "1/0"),
-        "note": "Add M01 Ecuador win, then cut M04 to 0/2 so the sheet stays under 200 units.",
+        "note": "M01エクアドル勝ちを足し、M04を0/2へ絞って200口以内に収める。",
     },
+]
+
+LONGSHOT_TRIGGER_RULES = [
+    "公式本命が70%以上、外部市場では66%以下。",
+    "公式本命が市場で-8pt以上薄くなっている。",
+    "非ドロー弱者側が+8pt以上、かつ市場/公式比が1.5倍以上。",
+    "弱者勝ちの市場確率が15%以上。単なる超低確率は買わない。",
+    "発火時もメインには混ぜず、別枠シートで管理する。",
+]
+
+LONGSHOT_BUDGET_LADDER = [
+    "基本はメインマルチ1枚。非発火ならメイン拡張かドロー保険。",
+    "発火時は、薄いメイン拡張より先に長穴保険へ予算を回す。",
+    "200口以内なら、1637は市場54口+保険128口=182口/18,200円。",
+    "余力があれば、市場108口+保険128口=236口/23,600円。",
+    "非発火なら長穴保険は買わない。別の保険へ切り替える。",
+]
+
+LONGSHOT_ROUND_AUDIT_ROWS = [
+    {
+        "round": "1634",
+        "status": "判定不能",
+        "read": "公式人気順は大きく外れたが、同時刻Polyデータがない。",
+        "replay": "非ドロー長穴ではなく、ドロー荒れ保険として扱う。",
+        "lesson": "ドロー多発は弱者勝ち追加だけでは拾いにくい。",
+    },
+    {
+        "round": "1635",
+        "status": "非発火",
+        "read": "第2戦寄りで順当。公式人気順のズレは小さい。",
+        "replay": "メインを中心にし、強人気ドローだけ軽く残す。",
+        "lesson": "順当回で長穴保険を無理に作らない。",
+    },
+    {
+        "round": "1636",
+        "status": "ドロー保険",
+        "read": "カーボベルデ系は弱者勝ちでなくドロー軽視の問題。",
+        "replay": "モデル/市場ドロー20%前後なら、70%本命相手でも0を残す。",
+        "lesson": "ドロー保険は長穴保険と別ルールで管理する。",
+    },
+    {
+        "round": "1637",
+        "status": "発火",
+        "read": "M01エクアドルは公式9.1%/市場17.2%。ドイツは公式73.8%/市場64.3%。",
+        "replay": "200口以内なら市場54口+長穴128口=182口/18,200円。",
+        "lesson": "長穴保険128口は1等まで届いていた。",
+    },
+]
+
+NEXT_ACTION_ROWS = [
+    ["1637払戻", "公式当せん金表が出たら、概算値を確定値へ差し替える。"],
+    ["決勝T期間", "totoは休止なので、13試合マルチではなくWINNER監視に切り替える。"],
+    ["8/1前", "2026-07-31に通常toto用のメイン/ドロー保険/長穴保険を再点検する。"],
+    ["8/1以降", "2026-08-01 08:00にtoto再開予定。次回を取り込んで同じ発火判定を回す。"],
 ]
 
 CONTEXT_FACTOR_LABELS = {
@@ -1186,7 +1241,7 @@ def market_adjusted_plan_matrix_table_1637() -> Table:
 
 
 def longshot_insurance_plan_table_1637() -> Table:
-    rows = [["Plan", "Base", "M01-M04", "M05-M08", "M09-M13", "Units", "Cost", "Note"]]
+    rows = [["プラン", "ベース", "M01-M04", "M05-M08", "M09-M13", "口数", "金額", "メモ"]]
     for plan in LONGSHOT_INSURANCE_PLANS_1637:
         choices = tuple(str(choice) for choice in plan["choices"])
         units = multi_plan_units(plan)
@@ -1202,6 +1257,35 @@ def longshot_insurance_plan_table_1637() -> Table:
         ])
     result = table(rows, [22 * mm, 24 * mm, 25 * mm, 25 * mm, 30 * mm, 14 * mm, 18 * mm, 32 * mm])
     result.setStyle(TableStyle([("BACKGROUND", (0, 1), (0, -1), AMBER_LIGHT)]))
+    return result
+
+
+def longshot_trigger_rule_table() -> Table:
+    rows = [["発火条件", "予算の積み方"]]
+    max_len = max(len(LONGSHOT_TRIGGER_RULES), len(LONGSHOT_BUDGET_LADDER))
+    for index in range(max_len):
+        rows.append([
+            LONGSHOT_TRIGGER_RULES[index] if index < len(LONGSHOT_TRIGGER_RULES) else "",
+            LONGSHOT_BUDGET_LADDER[index] if index < len(LONGSHOT_BUDGET_LADDER) else "",
+        ])
+    result = table(rows, [82 * mm, 86 * mm])
+    result.setStyle(TableStyle([("BACKGROUND", (0, 1), (0, -1), AMBER_LIGHT)]))
+    return result
+
+
+def longshot_round_audit_table() -> Table:
+    rows = [["回", "状態", "読み", "戻るなら", "次に残すこと"]]
+    for row in LONGSHOT_ROUND_AUDIT_ROWS:
+        rows.append([row["round"], row["status"], row["read"], row["replay"], row["lesson"]])
+    result = table(rows, [13 * mm, 24 * mm, 42 * mm, 45 * mm, 44 * mm])
+    result.setStyle(TableStyle([("BACKGROUND", (0, 1), (0, -1), TEAL_LIGHT)]))
+    return result
+
+
+def next_action_table() -> Table:
+    rows = [["次", "やること"], *NEXT_ACTION_ROWS]
+    result = table(rows, [34 * mm, 134 * mm])
+    result.setStyle(TableStyle([("BACKGROUND", (0, 1), (0, -1), TEAL_LIGHT)]))
     return result
 
 
@@ -1353,6 +1437,7 @@ def actual_purchase_progress_1637_table() -> Table:
         ["Actual purchase", "370 units total. Slip A hit 2nd x1 + 3rd x8. Slip B hit 2nd x1 + 3rd x9. Slip C hit 2nd x1 + 3rd x6."],
         ["Payout estimate", "Close-vote estimate: 2nd about 4,344 yen, 3rd about 527 yen. User estimate: about 25,153 yen before official payout table."],
         ["Strategy update", "The 128-unit longshot insurance sheet would have hit 1st. When its trigger fires, fund it before broad low-edge add-ons."],
+        ["200-unit rewind", "For 1637, market-adjusted 54 units + longshot insurance 128 units = 182 units / 18,200 yen."],
         ["Next rule", "Core market-adjusted 108/162 remains useful for 2nd/3rd coverage, but triggered longshot insurance becomes the default upside sleeve."],
     ]
     result = table(rows, [42 * mm, 126 * mm])
@@ -1371,13 +1456,13 @@ def build_pdf() -> Path:
         leftMargin=12 * mm,
         topMargin=12 * mm,
         bottomMargin=10 * mm,
-        title="W杯toto 1634-1637 EV改善メモ v25",
+        title="W杯toto 1634-1637 EV改善メモ v26",
     )
 
     story = [
-        p("W杯toto 1634-1637 EV改善メモ v25", "title"),
+        p("W杯toto 1634-1637 EV改善メモ v26", "title"),
         p("目的はシンプルです。1口いくらか、当たったらどれくらい戻るか、10口や1万円ならどの出目をどう置くか、そしてランダムよりEVが上がっているのかを見ます。"),
-        p(f"1637の公式投票率は {SNAPSHOT_1637_VOTE_LABEL}、売上は {SNAPSHOT_1637_SALES_LABEL} 時点。現在売上は {yen(TOTAL_SALES_1637_YEN)}、投票数は {VOTE_UNITS_1637:,}口。latest PDFはこのv25へ差し替えます。", "small"),
+        p(f"1637の公式投票率は {SNAPSHOT_1637_VOTE_LABEL}、売上は {SNAPSHOT_1637_SALES_LABEL} 時点。現在売上は {yen(TOTAL_SALES_1637_YEN)}、投票数は {VOTE_UNITS_1637:,}口。latest PDFはこのv26へ差し替えます。", "small"),
         p("公式投票率は勝率そのものではなく、日本のtoto購入者の人気です。払戻の薄さを見るp_publicとして使い、勝率寄りのp_modelはPolymarketなどの外部市場とW杯文脈で補います。", "small"),
         summary_table(),
         Spacer(1, 4 * mm),
@@ -1435,8 +1520,19 @@ def build_pdf() -> Path:
         Spacer(1, 4 * mm),
         market_adjusted_plan_matrix_table_1637(),
         Spacer(1, 4 * mm),
-        p("1637 separate longshot insurance sheet", "h2"),
-        p("Do not mix this with the normal market-adjusted plans. Use it only when a public favorite is over-concentrated and the external market lifts the non-draw longshot."),
+        p("長穴保険は常時ONではない", "h2"),
+        p("長穴保険は、公式人気が本命へ寄りすぎ、外部市場が非ドローの弱者側を明確に持ち上げた時だけ発火します。発火しない回では買わず、メイン拡張かドロー保険へ予算を回します。"),
+        longshot_trigger_rule_table(),
+        Spacer(1, 4 * mm),
+        p("1634-1637 長穴トリガー棚卸し", "h2"),
+        longshot_round_audit_table(),
+        Spacer(1, 4 * mm),
+        p("次にいつ何をやるか", "h2"),
+        p("公式告知では、totoは2026-06-25 19:00から2026-08-01 08:00まで販売休止予定です。W杯決勝トーナメント中はtotoマルチではなくWINNER監視へ切り替えます。", "small"),
+        next_action_table(),
+        Spacer(1, 4 * mm),
+        p("長穴保険シート", "h2"),
+        p("1637を巻き戻すなら、200口以内は市場補強54口 + 長穴保険128口 = 182口 / 18,200円。余力がある時だけ市場補強108口 + 長穴保険128口へ上げます。"),
         longshot_insurance_plan_table_1637(),
         PageBreak(),
         p("外部市場で推奨を補強する", "title"),
@@ -1499,7 +1595,7 @@ def build_pdf() -> Path:
         automation_table(),
         Spacer(1, 4 * mm),
         p("注意: この資料は購入判断メモであり、購入代行、決済、精算、利益保証ではありません。実購入は公式画面で本人が確認して行います。", "small"),
-        p(f"公式/データソース: 1634結果 {SOURCE_1634_RESULT_URL} / 1634投票 {SOURCE_1634_VOTE_URL} / 1635結果 {SOURCE_1635_RESULT_URL} / 1636結果 {SOURCE_1636_RESULT_URL} / 1636くじ情報 {SOURCE_1636_INFO_URL} / 1636購入画面 {SOURCE_1636_BUY_URL} / 1636投票 {SOURCE_1636_VOTE_URL} / 1637投票 {SOURCE_1637_VOTE_URL} / 1637販売 {SOURCE_1637_SALES_URL} / Polymarket docs {SOURCE_POLYMARKET_SPORTS_URL} / Polymarket sample {SOURCE_POLYMARKET_SPORTS_EVENTS_URL} / Kalshi {SOURCE_KALSHI_MARKET_DATA_URL} / Betfair {SOURCE_BETFAIR_EXCHANGE_URL} / Odds API {SOURCE_ODDS_API_URL}", "small"),
+        p(f"公式/データソース: 公式トップ販売休止告知 {SOURCE_TOTO_TOP_URL} / 1634結果 {SOURCE_1634_RESULT_URL} / 1634投票 {SOURCE_1634_VOTE_URL} / 1635結果 {SOURCE_1635_RESULT_URL} / 1636結果 {SOURCE_1636_RESULT_URL} / 1636くじ情報 {SOURCE_1636_INFO_URL} / 1636購入画面 {SOURCE_1636_BUY_URL} / 1636投票 {SOURCE_1636_VOTE_URL} / 1637投票 {SOURCE_1637_VOTE_URL} / 1637販売 {SOURCE_1637_SALES_URL} / Polymarket docs {SOURCE_POLYMARKET_SPORTS_URL} / Polymarket sample {SOURCE_POLYMARKET_SPORTS_EVENTS_URL} / Kalshi {SOURCE_KALSHI_MARKET_DATA_URL} / Betfair {SOURCE_BETFAIR_EXCHANGE_URL} / Odds API {SOURCE_ODDS_API_URL}", "small"),
     ]
     doc.build(story)
     copy_report_aliases(pdf_path, OUT_PDF_DIR, PUBLIC_DIR, PDF_ALIASES)

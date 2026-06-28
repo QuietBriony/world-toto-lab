@@ -67,6 +67,7 @@ import {
   worldCupToto1637NextPlan,
   worldCupTotoLatestReportFileName,
   worldCupTotoLegacyPurchaseSheetFileName,
+  worldCupTotoLongshotTriggerPolicy,
   worldCupTotoNextLongshotInsuranceSheetFileName,
   worldCupTotoOfficialVoteInterpretation,
   worldCupTotoOfficialSales1637Url,
@@ -90,6 +91,22 @@ function statusTone(status: WorldCupRoundWindowStatus) {
 
   if (status === "upcoming") {
     return "sky" as const;
+  }
+
+  return "slate" as const;
+}
+
+function longshotTriggerTone(status: (typeof worldCupTotoLongshotTriggerPolicy.roundAuditRows)[number]["status"]) {
+  if (status === "triggered") {
+    return "amber" as const;
+  }
+
+  if (status === "draw_insurance") {
+    return "sky" as const;
+  }
+
+  if (status === "not_triggered") {
+    return "teal" as const;
   }
 
   return "slate" as const;
@@ -1322,11 +1339,30 @@ function NextWorldCupToto1637Panel({
         </table>
       </HorizontalScrollTable>
 
-      <PlainNotice tone="amber" title="別枠: ダブル長穴保険シート">
-        <p>
-          通常の市場補強108/144/162口には混ぜません。公式人気が本命へ寄りすぎ、外部市場が弱者側を持ち上げた時だけ、
-          人力64口のような低口数シートをベースに M01 などの長穴をダブルで足します。
-        </p>
+      <PlainNotice tone="amber" title="長穴保険は常時ONではない">
+        <p>{worldCupTotoLongshotTriggerPolicy.summary}</p>
+        <div className="mt-3 grid gap-3 lg:grid-cols-[0.95fr_1.05fr]">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-800">発火条件</p>
+            <ul className="mt-2 grid gap-2 text-xs leading-5 text-slate-700">
+              {worldCupTotoLongshotTriggerPolicy.triggerRules.map((rule) => (
+                <li key={rule} className="rounded-md border border-amber-100 bg-amber-50/65 px-3 py-2">
+                  {rule}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-800">積み方</p>
+            <ul className="mt-2 grid gap-2 text-xs leading-5 text-slate-700">
+              {worldCupTotoLongshotTriggerPolicy.budgetLadder.map((rule) => (
+                <li key={rule} className="rounded-md border border-slate-200 bg-white/80 px-3 py-2">
+                  {rule}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
         {longshotInsuranceRule ? (
           <p className="mt-2 text-sm leading-6 text-amber-950/80">
             {`M${String(longshotInsuranceRule.matchNo).padStart(2, "0")} ${longshotInsuranceRule.matchLabel}: `}
@@ -1336,14 +1372,60 @@ function NextWorldCupToto1637Panel({
             )} / 差 ${formatSignedPercentPoint(longshotInsuranceRule.delta)} / 市場÷公式 ${longshotInsuranceRule.marketToOfficialRatio.toFixed(2)}x`}
           </p>
         ) : null}
+        <p className="mt-3 text-sm font-semibold leading-6 text-amber-950">
+          1637を巻き戻すなら、200口以内は市場補強54口 + 長穴保険128口 = 182口 / 18,200円。
+          予算に余裕がある場合だけ、市場補強108口 + 長穴保険128口 = 236口 / 23,600円へ上げます。
+        </p>
         <div className="mt-3 flex flex-wrap gap-2">
           <a className={secondaryButtonClassName} href={longshotInsuranceSheetHref}>
-            latest 長穴保険CSV
+            補助CSV
           </a>
           <a className={secondaryButtonClassName} href={versionedLongshotInsuranceSheetHref}>
             固定版 CSV
           </a>
         </div>
+      </PlainNotice>
+
+      <HorizontalScrollTable className="mt-4 min-w-0" contentClassName="rounded-[22px] border border-amber-200 bg-white/86">
+        <table className="min-w-[980px] text-left text-sm">
+          <thead className="bg-amber-50 text-xs uppercase tracking-[0.16em] text-amber-700">
+            <tr>
+              <th className="px-3 py-3">回</th>
+              <th className="px-3 py-3">状態</th>
+              <th className="px-3 py-3">読み</th>
+              <th className="px-3 py-3">戻るなら</th>
+              <th className="px-3 py-3">次に残すこと</th>
+            </tr>
+          </thead>
+          <tbody>
+            {worldCupTotoLongshotTriggerPolicy.roundAuditRows.map((row) => (
+              <tr key={row.roundNumber} className="border-t border-amber-100">
+                <td className="px-3 py-3 font-semibold text-slate-950">
+                  {row.roundNumber}
+                  <span className="mt-1 block text-xs font-normal text-slate-500">{row.phaseLabel}</span>
+                </td>
+                <td className="px-3 py-3">
+                  <Badge tone={longshotTriggerTone(row.status)}>{row.statusLabel}</Badge>
+                  <span className="mt-2 block text-xs leading-5 text-slate-500">{row.dataReadinessLabel}</span>
+                </td>
+                <td className="px-3 py-3 text-xs leading-relaxed text-slate-700">{row.triggerRead}</td>
+                <td className="px-3 py-3 text-xs leading-relaxed text-slate-700">{row.ifReplayedRecommendation}</td>
+                <td className="px-3 py-3 text-xs leading-relaxed text-slate-700">{row.lesson}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </HorizontalScrollTable>
+
+      <PlainNotice tone="teal" title="次にいつ何をやるか">
+        <p>{worldCupTotoLongshotTriggerPolicy.nextActionLabel}</p>
+        <ul className="mt-3 grid gap-2 text-xs leading-5 text-slate-700 md:grid-cols-2">
+          {worldCupTotoLongshotTriggerPolicy.nextActions.map((action) => (
+            <li key={action} className="rounded-md border border-sky-100 bg-sky-50/70 px-3 py-2">
+              {action}
+            </li>
+          ))}
+        </ul>
       </PlainNotice>
 
       <HorizontalScrollTable className="mt-4 min-w-0" contentClassName="rounded-[22px] border border-amber-200 bg-white/86">

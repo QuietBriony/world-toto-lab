@@ -14,7 +14,7 @@ export const worldCupTotoNextLongshotInsuranceSheetFileName =
   "world-cup-toto-latest-longshot-insurance-sheet.csv";
 
 export const worldCupTotoVersionedReportFileName =
-  "world-cup-toto-1634-1637-evolved-plan-20260628-v25.pdf";
+  "world-cup-toto-1634-1637-evolved-plan-20260628-v26.pdf";
 export const worldCupTotoVersionedPurchaseSheet50FileName =
   "world-cup-toto-1637-visual-5000-plan-20260626-v23.csv";
 export const worldCupTotoVersionedPurchaseSheetFileName =
@@ -32,7 +32,7 @@ export const worldCupTotoReportVersion = {
   csv200Sha256: "15915090b59d90fbada7be30b4d071c5bf44d4d65c4cfdd3f4812da7a8a898d4",
   csv50Sha256: "312e99aafbde9489e53b95eb35203e2db9e2809df18c201a0be98334b5eb7295",
   csvSha256: "fc03005ea940a7b702e0b90af4314f1bf84b9ba5b69616a51738bdd0892670f8",
-  label: "2026-06-28 v25",
+  label: "2026-06-28 v26",
   latest200CsvFileName: worldCupTotoNextPurchaseSheet200FileName,
   latestCsvFileName: worldCupTotoNextPurchaseSheetFileName,
   latest50CsvFileName: worldCupTotoNextPurchaseSheet50FileName,
@@ -41,8 +41,8 @@ export const worldCupTotoReportVersion = {
   latestPdfFileName: worldCupTotoLatestReportFileName,
   legacyCsvFileName: worldCupTotoLegacyPurchaseSheetFileName,
   legacyPdfFileName: worldCupTotoLegacyReportFileName,
-  pdfSha256: "862987759bca7f5dd4605b1d243c544c6fe138651419e9b511e3c2160d4b1a2d",
-  publishedAtLabel: "2026-06-28 13:05 JST",
+  pdfSha256: "49998119f337e791fec8b2206fe23fafc489e4ea13e10de8d6cd23bf20f59092",
+  publishedAtLabel: "2026-06-28 14:12 JST",
   versioned200CsvFileName: worldCupTotoVersionedPurchaseSheet200FileName,
   versionedCsvFileName: worldCupTotoVersionedPurchaseSheetFileName,
   versioned50CsvFileName: worldCupTotoVersionedPurchaseSheet50FileName,
@@ -187,6 +187,30 @@ export type Toto1637ExternalMarketOverlay = {
   sourceDocs: { label: string; url: string }[];
   sourceUrl: string;
   summary: string;
+};
+
+export type TotoLongshotTriggerStatus = "draw_insurance" | "not_evaluable" | "not_triggered" | "triggered";
+
+export type TotoLongshotTriggerAuditRow = {
+  action: string;
+  dataReadinessLabel: string;
+  ifReplayedRecommendation: string;
+  lesson: string;
+  phaseLabel: string;
+  roundNumber: number;
+  status: TotoLongshotTriggerStatus;
+  statusLabel: string;
+  triggerRead: string;
+};
+
+export type TotoLongshotTriggerPolicy = {
+  budgetLadder: string[];
+  label: string;
+  nextActionLabel: string;
+  nextActions: string[];
+  roundAuditRows: TotoLongshotTriggerAuditRow[];
+  summary: string;
+  triggerRules: string[];
 };
 
 export type Toto1637CloseMarketSnapshotRow = {
@@ -1737,7 +1761,95 @@ export const worldCupToto1637ExternalMarketOverlay: Toto1637ExternalMarketOverla
   ],
   sourceUrl: worldCupTotoPolymarketSportsEventsUrl,
   summary:
-    "6/25販売終了時点の公式投票率と19:00 Polymarket履歴の差を見ると、M05/M07のドロー、M02の日本人気、M13のドローは残す価値がある。M01はEcuador側が+8pt級まで上がったが、単独追加ではなく検証メモ扱いにする。",
+    "6/25販売終了時点の公式投票率と19:00 Polymarket履歴の差を見ると、M05/M07のドロー、M02の日本人気、M13のドローは残す価値がある。M01はEcuador側が+8pt級まで上がったため、通常枠ではなく別枠長穴保険として買う。",
+};
+
+export const worldCupTotoLongshotTriggerAuditRows: TotoLongshotTriggerAuditRow[] = [
+  {
+    action:
+      "長穴保険としては判定不能。ドロー多発の荒れ回なので、今なら強人気ロックを減らすドロー荒れ保険を別に作る。",
+    dataReadinessLabel: "外部市場の同時刻データなし。公式人気と結果だけで事後確認。",
+    ifReplayedRecommendation:
+      "メインは公式人気順から外し、ドロー20%相当以上の試合を広めに残す。非ドロー長穴の別枠保険は発火させない。",
+    lesson:
+      "1634は長穴というよりドロー荒れ。非ドロー弱者勝ちだけを狙う保険では拾いにくい。",
+    phaseLabel: "初戦寄り",
+    roundNumber: 1634,
+    status: "not_evaluable",
+    statusLabel: "判定不能",
+    triggerRead: "公式人気順が大きく外れたが、Poly同時刻差分がないため長穴発火とは言わない。",
+  },
+  {
+    action: "長穴保険は発火させない。メインの順当寄りシートを中心に、強人気ドローだけ軽く残す。",
+    dataReadinessLabel: "外部市場の同時刻データなし。公式人気と結果だけで事後確認。",
+    ifReplayedRecommendation:
+      "第2戦寄りとしてメイン1枚を厚めにする。別枠は、強人気側のドローが明確に高い試合だけ。",
+    lesson:
+      "1635は順当寄り。保険を厚くするより、メインの的中率と2/3等カバーを重視する。",
+    phaseLabel: "第2戦寄り",
+    roundNumber: 1635,
+    status: "not_triggered",
+    statusLabel: "非発火",
+    triggerRead: "公式人気順との差は小さく、非ドロー長穴を別枠で買う根拠は薄い。",
+  },
+  {
+    action:
+      "長穴保険ではなくドロー保険。カーボベルデ系の強人気ドロー取り逃しを避けるルールをメインへ入れる。",
+    dataReadinessLabel: "外部市場は部分取得。厳密な同時刻バックテストではない。",
+    ifReplayedRecommendation:
+      "公式70%超でも事前ドロー20%以上、または第3戦文脈で引き分けOKなら0を削らない。",
+    lesson:
+      "1636の失敗は弱者勝ちよりドロー軽視。長穴保険とは別ルールとして管理する。",
+    phaseLabel: "第2戦から第3戦への境目",
+    roundNumber: 1636,
+    status: "draw_insurance",
+    statusLabel: "ドロー保険",
+    triggerRead: "カーボベルデのようなドロー候補を拾うべきだったが、非ドロー長穴発火ではない。",
+  },
+  {
+    action:
+      "発火。200口以内なら市場補強54口 + 長穴保険128口 = 182口/18,200円。余力があれば市場補強108口 + 長穴128口。",
+    dataReadinessLabel: "販売終了付近の公式投票率とPolymarket 13/13を保存済み。",
+    ifReplayedRecommendation:
+      "M01 Ecuador vs Germany は通常枠のGermany本線とは別に、Ecuador/Germanyのダブル保険で買う。",
+    lesson:
+      "今回の1等阻害点はM01だけ。発火時はメイン拡張より、先に別枠保険を予算に入れる。",
+    phaseLabel: "第3戦",
+    roundNumber: 1637,
+    status: "triggered",
+    statusLabel: "発火",
+    triggerRead:
+      "公式Germany 73.8%に対し市場Germany 64.3%、Ecuadorは公式9.1%/市場17.2%。非ドロー長穴が+8.1pt、比率1.88x。",
+  },
+];
+
+export const worldCupTotoLongshotTriggerPolicy: TotoLongshotTriggerPolicy = {
+  budgetLadder: [
+    "基本: メインマルチ1枚を作る。順当寄り回ならこれだけでよい。",
+    "発火時: メインを広げる前に、別枠長穴保険を1枚入れる。",
+    "200口以内: 1637なら市場補強54口 + 長穴保険128口 = 182口/18,200円を優先。",
+    "予算に余裕: 市場補強108口 + 長穴保険128口 = 236口/23,600円。ここから先はメイン144/162へ拡張。",
+    "非発火時: 長穴保険は買わない。ドロー保険やメイン縮小/拡張で調整する。",
+  ],
+  label: "長穴保険の発火条件",
+  nextActionLabel:
+    "totoは2026-06-25 19:00から2026-08-01 08:00まで販売休止予定。W杯決勝トーナメント中はtotoマルチではなくWINNER監視へ切り替える。",
+  nextActions: [
+    "1637公式当せん金表が出たら、概算払戻を確定値へ差し替える。",
+    "W杯決勝トーナメントは、WINNERの1試合予想で外部市場差分を監視する。",
+    "toto再開前の2026-07-31に、通常toto用のメイン/ドロー保険/長穴保険ルールを再点検する。",
+    "2026-08-01 08:00以降、販売再開回の公式投票率と売上を取り込み、同じ発火判定を通常totoへ流用する。",
+  ],
+  roundAuditRows: worldCupTotoLongshotTriggerAuditRows,
+  summary:
+    "長穴保険は常時買わない。公式人気が本命へ過集中し、外部市場が非ドローの弱者側を明確に持ち上げた時だけ、メインとは別シートで買う。",
+  triggerRules: [
+    "公式本命が70%以上、かつ外部市場では66%以下。",
+    "公式本命が市場で-8pt以上薄くなっている。",
+    "非ドローの弱者側が市場で+8pt以上厚く、公式比1.5倍以上。",
+    "市場側の弱者勝ち確率が15%以上あり、単なる超低確率宝くじではない。",
+    "発火してもメインには混ぜず、別枠シートで口数と予算を独立管理する。",
+  ],
 };
 
 export const worldCupToto1637CloseMarketSnapshot: Toto1637CloseMarketSnapshot = {
@@ -2223,6 +2335,7 @@ export const worldCupToto1637ActualPurchaseSummary: Toto1637ActualPurchaseSummar
   strategyUpdates: [
     "Promote triggered longshot insurance from optional to funded default: the 128-unit insurance sheet would have hit 1st on 1020020221221.",
     "When a famous favorite is official >=70%, market favorite is <=66%, and a non-draw longshot is +8pt with market/official >=1.5x, buy the insurance sheet before adding broad low-edge rows.",
+    "Under a 200-unit cap, combine market-adjusted 54 units with longshot insurance 128 units for 182 units / 18,200 yen before expanding the main sheet.",
     "Keep market draw >=35% as full-spread priority in matchday-3 games. M05 draw closed the actual 2nd-prize path and should not be cut for a cheaper favorite-only sheet.",
     "Use normal market-adjusted 108/162 as the core, then allocate incremental budget to longshot insurance rather than duplicate broad coverage.",
   ],
@@ -2238,6 +2351,7 @@ export const worldCupToto1637FinalLogic: Toto1637FinalLogic = {
   backtestSignals: [
     "1637は実結果1020020221221で、実購入370口は2等3口+3等23口。M01エクアドルだけがシート単位の1等阻害点だった。",
     "1637の別枠長穴保険128口は1等まで到達していたため、条件発火時は任意追加ではなく予算内デフォルトへ昇格する。",
+    "1637を巻き戻すなら、200口以内は市場補強54口+長穴保険128口=182口/18,200円を優先する。",
     "1634は公式人気順が9試合ズレ。公式だけで1点に寄せると荒れを拾えなかった。",
     "1635は公式人気順が2試合ズレで3等相当。第2戦寄りは順当が増えるが、強人気ドローは残す価値があった。",
     "1636は64口側が3等圏。外した2試合はいずれも80%台強人気のドローだったため、外部市場ドロー20%前後は軽視しない。",

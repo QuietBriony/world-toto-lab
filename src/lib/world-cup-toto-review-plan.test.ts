@@ -29,6 +29,7 @@ import {
   worldCupToto1637PurchaseRows200,
   worldCupToto1637PurchaseRows50,
   worldCupTotoLatestReportFileName,
+  worldCupTotoLongshotTriggerPolicy,
   worldCupTotoNextLongshotInsuranceSheetFileName,
   worldCupTotoNextPurchaseSheet200FileName,
   worldCupTotoNextPurchaseSheet50FileName,
@@ -241,6 +242,16 @@ describe("world cup toto review plan", () => {
       128,
       192,
     ]);
+    expect(worldCupTotoLongshotTriggerPolicy.summary).toContain("常時買わない");
+    expect(worldCupTotoLongshotTriggerPolicy.triggerRules).toHaveLength(5);
+    expect(worldCupTotoLongshotTriggerPolicy.budgetLadder.join(" ")).toContain("182口/18,200円");
+    expect(worldCupTotoLongshotTriggerPolicy.nextActionLabel).toContain("2026-08-01 08:00");
+    expect(worldCupTotoLongshotTriggerPolicy.roundAuditRows.map((row) => [row.roundNumber, row.status])).toEqual([
+      [1634, "not_evaluable"],
+      [1635, "not_triggered"],
+      [1636, "draw_insurance"],
+      [1637, "triggered"],
+    ]);
     expect(marketPlans.map((plan) => plan.unitCount)).toEqual([27, 54, 108, 144, 162]);
     expect(marketPlans[2]?.choices).toEqual([
       "2",
@@ -337,15 +348,15 @@ describe("world cup toto review plan", () => {
     expect(worldCupTotoNextLongshotInsuranceSheetFileName).toBe(
       "world-cup-toto-latest-longshot-insurance-sheet.csv",
     );
-    expect(worldCupTotoVersionedReportFileName).toBe("world-cup-toto-1634-1637-evolved-plan-20260628-v25.pdf");
+    expect(worldCupTotoVersionedReportFileName).toBe("world-cup-toto-1634-1637-evolved-plan-20260628-v26.pdf");
     expect(worldCupTotoVersionedPurchaseSheet50FileName).toBe("world-cup-toto-1637-visual-5000-plan-20260626-v23.csv");
     expect(worldCupTotoVersionedPurchaseSheetFileName).toBe("world-cup-toto-1637-visual-10000-plan-20260626-v23.csv");
     expect(worldCupTotoVersionedPurchaseSheet200FileName).toBe("world-cup-toto-1637-visual-20000-plan-20260626-v23.csv");
     expect(worldCupTotoVersionedLongshotInsuranceSheetFileName).toBe(
       "world-cup-toto-1637-longshot-insurance-20260628-v24.csv",
     );
-    expect(worldCupTotoReportVersion.label).toBe("2026-06-28 v25");
-    expect(worldCupTotoReportVersion.publishedAtLabel).toBe("2026-06-28 13:05 JST");
+    expect(worldCupTotoReportVersion.label).toBe("2026-06-28 v26");
+    expect(worldCupTotoReportVersion.publishedAtLabel).toBe("2026-06-28 14:12 JST");
     expect(worldCupTotoReportVersion.pdfSha256).toHaveLength(64);
     expect(worldCupTotoReportVersion.csv50Sha256).toHaveLength(64);
     expect(worldCupTotoReportVersion.csvSha256).toHaveLength(64);
@@ -424,8 +435,8 @@ describe("world cup toto review plan", () => {
     expect(csv200[200]?.split(",")[1]).toBe("20000");
     expect(csv.every((line, index) => index === 0 || line.split(",")[30] === "direct")).toBe(true);
     expect(longshotCsv[1]?.split(",").slice(0, 4)).toEqual([
-      "Longshot insurance 128",
-      "Manual 64 units",
+      "長穴保険128口",
+      "人力64口",
       "128",
       "12800",
     ]);
