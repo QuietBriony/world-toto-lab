@@ -4,11 +4,13 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  BIG_FIRST_PRIZE_ALLOCATION_SHARE,
   bigTrueEvStatusLabel,
   calculateBigCarryover,
   calculateBigTrueEv,
   minimumCancellationsForPositiveEv,
 } from "@/lib/big-carryover/calculator";
+import { bigOfficialRuleProfiles } from "@/lib/big-carryover/rules";
 
 describe("BIG carryover calculator", () => {
   it("calculates naive carry pressure", () => {
@@ -241,5 +243,42 @@ describe("calculateBigTrueEv（造船太郎レバー: 試合中止×キャリー
     });
     expect(r.status).toBe("unavailable");
     expect(r.trueEvMultiple).toBeNull();
+  });
+
+  it("既定の1等配分は公式ルール捕捉(rules.ts)の1等 allocationShare と一致する", () => {
+    (["BIG", "MEGA_BIG", "100YEN_BIG"] as const).forEach((productType) => {
+      const firstTier = bigOfficialRuleProfiles[productType].tiers.find(
+        (tierRule) => tierRule.tierName === "1等",
+      );
+      expect(firstTier).toBeDefined();
+      expect(BIG_FIRST_PRIZE_ALLOCATION_SHARE[productType]).toBe(firstTier!.allocationShare);
+    });
+  });
+
+  it("firstPrizeShare 未指定なら暫定0.5でなく商品の公式配分(MEGA=0.70)を使う", () => {
+    const withDefault = calculateBigTrueEv({ ...round1476, cancelledMatches: 4 });
+    const withOfficialShare = calculateBigTrueEv({
+      ...round1476,
+      cancelledMatches: 4,
+      firstPrizeShare: 0.7,
+    });
+    const withOldPlaceholder = calculateBigTrueEv({
+      ...round1476,
+      cancelledMatches: 4,
+      firstPrizeShare: 0.5,
+    });
+    // 既定は公式配分0.70と一致し、旧プレースホルダ0.5とは別値になる。
+    expect(withDefault.trueEvMultiple).toBeCloseTo(withOfficialShare.trueEvMultiple!, 10);
+    expect(withDefault.trueEvMultiple).not.toBeCloseTo(withOldPlaceholder.trueEvMultiple!, 7);
+    // 暫定文言ではなく捕捉済み配分の注記が出る。
+    expect(withDefault.warnings.some((w) => w.includes("捕捉済み等級配分"))).toBe(true);
+    expect(withDefault.warnings.some((w) => w.includes("暫定値"))).toBe(false);
+  });
+
+  it("中止4試合＝あと1で不成立、の overshoot 警告を出す（研究由来のvoid超過シグナル）", () => {
+    const four = calculateBigTrueEv({ ...round1476, cancelledMatches: 4 });
+    expect(four.warnings.some((w) => w.includes("くじ不成立") && w.includes("転落"))).toBe(true);
+    const three = calculateBigTrueEv({ ...round1476, cancelledMatches: 3 });
+    expect(three.warnings.some((w) => w.includes("転落"))).toBe(false);
   });
 });

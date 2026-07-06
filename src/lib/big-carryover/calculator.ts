@@ -276,8 +276,22 @@ export const BIG_MATCH_STRUCTURE: Record<
 
 // 5試合以上中止はくじ不成立＝全額払戻。狙い目は中止1〜4試合。
 export const BIG_VOID_CANCEL_THRESHOLD = 5;
-// 1等配分（還元のうち1等へ回る割合）。公式の等級配分確認が要る暫定値。
+// 1等配分（還元のうち1等へ回る割合）。custom 等で商品配分が不明なときのフォールバック。
 export const BIG_DEFAULT_FIRST_PRIZE_SHARE = 0.5;
+
+// 商品ごとの1等がプールに占める配分。rules.ts の bigOfficialRuleProfiles の
+// 1等 allocationShare と一致（BIG/100円BIG=公式商品ページ確認済、MEGA BIG=パートナー参照値）。
+// calculator.test.ts で profile と一致することを固定している。
+// これを既定に使うことで、造船太郎レバーの真EVが暫定0.5でなく公式配分で算出される。
+export const BIG_FIRST_PRIZE_ALLOCATION_SHARE: Record<
+  BigCarryoverProductType,
+  number | null
+> = {
+  BIG: 0.76,
+  MEGA_BIG: 0.7,
+  "100YEN_BIG": 0.76,
+  custom: null,
+};
 
 export type BigOpportunityStatus =
   | "void_refund"
@@ -355,7 +369,10 @@ export function calculateBigTrueEv(input: BigTrueEvInput): BigTrueEvResult {
   const returnRate = asFiniteNumber(input.returnRate);
   const ticketPriceYen = asPositiveNumber(input.ticketPriceYen);
   const firstPrizeCapYen = asPositiveNumber(input.firstPrizeCapYen);
-  const firstPrizeShare = asFiniteNumber(input.firstPrizeShare) ?? BIG_DEFAULT_FIRST_PRIZE_SHARE;
+  const providedFirstPrizeShare = asFiniteNumber(input.firstPrizeShare);
+  const profileFirstPrizeShare = BIG_FIRST_PRIZE_ALLOCATION_SHARE[input.productType];
+  const firstPrizeShare =
+    providedFirstPrizeShare ?? profileFirstPrizeShare ?? BIG_DEFAULT_FIRST_PRIZE_SHARE;
 
   if (!struct) {
     warnings.push("custom は試合数・択数が未確定のため真EVを計算できません。");
@@ -389,7 +406,20 @@ export function calculateBigTrueEv(input: BigTrueEvInput): BigTrueEvResult {
   if (carryoverYen <= 0) {
     warnings.push("キャリー無し＝中止で確率が上がっても原資は還元率止まり。EVは最大でも還元率程度。");
   }
-  warnings.push(`1等配分 ${(firstPrizeShare * 100).toFixed(0)}% は暫定値。公式の等級配分確認で精度が上がります。`);
+  if (providedFirstPrizeShare === null && profileFirstPrizeShare !== null) {
+    warnings.push(
+      input.productType === "MEGA_BIG"
+        ? `1等配分 ${(firstPrizeShare * 100).toFixed(0)}% は捕捉済み等級配分（MEGA BIGはパートナー参照値。公式商品ページで最終確認推奨）。`
+        : `1等配分 ${(firstPrizeShare * 100).toFixed(0)}% は公式商品ページ準拠の等級配分。`,
+    );
+  } else {
+    warnings.push(`1等配分 ${(firstPrizeShare * 100).toFixed(0)}% は暫定値。公式の等級配分確認で精度が上がります。`);
+  }
+  if (cancelledMatches === BIG_VOID_CANCEL_THRESHOLD - 1) {
+    warnings.push(
+      `中止 ${cancelledMatches} 試合＝あと1試合中止で ${BIG_VOID_CANCEL_THRESHOLD} 到達＝くじ不成立(全額払戻・実質EV1.0)に転落。大型台風ほど「当たり」でなく「払戻」で終わるリスク。`,
+    );
+  }
   warnings.push("BIG/MEGA BIGはランダム発券。買い目選択のエッジは無く、+EV回に量を入れる戦略です。");
 
   const status: BigOpportunityStatus =
