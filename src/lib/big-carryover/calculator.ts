@@ -455,6 +455,114 @@ export function minimumCancellationsForPositiveEv(
   return null;
 }
 
+// ── 最終売上を第一変数として扱う（殺到＝織り込みで真EVが希薄化する研究結論の反映）──
+// 研究(2026-07-06): 1口配当 ≈ 0.5×空間 + キャリー×空間÷最終売上。エッジ(キャリー項)は
+// 最終売上に反比例＝群衆の織り込み(殺到)が進むほどEVは還元率へ収束する。1476は通常~7億→
+// 47.1億(≈7x)に殺到し269口山分け、速報286%→実現173%へ減衰。
+
+/**
+ * +EVを保てる最終売上の上限（＝「この売上を超えたら買わない」天井）。
+ * 指定の中止数で trueEV が 1 を割る売上を二分探索で返す。trueEV は売上増で単調減少し
+ * 売上→∞ で還元率(≈0.5)へ収束するため、低売上で+EVなら交点は一意。
+ * @returns 天井(円)。低売上でも+EVでなければ null（この中止数では窓が開かない）。
+ *   maxSalesYen まで+EVが続く場合は maxSalesYen を返す（実質どれだけ売れても+EV）。
+ */
+export function salesCeilingForPositiveEv(
+  input: Omit<BigTrueEvInput, "projectedFinalSalesYen">,
+  options?: { maxSalesYen?: number; minSalesYen?: number },
+): number | null {
+  const minSalesYen = asPositiveNumber(options?.minSalesYen) ?? 10_000_000;
+  const maxSalesYen = asPositiveNumber(options?.maxSalesYen) ?? 2_000_000_000_000;
+  const evAt = (sales: number) =>
+    calculateBigTrueEv({ ...input, projectedFinalSalesYen: sales }).trueEvMultiple ?? null;
+
+  const optimistic = evAt(minSalesYen);
+  if (optimistic === null || optimistic < 1) {
+    return null;
+  }
+  if ((evAt(maxSalesYen) ?? 0) >= 1) {
+    return maxSalesYen;
+  }
+
+  let lo = minSalesYen;
+  let hi = maxSalesYen;
+  for (let i = 0; i < 80; i += 1) {
+    const mid = (lo + hi) / 2;
+    if ((evAt(mid) ?? 0) >= 1) {
+      lo = mid;
+    } else {
+      hi = mid;
+    }
+  }
+  return lo;
+}
+
+// 通常回の最終売上目安（殺到判定のベースライン）。研究: 通常 MEGA BIG ≈ 6.95億。
+// BIG/100円BIG は一次ソース未確認のため null（呼び出し側が実測ベースラインを渡す）。
+export const BIG_BASELINE_FINAL_SALES_YEN: Record<BigCarryoverProductType, number | null> = {
+  MEGA_BIG: 700_000_000,
+  BIG: null,
+  "100YEN_BIG": null,
+  custom: null,
+};
+
+export type BigAnticipationLevel = "calm" | "elevated" | "flooded" | "unknown";
+
+export const bigAnticipationLevelLabel: Record<BigAnticipationLevel, string> = {
+  calm: "平常（織り込み薄・EVは濃いまま）",
+  elevated: "上振れ（織り込み進行・EV希薄化中）",
+  flooded: "殺到（織り込み済・EVは還元率付近へ）",
+  unknown: "ベースライン不明で判定不可",
+};
+
+export type BigAnticipationAssessment = {
+  level: BigAnticipationLevel;
+  note: string;
+  surgeRatio: number | null;
+};
+
+/**
+ * 現在売上を通常回ベースラインと比べ、群衆の織り込み（殺到）度合いを分類する監視シグナル。
+ * 殺到＝同時当選者が激増して1口配当が希薄化＝EVが還元率付近へ低下。買い場は殺到しきる前。
+ */
+export function classifyBigCarryoverAnticipation(input: {
+  baselineFinalSalesYen: number | null;
+  currentSalesYen: number | null;
+}): BigAnticipationAssessment {
+  const current = asPositiveNumber(input.currentSalesYen);
+  const baseline = asPositiveNumber(input.baselineFinalSalesYen);
+
+  if (current === null || baseline === null) {
+    return {
+      level: "unknown",
+      note: "現在売上または通常回ベースラインが無く、殺到度は判定できません。",
+      surgeRatio: null,
+    };
+  }
+
+  const surgeRatio = current / baseline;
+
+  if (surgeRatio >= 5) {
+    return {
+      level: "flooded",
+      note: "通常回の5倍以上＝殺到。同時当選者が激増し1口配当が希薄化、EVは還元率付近まで低下しがち＝買い場としては手遅れ寄り（1476は約7倍で実現173%まで減衰）。",
+      surgeRatio,
+    };
+  }
+  if (surgeRatio >= 2) {
+    return {
+      level: "elevated",
+      note: "通常回の2倍以上＝織り込み進行中でEVは低下方向。salesCeilingForPositiveEv の天井との距離を確認し、超える前に判断。",
+      surgeRatio,
+    };
+  }
+  return {
+    level: "calm",
+    note: "通常回並み＝まだ織り込み薄。中止が起きれば低売上×確率ブーストで最も濃いEVになりうる（未確定・低売上のまま中止が最濃）。",
+    surgeRatio,
+  };
+}
+
 export function classifyBigCarryoverPosition(
   calculation: Pick<BigCarryoverCalculation, "naiveCarryPressure" | "trueEvStatus">,
 ): BigCarryoverPositionLabel {
