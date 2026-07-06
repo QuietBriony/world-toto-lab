@@ -4,11 +4,16 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  BIG_BASELINE_FINAL_SALES_YEN,
+  BIG_FIRST_PRIZE_ALLOCATION_SHARE,
   bigTrueEvStatusLabel,
   calculateBigCarryover,
   calculateBigTrueEv,
+  classifyBigCarryoverAnticipation,
   minimumCancellationsForPositiveEv,
+  salesCeilingForPositiveEv,
 } from "@/lib/big-carryover/calculator";
+import { bigOfficialRuleProfiles } from "@/lib/big-carryover/rules";
 
 describe("BIG carryover calculator", () => {
   it("calculates naive carry pressure", () => {
@@ -241,5 +246,115 @@ describe("calculateBigTrueEv（造船太郎レバー: 試合中止×キャリー
     });
     expect(r.status).toBe("unavailable");
     expect(r.trueEvMultiple).toBeNull();
+  });
+
+  it("既定の1等配分は公式ルール捕捉(rules.ts)の1等 allocationShare と一致する", () => {
+    (["BIG", "MEGA_BIG", "100YEN_BIG"] as const).forEach((productType) => {
+      const firstTier = bigOfficialRuleProfiles[productType].tiers.find(
+        (tierRule) => tierRule.tierName === "1等",
+      );
+      expect(firstTier).toBeDefined();
+      expect(BIG_FIRST_PRIZE_ALLOCATION_SHARE[productType]).toBe(firstTier!.allocationShare);
+    });
+  });
+
+  it("firstPrizeShare 未指定なら暫定0.5でなく商品の公式配分(MEGA=0.70)を使う", () => {
+    const withDefault = calculateBigTrueEv({ ...round1476, cancelledMatches: 4 });
+    const withOfficialShare = calculateBigTrueEv({
+      ...round1476,
+      cancelledMatches: 4,
+      firstPrizeShare: 0.7,
+    });
+    const withOldPlaceholder = calculateBigTrueEv({
+      ...round1476,
+      cancelledMatches: 4,
+      firstPrizeShare: 0.5,
+    });
+    // 既定は公式配分0.70と一致し、旧プレースホルダ0.5とは別値になる。
+    expect(withDefault.trueEvMultiple).toBeCloseTo(withOfficialShare.trueEvMultiple!, 10);
+    expect(withDefault.trueEvMultiple).not.toBeCloseTo(withOldPlaceholder.trueEvMultiple!, 7);
+    // 暫定文言ではなく捕捉済み配分の注記が出る。
+    expect(withDefault.warnings.some((w) => w.includes("捕捉済み等級配分"))).toBe(true);
+    expect(withDefault.warnings.some((w) => w.includes("暫定値"))).toBe(false);
+  });
+
+  it("中止4試合＝あと1で不成立、の overshoot 警告を出す（研究由来のvoid超過シグナル）", () => {
+    const four = calculateBigTrueEv({ ...round1476, cancelledMatches: 4 });
+    expect(four.warnings.some((w) => w.includes("くじ不成立") && w.includes("転落"))).toBe(true);
+    const three = calculateBigTrueEv({ ...round1476, cancelledMatches: 3 });
+    expect(three.warnings.some((w) => w.includes("転落"))).toBe(false);
+  });
+});
+
+describe("salesCeilingForPositiveEv（+EVを保てる最終売上の天井）", () => {
+  const round1476 = {
+    productType: "MEGA_BIG" as const,
+    carryoverYen: 5_830_000_000,
+    returnRate: 0.5,
+    ticketPriceYen: 300,
+    firstPrizeCapYen: 1_200_000_000,
+  };
+
+  it("+EV化しない中止数(中止0)は天井 null（窓が開かない）", () => {
+    expect(salesCeilingForPositiveEv({ ...round1476, cancelledMatches: 0 })).toBeNull();
+  });
+
+  it("中止4は有限の天井を返し、その前後で+EV↔EV<1 が切り替わる", () => {
+    const ceiling = salesCeilingForPositiveEv({ ...round1476, cancelledMatches: 4 });
+    expect(ceiling).not.toBeNull();
+    expect(ceiling!).toBeGreaterThan(0);
+
+    const justUnder = calculateBigTrueEv({
+      ...round1476,
+      cancelledMatches: 4,
+      projectedFinalSalesYen: ceiling! * 0.9,
+    });
+    const justOver = calculateBigTrueEv({
+      ...round1476,
+      cancelledMatches: 4,
+      projectedFinalSalesYen: ceiling! * 1.1,
+    });
+    expect(justUnder.trueEvMultiple!).toBeGreaterThanOrEqual(1);
+    expect(justOver.trueEvMultiple!).toBeLessThan(1);
+  });
+
+  it("中止数が多いほど天井は高い（空間が小さく希薄化に強い）", () => {
+    const m1 = salesCeilingForPositiveEv({ ...round1476, cancelledMatches: 1 });
+    const m4 = salesCeilingForPositiveEv({ ...round1476, cancelledMatches: 4 });
+    expect(m1).not.toBeNull();
+    expect(m4).not.toBeNull();
+    expect(m4!).toBeGreaterThanOrEqual(m1!);
+  });
+});
+
+describe("classifyBigCarryoverAnticipation（殺到＝織り込みの監視シグナル）", () => {
+  const baseline = BIG_BASELINE_FINAL_SALES_YEN.MEGA_BIG!;
+
+  it("通常 MEGA BIG ベースラインは 6.95億相当（7億）で捕捉済み", () => {
+    expect(BIG_BASELINE_FINAL_SALES_YEN.MEGA_BIG).toBe(700_000_000);
+  });
+
+  it("通常回並みは calm、2倍で elevated、5倍以上(1476≈7倍)で flooded", () => {
+    expect(
+      classifyBigCarryoverAnticipation({ baselineFinalSalesYen: baseline, currentSalesYen: baseline }).level,
+    ).toBe("calm");
+    expect(
+      classifyBigCarryoverAnticipation({ baselineFinalSalesYen: baseline, currentSalesYen: baseline * 2.2 }).level,
+    ).toBe("elevated");
+    const flooded = classifyBigCarryoverAnticipation({
+      baselineFinalSalesYen: baseline,
+      currentSalesYen: 4_710_000_000, // 1476 実売上 ≈ 6.7倍
+    });
+    expect(flooded.level).toBe("flooded");
+    expect(flooded.surgeRatio!).toBeGreaterThan(5);
+  });
+
+  it("ベースライン/現在売上が無ければ unknown", () => {
+    expect(
+      classifyBigCarryoverAnticipation({ baselineFinalSalesYen: null, currentSalesYen: 1_000_000_000 }).level,
+    ).toBe("unknown");
+    expect(
+      classifyBigCarryoverAnticipation({ baselineFinalSalesYen: baseline, currentSalesYen: null }).level,
+    ).toBe("unknown");
   });
 });
