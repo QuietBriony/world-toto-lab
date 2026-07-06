@@ -36,6 +36,7 @@ import {
   normalizeBigEventType,
 } from "@/lib/big-carryover";
 import {
+  BIG_BASELINE_FINAL_SALES_YEN,
   bigCarryoverProductDefaults,
   bigCarryoverProductTypeFromOfficialKey,
   bigOpportunityStatusLabel,
@@ -43,9 +44,11 @@ import {
   buildBigCarryoverSalesScenarios,
   calculateBigCarryover,
   calculateBigTrueEv,
+  classifyBigCarryoverAnticipation,
   classifyBigCarryoverPosition,
   minimumCancellationsForPositiveEv,
   normalizeBigCarryoverProductType,
+  salesCeilingForPositiveEv,
   type BigCarryoverProductType,
 } from "@/lib/big-carryover/calculator";
 import { appRoute, buildHref } from "@/lib/round-links";
@@ -288,6 +291,36 @@ function BigCarryoverPageContent() {
       productDefaults.firstPrizeCapYen,
       productType,
     ],
+  );
+  // P1: 現在の中止数で +EV を保てる最終売上の天井（＝この売上を超えたら買わない）。
+  const salesCeilingYen = useMemo(
+    () =>
+      salesCeilingForPositiveEv({
+        cancelledMatches,
+        carryoverYen: numericCarryoverYen,
+        firstPrizeCapYen: numericFirstPrizeCapYen ?? productDefaults.firstPrizeCapYen,
+        productType,
+        returnRate: numericReturnRate,
+        ticketPriceYen: numericTicketPriceYen,
+      }),
+    [
+      cancelledMatches,
+      numericCarryoverYen,
+      numericFirstPrizeCapYen,
+      numericReturnRate,
+      numericTicketPriceYen,
+      productDefaults.firstPrizeCapYen,
+      productType,
+    ],
+  );
+  // P1: 現在売上を通常回ベースラインと比べた殺到（織り込み）度合い。
+  const anticipation = useMemo(
+    () =>
+      classifyBigCarryoverAnticipation({
+        baselineFinalSalesYen: BIG_BASELINE_FINAL_SALES_YEN[productType],
+        currentSalesYen: numericCurrentSalesYen,
+      }),
+    [numericCurrentSalesYen, productType],
   );
 
   const shareHref = buildHref(appRoute.bigCarryover, {
@@ -875,6 +908,56 @@ function BigCarryoverPageContent() {
                 : "中止4でも+EVに届かない＝キャリー不足。"
             }
             tone={minCancellationsForEv !== null ? "positive" : "warning"}
+          />
+          <StatCard
+            label="+EV天井（最終売上）"
+            value={
+              trueEv.status === "void_refund"
+                ? "不成立"
+                : salesCeilingYen !== null
+                  ? `≈${(salesCeilingYen / 100_000_000).toFixed(0)}億円`
+                  : "—"
+            }
+            hint={
+              trueEv.status === "void_refund"
+                ? "5試合以上中止＝くじ不成立で全額払戻。"
+                : salesCeilingYen !== null
+                  ? "最終売上がこれを超えると殺到希薄化で+EV消滅。締切前に現在売上と突合。"
+                  : "この中止数では+EV窓が開かず天井なし。"
+            }
+            tone={
+              trueEv.status !== "void_refund" && salesCeilingYen !== null ? "positive" : "warning"
+            }
+          />
+          <StatCard
+            label="殺到度（織り込み）"
+            value={
+              anticipation.level === "calm"
+                ? "平常"
+                : anticipation.level === "elevated"
+                  ? "上振れ"
+                  : anticipation.level === "flooded"
+                    ? "殺到"
+                    : "—"
+            }
+            hint={
+              anticipation.surgeRatio !== null
+                ? `通常回の${anticipation.surgeRatio.toFixed(1)}倍。${
+                    anticipation.level === "flooded"
+                      ? "希薄化で手遅れ寄り。"
+                      : anticipation.level === "elevated"
+                        ? "EV低下方向。天井との距離を確認。"
+                        : "まだ濃い。中止が来れば最濃。"
+                  }`
+                : "現在売上か通常回基準が無く判定不可（BIG/100円は基準未確認）。"
+            }
+            tone={
+              anticipation.level === "calm"
+                ? "positive"
+                : anticipation.level === "flooded"
+                  ? "warning"
+                  : "draw"
+            }
           />
         </section>
         {trueEv.warnings.length > 0 ? (
