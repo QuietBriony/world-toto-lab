@@ -1,5 +1,31 @@
 # Final Verification Log
 
+## 2026-07-08 Live Pages Route Smoke
+
+Environment:
+
+- GitHub Pages: `https://quietbriony.github.io/world-toto-lab`
+- Real round id used from prior verification log: `47f5d6b8-5120-46a3-b434-7312b11cb98a`
+- User id: not set. The public Cloudflare Pages `/api/rounds` probe returned a passphrase-required response, so a real user id was not fetched or guessed.
+
+Checks:
+
+- `npm run check:pages`
+  - public static route smoke passed
+  - failures: 0
+- `WORLD_TOTO_LAB_ROUND_ID=47f5d6b8-5120-46a3-b434-7312b11cb98a WORLD_TOTO_LAB_REQUIRE_ROUND=1 npm run check:pages`
+  - strict round route smoke passed
+  - checked workspace, debug workspace, official import, fixture selector, toto official import, picks, scout cards, match editor, simple view, pick room, play, practice lab, winner value, consensus, edge board, review, and ticket generator
+  - failures: 0
+- `https://world-toto-lab.pages.dev/api/rounds`
+  - blocked by passphrase gate
+  - no shared D1 write, delete, schema change, or credential read was attempted
+
+Open verification:
+
+- Full operational smoke with a real `WORLD_TOTO_LAB_USER_ID` is still pending.
+- Manual iPhone Safari tap check is still pending.
+
 更新日: 2026-05-02
 
 ## 2026-05-02 運用完成版仕上げ

@@ -1,5 +1,12 @@
 # Operational Smoke Checklist
 
+## 2026-07-08 latest smoke status
+
+- GitHub Pages public route smoke passed with `npm run check:pages` (`failures: 0`).
+- Strict real-round route smoke passed with `WORLD_TOTO_LAB_ROUND_ID=47f5d6b8-5120-46a3-b434-7312b11cb98a` and `WORLD_TOTO_LAB_REQUIRE_ROUND=1` (`failures: 0`).
+- A real `WORLD_TOTO_LAB_USER_ID` was not available from the public route. The Cloudflare Pages `/api/rounds` probe required a passphrase, so the user-id part remains a separate operator gate.
+- No D1 write, delete, schema change, secret read, purchase flow, or settlement flow was attempted.
+
 更新日: 2026-04-21
 
 ## 目的
