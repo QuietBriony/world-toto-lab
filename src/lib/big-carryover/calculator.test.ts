@@ -4,9 +4,14 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  absoluteSalesCeilingForPositiveEv,
   BIG_BASELINE_FINAL_SALES_YEN,
   BIG_FIRST_PRIZE_ALLOCATION_SHARE,
+  BIG_VOID_CANCEL_THRESHOLD,
+  bigCarryoverProductDefaults,
   bigTrueEvStatusLabel,
+  bigTrueEvUpperBound,
+  bigVoidCancelThreshold,
   calculateBigCarryover,
   calculateBigTrueEv,
   classifyBigCarryoverAnticipation,
@@ -324,6 +329,150 @@ describe("salesCeilingForPositiveEv（+EVを保てる最終売上の天井）", 
     expect(m1).not.toBeNull();
     expect(m4).not.toBeNull();
     expect(m4!).toBeGreaterThanOrEqual(m1!);
+  });
+
+  it("実効天井は、中止数によらない絶対天井 C/(1-還元率) を超えない", () => {
+    const absolute = absoluteSalesCeilingForPositiveEv(round1476)!;
+
+    for (let m = 1; m < BIG_VOID_CANCEL_THRESHOLD; m += 1) {
+      const ceiling = salesCeilingForPositiveEv({ ...round1476, cancelledMatches: m });
+      if (ceiling !== null) {
+        expect(ceiling).toBeLessThanOrEqual(absolute * (1 + 1e-9));
+      }
+    }
+  });
+});
+
+describe("不成立閾値は商品ごとの最低成立試合数から導出する", () => {
+  it("BIG / MEGA BIG / 100円BIG はいずれも中止5試合で不成立に導出される", () => {
+    // MEGA BIG=8試合未満(12試合)、BIG・100円BIG=10試合未満(14試合) → いずれも M≥5。
+    expect(bigVoidCancelThreshold("MEGA_BIG")).toBe(5);
+    expect(bigVoidCancelThreshold("BIG")).toBe(5);
+    expect(bigVoidCancelThreshold("100YEN_BIG")).toBe(5);
+    expect(bigVoidCancelThreshold("MEGA_BIG")).toBe(BIG_VOID_CANCEL_THRESHOLD);
+  });
+
+  it("custom は試合構造が不明なため閾値を導出できない", () => {
+    expect(bigVoidCancelThreshold("custom")).toBeNull();
+  });
+});
+
+describe("1等上限は『按分後の1口』に適用される（公式算式の不等号位置）", () => {
+  // 公式: (売上のうちN% + キャリー) ÷ 当せん口数 ≦ 上限額。
+  // 除算の後ろに不等号があるため、同時当選者が複数いても各口は上限額まで受け取れる。
+  // 原資プール側を先に切る解釈だと 1口 = min(pool,cap)/(1+同時当選) となり、低売上域で符号が反転する。
+  const round1639 = {
+    productType: "MEGA_BIG" as const,
+    carryoverYen: 8_832_707_550,
+    returnRate: 0.5,
+    ticketPriceYen: 300,
+    firstPrizeCapYen: 1_200_000_000,
+    projectedFinalSalesYen: 1_000_000_000,
+  };
+
+  it("原資が上限を超えても、1口払戻は上限額そのもの（口数で割った額ではない）", () => {
+    const result = calculateBigTrueEv({ ...round1639, cancelledMatches: 1 });
+
+    expect(result.estimatedFirstPrizePayoutYen).toBe(1_200_000_000);
+
+    // プール側を先に切る誤解釈だと、これより小さくなる。
+    const poolFirstInterpretation =
+      Math.min(
+        round1639.projectedFinalSalesYen * 0.5 * 0.7 + round1639.carryoverYen,
+        round1639.firstPrizeCapYen,
+      ) /
+      (1 + result.expectedCoWinners!);
+
+    expect(result.estimatedFirstPrizePayoutYen!).toBeGreaterThan(poolFirstInterpretation);
+  });
+
+  it("第1639回(キャリー88.3億)は中止1試合で+EV、中止0では見送り", () => {
+    const noCancel = calculateBigTrueEv({ ...round1639, cancelledMatches: 0 });
+    const oneCancel = calculateBigTrueEv({ ...round1639, cancelledMatches: 1 });
+
+    expect(noCancel.status).toBe("sub_breakeven");
+    expect(oneCancel.status).toBe("positive_ev");
+    expect(oneCancel.trueEvMultiple!).toBeGreaterThan(1);
+    expect(minimumCancellationsForPositiveEv(round1639)).toBe(1);
+  });
+});
+
+describe("不変式: 真EV ≤ 還元率 + キャリー ÷ 最終売上", () => {
+  // パリミュチュエルは原資を全額払い出すため、1等配分・上限・中止数によらず上界が立つ。
+  // 上限が張り付けば超過分は払い出されず、EV は上界からさらに離れる。
+  // ※ 不成立(M≥閾値)は「払戻」であってプールからの払出ではないため対象外。
+  const products = ["BIG", "MEGA_BIG", "100YEN_BIG"] as const;
+  const carryovers = [100_000_000, 5_830_000_000, 8_832_707_550];
+  const sales = [100_000_000, 1_000_000_000, 10_000_000_000, 100_000_000_000];
+
+  it("全商品 × 中止0〜4 × キャリー × 売上 のグリッドで上界を破らない", () => {
+    for (const productType of products) {
+      const defaults = bigCarryoverProductDefaults[productType];
+
+      for (const carryoverYen of carryovers) {
+        for (const projectedFinalSalesYen of sales) {
+          for (let cancelledMatches = 0; cancelledMatches < BIG_VOID_CANCEL_THRESHOLD; cancelledMatches += 1) {
+            const input = {
+              cancelledMatches,
+              carryoverYen,
+              firstPrizeCapYen: defaults.firstPrizeCapYen,
+              productType,
+              projectedFinalSalesYen,
+              returnRate: 0.5,
+              ticketPriceYen: defaults.ticketPriceYen,
+            };
+            const ev = calculateBigTrueEv(input).trueEvMultiple;
+            const bound = bigTrueEvUpperBound(input);
+
+            expect(ev).not.toBeNull();
+            expect(bound).not.toBeNull();
+            expect(ev!).toBeLessThanOrEqual(bound! * (1 + 1e-9));
+          }
+        }
+      }
+    }
+  });
+
+  it("殺到レジーム（同時当選者が多い）では上界にほぼ張り付き、1等配分が相殺される", () => {
+    // 第1476回の実績条件: 中止4・最終売上47.1億・キャリー58.3億 → 実現≈1.73倍。
+    const input = {
+      cancelledMatches: 4,
+      carryoverYen: 5_830_000_000,
+      firstPrizeCapYen: 1_200_000_000,
+      productType: "MEGA_BIG" as const,
+      projectedFinalSalesYen: 4_710_000_000,
+      returnRate: 0.5,
+      ticketPriceYen: 300,
+    };
+    const result = calculateBigTrueEv(input);
+    const bound = bigTrueEvUpperBound(input)!;
+
+    expect(result.expectedCoWinners!).toBeGreaterThan(100); // 殺到レジーム
+    expect(result.trueEvMultiple!).toBeLessThanOrEqual(bound);
+    expect(result.trueEvMultiple! / bound).toBeGreaterThan(0.99);
+  });
+
+  it("最終売上→∞ で真EVは還元率へ収束する（キャリー項が消える）", () => {
+    const huge = calculateBigTrueEv({
+      cancelledMatches: 4,
+      carryoverYen: 8_832_707_550,
+      firstPrizeCapYen: 1_200_000_000,
+      productType: "MEGA_BIG",
+      projectedFinalSalesYen: 100_000_000_000_000,
+      returnRate: 0.5,
+      ticketPriceYen: 300,
+    });
+
+    expect(huge.trueEvMultiple!).toBeCloseTo(0.5, 3);
+  });
+
+  it("絶対天井は還元率0.5ならキャリーの2倍（この売上を超えたら何試合中止でも+EVは無い）", () => {
+    expect(absoluteSalesCeilingForPositiveEv({ carryoverYen: 8_832_707_550, returnRate: 0.5 })).toBeCloseTo(
+      17_665_415_100,
+      0,
+    );
+    expect(absoluteSalesCeilingForPositiveEv({ carryoverYen: 0, returnRate: 0.5 })).toBeNull();
+    expect(absoluteSalesCeilingForPositiveEv({ carryoverYen: 1_000_000_000, returnRate: 1 })).toBeNull();
   });
 });
 
