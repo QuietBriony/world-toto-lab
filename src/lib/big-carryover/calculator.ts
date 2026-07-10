@@ -264,17 +264,33 @@ export function calculateBigCarryover(input: BigCarryoverCalculatorInput): BigCa
 // ── 造船太郎レバー: 試合中止 × キャリーオーバー の真EV検出 ───────────────────
 // 各商品の「試合数 × 1試合あたりの択数」。中止M試合は全員的中扱い＝必要的中数が減り、
 // P(1等)=1/outcomes^(matches-M) に跳ね上がる（MEGA=×4/中止, BIG=×3/中止）。
+//
+// minimumEstablishedMatches = 公式が定める「これ未満しか成立しなければ、くじ不成立(全額払戻)」
+// の成立試合数。MEGA BIG=8試合未満、BIG・100円BIG=10試合未満（2026-07-10 確認）。
+// 不成立となる中止数 M は matches - minimumEstablishedMatches + 1 で導出する。
+// ※ BIG1000(8試合未満)・mini BIG(6試合未満)は閾値が異なるため、追加時はここに定義すること。
 export const BIG_MATCH_STRUCTURE: Record<
   BigCarryoverProductType,
-  { matches: number; outcomesPerMatch: number } | null
+  { matches: number; minimumEstablishedMatches: number; outcomesPerMatch: number } | null
 > = {
-  BIG: { matches: 14, outcomesPerMatch: 3 },
-  MEGA_BIG: { matches: 12, outcomesPerMatch: 4 },
-  "100YEN_BIG": { matches: 14, outcomesPerMatch: 3 },
+  BIG: { matches: 14, minimumEstablishedMatches: 10, outcomesPerMatch: 3 },
+  MEGA_BIG: { matches: 12, minimumEstablishedMatches: 8, outcomesPerMatch: 4 },
+  "100YEN_BIG": { matches: 14, minimumEstablishedMatches: 10, outcomesPerMatch: 3 },
   custom: null,
 };
 
-// 5試合以上中止はくじ不成立＝全額払戻。狙い目は中止1〜4試合。
+/**
+ * この中止数に達するとくじ不成立＝全額払戻（実質EV 1.00倍）。狙い目は 1〜(閾値-1) 試合。
+ * BIG / MEGA BIG / 100円BIG はいずれも 5 に導出されるが、商品ごとに規定が異なるため
+ * 定数ではなく構造から導く。custom は試合数不明のため null。
+ */
+export function bigVoidCancelThreshold(productType: BigCarryoverProductType): number | null {
+  const struct = BIG_MATCH_STRUCTURE[productType];
+  return struct ? struct.matches - struct.minimumEstablishedMatches + 1 : null;
+}
+
+// BIG/MEGA BIG/100円BIG に共通する不成立中止数（bigVoidCancelThreshold の導出結果と一致することを
+// calculator.test.ts で固定）。custom 等、構造不明時のフォールバックにも使う。
 export const BIG_VOID_CANCEL_THRESHOLD = 5;
 // 1等配分（還元のうち1等へ回る割合）。custom 等で商品配分が不明なときのフォールバック。
 export const BIG_DEFAULT_FIRST_PRIZE_SHARE = 0.5;
@@ -339,11 +355,22 @@ export type BigTrueEvResult = {
  *   P(1等) = 1 / outcomes^(matches - M)
  *   1口払戻見込 = min( (予想売上×還元率×1等配分 + キャリー) / (1+期待同時当選者), 1等上限/口 )
  *   期待同時当選者 = (予想売上/口単価 - 1) × P(1等)   ← 売上殺到で薄まる
- * ※上限は「1口あたりの最高当せん額」（同時当選で按分した後に適用）。
+ *
+ * ★上限セマンティクス（2026-07-10 確定）: 公式が公表している算式は
+ *   BIG      : (今開催回のBIG売上金額のうち40%      + キャリーオーバー) ÷ 当せん口数 ≦ 6億円
+ *   MEGA BIG : (今開催回のMEGA BIG売上金額のうち35% + キャリーオーバー) ÷ 当せん口数 ≦ 12億円
+ * 不等号が「÷当せん口数」の**後ろ**にある＝同時当選で按分した後の「1口あたり」に上限が掛かる
+ * （原資プール側を先に切るのではない）。よって min(rawPayout, cap) の順序は規定と一致する。
+ * この解釈の差は M=1 のような「上限が張り付く低売上域」で真EVの符号を反転させうるため重要。
+ *
+ * ⚠️ MEGA は 35% = 還元率0.5 × 1等配分0.70 と完全一致する一方、BIG は公表40% に対し
+ *    0.5 × 0.76 = 38% で 2pt 乖離する（rules.ts の unresolvedRules 参照）。BIG の1等EVは
+ *    この分だけ保守側（過小）に出る。
  */
 export function calculateBigTrueEv(input: BigTrueEvInput): BigTrueEvResult {
   const warnings: string[] = [];
   const cancelledMatches = Math.max(0, Math.floor(asFiniteNumber(input.cancelledMatches) ?? 0));
+  const voidThreshold = bigVoidCancelThreshold(input.productType) ?? BIG_VOID_CANCEL_THRESHOLD;
   const base: Omit<BigTrueEvResult, "status" | "trueEvMultiple"> = {
     adjustedFirstPrizeOdds: null,
     cancelBoostMultiple: null,
@@ -356,9 +383,9 @@ export function calculateBigTrueEv(input: BigTrueEvInput): BigTrueEvResult {
     warnings,
   };
 
-  if (cancelledMatches >= BIG_VOID_CANCEL_THRESHOLD) {
+  if (cancelledMatches >= voidThreshold) {
     warnings.push(
-      `中止 ${cancelledMatches} 試合は ${BIG_VOID_CANCEL_THRESHOLD} 以上＝くじ不成立で全額払戻（実質EV 1.00倍）。`,
+      `中止 ${cancelledMatches} 試合は ${voidThreshold} 以上＝くじ不成立で全額払戻（実質EV 1.00倍）。`,
     );
     return { ...base, status: "void_refund", trueEvMultiple: 1 };
   }
@@ -415,9 +442,9 @@ export function calculateBigTrueEv(input: BigTrueEvInput): BigTrueEvResult {
   } else {
     warnings.push(`1等配分 ${(firstPrizeShare * 100).toFixed(0)}% は暫定値。公式の等級配分確認で精度が上がります。`);
   }
-  if (cancelledMatches === BIG_VOID_CANCEL_THRESHOLD - 1) {
+  if (cancelledMatches === voidThreshold - 1) {
     warnings.push(
-      `中止 ${cancelledMatches} 試合＝あと1試合中止で ${BIG_VOID_CANCEL_THRESHOLD} 到達＝くじ不成立(全額払戻・実質EV1.0)に転落。大型台風ほど「当たり」でなく「払戻」で終わるリスク。`,
+      `中止 ${cancelledMatches} 試合＝あと1試合中止で ${voidThreshold} 到達＝くじ不成立(全額払戻・実質EV1.0)に転落。大型台風ほど「当たり」でなく「払戻」で終わるリスク。`,
     );
   }
   warnings.push("BIG/MEGA BIGはランダム発券。買い目選択のエッジは無く、+EV回に量を入れる戦略です。");
@@ -447,12 +474,64 @@ export function calculateBigTrueEv(input: BigTrueEvInput): BigTrueEvResult {
 export function minimumCancellationsForPositiveEv(
   input: Omit<BigTrueEvInput, "cancelledMatches">,
 ): number | null {
-  for (let m = 1; m < BIG_VOID_CANCEL_THRESHOLD; m += 1) {
+  const voidThreshold = bigVoidCancelThreshold(input.productType) ?? BIG_VOID_CANCEL_THRESHOLD;
+
+  for (let m = 1; m < voidThreshold; m += 1) {
     if (calculateBigTrueEv({ ...input, cancelledMatches: m }).status === "positive_ev") {
       return m;
     }
   }
   return null;
+}
+
+// ── 不変式: EV ≤ 還元率 + キャリー ÷ 最終売上 ─────────────────────────────
+// パリミュチュエルでは原資(売上×還元率＋キャリー)が全額払い出される。殺到レジーム
+// (同時当選者≫1)では 1等EV → 還元率×1等配分 + C/S、下位等 → 還元率×(1−1等配分) となり
+// **1等配分が相殺されて** EV → 還元率 + C/S に収束する。上限が張り付く場合は超過分が
+// 払い出されないため EV はさらに下がる。よって中止数・1等配分・上限によらず上界が立つ。
+//
+// 帰結: +EV の必要条件は  最終売上 < キャリー ÷ (1 − 還元率)。還元率0.5なら「最終売上 < 2×キャリー」。
+// 中止が何試合起きても、この売上を超えた回は買ってはいけない。
+
+/**
+ * 1口真EVの理論上界（＝殺到しきった極限値）。中止数・1等配分・1等上限に依存しない。
+ * @returns 上界(倍率)。売上が0以下・還元率不明なら null。
+ */
+export function bigTrueEvUpperBound(input: {
+  carryoverYen: number | null;
+  projectedFinalSalesYen: number | null;
+  returnRate: number | null;
+}): number | null {
+  const carryoverYen = asFiniteNumber(input.carryoverYen);
+  const projectedFinalSalesYen = asPositiveNumber(input.projectedFinalSalesYen);
+  const returnRate = asFiniteNumber(input.returnRate);
+
+  if (carryoverYen === null || projectedFinalSalesYen === null || returnRate === null) {
+    return null;
+  }
+
+  return returnRate + carryoverYen / projectedFinalSalesYen;
+}
+
+/**
+ * 中止数・1等配分・上限に依存しない「絶対天井」＝ この最終売上を超えたら、何試合中止しようが
+ * +EV はありえない売上。EV上界 = 還元率 + C/S を 1 と置いて S について解いた値。
+ *
+ * salesCeilingForPositiveEv（中止数を固定した実効天井）は常にこの値以下になる。
+ * @returns 絶対天井(円)。キャリー無し・還元率1以上なら null（窓は原理的に開かない）。
+ */
+export function absoluteSalesCeilingForPositiveEv(input: {
+  carryoverYen: number | null;
+  returnRate: number | null;
+}): number | null {
+  const carryoverYen = asPositiveNumber(input.carryoverYen);
+  const returnRate = asFiniteNumber(input.returnRate);
+
+  if (carryoverYen === null || returnRate === null || returnRate >= 1) {
+    return null;
+  }
+
+  return carryoverYen / (1 - returnRate);
 }
 
 // ── 最終売上を第一変数として扱う（殺到＝織り込みで真EVが希薄化する研究結論の反映）──
