@@ -295,15 +295,21 @@ export const BIG_VOID_CANCEL_THRESHOLD = 5;
 // 1等配分（還元のうち1等へ回る割合）。custom 等で商品配分が不明なときのフォールバック。
 export const BIG_DEFAULT_FIRST_PRIZE_SHARE = 0.5;
 
-// 商品ごとの1等がプールに占める配分。rules.ts の bigOfficialRuleProfiles の
-// 1等 allocationShare と一致（BIG/100円BIG=公式商品ページ確認済、MEGA BIG=パートナー参照値）。
-// calculator.test.ts で profile と一致することを固定している。
-// これを既定に使うことで、造船太郎レバーの真EVが暫定0.5でなく公式配分で算出される。
+// 商品ごとの1等がプールに占める配分（＝還元のうち1等へ回る割合）。rules.ts の
+// bigOfficialRuleProfiles の 1等 allocationShare と一致（calculator.test.ts で固定）。
+// これを既定に使うことで、造船太郎レバーの真EVが暫定0.5でなく実配分で算出される。
+//
+// 2026-07-10 実データバックテスト（過去15回の公式結果を取得・独立検証）で円単位に確定:
+//  - MEGA_BIG=0.70（平常14回の下位還元 r(1−α) が 0.1494〜0.1498 に密集）。
+//  - BIG=0.80（第1630/1633回: 1等6億cap の超過分が翌回キャリー額に**円単位一致**。
+//    売上の1等分 r·α=0.40＋下位分 r(1−α)=0.099 → r=0.499≈0.50・α=0.80。公式BIG算式「売上の40%」と整合）。
+//    ※ 旧値0.76は下位floorを過大評価し cap-bound 窓でEVを+0.02過大に出す反保守だった。
+//  - 100YEN_BIG=0.76（第1627/1633/1638回の cap 超過ロールオーバーで円単位一致）。
 export const BIG_FIRST_PRIZE_ALLOCATION_SHARE: Record<
   BigCarryoverProductType,
   number | null
 > = {
-  BIG: 0.76,
+  BIG: 0.8,
   MEGA_BIG: 0.7,
   "100YEN_BIG": 0.76,
   custom: null,
@@ -422,6 +428,15 @@ export function calculateBigTrueEv(input: BigTrueEvInput): BigTrueEvResult {
   const lowerTierEvFloor = returnRate * (1 - firstPrizeShare); // 下位等で常に戻る概算
   const trueEvMultiple = firstPrizeEvMultiple + lowerTierEvFloor;
 
+  // ★下位等の「300円床崩れ」（実データで確認・2026-07-10）:
+  // 中止Mが多い回では有効試合数が減り、下位等的中が激増して1口配当が最低額(=口単価)の床に張り付く。
+  // 第1476回(M=4)は下位還元が 0.15→0.32 に倍増（=P(有効8試合中3以上的中)=0.3215 と一致）、
+  // その過払いが1等プールから引かれ、1等の per-unit 払戻は算式より小さくなった（27.8M→24.8M/口）。
+  // 総額は不変式 EV≤r+C/S で保護されるが、(1) uncapped 時の1口払戻表示が楽観的に出る、
+  // (2) 上限超過→翌回キャリーのロールオーバー額が床過払い分だけ減る、という歪みが残る。
+  // 本関数は下位を定数floorで近似するため、Mが大きい回では per-unit 1等を過大に、下位floorを過小に見積もる。
+  const highCancelFloorBreak = cancelledMatches >= 3;
+
   if (firstPrizeCapYen !== null && rawPayout > firstPrizeCapYen) {
     warnings.push(
       `1口払戻が上限 ${firstPrizeCapYen.toLocaleString("ja-JP")}円 に張り付き、超過分はEVに反映されません。`,
@@ -435,9 +450,7 @@ export function calculateBigTrueEv(input: BigTrueEvInput): BigTrueEvResult {
   }
   if (providedFirstPrizeShare === null && profileFirstPrizeShare !== null) {
     warnings.push(
-      input.productType === "MEGA_BIG"
-        ? `1等配分 ${(firstPrizeShare * 100).toFixed(0)}% は捕捉済み等級配分（MEGA BIGはパートナー参照値。公式商品ページで最終確認推奨）。`
-        : `1等配分 ${(firstPrizeShare * 100).toFixed(0)}% は公式商品ページ準拠の等級配分。`,
+      `1等配分 ${(firstPrizeShare * 100).toFixed(0)}% は実配当バックテスト（過去回の売上・当せん・繰越）で実証済みの等級配分。`,
     );
   } else {
     warnings.push(`1等配分 ${(firstPrizeShare * 100).toFixed(0)}% は暫定値。公式の等級配分確認で精度が上がります。`);
@@ -445,6 +458,12 @@ export function calculateBigTrueEv(input: BigTrueEvInput): BigTrueEvResult {
   if (cancelledMatches === voidThreshold - 1) {
     warnings.push(
       `中止 ${cancelledMatches} 試合＝あと1試合中止で ${voidThreshold} 到達＝くじ不成立(全額払戻・実質EV1.0)に転落。大型台風ほど「当たり」でなく「払戻」で終わるリスク。`,
+    );
+  }
+  if (highCancelFloorBreak) {
+    warnings.push(
+      `中止 ${cancelledMatches} 試合＝下位等が最低額(${ticketPriceYen}円)の床に張り付きやすい局面。` +
+        `1口払戻見込は楽観的に、下位等floorは保守的に出る（総EVは不変式で保護）。翌回キャリー予測には過払い分の補正が要る。`,
     );
   }
   warnings.push("BIG/MEGA BIGはランダム発券。買い目選択のエッジは無く、+EV回に量を入れる戦略です。");

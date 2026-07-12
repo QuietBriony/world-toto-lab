@@ -278,8 +278,8 @@ describe("calculateBigTrueEv（造船太郎レバー: 試合中止×キャリー
     // 既定は公式配分0.70と一致し、旧プレースホルダ0.5とは別値になる。
     expect(withDefault.trueEvMultiple).toBeCloseTo(withOfficialShare.trueEvMultiple!, 10);
     expect(withDefault.trueEvMultiple).not.toBeCloseTo(withOldPlaceholder.trueEvMultiple!, 7);
-    // 暫定文言ではなく捕捉済み配分の注記が出る。
-    expect(withDefault.warnings.some((w) => w.includes("捕捉済み等級配分"))).toBe(true);
+    // 暫定文言ではなく実証済み配分の注記が出る。
+    expect(withDefault.warnings.some((w) => w.includes("実証済みの等級配分"))).toBe(true);
     expect(withDefault.warnings.some((w) => w.includes("暫定値"))).toBe(false);
   });
 
@@ -505,5 +505,82 @@ describe("classifyBigCarryoverAnticipation（殺到＝織り込みの監視シ�
     expect(
       classifyBigCarryoverAnticipation({ baselineFinalSalesYen: baseline, currentSalesYen: null }).level,
     ).toBe("unknown");
+  });
+});
+
+describe("実データバックテストによる規程パラメータの実証（2026-07-10・過去15回）", () => {
+  // 1等上限超過分は翌回キャリーへロールオーバーする。逆算式:
+  //   1等プール = 売上×還元率×1等配分 + 前回繰越、超過 = プール − 当せん口数×min(プール/口数, 上限)。
+  const rolloverExcess = (
+    salesYen: number,
+    carryInYen: number,
+    capYen: number,
+    winners: number,
+    firstPrizeShare: number,
+  ) => {
+    const pool = salesYen * 0.5 * firstPrizeShare + carryInYen;
+    return pool - winners * Math.min(pool / winners, capYen);
+  };
+
+  it("BIG 1等配分0.80は第1630/1633回の上限超過ロールオーバーと円単位で一致する", () => {
+    const share = BIG_FIRST_PRIZE_ALLOCATION_SHARE.BIG!;
+    // 第1630回: 売上5.885億, 前回繰越3,388,562,460, 1等1口6億cap → 実際の翌回繰越3,023,953,980
+    expect(rolloverExcess(588_478_800, 3_388_562_460, 600_000_000, 1, share)).toBeCloseTo(3_023_953_980, -2);
+    // 第1633回: 売上7.675億, 前回繰越3,592,418,100 → 実際の翌回繰越3,299,429,820
+    expect(rolloverExcess(767_529_300, 3_592_418_100, 600_000_000, 1, share)).toBeCloseTo(3_299_429_820, -2);
+    // 旧値0.76だと第1630回で約1,177万円ずれる（＝0.80が正・0.76は誤り）。
+    expect(rolloverExcess(588_478_800, 3_388_562_460, 600_000_000, 1, 0.76)).not.toBeCloseTo(3_023_953_980, -6);
+  });
+
+  it("100円BIG 1等配分0.76は第1627/1638回の上限超過ロールオーバーと円単位で一致する", () => {
+    const share = BIG_FIRST_PRIZE_ALLOCATION_SHARE["100YEN_BIG"]!;
+    // 第1627回: 売上2.805億, 前回繰越830,439,682, 1等3口2億cap → 翌回337,017,060
+    expect(rolloverExcess(280_466_800, 830_439_682, 200_000_000, 3, share)).toBeCloseTo(337_017_060, -3);
+    // 第1638回: 売上3.800億, 前回繰越788,386,072, 1等1口2億 → 翌回732,792,600
+    expect(rolloverExcess(380_017_200, 788_386_072, 200_000_000, 1, share)).toBeCloseTo(732_792_600, -3);
+  });
+
+  it("第1476回は原資全額払出で アグリゲートEV = 還元率 + C/S（不変式を実測で確認）", () => {
+    const S = 4_713_264_600;
+    const C = 5_830_000_000;
+    const firstPaid = 269 * 24_800_430;
+    const lowerPaid = (5_719 + 60_688 + 362_450 + 1_359_880 + 3_262_701) * 300; // 全て300円の床
+    const totalPaid = firstPaid + lowerPaid;
+
+    expect((totalPaid - C) / S).toBeCloseTo(0.5, 3); // 還元率0.5を実測（0.50002）
+    expect(totalPaid / S).toBeCloseTo(0.5 + C / S, 3); // アグリゲートEV=不変式上界=1.7369
+  });
+
+  it("cap-bound な BIG M=1 窓では 1等EV は配分に無反応で、正しい0.80は floor 経由で 0.76 よりEVを下げる", () => {
+    // Fable検算: 現況BIG窓は raw按分>cap で 1等が張り付く。0.76は floor を過大評価しEVを+0.02過大に出す反保守だった。
+    const base = {
+      productType: "BIG" as const,
+      carryoverYen: 4_525_370_220,
+      returnRate: 0.5,
+      ticketPriceYen: 300,
+      firstPrizeCapYen: 600_000_000,
+      projectedFinalSalesYen: 1_158_000_000,
+      cancelledMatches: 1,
+    };
+    const at80 = calculateBigTrueEv({ ...base, firstPrizeShare: 0.8 });
+    const at76 = calculateBigTrueEv({ ...base, firstPrizeShare: 0.76 });
+
+    expect(at80.estimatedFirstPrizePayoutYen).toBe(600_000_000); // cap 張り付き
+    expect(at80.firstPrizeEvMultiple).toBeCloseTo(at76.firstPrizeEvMultiple!, 10); // 1等EVは配分に無反応
+    expect(at80.trueEvMultiple!).toBeLessThan(at76.trueEvMultiple!); // 正しい0.80の方が低い
+    expect(at76.trueEvMultiple! - at80.trueEvMultiple!).toBeCloseTo(0.02, 3); // 差はちょうど floor 差 0.02
+  });
+
+  it("中止3試合以上では下位等の床崩れ警告を出す（per-unit1等は楽観・下位floorは保守）", () => {
+    const highM = calculateBigTrueEv({
+      productType: "MEGA_BIG",
+      carryoverYen: 5_830_000_000,
+      returnRate: 0.5,
+      ticketPriceYen: 300,
+      firstPrizeCapYen: 1_200_000_000,
+      projectedFinalSalesYen: 4_710_000_000,
+      cancelledMatches: 4,
+    });
+    expect(highM.warnings.some((w) => w.includes("床"))).toBe(true);
   });
 });
