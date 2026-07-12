@@ -98,10 +98,22 @@ const voidThresholdSource: BigRuleSource = {
   url: "https://toto.faq.rakuten.net/s/article/000014471",
 };
 
+// 公式の回別結果ページ（store.toto-dream.com/.../PGSPIN01401Lnk...）を過去15回ぶん取得・独立検証した
+// 実データバックテスト。売上・全等級口数・当せん金・繰越から、還元率r・1等配分α・上限ロールオーバーを実測。
+const backtestSource: BigRuleSource = {
+  checkedOn: "2026-07-10",
+  label: "公式回別結果ページ 実データバックテスト（過去15回・第1476/1625〜1638回）",
+  note:
+    "還元率 r=0.500（第1476回で総払戻=売上×r+キャリー、carryover→0クリアで実現EV=1.7369=0.5+C/S）。" +
+    "1等配分 α: MEGA=0.70・BIG=0.80・100円=0.76（下位還元 r(1−α) と cap 超過ロールオーバーで円単位一致）。" +
+    "上限超過分は翌回キャリーへロールオーバー（BIG第1630/1633回・100円第1627/1638回で円単位確認）。",
+  url: "https://store.toto-dream.com/dcs/subos/screen/pi05/spin014/PGSPIN01401LnkHoldCntLotResultLstBIG.form?holdCntId=1476",
+};
+
 const commonUnresolvedRules = [
   "2等以下の当せん金上限と端数処理を公式ルールで確認する（1等の1口上限は確定済み）",
   "各等級の繰越対象フラグを公式ルールで確認する",
-  "1等上限を超過した分の行き先（次回繰越か否か）を公式ルールで確認する",
+  // 「1等上限超過分の行き先」は実データで解決（翌回キャリーへロールオーバー・backtestSource 参照）。
   "不成立・中止が下位等級の判定と繰越に与える影響を確認する（最低成立試合数そのものは確定済み）",
   "特別開催回の上限・配分 override を通常回と分ける",
 ] as const;
@@ -129,22 +141,24 @@ export const bigOfficialRuleProfiles: Record<
       },
       carryoverFormulaSource,
       voidThresholdSource,
+      backtestSource,
     ],
     ticketPriceYen: 300,
+    // 1等配分 0.80 は実データで確定（第1630/1633回の cap 超過ロールオーバーが円単位一致・公式算式「売上の40%」= r0.5×α0.80 と整合）。
+    // 旧値0.76は下位floorを過大評価する反保守だった。下位等の内訳は実現回(第1638回)からの近似で合計0.20（=下位還元 r(1−α)=0.099 と整合）。
     tiers: [
-      tier({ allocationShare: 0.76, capYen: 600_000_000, missedCount: 0, odds: 4_782_969, tierName: "1等" }),
-      tier({ allocationShare: 0.09, missedCount: 1, odds: 170_820, tierName: "2等" }),
+      tier({ allocationShare: 0.8, capYen: 600_000_000, missedCount: 0, odds: 4_782_969, tierName: "1等" }),
+      tier({ allocationShare: 0.07, missedCount: 1, odds: 170_820, tierName: "2等" }),
       tier({ allocationShare: 0.02, missedCount: 2, odds: 13_140, tierName: "3等" }),
-      tier({ allocationShare: 0.04, missedCount: 3, odds: 1_643, tierName: "4等" }),
-      tier({ allocationShare: 0.04, missedCount: 4, odds: 299, tierName: "5等" }),
+      tier({ allocationShare: 0.03, missedCount: 3, odds: 1_643, tierName: "4等" }),
+      tier({ allocationShare: 0.03, missedCount: 4, odds: 299, tierName: "5等" }),
       tier({ allocationShare: 0.05, missedCount: 5, odds: 75, tierName: "6等" }),
     ],
     unresolvedRules: [
       ...commonUnresolvedRules,
-      // 公式算式は「売上の40%＋キャリー」だが、商品ページの 1等配分76% × 還元率50% = 38% で2pt乖離する。
-      // 40% が丸めなのか、還元率が52.6%なのか、1等配分が80%なのかを一次ソースで確定する。
-      // 現行の真EVは 38% を採用＝1等EVが保守側（過小）に出る。MEGA BIGは 35% = 0.5×0.70 で完全一致。
-      "BIGの1等原資率が公式算式の40%か、1等配分76%×還元率50%=38%かを一次ソースで確定する",
+      // 1等原資率は実データで「売上の40%」= 還元率0.5×1等配分0.80 と確定（旧38%説は棄却）。
+      // 残るのは下位等の内訳（合計0.20は確定、各等級の正確な配分は実現回1回ぶんの近似）。
+      "BIG下位等（2〜6等）の各配分割合を公式一次ソースで確認する（合計0.20と1等0.80は実測確定）",
     ],
   },
   MEGA_BIG: {
@@ -178,6 +192,7 @@ export const bigOfficialRuleProfiles: Record<
         note: "1等配分70%を明記。キャリーオーバーあり1等最高12億円/なし7億円。公式算式の『売上の35%』= 還元率50% × 1等配分70% と一致し、配分0.70を独立に裏付ける。",
         url: "https://toto.rakuten.co.jp/big/mega/",
       },
+      backtestSource,
     ],
     ticketPriceYen: 300,
     tiers: [
@@ -215,6 +230,7 @@ export const bigOfficialRuleProfiles: Record<
       },
       carryoverFormulaSource,
       voidThresholdSource,
+      backtestSource,
     ],
     ticketPriceYen: 100,
     tiers: [
