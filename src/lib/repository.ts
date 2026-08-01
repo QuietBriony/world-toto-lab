@@ -467,16 +467,40 @@ export async function syncTotoOfficialRoundListFromOfficial(
   throw new Error("自動同期は廃止されました（Supabase 終了）。CSV / 手入力 / JSON 取り込みをご利用ください。");
 }
 
+/**
+ * BIG 公式くじ情報の取得。
+ *
+ * 公式ページは公開情報で、保存モード（Cloudflare D1 / localStorage）とは独立。
+ * ブラウザから公式ドメインを直接 fetch すると CORS で落ちるため、同一オリジンの
+ * Pages Function（functions/api/big-official-watch.ts）にサーバ側で取らせる。
+ * Functions が無い配信（github.io / ローカル dev）では取得できないので、
+ * その場合は空 payload を返して /big-carryover のHTML貼り付けに委ねる。
+ */
 export async function syncBigOfficialWatchFromOfficial(
-  // input は呼び出し側の API 互換のため残置（自動同期は廃止済みで未使用）。
+  // input は呼び出し側の API 互換のため残置（取得先は Function 側で固定）。
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   input: SyncBigOfficialWatchApiInput = {},
 ): Promise<BigOfficialSyncPayload> {
-  if (shouldUseLocalRepository()) {
+  if (typeof window === "undefined") {
     return localRepository.localSyncBigOfficialWatchFromOfficial();
   }
 
-  throw new Error("自動同期は廃止されました（Supabase 終了）。CSV / 手入力 / JSON 取り込みをご利用ください。");
+  try {
+    const response = await fetch("/api/big-official-watch", {
+      headers: { Accept: "application/json" },
+    });
+
+    if (response.ok) {
+      const payload = (await response.json()) as BigOfficialSyncPayload;
+      if (Array.isArray(payload?.snapshots)) {
+        return payload;
+      }
+    }
+  } catch {
+    // ネットワーク断・Functions 無しの配信。下の fallback へ流す。
+  }
+
+  return localRepository.localSyncBigOfficialWatchFromOfficial();
 }
 
 export async function upsertTotoOfficialRoundLibraryFromSync(input: {

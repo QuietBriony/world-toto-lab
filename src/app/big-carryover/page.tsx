@@ -349,9 +349,11 @@ function BigCarryoverPageContent() {
   const [pastedPayload, setPastedPayload] = useState<BigOfficialSyncPayload | null>(null);
   const [pasteError, setPasteError] = useState<string | null>(null);
 
+  // 通常は Pages Function 経由の自動取得。貼り付けたときだけそちらを優先する。
+  const activePayload = pastedPayload ?? officialWatch.data ?? null;
   const officialSnapshots = useMemo(
-    () => pastedPayload?.snapshots ?? officialWatch.data?.snapshots ?? [],
-    [officialWatch.data, pastedPayload],
+    () => activePayload?.snapshots ?? [],
+    [activePayload],
   );
   const featuredOfficialSnapshot = useMemo(
     () => pickFeaturedBigOfficialSnapshot(officialSnapshots),
@@ -459,15 +461,19 @@ function BigCarryoverPageContent() {
 
       <SectionCard
         title="公式同期一覧"
-        description="スポーツくじオフィシャルの BIG 情報ページのHTMLを貼ると、現在の BIG / MEGA BIG / 100円BIG / BIG1000 / mini BIG を読み取ります。"
+        description="スポーツくじオフィシャルの BIG 情報ページを自動取得し、現在の BIG / MEGA BIG / 100円BIG / BIG1000 / mini BIG を読み取ります。"
       >
         <div className="flex flex-wrap items-center gap-2">
           <Badge tone="amber">BIG系5商品</Badge>
           <Badge tone="slate">
-            {officialSnapshots.length > 0 ? `取り込み ${officialSnapshots.length}商品` : "取り込み待ち"}
+            {officialSnapshots.length > 0
+              ? `${pastedPayload ? "貼り付け" : "自動取得"} ${officialSnapshots.length}商品`
+              : officialWatch.loading
+                ? "自動取得中"
+                : "取得待ち"}
           </Badge>
-          {pastedPayload?.fetchedAt ? (
-            <Badge tone="sky">貼り付け {formatDateTime(pastedPayload.fetchedAt)}</Badge>
+          {activePayload?.fetchedAt ? (
+            <Badge tone="sky">取得 {formatDateTime(activePayload.fetchedAt)}</Badge>
           ) : null}
           {featuredOfficialSnapshot ? (
             <Badge tone={buildBigOfficialWatch(featuredOfficialSnapshot).heatBand.badgeTone}>
@@ -477,13 +483,30 @@ function BigCarryoverPageContent() {
         </div>
         <p className="mt-3 text-sm leading-6 text-slate-600">
           同期 snapshot のキャリー圧は現在売上ベースです。販売終了までに売上が増えると低下します。
+          公式ページは5分毎更新のため、取得結果も最大5分キャッシュされます。
         </p>
 
-        <div className="mt-4 rounded-[24px] border border-slate-200 bg-slate-50/90 p-5">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge tone="sky">HTML取り込み</Badge>
-            <Badge tone="slate">ブラウザ内だけで解析</Badge>
-          </div>
+        {officialWatch.loading && officialSnapshots.length === 0 ? (
+          <p className="mt-3 text-sm text-slate-500">BIG公式ページから現在の5商品を取得しています...</p>
+        ) : null}
+        {activePayload && activePayload.warnings.length > 0 ? (
+          <ul className="mt-3 grid gap-1 text-sm leading-6 text-amber-800">
+            {activePayload.warnings.map((warning) => (
+              <li key={warning}>・{warning}</li>
+            ))}
+          </ul>
+        ) : null}
+        {officialWatch.error && !pastedPayload ? (
+          <p className="mt-3 text-sm text-rose-700">BIG公式取得: {officialWatch.error}</p>
+        ) : null}
+
+        <details className="mt-4 rounded-[24px] border border-slate-200 bg-slate-50/90 p-5">
+          <summary className="cursor-pointer text-sm font-semibold text-slate-700">
+            自動取得できないときは、HTMLを貼り付けて取り込む
+          </summary>
+          <p className="mt-3 text-sm leading-6 text-slate-600">
+            自動取得は Cloudflare Pages 配信でのみ動きます（github.io やローカル dev では Functions が無いため取得できません）。
+          </p>
           <ol className="mt-3 grid gap-1 pl-5 text-sm leading-6 text-slate-600 [list-style:decimal]">
             <li>
               <a
@@ -511,28 +534,16 @@ function BigCarryoverPageContent() {
               HTMLを取り込む
             </button>
             <button type="button" onClick={clearOfficialHtml} className={secondaryButtonClassName}>
-              クリア
+              {pastedPayload ? "自動取得に戻す" : "クリア"}
             </button>
           </div>
           <p className="mt-3 text-xs leading-5 text-slate-500">
             貼り付けた内容はこの画面の中だけで解析します。共有保存にも外部にも送りません。再読み込みすると消えます。
           </p>
           {pasteError ? <p className="mt-3 text-sm text-rose-700">{pasteError}</p> : null}
-          {pastedPayload && pastedPayload.warnings.length > 0 ? (
-            <ul className="mt-3 grid gap-1 text-sm leading-6 text-amber-800">
-              {pastedPayload.warnings.map((warning) => (
-                <li key={warning}>・{warning}</li>
-              ))}
-            </ul>
-          ) : null}
-        </div>
+        </details>
 
-        {officialWatch.error && !pastedPayload ? (
-          <p className="mt-3 text-sm text-slate-500">
-            自動同期は停止中です（{officialWatch.error}）。上のHTML取り込みを使ってください。
-          </p>
-        ) : null}
-        {officialSnapshots.length === 0 ? (
+        {officialSnapshots.length === 0 && !officialWatch.loading ? (
           <div className="mt-4 space-y-4">
             <ArtBannerPanel
               badge={<Badge tone="amber">{emptyStateArt.bigWatch.accentLabel}</Badge>}
@@ -541,7 +552,7 @@ function BigCarryoverPageContent() {
               title={emptyStateArt.bigWatch.title}
             />
             <p className="text-sm text-slate-500">
-              まだ BIG 商品 snapshot を取り込んでいません。上にHTMLを貼るか、下のテンプレ条件で先に比較できます。
+              BIG 商品 snapshot を取得できていません。上の手動取り込みを使うか、下のテンプレ条件で先に比較できます。
             </p>
           </div>
         ) : null}
