@@ -75,9 +75,9 @@ MEGA BIG 第1625回のように売上 `191,591,400円`、キャリー `6,299,582
 - `productKey`: `big` / `mega_big` / `hyakuen_big` / `big1000` / `mini_big`
 - `productLabel`
 - `stakeYen`
-- `totalSalesYen`
+- `totalSalesYen`（`number | null`。公式が `-` 表示のときは `null`）
 - `returnRate`
-- `carryoverYen`
+- `carryoverYen`（`number | null`。`null` は未確定で、`0`（キャリーなし）とは別物）
 - `officialRoundName`
 - `officialRoundNumber`
 - `salesStartAt`
@@ -159,6 +159,28 @@ naiveCarryPressure = (carryoverYen + projectedFinalSalesYen * returnRate) / proj
 - `complete`: 等級配分・上限・繰越対象フラグまで揃っている
 
 現時点の公式同期 snapshot だけでは `complete` にはしない。BIG / MEGA BIG では公式ルール確認が完了するまで `真EV未計算` と表示する。
+
+## 繰越金「未確定」の扱い
+
+公式くじ情報ページの `前開催回からの繰越金（キャリーオーバー）` は、**前開催回がまだ抽せん・確定していない期間は `-` 表示**になる。  
+これは「キャリーなし（0円）」ではなく「未確定」であり、混同すると巨額キャリー中の回を平時回として見落とす。
+
+実例（2026-08-01 観測）:
+
+- 第1644回（販売 2026-08-01〜2026-08-08）は5商品すべて `-`
+- 一方で第1643回に入る時点の確定キャリーは MEGA BIG 9,570,431,460円 / BIG 4,953,584,940円 / 100円BIG 1,173,864,224円
+
+したがって `-` を `0` に潰さない。
+
+- パーサ: `-` / 取得失敗は `null`（`carryoverYen: number | null`、`totalSalesYen` も同様）
+- `BigOfficialWatch.carryoverKnowledge`: `confirmed` / `undetermined`
+- `undetermined` のとき
+  - eventSnapshot: `繰越確定待ち（前回未抽せん）` / status `undetermined` / tone `warning`
+  - heatBand: `繰越確定待ち`
+  - `requiresAttention = true`（監視から落とさない）
+  - キャリー圧・真EV は計算しない（`calculateBigCarryoverSummary` / `calculateBigTrueEv` が `null` を未入力として扱う）
+  - URL prefill に `carryover=0` を入れない
+- `0円` と明示されている回だけが `キャリーなしの平時回` になる
 
 ## Supabase / Pages への影響
 

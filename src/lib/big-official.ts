@@ -22,6 +22,12 @@ export function detectBigShockSignal(text: string | null | undefined): BigShockS
 
 export type BigEventType = "carryover_event" | "high_return_watch";
 
+/**
+ * 公式ページの繰越金は、前開催回が未抽せんの間 "-" 表示になる。
+ * これは「キャリーなし（0円）」ではなく「未確定」なので、両者を型で分ける。
+ */
+export type BigCarryoverKnowledge = "confirmed" | "undetermined";
+
 export type BigCarryoverSummary = {
   approxEvMultiple: number | null;
   breakEvenCarryoverYen: number | null;
@@ -36,7 +42,7 @@ export type BigCarryoverEventSnapshot = {
   headline: string;
   nextAction: string;
   statusLabel: string;
-  status: "missing" | "near_break_even" | "plus_ev" | "watch";
+  status: "missing" | "near_break_even" | "plus_ev" | "undetermined" | "watch";
   tone: "info" | "positive" | "warning";
 };
 
@@ -56,6 +62,17 @@ export function formatBigCarryoverDisplay(value: number | null | undefined) {
   }
 
   return `${value.toLocaleString("ja-JP")}円`;
+}
+
+/**
+ * 公式同期 snapshot 用の表示。null は「キャリーなし」ではなく「未確定」として出す。
+ */
+export function formatBigOfficialCarryoverDisplay(value: number | null | undefined) {
+  if (value === null || value === undefined || !Number.isFinite(value)) {
+    return "未確定（前回未抽せん）";
+  }
+
+  return formatBigCarryoverDisplay(value);
 }
 
 function isKnownPositiveNumber(value: number | null | undefined): value is number {
@@ -106,11 +123,23 @@ function calculateBigCarryoverSummary(input: {
 }
 
 function buildBigCarryoverEventSnapshot(input: {
+  carryoverKnowledge: BigCarryoverKnowledge;
   eventLabel: string;
   eventType: BigEventType;
   summary: BigCarryoverSummary;
 }): BigCarryoverEventSnapshot {
   const label = input.eventLabel.trim() || "BIG";
+
+  if (input.carryoverKnowledge === "undetermined") {
+    return {
+      headline: `${label} は繰越金が未確定です（前回未抽せん）`,
+      nextAction:
+        "前開催回の抽せん結果が出るまで公式ページは「-」表示です。キャリーなしと決めつけず、確定後に snapshot を取り直します。",
+      statusLabel: "繰越確定待ち（前回未抽せん）",
+      status: "undetermined",
+      tone: "warning",
+    };
+  }
 
   if (input.summary.approxEvMultiple === null) {
     return {
@@ -183,7 +212,18 @@ function buildBigCarryoverEventSnapshot(input: {
   };
 }
 
-function classifyBigHeatBand(summary: BigCarryoverSummary): BigHeatBand {
+function classifyBigHeatBand(
+  summary: BigCarryoverSummary,
+  carryoverKnowledge: BigCarryoverKnowledge,
+): BigHeatBand {
+  if (carryoverKnowledge === "undetermined") {
+    return {
+      badgeTone: "warning",
+      hint: "前開催回が未抽せんのため繰越金が未確定です。0円ではありません。確定後に再判定します。",
+      label: "繰越確定待ち",
+    };
+  }
+
   if (summary.approxEvMultiple === null) {
     return {
       badgeTone: "info",
@@ -231,7 +271,8 @@ export type BigOfficialProductKey =
   | "mini_big";
 
 export type BigOfficialSnapshot = {
-  carryoverYen: number;
+  /** null は未確定（前回未抽せん / 公式ページが "-" 表示）。0円のキャリーなしとは区別する。 */
+  carryoverYen: number | null;
   fetchedAt: string | null;
   officialRoundName: string | null;
   officialRoundNumber: number | null;
@@ -256,6 +297,7 @@ export type BigOfficialSyncPayload = {
 };
 
 export type BigOfficialWatch = {
+  carryoverKnowledge: BigCarryoverKnowledge;
   eventSnapshot: BigCarryoverEventSnapshot;
   eventType: BigEventType;
   heatBand: BigHeatBand;
@@ -361,13 +403,17 @@ function stripHtmlToText(value: string) {
     .join("\n");
 }
 
-function parseYenAmount(value: string | null) {
+/**
+ * 公式ページの金額欄。"-"（未確定）や取得失敗は null にする。
+ * 0 に潰すと「キャリーなし」と区別できなくなる。
+ */
+function parseYenAmount(value: string | null): number | null {
   if (!value || value === "-") {
-    return 0;
+    return null;
   }
 
   const parsed = Number(value.replace(/[^\d.-]/g, ""));
-  return Number.isFinite(parsed) ? parsed : 0;
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 function parseRoundNumber(value: string | null) {
@@ -491,15 +537,23 @@ export function parseBigOfficialWatchHtml(input: {
       }),
     )
     .filter((snapshot) => {
+      // 売上・キャリーは販売前や前回未抽せんだと "-"（= null）になる。
+      // 商品ブロックとしては有効なので、金額が未確定でもスキップしない。
       const hasCoreFields =
-        snapshot.officialRoundNumber !== null &&
-        snapshot.totalSalesYen !== null &&
-        snapshot.sourceText.length > 0;
+        snapshot.officialRoundNumber !== null && snapshot.sourceText.length > 0;
       if (!hasCoreFields) {
         warnings.push(`${snapshot.productLabel} の商品情報を十分に抽出できなかったためスキップしました。`);
       }
       return hasCoreFields;
     });
+
+  snapshots.forEach((snapshot) => {
+    if (snapshot.carryoverYen === null) {
+      warnings.push(
+        `${snapshot.productLabel} の繰越金が未確定です（前回未抽せん）。キャリーなしとして扱いません。`,
+      );
+    }
+  });
 
   return {
     fetchedAt: input.fetchedAt ?? null,
@@ -512,16 +566,19 @@ export function parseBigOfficialWatchHtml(input: {
 export function buildBigOfficialWatch(
   snapshot: BigOfficialSnapshot,
 ) {
+  const carryoverKnowledge: BigCarryoverKnowledge =
+    snapshot.carryoverYen === null ? "undetermined" : "confirmed";
   const eventType: BigEventType =
-    snapshot.carryoverYen > 0 ? "carryover_event" : "high_return_watch";
+    (snapshot.carryoverYen ?? 0) > 0 ? "carryover_event" : "high_return_watch";
   const label = snapshot.officialRoundName ?? snapshot.productLabel;
   const summary = calculateBigCarryoverSummary({
     carryoverYen: snapshot.carryoverYen,
     returnRate: snapshot.returnRate,
     salesYen: snapshot.totalSalesYen,
   });
-  const heatBand = classifyBigHeatBand(summary);
+  const heatBand = classifyBigHeatBand(summary, carryoverKnowledge);
   const eventSnapshot = buildBigCarryoverEventSnapshot({
+    carryoverKnowledge,
     eventLabel: label,
     eventType,
     summary,
@@ -529,9 +586,11 @@ export function buildBigOfficialWatch(
   const shockSignal = detectBigShockSignal(snapshot.sourceText);
   const requiresAttention =
     shockSignal !== "none" ||
+    carryoverKnowledge === "undetermined" ||
     (summary.approxEvMultiple !== null && summary.approxEvMultiple >= 1);
 
   return {
+    carryoverKnowledge,
     eventSnapshot,
     eventType,
     heatBand,
@@ -577,8 +636,12 @@ export function pickFeaturedBigOfficialSnapshot(snapshots: BigOfficialSnapshot[]
         return rightEv - leftEv;
       }
 
-      if (left.carryoverYen !== right.carryoverYen) {
-        return right.carryoverYen - left.carryoverYen;
+      // 未確定（null）は金額比較できないので最下位に置く。
+      // 未確定の可視化は requiresAttention 側（上の優先度）で担保する。
+      const leftCarryover = left.carryoverYen ?? -1;
+      const rightCarryover = right.carryoverYen ?? -1;
+      if (leftCarryover !== rightCarryover) {
+        return rightCarryover - leftCarryover;
       }
 
       return (right.totalSalesYen ?? 0) - (left.totalSalesYen ?? 0);
