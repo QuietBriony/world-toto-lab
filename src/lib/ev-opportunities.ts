@@ -318,11 +318,14 @@ export function buildBigEvOpportunityCards(
         ticketPriceYen: snapshot.stakeYen || defaults.ticketPriceYen,
       });
       const carryPressure = calculation.naiveCarryPressure;
-      const status = opportunityStatusForMultiple(carryPressure, "watch");
+      const carryoverUndetermined = watch.carryoverKnowledge === "undetermined";
+      const status = carryoverUndetermined
+        ? "data_missing"
+        : opportunityStatusForMultiple(carryPressure, "watch");
 
       return {
         category: "big",
-        confidenceLabel: "真EV未計算",
+        confidenceLabel: carryoverUndetermined ? "繰越確定待ち" : "真EV未計算",
         evLabel: `キャリー圧 ${formatMultiple(carryPressure)}`,
         href: buildHref(appRoute.bigCarryover, buildBigCarryoverQueryFromOfficialSnapshot(snapshot)),
         id: `big-${snapshot.productKey}-${snapshot.officialRoundNumber ?? "current"}`,
@@ -336,8 +339,9 @@ export function buildBigEvOpportunityCards(
         status,
         title: snapshot.officialRoundName ?? `${snapshot.productLabel} キャリー監視`,
         warningLabel: "ランダム発券です。買い目選択によるエッジはありません。",
-        whyItMatters:
-          watch.summary.approxEvMultiple !== null
+        whyItMatters: carryoverUndetermined
+          ? "前開催回が未抽せんのため繰越金が未確定です。キャリーなしと決めつけず、確定後に再取得します。"
+          : watch.summary.approxEvMultiple !== null
             ? `${formatYen(snapshot.carryoverYen)} のキャリーを、現在売上 ${formatYen(snapshot.totalSalesYen)} と比較します。`
             : "売上とキャリーが揃うと、キャリー圧を比較できます。",
       } satisfies EvOpportunityCard;

@@ -4,6 +4,7 @@ import {
   buildBigCarryoverQueryFromOfficialSnapshot,
   buildBigOfficialWatch,
   formatBigCarryoverDisplay,
+  formatBigOfficialCarryoverDisplay,
   parseBigOfficialWatchHtml,
   pickFeaturedBigOfficialSnapshot,
 } from "@/lib/big-official";
@@ -57,7 +58,7 @@ describe("big official sync parser", () => {
     expect(payload.snapshots[0]?.totalSalesYen).toBe(484_739_700);
     expect(payload.snapshots[0]?.snapshotAt).toBe("2026-04-21T22:45:00+09:00");
     expect(payload.snapshots[1]?.productKey).toBe("mini_big");
-    expect(payload.snapshots[1]?.carryoverYen).toBe(0);
+    expect(payload.snapshots[1]?.carryoverYen).toBeNull();
   });
 
   it("builds watch summaries and query values from official snapshots", () => {
@@ -83,15 +84,65 @@ describe("big official sync parser", () => {
     expect(query.note).toContain("前開催回からの繰越金");
   });
 
-  it("treats zero carryover as no carryover for display", () => {
+  it("treats a '-' carryover as undetermined, not as zero", () => {
     const payload = parseBigOfficialWatchHtml({
       fetchedAt: "2026-04-21T13:45:00.000Z",
       html: sampleHtml,
     });
     const miniBig = payload.snapshots.find((snapshot) => snapshot.productKey === "mini_big");
 
-    expect(formatBigCarryoverDisplay(miniBig?.carryoverYen)).toBe("なし");
-    expect(buildBigOfficialWatch(miniBig!).eventSnapshot.statusLabel).toBe("キャリーなし");
+    expect(miniBig?.carryoverYen).toBeNull();
+    expect(miniBig?.carryoverYen).not.toBe(0);
+    expect(formatBigOfficialCarryoverDisplay(miniBig?.carryoverYen)).toBe("未確定（前回未抽せん）");
+    expect(payload.warnings).toContain(
+      "mini BIG の繰越金が未確定です（前回未抽せん）。キャリーなしとして扱いません。",
+    );
+  });
+
+  it("does not report an undetermined carryover as a no-carryover normal round", () => {
+    const payload = parseBigOfficialWatchHtml({
+      fetchedAt: "2026-04-21T13:45:00.000Z",
+      html: sampleHtml,
+    });
+    const miniBig = payload.snapshots.find((snapshot) => snapshot.productKey === "mini_big");
+    const watch = buildBigOfficialWatch(miniBig!);
+
+    expect(watch.carryoverKnowledge).toBe("undetermined");
+    expect(watch.eventSnapshot.headline).not.toContain("キャリーなしの平時回");
+    expect(watch.eventSnapshot.status).toBe("undetermined");
+    expect(watch.eventSnapshot.statusLabel).toBe("繰越確定待ち（前回未抽せん）");
+    expect(watch.heatBand.label).toBe("繰越確定待ち");
+    expect(watch.requiresAttention).toBe(true);
+    // キャリー圧・真EV系は「未確定」として計算しない。
+    expect(watch.summary.approxEvMultiple).toBeNull();
+    // 未確定を 0 として URL prefill しない。
+    expect(buildBigCarryoverQueryFromOfficialSnapshot(miniBig!).carryover).toBeUndefined();
+  });
+
+  it("keeps an explicitly zero carryover as a no-carryover normal round", () => {
+    const zeroCarryoverHtml = `
+      <a name="BIG" value='09'></a>
+      <table><tr><td>第1624回　BIG　くじ情報</td></tr></table>
+      <table>
+        <tr><th>前開催回からの繰越金<br>（キャリーオーバー）</th><td>0円</td></tr>
+      </table>
+      <table>
+        <tr><th>売上金額</th><td>484,739,700円</td></tr>
+      </table>
+    `;
+    const payload = parseBigOfficialWatchHtml({
+      fetchedAt: "2026-04-21T13:45:00.000Z",
+      html: zeroCarryoverHtml,
+    });
+    const bigSnapshot = payload.snapshots[0];
+    const watch = buildBigOfficialWatch(bigSnapshot!);
+
+    expect(bigSnapshot?.carryoverYen).toBe(0);
+    expect(formatBigCarryoverDisplay(bigSnapshot?.carryoverYen)).toBe("なし");
+    expect(watch.carryoverKnowledge).toBe("confirmed");
+    expect(watch.eventSnapshot.headline).toContain("キャリーなしの平時回");
+    expect(watch.eventSnapshot.statusLabel).toBe("キャリーなし");
+    expect(watch.requiresAttention).toBe(false);
   });
 
   it("prioritizes official shock notes when picking the featured snapshot", () => {

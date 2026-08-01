@@ -22,6 +22,7 @@ import {
   buildBigCarryoverQueryFromOfficialSnapshot,
   buildBigOfficialWatch,
   formatBigCarryoverDisplay,
+  formatBigOfficialCarryoverDisplay,
   pickFeaturedBigOfficialSnapshot,
 } from "@/lib/big-official";
 import {
@@ -498,8 +499,13 @@ function BigCarryoverPageContent() {
                   <div className="rounded-[18px] border border-slate-200 bg-white/80 px-4 py-3 text-sm">
                     <p className="text-slate-500">キャリー</p>
                     <p className="mt-1 font-semibold text-slate-950">
-                      {formatBigCarryoverDisplay(snapshot.carryoverYen)}
+                      {formatBigOfficialCarryoverDisplay(snapshot.carryoverYen)}
                     </p>
+                    {watch.carryoverKnowledge === "undetermined" ? (
+                      <p className="mt-1 text-[11px] leading-4 text-amber-700">
+                        前回の抽せん結果が出るまで公式は「-」表示です。0円ではありません。
+                      </p>
+                    ) : null}
                   </div>
                   <div className="rounded-[18px] border border-slate-200 bg-white/80 px-4 py-3 text-sm">
                     <p className="text-slate-500">キャリー圧</p>
@@ -526,9 +532,10 @@ function BigCarryoverPageContent() {
                       setEventLabel(snapshot.officialRoundName ?? `${snapshot.productLabel} キャリー圧ウォッチ`);
                       setSnapshotDate((snapshot.snapshotAt ?? snapshot.salesStartAt ?? "").slice(0, 10));
                       setProductType(snapshotProductType);
-                      setCurrentSalesYen(String(snapshot.totalSalesYen ?? 0));
-                      setProjectedFinalSalesYen(String(snapshot.totalSalesYen ?? 0));
-                      setCarryoverYen(String(snapshot.carryoverYen));
+                      setCurrentSalesYen(String(snapshot.totalSalesYen ?? ""));
+                      setProjectedFinalSalesYen(String(snapshot.totalSalesYen ?? ""));
+                      // 未確定（null）は 0 で埋めない。空欄のまま「入力待ち」にする。
+                      setCarryoverYen(String(snapshot.carryoverYen ?? ""));
                       setReturnRatePercent(String(Math.round(snapshot.returnRate * 100)));
                       setTicketPriceYen(String(snapshot.stakeYen || snapshotDefaults.ticketPriceYen));
                       setFirstPrizeOdds(snapshotDefaults.firstPrizeOdds ? String(snapshotDefaults.firstPrizeOdds) : "");
