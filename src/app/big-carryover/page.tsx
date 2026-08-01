@@ -19,11 +19,14 @@ import {
 } from "@/components/ui";
 import { formatCurrency, formatDateTime, formatPercent } from "@/lib/domain";
 import {
+  bigOfficialDefaultSourceUrl,
   buildBigCarryoverQueryFromOfficialSnapshot,
   buildBigOfficialWatch,
   formatBigCarryoverDisplay,
   formatBigOfficialCarryoverDisplay,
+  parseBigOfficialWatchHtml,
   pickFeaturedBigOfficialSnapshot,
+  type BigOfficialSyncPayload,
 } from "@/lib/big-official";
 import {
   bigCarryoverPresets,
@@ -340,14 +343,52 @@ function BigCarryoverPageContent() {
     ticketPrice: numericTicketPriceYen ?? undefined,
   });
 
+  // 自動同期（Supabase 終了で廃止）の代わりに、公式ページのHTMLを貼って取り込む。
+  // static export のままブラウザから公式ドメインを直接 fetch できない（CORS）ため。
+  const [officialHtmlInput, setOfficialHtmlInput] = useState("");
+  const [pastedPayload, setPastedPayload] = useState<BigOfficialSyncPayload | null>(null);
+  const [pasteError, setPasteError] = useState<string | null>(null);
+
   const officialSnapshots = useMemo(
-    () => officialWatch.data?.snapshots ?? [],
-    [officialWatch.data],
+    () => pastedPayload?.snapshots ?? officialWatch.data?.snapshots ?? [],
+    [officialWatch.data, pastedPayload],
   );
   const featuredOfficialSnapshot = useMemo(
     () => pickFeaturedBigOfficialSnapshot(officialSnapshots),
     [officialSnapshots],
   );
+
+  function importOfficialHtml() {
+    const html = officialHtmlInput.trim();
+    if (!html) {
+      setPastedPayload(null);
+      setPasteError("公式ページのHTMLを貼り付けてください。");
+      return;
+    }
+
+    const payload = parseBigOfficialWatchHtml({
+      fetchedAt: new Date().toISOString(),
+      html,
+      sourceUrl: sourceUrl || bigOfficialDefaultSourceUrl,
+    });
+
+    if (payload.snapshots.length === 0) {
+      setPastedPayload(null);
+      setPasteError(
+        "商品ブロックを抽出できませんでした。ブラウザの「ページのソースを表示」で得たHTML全体を貼り付けてください。",
+      );
+      return;
+    }
+
+    setPastedPayload(payload);
+    setPasteError(null);
+  }
+
+  function clearOfficialHtml() {
+    setOfficialHtmlInput("");
+    setPastedPayload(null);
+    setPasteError(null);
+  }
 
   function applyProductDefaults(nextProductType: BigCarryoverProductType) {
     const nextDefaults = bigCarryoverProductDefaults[nextProductType];
@@ -418,13 +459,16 @@ function BigCarryoverPageContent() {
 
       <SectionCard
         title="公式同期一覧"
-        description="スポーツくじオフィシャルの BIG 情報ページから、現在の BIG / MEGA BIG / 100円BIG / BIG1000 / mini BIG を半自動で読みます。"
+        description="スポーツくじオフィシャルの BIG 情報ページのHTMLを貼ると、現在の BIG / MEGA BIG / 100円BIG / BIG1000 / mini BIG を読み取ります。"
       >
         <div className="flex flex-wrap items-center gap-2">
           <Badge tone="amber">BIG系5商品</Badge>
           <Badge tone="slate">
-            {officialWatch.data ? `同期 ${officialSnapshots.length}商品` : "同期待ち"}
+            {officialSnapshots.length > 0 ? `取り込み ${officialSnapshots.length}商品` : "取り込み待ち"}
           </Badge>
+          {pastedPayload?.fetchedAt ? (
+            <Badge tone="sky">貼り付け {formatDateTime(pastedPayload.fetchedAt)}</Badge>
+          ) : null}
           {featuredOfficialSnapshot ? (
             <Badge tone={buildBigOfficialWatch(featuredOfficialSnapshot).heatBand.badgeTone}>
               {buildBigOfficialWatch(featuredOfficialSnapshot).heatBand.label}
@@ -434,13 +478,61 @@ function BigCarryoverPageContent() {
         <p className="mt-3 text-sm leading-6 text-slate-600">
           同期 snapshot のキャリー圧は現在売上ベースです。販売終了までに売上が増えると低下します。
         </p>
-        {officialWatch.error ? (
-          <p className="mt-3 text-sm text-rose-700">BIG公式同期: {officialWatch.error}</p>
+
+        <div className="mt-4 rounded-[24px] border border-slate-200 bg-slate-50/90 p-5">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge tone="sky">HTML取り込み</Badge>
+            <Badge tone="slate">ブラウザ内だけで解析</Badge>
+          </div>
+          <ol className="mt-3 grid gap-1 pl-5 text-sm leading-6 text-slate-600 [list-style:decimal]">
+            <li>
+              <a
+                href={bigOfficialDefaultSourceUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="underline underline-offset-2"
+              >
+                BIG くじ情報ページ
+              </a>
+              を開く
+            </li>
+            <li>「ページのソースを表示」（Ctrl+U）で HTML 全体をコピーする</li>
+            <li>下に貼り付けて「HTMLを取り込む」を押す</li>
+          </ol>
+          <textarea
+            value={officialHtmlInput}
+            onChange={(event) => setOfficialHtmlInput(event.target.value)}
+            className={`${textAreaClassName} mt-3 min-h-[120px] font-mono text-xs`}
+            placeholder="公式くじ情報ページの HTML をここに貼り付けます"
+            spellCheck={false}
+          />
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button type="button" onClick={importOfficialHtml} className={buttonClassName}>
+              HTMLを取り込む
+            </button>
+            <button type="button" onClick={clearOfficialHtml} className={secondaryButtonClassName}>
+              クリア
+            </button>
+          </div>
+          <p className="mt-3 text-xs leading-5 text-slate-500">
+            貼り付けた内容はこの画面の中だけで解析します。共有保存にも外部にも送りません。再読み込みすると消えます。
+          </p>
+          {pasteError ? <p className="mt-3 text-sm text-rose-700">{pasteError}</p> : null}
+          {pastedPayload && pastedPayload.warnings.length > 0 ? (
+            <ul className="mt-3 grid gap-1 text-sm leading-6 text-amber-800">
+              {pastedPayload.warnings.map((warning) => (
+                <li key={warning}>・{warning}</li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+
+        {officialWatch.error && !pastedPayload ? (
+          <p className="mt-3 text-sm text-slate-500">
+            自動同期は停止中です（{officialWatch.error}）。上のHTML取り込みを使ってください。
+          </p>
         ) : null}
-        {!officialWatch.error && officialWatch.loading && officialSnapshots.length === 0 ? (
-          <p className="mt-3 text-sm text-slate-500">BIG公式ページから現在の5商品を同期しています...</p>
-        ) : null}
-        {!officialWatch.error && !officialWatch.loading && officialSnapshots.length === 0 ? (
+        {officialSnapshots.length === 0 ? (
           <div className="mt-4 space-y-4">
             <ArtBannerPanel
               badge={<Badge tone="amber">{emptyStateArt.bigWatch.accentLabel}</Badge>}
@@ -449,7 +541,7 @@ function BigCarryoverPageContent() {
               title={emptyStateArt.bigWatch.title}
             />
             <p className="text-sm text-slate-500">
-              現在の BIG 商品 snapshot をまだ取得できていません。少し待って再読み込みするか、下のテンプレ条件で先に比較できます。
+              まだ BIG 商品 snapshot を取り込んでいません。上にHTMLを貼るか、下のテンプレ条件で先に比較できます。
             </p>
           </div>
         ) : null}
