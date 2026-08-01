@@ -2041,7 +2041,9 @@ export async function localSyncBigOfficialWatchFromOfficial(): Promise<BigOffici
     fetchedAt: nowIso(),
     snapshots: [],
     sourceUrl: "https://store.toto-dream.com/dcs/subos/screen/pi02/spin005/PGSPIN00501InitBIGLotInfo.form",
-    warnings: ["ローカル保存モードではBIG公式同期を行いません。URLパラメータまたはプリセットで試算できます。"],
+    warnings: [
+      "BIG公式の自動取得ができませんでした（Cloudflare Pages 以外の配信では Functions が無いため）。/big-carryover のHTML貼り付けで取り込めます。",
+    ],
   };
 }
 
