@@ -7,6 +7,14 @@
 - A real `WORLD_TOTO_LAB_USER_ID` was not available from the public route. The Cloudflare Pages `/api/rounds` probe required a passphrase, so the user-id part remains a separate operator gate.
 - No D1 write, delete, schema change, secret read, purchase flow, or settlement flow was attempted.
 
+## 2026-08-06 — user-id smoke の範囲を確定
+
+`WORLD_TOTO_LAB_USER_ID` 付きで再実行し `failures: 0`。あわせて、**この smoke で実 user id を待つ意味はない**ことが分かったので記録する。
+
+- static export なので `?user=<id>` は HTTP ステータスを変えられない。実在しない id（書式のみ有効）でも全 route 200 で、実 id との差が出ない
+- つまり `check:pages` が測れるのは **route の到達性まで**。user 固有データが実際に描画されるかは、ブラウザ内の D1 読み取り（クライアント側）で決まるため、この HTTP チェックの射程外
+- したがって「実 user id が取れるまで保留」は、このチェックに関しては空振りのゲート。user 固有描画を確認したいなら、ライブ画面での目視か別の検証手段が要る
+
 更新日: 2026-04-21
 
 ## 目的
@@ -61,6 +69,9 @@ User ID は未指定でも 200 確認はできますが、実運用前は友人 
 - キャリー圧、1等発生確率、上限調整後proxy、真EV未計算が分かれて見える
 - 入力欄を変えると概算値が更新される
 - `この条件を共有` で開いた URL でも、イベント種別 / snapshot 日付 / イベント名 / 売上 / キャリー / 還元率 / 投下額 / 元ソース が復元される
+- **公式同期一覧に BIG系5商品が自動で並ぶ**（貼り付け不要。Cloudflare Pages 配信のみ。github.io では Functions が無いため空になり、貼り付け導線が出るのが正）
+  - キャリー表示が公式ページと一致する。特に `-`（前回未抽せん）は **「繰越確定待ち」であって「キャリーなし」ではない**
+  - 公式が `0円` と明記している商品だけが「キャリーなし / 見送り」になる
 
 ### 2. Round Detail
 
@@ -96,7 +107,8 @@ User ID は未指定でも 200 確認はできますが、実運用前は友人 
 - `作り方を選ぶ` が見える
 - `公式toto回から作る` が `回を選ぶ` へ移動する
 - `CSV / 手入力で作る` が補完入力セクションを開く
-- 自動同期は廃止済みのため、`公式一覧を同期` は「自動同期は廃止されました」の案内を返す（無反応にならない）
+- 公式**一覧**（toto 回リスト）の自動同期は廃止済みのため、`公式一覧を同期` は「自動同期は廃止されました」の案内を返す（無反応にならない）
+  - BIG くじ情報の自動取得は別系統で、こちらは生きている（下記 `BIGウォッチ` を参照）
 - CSV / 手入力 / JSON import で回を取り込める
 - `Friend Pick Room`
 - 上記ボタン群が無反応でない
