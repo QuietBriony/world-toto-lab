@@ -193,18 +193,12 @@ export function useTotoOfficialRoundLibrary(
   return resource;
 }
 
-export function useBigOfficialWatch(sourceUrl?: string | null) {
+// 取得先は Pages Function 側で固定（SSRF ガード）なので、呼び出し側から URL は渡せない。
+export function useBigOfficialWatch() {
   const { isChecking, mode } = useDataMode();
-  const loader = useCallback(
-    async () => syncBigOfficialWatchFromOfficial({ sourceUrl: sourceUrl ?? undefined }),
-    [sourceUrl],
-  );
+  const loader = useCallback(async () => syncBigOfficialWatchFromOfficial(), []);
 
-  const resource = useAsyncResource<BigOfficialSyncPayload>(
-    loader,
-    !isChecking,
-    [mode, sourceUrl],
-  );
+  const resource = useAsyncResource<BigOfficialSyncPayload>(loader, !isChecking, [mode]);
 
   if (isChecking) {
     return { ...resource, loading: true };

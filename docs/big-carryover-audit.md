@@ -6,7 +6,7 @@
 
 - 画面: `src/app/big-carryover/page.tsx`
 - 既存共通ロジック: `src/lib/big-carryover.ts`
-- 公式同期ロジック: `src/lib/big-official.ts`
+- 公式同期ロジック: `src/lib/big-official.ts`（解析）/ `functions/api/big-official-watch.ts`（サーバ側取得）
 - 追加計算器: `src/lib/big-carryover/calculator.ts`
 
 ## 現行ロジックの確認結果

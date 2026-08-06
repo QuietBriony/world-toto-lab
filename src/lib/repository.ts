@@ -74,10 +74,6 @@ type SyncTotoOfficialRoundApiInput = {
   sourceUrl?: string;
 };
 
-type SyncBigOfficialWatchApiInput = {
-  sourceUrl?: string;
-};
-
 type SyncedTotoOfficialRoundMatchInput = {
   actualResult: "ONE" | "DRAW" | "TWO" | null;
   awayTeam: string;
@@ -476,11 +472,7 @@ export async function syncTotoOfficialRoundListFromOfficial(
  * Functions が無い配信（github.io / ローカル dev）では取得できないので、
  * その場合は空 payload を返して /big-carryover のHTML貼り付けに委ねる。
  */
-export async function syncBigOfficialWatchFromOfficial(
-  // input は呼び出し側の API 互換のため残置（取得先は Function 側で固定）。
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  input: SyncBigOfficialWatchApiInput = {},
-): Promise<BigOfficialSyncPayload> {
+export async function syncBigOfficialWatchFromOfficial(): Promise<BigOfficialSyncPayload> {
   if (typeof window === "undefined") {
     return localRepository.localSyncBigOfficialWatchFromOfficial();
   }
