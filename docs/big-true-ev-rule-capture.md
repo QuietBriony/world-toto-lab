@@ -2,6 +2,8 @@
 
 作成日: 2026-05-05
 
+捕捉したルールを使った運用戦略は [big-carryover-playbook.md](./big-carryover-playbook.md) を参照。
+
 ## Goal
 
 BIG / MEGA BIG の `trueEvStatus = "complete"` を出す前に、公式ルール材料をコードで確認できる形にする。今回のスライスでは真EV計算そのものは追加しない。
