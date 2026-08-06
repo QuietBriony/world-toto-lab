@@ -123,6 +123,8 @@ Checks to run:
 - 別 AI の差分が同じファイルに入りそうなら、並走ではなく直列に切り替える
 - schema 変更は UI 変更と無理に同じ PR に混ぜない
 - hotfix でも、まず「削除せずに足す」方法を優先する
+- 新しい npm 依存は人間の承認なしに追加しない
+- 依存を足す前に「platform / stdlib → 既存依存 → 最小実装」の順で解けないか確認する
 
 ## Cloudflare D1 / Worker Safety Rules
 
