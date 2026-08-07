@@ -741,7 +741,7 @@ export function buildBigCarryoverSalesScenarios(
 export type BigProductCandidate = {
   carryoverYen: number | null;
   productType: BigCarryoverProductType;
-  /** 中止数ごとに変える想定最終売上（中止が判明した回は殺到するので大きく取る）。 */
+  /** シナリオごとの想定最終売上。締切前に中止が公表されうる回は殺到（第1476回は通常の約7倍）を織り込んで大きく、締切後中止パスは平常のまま。 */
   projectedFinalSalesYen: number | null;
 };
 
@@ -773,6 +773,7 @@ function trueEvInputForCandidate(
 /**
  * 指定した中止数のもとで、候補商品を1口真EVの降順に並べる。先頭が「その中止数で買うべき商品」。
  * 口単価が違う商品(100円BIG)も EV は倍率なので直接比較できる。
+ * 商品間の比較は同じ売上シナリオ同士（平常 vs 平常・殺到 vs 殺到）で行うこと。
  */
 export function rankBigProductsByTrueEv(
   candidates: BigProductCandidate[],
@@ -793,7 +794,11 @@ export function rankBigProductsByTrueEv(
         trueEvMultiple: result.trueEvMultiple,
       };
     })
-    .sort((a, b) => (b.trueEvMultiple ?? -Infinity) - (a.trueEvMultiple ?? -Infinity));
+    .sort((a, b) => {
+      const aEv = a.trueEvMultiple ?? Number.NEGATIVE_INFINITY;
+      const bEv = b.trueEvMultiple ?? Number.NEGATIVE_INFINITY;
+      return aEv === bEv ? 0 : bEv - aEv;
+    });
 }
 
 /**
@@ -825,50 +830,54 @@ export function bigProductCrossoverCancellations(input: {
   return null;
 }
 
-// ── 締切前に「中止がまだ出ていない」まま買う場合の損益分岐 ──────────────────
+// ── 中止未確定のまま買う場合の損益分岐 ─────────────────────────────────────
 // 券の価値は購入時点の M ではなく**最終的な M**で決まる（買った後に中止が決まっても効く）。
 // よって中止未確定のまま買う行為は P(中止) への賭けであり、EV は M の分布での混合になる。
-//   EV = (1 − p)·EV(M=0, 平常売上) + p·EV(M≥1, 殺到売上)
+//   EV = (1 − p)·EV(M=0, 平常売上) + p·EV(M≥1, 中止パスの売上)
 // これを 1 と置いて p を解いた値が「この回を買ってよい最低の中止確率」。
+// 中止パスの売上は**公表タイミング**で変わる（2026-08-07 第1644回で判明）:
+//   締切前に公表されうる回 → 群衆も観測して殺到（第1476回は通常の約7倍）＝希薄化したEV
+//   対象試合のKOが締切より後＝中止決定も締切後 → 誰も織り込めず売上は平常のまま＝希薄化なし
+// 観測できる窓（ゲートA）は必ず殺到も連れてくる。ゲートBは情報で劣るぶん価格（希薄化なし）で勝る。
 
 /**
  * 中止未確定のまま買うときに損益分岐する P(中止が起きる)。
- * 中止が判明すると売上が殺到する（第1476回は通常の約7倍）ため、
- * `calm`（中止なし・平常売上）と `surge`（中止あり・殺到売上）を別々に渡す。
+ * `withCancellation` の想定最終売上は中止の公表タイミングに合わせる:
+ * 締切前に公表されうる回は殺到売上、締切後に中止が決まる公算が大きい回は平常売上（希薄化なし）。
  * @returns 必要な中止確率(0〜1)。1超なら「どんな確率でも分岐しない」＝買ってはいけない商品。
  *   中止なしで既に+EVなら 0。分岐不能（中止しても改善しない）なら null。
  */
 export function breakevenCancellationProbability(input: {
-  calm: BigProductCandidate;
   cancelledMatches?: number;
   returnRate: number | null;
-  surge: BigProductCandidate;
+  withCancellation: BigProductCandidate;
+  withoutCancellation: BigProductCandidate;
 }): number | null {
-  const evCalm = calculateBigTrueEv({
-    ...trueEvInputForCandidate(input.calm, input.returnRate),
+  const evNoCancel = calculateBigTrueEv({
+    ...trueEvInputForCandidate(input.withoutCancellation, input.returnRate),
     cancelledMatches: 0,
   }).trueEvMultiple;
-  const evSurge = calculateBigTrueEv({
-    ...trueEvInputForCandidate(input.surge, input.returnRate),
+  const evCancel = calculateBigTrueEv({
+    ...trueEvInputForCandidate(input.withCancellation, input.returnRate),
     cancelledMatches: Math.max(1, Math.floor(input.cancelledMatches ?? 1)),
   }).trueEvMultiple;
 
-  if (evCalm === null || evSurge === null) {
+  if (evNoCancel === null || evCancel === null) {
     return null;
   }
-  if (evCalm >= 1) {
+  if (evNoCancel >= 1) {
     return 0;
   }
-  if (evSurge <= evCalm) {
+  if (evCancel <= evNoCancel) {
     return null;
   }
-  return (1 - evCalm) / (evSurge - evCalm);
+  return (1 - evNoCancel) / (evCancel - evNoCancel);
 }
 
 // ── 中止ゼロの回は、キャリーがいくら積もっても原理的に +EV にならない ───────────
 // 2026-08-07 に calculator.test.ts が反証して判明。1等払戻には「1口あたり」の上限が
 // 掛かる（BIG 6億 / MEGA BIG 12億 / 100円BIG 2億）ため、M=0 の1等EVは
-//   上限 ÷ 理論確率 ÷ 口単価
+//   上限 ÷ 組み合わせ数 ÷ 口単価   （= 上限 × 理論確率 ÷ 口単価）
 // で頭打ちになり、キャリー額に依存しない。BIG=0.418・MEGA=0.238・100円=0.418、
 // 下位等の床 r(1−α) を足しても 0.518 / 0.388 / 0.538 で、**どれも1を超えない**。
 // 帰結: このレーンのエッジは「キャリーの大きさ」ではなく **中止による確率ブースト**が

@@ -664,19 +664,36 @@ describe("BIG 商品選択（どれを買うか）", () => {
 
   it("中止未確定のまま買う場合の損益分岐中止確率を返す（BIGは約6割必要・100円BIGは分岐しない）", () => {
     const bigP = breakevenCancellationProbability({
-      calm: candidate("BIG", "calm"),
       returnRate: 0.5,
-      surge: candidate("BIG", "surge"),
+      withCancellation: candidate("BIG", "surge"),
+      withoutCancellation: candidate("BIG", "calm"),
     });
     expect(bigP).toBeGreaterThan(0.55);
     expect(bigP).toBeLessThan(0.65);
 
     const hyakuenP = breakevenCancellationProbability({
-      calm: candidate("100YEN_BIG", "calm"),
       returnRate: 0.5,
-      surge: candidate("100YEN_BIG", "surge"),
+      withCancellation: candidate("100YEN_BIG", "surge"),
+      withoutCancellation: candidate("100YEN_BIG", "calm"),
     });
     expect(hyakuenP).toBeGreaterThan(1);
+  });
+
+  it("締切後中止パス（ゲートB型）は殺到しないぶん損益分岐が下がる（1644のBIGで約61%→約58%）", () => {
+    // 露出試合のKOが締切より後の回は、中止が決まっても誰も織り込めない＝中止分岐も平常売上。
+    const beforeDeadlineAnnounce = breakevenCancellationProbability({
+      returnRate: 0.5,
+      withCancellation: candidate("BIG", "surge"),
+      withoutCancellation: candidate("BIG", "calm"),
+    })!;
+    const afterDeadlineCancel = breakevenCancellationProbability({
+      returnRate: 0.5,
+      withCancellation: candidate("BIG", "calm"),
+      withoutCancellation: candidate("BIG", "calm"),
+    })!;
+    expect(afterDeadlineCancel).toBeLessThan(beforeDeadlineAnnounce);
+    expect(afterDeadlineCancel).toBeGreaterThan(0.5);
+    expect(afterDeadlineCancel).toBeLessThan(0.6);
   });
 
   it("1等上限があるため、中止0試合の回はキャリーがいくら積もっても+EVにならない", () => {
