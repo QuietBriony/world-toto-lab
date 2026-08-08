@@ -29,6 +29,7 @@ The stack is usable, but the optimization layer is still early.
 | Prize tiers | Include 1st, 2nd, and 3rd expected return. Track second-prize coverage separately from first-prize hit probability. | Implemented |
 | Backtest loop | Re-score closed rounds using public favorite, past PDFs, and current logic. | Partial |
 | External signal scoring | Convert Polymarket gaps, strong-account clues, and postmortem notes into reason tags, factor weights, and confidence adjustments. | Next |
+| Takeout wall | Before claiming positive EV, check the edge ratio `p_model / p_public` against `1 / (r + C/S)` via `parimutuelEvBreakdown()`. At r=0.50 with no carryover the required ratio is 2.0. A market-vs-crowd gap is a discount reason, not a buy reason. See [takeout-wall.md](./takeout-wall.md). | Implemented |
 
 ## Backtest Contract
 
