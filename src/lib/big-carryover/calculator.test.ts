@@ -15,8 +15,14 @@ import {
   calculateBigCarryover,
   calculateBigTrueEv,
   classifyBigCarryoverAnticipation,
+  bigProductCrossoverCancellations,
+  breakevenCancellationProbability,
   minimumCancellationsForPositiveEv,
+  predictNextCarryoverYen,
+  rankBigProductsByTrueEv,
+  trueEvCeilingWithoutCancellations,
   salesCeilingForPositiveEv,
+  type BigProductCandidate,
 } from "@/lib/big-carryover/calculator";
 import { bigOfficialRuleProfiles } from "@/lib/big-carryover/rules";
 
@@ -509,18 +515,24 @@ describe("classifyBigCarryoverAnticipation（殺到＝織り込みの監視シ�
 });
 
 describe("実データバックテストによる規程パラメータの実証（2026-07-10・過去15回）", () => {
-  // 1等上限超過分は翌回キャリーへロールオーバーする。逆算式:
-  //   1等プール = 売上×還元率×1等配分 + 前回繰越、超過 = プール − 当せん口数×min(プール/口数, 上限)。
+  // 1等上限超過分は翌回キャリーへロールオーバーする。逆算は本番関数 predictNextCarryoverYen に
+  // 昇格済み（テスト内に式を再実装すると、本体の改訂とズレて検定にならないため）。
   const rolloverExcess = (
     salesYen: number,
     carryInYen: number,
     capYen: number,
     winners: number,
     firstPrizeShare: number,
-  ) => {
-    const pool = salesYen * 0.5 * firstPrizeShare + carryInYen;
-    return pool - winners * Math.min(pool / winners, capYen);
-  };
+  ) =>
+    predictNextCarryoverYen({
+      carryoverYen: carryInYen,
+      firstPrizeCapYen: capYen,
+      firstPrizeShare,
+      firstPrizeWinnerCount: winners,
+      productType: "custom",
+      returnRate: 0.5,
+      salesYen,
+    }).nextCarryoverYen;
 
   it("BIG 1等配分0.80は第1630/1633回の上限超過ロールオーバーと円単位で一致する", () => {
     const share = BIG_FIRST_PRIZE_ALLOCATION_SHARE.BIG!;
@@ -538,6 +550,44 @@ describe("実データバックテストによる規程パラメータの実証�
     expect(rolloverExcess(280_466_800, 830_439_682, 200_000_000, 3, share)).toBeCloseTo(337_017_060, -3);
     // 第1638回: 売上3.800億, 前回繰越788,386,072, 1等1口2億 → 翌回732,792,600
     expect(rolloverExcess(380_017_200, 788_386_072, 200_000_000, 1, share)).toBeCloseTo(732_792_600, -3);
+  });
+
+  it("1等0口の回は1等原資が全額そのまま翌回キャリーになる（超過分ではなくプール全額）", () => {
+    const p = predictNextCarryoverYen({
+      carryoverYen: 3_388_562_460,
+      firstPrizeCapYen: 600_000_000,
+      firstPrizeShare: 0.8,
+      firstPrizeWinnerCount: 0,
+      productType: "BIG",
+      returnRate: 0.5,
+      salesYen: 588_478_800,
+    });
+    expect(p.nextCarryoverYen).toBeCloseTo(588_478_800 * 0.5 * 0.8 + 3_388_562_460, -2);
+    expect(p.payoutPerWinnerYen).toBeNull();
+    expect(p.capBound).toBe(false);
+  });
+
+  it("材料が欠けたら黙って0を返さず null で返す（キャリー未確定の '-' を0扱いする事故の再発防止）", () => {
+    const noCarry = predictNextCarryoverYen({
+      carryoverYen: null,
+      firstPrizeCapYen: 600_000_000,
+      firstPrizeWinnerCount: 0,
+      productType: "BIG",
+      returnRate: 0.5,
+      salesYen: 588_478_800,
+    });
+    expect(noCarry.nextCarryoverYen).toBeNull();
+    expect(noCarry.warnings.length).toBeGreaterThan(0);
+
+    const noWinnerCount = predictNextCarryoverYen({
+      carryoverYen: 3_388_562_460,
+      firstPrizeCapYen: 600_000_000,
+      firstPrizeWinnerCount: null,
+      productType: "BIG",
+      returnRate: 0.5,
+      salesYen: 588_478_800,
+    });
+    expect(noWinnerCount.nextCarryoverYen).toBeNull();
   });
 
   it("第1476回は原資全額払出で アグリゲートEV = 還元率 + C/S（不変式を実測で確認）", () => {
@@ -582,5 +632,141 @@ describe("実データバックテストによる規程パラメータの実証�
       cancelledMatches: 4,
     });
     expect(highM.warnings.some((w) => w.includes("床"))).toBe(true);
+  });
+});
+
+// 第1644回(2026-08-08締切)の実測値。lot-info 2026-08-07 07:50 時点 / 楽天toto 1643 結果と一致。
+const ROUND_1644 = {
+  BIG: { carryoverYen: 4_602_871_860, calmFinalSalesYen: 1_200_000_000, surgeFinalSalesYen: 5_000_000_000 },
+  MEGA_BIG: { carryoverYen: 9_749_023_755, calmFinalSalesYen: 900_000_000, surgeFinalSalesYen: 4_000_000_000 },
+  "100YEN_BIG": { carryoverYen: 1_284_256_542, calmFinalSalesYen: 500_000_000, surgeFinalSalesYen: 2_500_000_000 },
+} as const;
+
+const candidate = (
+  productType: keyof typeof ROUND_1644,
+  scenario: "calm" | "surge",
+): BigProductCandidate => ({
+  carryoverYen: ROUND_1644[productType].carryoverYen,
+  productType,
+  projectedFinalSalesYen:
+    scenario === "calm"
+      ? ROUND_1644[productType].calmFinalSalesYen
+      : ROUND_1644[productType].surgeFinalSalesYen,
+});
+
+describe("BIG 商品選択（どれを買うか）", () => {
+  it("中止0〜1試合では BIG が MEGA BIG に勝つ（1等上限が大きい方が有利という直感は誤り）", () => {
+    for (const [m, scenario] of [[0, "calm"], [1, "surge"]] as const) {
+      const ranked = rankBigProductsByTrueEv(
+        [candidate("BIG", scenario), candidate("MEGA_BIG", scenario)],
+        { cancelledMatches: m, returnRate: 0.5 },
+      );
+      expect(ranked[0].productType).toBe("BIG");
+    }
+  });
+
+  it("cap 張り付き域では BIG の1等EVが MEGA BIG の約1.75倍になる（確率3.51倍差 vs 賞金2倍差）", () => {
+    const [big, mega] = ["BIG", "MEGA_BIG"].map(
+      (p) =>
+        rankBigProductsByTrueEv([candidate(p as "BIG" | "MEGA_BIG", "calm")], {
+          cancelledMatches: 0,
+          returnRate: 0.5,
+        })[0],
+    );
+    expect(big.estimatedFirstPrizePayoutYen).toBe(600_000_000);
+    expect(mega.estimatedFirstPrizePayoutYen).toBe(1_200_000_000);
+    expect((big.firstPrizeEvMultiple ?? 0) / (mega.firstPrizeEvMultiple ?? 1)).toBeCloseTo(1.754, 2);
+  });
+
+  it("中止2試合で MEGA BIG が逆転する（BIGは同時当選で払戻が崩れ、MEGAは上限近くを1口で取れる）", () => {
+    const crossover = bigProductCrossoverCancellations({
+      challenger: candidate("MEGA_BIG", "surge"),
+      incumbent: candidate("BIG", "surge"),
+      returnRate: 0.5,
+    });
+    expect(crossover).toBe(2);
+
+    const ranked = rankBigProductsByTrueEv(
+      [candidate("BIG", "surge"), candidate("MEGA_BIG", "surge")],
+      { cancelledMatches: 2, returnRate: 0.5 },
+    );
+    expect(ranked[0].productType).toBe("MEGA_BIG");
+  });
+
+  it("100円BIG は絶対天井が低く、中止が判明して殺到した時点で +EV にならない", () => {
+    const ceiling = absoluteSalesCeilingForPositiveEv({
+      carryoverYen: ROUND_1644["100YEN_BIG"].carryoverYen,
+      returnRate: 0.5,
+    });
+    expect(ceiling).toBeCloseTo(2_568_513_084, 0);
+
+    const ranked = rankBigProductsByTrueEv([candidate("100YEN_BIG", "surge")], {
+      cancelledMatches: 1,
+      returnRate: 0.5,
+    });
+    expect(ranked[0].trueEvMultiple).toBeLessThan(1);
+  });
+
+  it("中止未確定のまま買う場合の損益分岐中止確率を返す（BIGは約6割必要・100円BIGは分岐しない）", () => {
+    const bigP = breakevenCancellationProbability({
+      returnRate: 0.5,
+      withCancellation: candidate("BIG", "surge"),
+      withoutCancellation: candidate("BIG", "calm"),
+    });
+    expect(bigP).toBeGreaterThan(0.55);
+    expect(bigP).toBeLessThan(0.65);
+
+    const hyakuenP = breakevenCancellationProbability({
+      returnRate: 0.5,
+      withCancellation: candidate("100YEN_BIG", "surge"),
+      withoutCancellation: candidate("100YEN_BIG", "calm"),
+    });
+    expect(hyakuenP).toBeGreaterThan(1);
+  });
+
+  it("締切後中止パス（ゲートB型）は殺到しないぶん損益分岐が下がる（1644のBIGで約61%→約58%）", () => {
+    // 露出試合のKOが締切より後の回は、中止が決まっても誰も織り込めない＝中止分岐も平常売上。
+    const beforeDeadlineAnnounce = breakevenCancellationProbability({
+      returnRate: 0.5,
+      withCancellation: candidate("BIG", "surge"),
+      withoutCancellation: candidate("BIG", "calm"),
+    })!;
+    const afterDeadlineCancel = breakevenCancellationProbability({
+      returnRate: 0.5,
+      withCancellation: candidate("BIG", "calm"),
+      withoutCancellation: candidate("BIG", "calm"),
+    })!;
+    expect(afterDeadlineCancel).toBeLessThan(beforeDeadlineAnnounce);
+    expect(afterDeadlineCancel).toBeGreaterThan(0.5);
+    expect(afterDeadlineCancel).toBeLessThan(0.6);
+  });
+
+  it("1等上限があるため、中止0試合の回はキャリーがいくら積もっても+EVにならない", () => {
+    for (const productType of ["BIG", "MEGA_BIG", "100YEN_BIG"] as const) {
+      const ceiling = trueEvCeilingWithoutCancellations(productType, 0.5);
+      expect(ceiling).not.toBeNull();
+      expect(ceiling!).toBeLessThan(1);
+
+      // キャリーを900億まで積んでも M=0 の真EVは天井に張り付いたまま動かない。
+      const absurdCarryover = rankBigProductsByTrueEv(
+        [{ carryoverYen: 90_000_000_000, productType, projectedFinalSalesYen: 1_000_000_000 }],
+        { cancelledMatches: 0, returnRate: 0.5 },
+      )[0];
+      expect(absurdCarryover.trueEvMultiple).toBeCloseTo(ceiling!, 6);
+      expect(absurdCarryover.trueEvMultiple!).toBeLessThan(1);
+    }
+  });
+
+  it("エッジの源泉はキャリーではなく中止ブースト（同じキャリーでM=1にすると+EVへ跳ねる）", () => {
+    const noCancel = rankBigProductsByTrueEv([candidate("BIG", "calm")], {
+      cancelledMatches: 0,
+      returnRate: 0.5,
+    })[0];
+    const oneCancel = rankBigProductsByTrueEv([candidate("BIG", "surge")], {
+      cancelledMatches: 1,
+      returnRate: 0.5,
+    })[0];
+    expect(noCancel.trueEvMultiple!).toBeLessThan(1);
+    expect(oneCancel.trueEvMultiple!).toBeGreaterThan(1);
   });
 });

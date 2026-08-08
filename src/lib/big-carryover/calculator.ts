@@ -729,3 +729,268 @@ export function buildBigCarryoverSalesScenarios(
     }),
   }));
 }
+
+// ── 商品選択（BIG / MEGA BIG / 100円BIG のどれを買うか）─────────────────────
+// 2026-08-07 第1644回の検討で確立。直感「1等上限が大きいMEGAのほうが夢がある」は
+// **中止1試合までは誤り**。1等確率が 3.51倍(16,777,216/4,782,969) 悪いのに上限は
+// 2倍(12億/6億)にしかならないため、1口あたり1等EVは cap 張り付き域で BIG が 1.75倍良い。
+// 逆転するのは M>=2。中止1試合あたりの確率ブーストが BIG=3倍 / MEGA=4倍 で、
+// M=2 では BIG の1口払戻が同時当選で崩れる一方 MEGA はまだ上限近くを1口で取れる。
+// この交点は cap・odds・キャリー・想定売上で動くので、prose に書かず毎回ここで解く。
+
+export type BigProductCandidate = {
+  carryoverYen: number | null;
+  productType: BigCarryoverProductType;
+  /** シナリオごとの想定最終売上。締切前に中止が公表されうる回は殺到（第1476回は通常の約7倍）を織り込んで大きく、締切後中止パスは平常のまま。 */
+  projectedFinalSalesYen: number | null;
+};
+
+export type BigProductRanking = {
+  estimatedFirstPrizePayoutYen: number | null;
+  firstPrizeEvMultiple: number | null;
+  firstPrizeWinProbability: number | null;
+  productType: BigCarryoverProductType;
+  status: BigOpportunityStatus;
+  trueEvMultiple: number | null;
+};
+
+function trueEvInputForCandidate(
+  candidate: BigProductCandidate,
+  returnRate: number | null,
+): Omit<BigTrueEvInput, "cancelledMatches"> {
+  const defaults = bigCarryoverProductDefaults[candidate.productType];
+  return {
+    carryoverYen: candidate.carryoverYen,
+    firstPrizeCapYen: defaults.firstPrizeCapYen,
+    firstPrizeShare: BIG_FIRST_PRIZE_ALLOCATION_SHARE[candidate.productType],
+    productType: candidate.productType,
+    projectedFinalSalesYen: candidate.projectedFinalSalesYen,
+    returnRate,
+    ticketPriceYen: defaults.ticketPriceYen,
+  };
+}
+
+/**
+ * 指定した中止数のもとで、候補商品を1口真EVの降順に並べる。先頭が「その中止数で買うべき商品」。
+ * 口単価が違う商品(100円BIG)も EV は倍率なので直接比較できる。
+ * 商品間の比較は同じ売上シナリオ同士（平常 vs 平常・殺到 vs 殺到）で行うこと。
+ */
+export function rankBigProductsByTrueEv(
+  candidates: BigProductCandidate[],
+  options: { cancelledMatches: number; returnRate: number | null },
+): BigProductRanking[] {
+  return candidates
+    .map((candidate) => {
+      const result = calculateBigTrueEv({
+        ...trueEvInputForCandidate(candidate, options.returnRate),
+        cancelledMatches: options.cancelledMatches,
+      });
+      return {
+        estimatedFirstPrizePayoutYen: result.estimatedFirstPrizePayoutYen,
+        firstPrizeEvMultiple: result.firstPrizeEvMultiple,
+        firstPrizeWinProbability: result.firstPrizeWinProbability,
+        productType: candidate.productType,
+        status: result.status,
+        trueEvMultiple: result.trueEvMultiple,
+      };
+    })
+    .sort((a, b) => {
+      const aEv = a.trueEvMultiple ?? Number.NEGATIVE_INFINITY;
+      const bEv = b.trueEvMultiple ?? Number.NEGATIVE_INFINITY;
+      return aEv === bEv ? 0 : bEv - aEv;
+    });
+}
+
+/**
+ * 2商品の優劣が入れ替わる最小の中止数を返す。`challenger` が `incumbent` を初めて上回る M。
+ * @returns 交点の中止数。不成立閾値まで一度も逆転しなければ null（＝常に incumbent が優位）。
+ */
+export function bigProductCrossoverCancellations(input: {
+  challenger: BigProductCandidate;
+  incumbent: BigProductCandidate;
+  returnRate: number | null;
+}): number | null {
+  const threshold = Math.min(
+    bigVoidCancelThreshold(input.incumbent.productType) ?? BIG_VOID_CANCEL_THRESHOLD,
+    bigVoidCancelThreshold(input.challenger.productType) ?? BIG_VOID_CANCEL_THRESHOLD,
+  );
+
+  for (let m = 0; m < threshold; m += 1) {
+    const evOf = (candidate: BigProductCandidate) =>
+      calculateBigTrueEv({
+        ...trueEvInputForCandidate(candidate, input.returnRate),
+        cancelledMatches: m,
+      }).trueEvMultiple;
+    const challenger = evOf(input.challenger);
+    const incumbent = evOf(input.incumbent);
+    if (challenger !== null && incumbent !== null && challenger > incumbent) {
+      return m;
+    }
+  }
+  return null;
+}
+
+// ── 中止未確定のまま買う場合の損益分岐 ─────────────────────────────────────
+// 券の価値は購入時点の M ではなく**最終的な M**で決まる（買った後に中止が決まっても効く）。
+// よって中止未確定のまま買う行為は P(中止) への賭けであり、EV は M の分布での混合になる。
+//   EV = (1 − p)·EV(M=0, 平常売上) + p·EV(M≥1, 中止パスの売上)
+// これを 1 と置いて p を解いた値が「この回を買ってよい最低の中止確率」。
+// 中止パスの売上は**公表タイミング**で変わる（2026-08-07 第1644回で判明）:
+//   締切前に公表されうる回 → 群衆も観測して殺到（第1476回は通常の約7倍）＝希薄化したEV
+//   対象試合のKOが締切より後＝中止決定も締切後 → 誰も織り込めず売上は平常のまま＝希薄化なし
+// 観測できる窓（ゲートA）は必ず殺到も連れてくる。ゲートBは情報で劣るぶん価格（希薄化なし）で勝る。
+
+/**
+ * 中止未確定のまま買うときに損益分岐する P(中止が起きる)。
+ * `withCancellation` の想定最終売上は中止の公表タイミングに合わせる:
+ * 締切前に公表されうる回は殺到売上、締切後に中止が決まる公算が大きい回は平常売上（希薄化なし）。
+ * @returns 必要な中止確率(0〜1)。1超なら「どんな確率でも分岐しない」＝買ってはいけない商品。
+ *   中止なしで既に+EVなら 0。分岐不能（中止しても改善しない）なら null。
+ */
+export function breakevenCancellationProbability(input: {
+  cancelledMatches?: number;
+  returnRate: number | null;
+  withCancellation: BigProductCandidate;
+  withoutCancellation: BigProductCandidate;
+}): number | null {
+  const evNoCancel = calculateBigTrueEv({
+    ...trueEvInputForCandidate(input.withoutCancellation, input.returnRate),
+    cancelledMatches: 0,
+  }).trueEvMultiple;
+  const evCancel = calculateBigTrueEv({
+    ...trueEvInputForCandidate(input.withCancellation, input.returnRate),
+    cancelledMatches: Math.max(1, Math.floor(input.cancelledMatches ?? 1)),
+  }).trueEvMultiple;
+
+  if (evNoCancel === null || evCancel === null) {
+    return null;
+  }
+  if (evNoCancel >= 1) {
+    return 0;
+  }
+  if (evCancel <= evNoCancel) {
+    return null;
+  }
+  return (1 - evNoCancel) / (evCancel - evNoCancel);
+}
+
+// ── 中止ゼロの回は、キャリーがいくら積もっても原理的に +EV にならない ───────────
+// 2026-08-07 に calculator.test.ts が反証して判明。1等払戻には「1口あたり」の上限が
+// 掛かる（BIG 6億 / MEGA BIG 12億 / 100円BIG 2億）ため、M=0 の1等EVは
+//   上限 ÷ 組み合わせ数 ÷ 口単価   （= 上限 × 理論確率 ÷ 口単価）
+// で頭打ちになり、キャリー額に依存しない。BIG=0.418・MEGA=0.238・100円=0.418、
+// 下位等の床 r(1−α) を足しても 0.518 / 0.388 / 0.538 で、**どれも1を超えない**。
+// 帰結: このレーンのエッジは「キャリーの大きさ」ではなく **中止による確率ブースト**が
+// 100%の源泉。キャリーは中止が起きた時の payout を上限まで満たす燃料にすぎない。
+// 「キャリー◯◯億で過去最高」は買い判断の根拠にならない。
+
+/**
+ * 中止0試合のときに構造上到達しうる1口真EVの上限。キャリー額・売上に依存しない。
+ * @returns 真EVの天井(倍率)。商品構造か配分が不明なら null。
+ */
+export function trueEvCeilingWithoutCancellations(
+  productType: BigCarryoverProductType,
+  returnRate: number | null,
+): number | null {
+  const defaults = bigCarryoverProductDefaults[productType];
+  const share = BIG_FIRST_PRIZE_ALLOCATION_SHARE[productType];
+  const cap = asPositiveNumber(defaults.firstPrizeCapYen);
+  const odds = asPositiveNumber(defaults.firstPrizeOdds);
+  const price = asPositiveNumber(defaults.ticketPriceYen);
+  const rate = asFiniteNumber(returnRate);
+
+  if (cap === null || odds === null || price === null || rate === null || share === null) {
+    return null;
+  }
+  return cap / odds / price + rate * (1 - share);
+}
+
+// ── 単一回で唯一「円単位で反証できる」予測 ──────────────────────────────
+// 真EVは期待値なので1回の結果では検証できない（当たっても外れても矛盾しない）。
+// これに対し翌回キャリーは、確定売上 S・1等当せん口数 W・上限 cap から
+//   1等原資プール P = S·r·α + C
+//   1口払戻       = min(P / W, cap)     ← 上限は按分「後」に掛かる（公式算式どおり）
+//   翌回キャリー  = P − W × min(P / W, cap)
+// と一意に決まり、公式発表と1円でも違えば r か α か上限セマンティクスが誤りだと分かる。
+// α（MEGA 0.70 / BIG 0.80 / 100円 0.76）はこの式を第1627/1630/1633/1638回に当てて確定させた。
+// 以後の回も同じ式で事前予測 → 結果照合し、モデルが腐っていないかを毎回検定する。
+
+export type BigNextCarryoverPrediction = {
+  capBound: boolean;
+  firstPrizePoolYen: number | null;
+  nextCarryoverYen: number | null;
+  payoutPerWinnerYen: number | null;
+  warnings: string[];
+};
+
+/**
+ * 確定した1回の結果（売上・1等当せん口数）から翌回キャリーオーバー額を予測する。
+ * 公式発表と円単位で突き合わせるためのモデル検定用関数であり、EV判定には使わない。
+ *
+ * @param input.firstPrizeWinnerCount 1等の当せん口数。0 なら原資は全額が翌回へ繰り越される。
+ * @returns 予測値一式。材料が欠けていれば各値 null（黙って0を返さない）。
+ */
+export function predictNextCarryoverYen(input: {
+  carryoverYen: number | null;
+  firstPrizeCapYen: number | null;
+  firstPrizeShare?: number | null;
+  firstPrizeWinnerCount: number | null;
+  productType: BigCarryoverProductType;
+  returnRate: number | null;
+  salesYen: number | null;
+}): BigNextCarryoverPrediction {
+  const warnings: string[] = [];
+  const empty: BigNextCarryoverPrediction = {
+    capBound: false,
+    firstPrizePoolYen: null,
+    nextCarryoverYen: null,
+    payoutPerWinnerYen: null,
+    warnings,
+  };
+
+  const salesYen = asPositiveNumber(input.salesYen);
+  const carryoverYen = asFiniteNumber(input.carryoverYen);
+  const returnRate = asFiniteNumber(input.returnRate);
+  const capYen = asPositiveNumber(input.firstPrizeCapYen);
+  const share =
+    asFiniteNumber(input.firstPrizeShare) ?? BIG_FIRST_PRIZE_ALLOCATION_SHARE[input.productType];
+  const winners = asFiniteNumber(input.firstPrizeWinnerCount);
+
+  if (salesYen === null || carryoverYen === null || returnRate === null || share === null) {
+    warnings.push("売上・キャリー・還元率・1等配分のいずれかが不明で翌回キャリーを予測できません。");
+    return empty;
+  }
+  if (winners === null || winners < 0 || !Number.isInteger(winners)) {
+    warnings.push("1等当せん口数が未確定（負数・小数は不可）のため翌回キャリーを予測できません。");
+    return empty;
+  }
+
+  const firstPrizePoolYen = salesYen * returnRate * share + carryoverYen;
+
+  if (winners === 0) {
+    warnings.push("1等0口＝1等原資が全額そのまま翌回へ繰り越されます。");
+    return {
+      capBound: false,
+      firstPrizePoolYen,
+      nextCarryoverYen: firstPrizePoolYen,
+      payoutPerWinnerYen: null,
+      warnings,
+    };
+  }
+
+  if (capYen === null) {
+    warnings.push("1等上限が不明なため、上限による繰越（超過分ロールオーバー）を判定できません。");
+    return { ...empty, firstPrizePoolYen };
+  }
+
+  const rawPerWinner = firstPrizePoolYen / winners;
+  const payoutPerWinnerYen = Math.min(rawPerWinner, capYen);
+  const capBound = rawPerWinner > capYen;
+  const nextCarryoverYen = firstPrizePoolYen - winners * payoutPerWinnerYen;
+
+  if (!capBound) {
+    warnings.push("上限に届かず1等原資は全額払い出し＝翌回キャリーは0円になります。");
+  }
+
+  return { capBound, firstPrizePoolYen, nextCarryoverYen, payoutPerWinnerYen, warnings };
+}

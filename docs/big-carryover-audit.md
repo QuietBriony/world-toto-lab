@@ -2,6 +2,8 @@
 
 作成日: 2026-04-28
 
+運用戦略（どの回を・どの商品で・いつ買うか）は [big-carryover-playbook.md](./big-carryover-playbook.md) を参照。
+
 ## 対象
 
 - 画面: `src/app/big-carryover/page.tsx`
