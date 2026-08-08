@@ -18,6 +18,7 @@ import {
   bigProductCrossoverCancellations,
   breakevenCancellationProbability,
   minimumCancellationsForPositiveEv,
+  predictNextCarryoverYen,
   rankBigProductsByTrueEv,
   trueEvCeilingWithoutCancellations,
   salesCeilingForPositiveEv,
@@ -514,18 +515,24 @@ describe("classifyBigCarryoverAnticipation（殺到＝織り込みの監視シ�
 });
 
 describe("実データバックテストによる規程パラメータの実証（2026-07-10・過去15回）", () => {
-  // 1等上限超過分は翌回キャリーへロールオーバーする。逆算式:
-  //   1等プール = 売上×還元率×1等配分 + 前回繰越、超過 = プール − 当せん口数×min(プール/口数, 上限)。
+  // 1等上限超過分は翌回キャリーへロールオーバーする。逆算は本番関数 predictNextCarryoverYen に
+  // 昇格済み（テスト内に式を再実装すると、本体の改訂とズレて検定にならないため）。
   const rolloverExcess = (
     salesYen: number,
     carryInYen: number,
     capYen: number,
     winners: number,
     firstPrizeShare: number,
-  ) => {
-    const pool = salesYen * 0.5 * firstPrizeShare + carryInYen;
-    return pool - winners * Math.min(pool / winners, capYen);
-  };
+  ) =>
+    predictNextCarryoverYen({
+      carryoverYen: carryInYen,
+      firstPrizeCapYen: capYen,
+      firstPrizeShare,
+      firstPrizeWinnerCount: winners,
+      productType: "custom",
+      returnRate: 0.5,
+      salesYen,
+    }).nextCarryoverYen;
 
   it("BIG 1等配分0.80は第1630/1633回の上限超過ロールオーバーと円単位で一致する", () => {
     const share = BIG_FIRST_PRIZE_ALLOCATION_SHARE.BIG!;
@@ -543,6 +550,44 @@ describe("実データバックテストによる規程パラメータの実証�
     expect(rolloverExcess(280_466_800, 830_439_682, 200_000_000, 3, share)).toBeCloseTo(337_017_060, -3);
     // 第1638回: 売上3.800億, 前回繰越788,386,072, 1等1口2億 → 翌回732,792,600
     expect(rolloverExcess(380_017_200, 788_386_072, 200_000_000, 1, share)).toBeCloseTo(732_792_600, -3);
+  });
+
+  it("1等0口の回は1等原資が全額そのまま翌回キャリーになる（超過分ではなくプール全額）", () => {
+    const p = predictNextCarryoverYen({
+      carryoverYen: 3_388_562_460,
+      firstPrizeCapYen: 600_000_000,
+      firstPrizeShare: 0.8,
+      firstPrizeWinnerCount: 0,
+      productType: "BIG",
+      returnRate: 0.5,
+      salesYen: 588_478_800,
+    });
+    expect(p.nextCarryoverYen).toBeCloseTo(588_478_800 * 0.5 * 0.8 + 3_388_562_460, -2);
+    expect(p.payoutPerWinnerYen).toBeNull();
+    expect(p.capBound).toBe(false);
+  });
+
+  it("材料が欠けたら黙って0を返さず null で返す（キャリー未確定の '-' を0扱いする事故の再発防止）", () => {
+    const noCarry = predictNextCarryoverYen({
+      carryoverYen: null,
+      firstPrizeCapYen: 600_000_000,
+      firstPrizeWinnerCount: 0,
+      productType: "BIG",
+      returnRate: 0.5,
+      salesYen: 588_478_800,
+    });
+    expect(noCarry.nextCarryoverYen).toBeNull();
+    expect(noCarry.warnings.length).toBeGreaterThan(0);
+
+    const noWinnerCount = predictNextCarryoverYen({
+      carryoverYen: 3_388_562_460,
+      firstPrizeCapYen: 600_000_000,
+      firstPrizeWinnerCount: null,
+      productType: "BIG",
+      returnRate: 0.5,
+      salesYen: 588_478_800,
+    });
+    expect(noWinnerCount.nextCarryoverYen).toBeNull();
   });
 
   it("第1476回は原資全額払出で アグリゲートEV = 還元率 + C/S（不変式を実測で確認）", () => {

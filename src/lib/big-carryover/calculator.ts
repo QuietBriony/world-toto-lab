@@ -904,3 +904,93 @@ export function trueEvCeilingWithoutCancellations(
   }
   return cap / odds / price + rate * (1 - share);
 }
+
+// ── 単一回で唯一「円単位で反証できる」予測 ──────────────────────────────
+// 真EVは期待値なので1回の結果では検証できない（当たっても外れても矛盾しない）。
+// これに対し翌回キャリーは、確定売上 S・1等当せん口数 W・上限 cap から
+//   1等原資プール P = S·r·α + C
+//   1口払戻       = min(P / W, cap)     ← 上限は按分「後」に掛かる（公式算式どおり）
+//   翌回キャリー  = P − W × min(P / W, cap)
+// と一意に決まり、公式発表と1円でも違えば r か α か上限セマンティクスが誤りだと分かる。
+// α（MEGA 0.70 / BIG 0.80 / 100円 0.76）はこの式を第1627/1630/1633/1638回に当てて確定させた。
+// 以後の回も同じ式で事前予測 → 結果照合し、モデルが腐っていないかを毎回検定する。
+
+export type BigNextCarryoverPrediction = {
+  capBound: boolean;
+  firstPrizePoolYen: number | null;
+  nextCarryoverYen: number | null;
+  payoutPerWinnerYen: number | null;
+  warnings: string[];
+};
+
+/**
+ * 確定した1回の結果（売上・1等当せん口数）から翌回キャリーオーバー額を予測する。
+ * 公式発表と円単位で突き合わせるためのモデル検定用関数であり、EV判定には使わない。
+ *
+ * @param input.firstPrizeWinnerCount 1等の当せん口数。0 なら原資は全額が翌回へ繰り越される。
+ * @returns 予測値一式。材料が欠けていれば各値 null（黙って0を返さない）。
+ */
+export function predictNextCarryoverYen(input: {
+  carryoverYen: number | null;
+  firstPrizeCapYen: number | null;
+  firstPrizeShare?: number | null;
+  firstPrizeWinnerCount: number | null;
+  productType: BigCarryoverProductType;
+  returnRate: number | null;
+  salesYen: number | null;
+}): BigNextCarryoverPrediction {
+  const warnings: string[] = [];
+  const empty: BigNextCarryoverPrediction = {
+    capBound: false,
+    firstPrizePoolYen: null,
+    nextCarryoverYen: null,
+    payoutPerWinnerYen: null,
+    warnings,
+  };
+
+  const salesYen = asPositiveNumber(input.salesYen);
+  const carryoverYen = asFiniteNumber(input.carryoverYen);
+  const returnRate = asFiniteNumber(input.returnRate);
+  const capYen = asPositiveNumber(input.firstPrizeCapYen);
+  const share =
+    asFiniteNumber(input.firstPrizeShare) ?? BIG_FIRST_PRIZE_ALLOCATION_SHARE[input.productType];
+  const winners = asFiniteNumber(input.firstPrizeWinnerCount);
+
+  if (salesYen === null || carryoverYen === null || returnRate === null || share === null) {
+    warnings.push("売上・キャリー・還元率・1等配分のいずれかが不明で翌回キャリーを予測できません。");
+    return empty;
+  }
+  if (winners === null || winners < 0 || !Number.isInteger(winners)) {
+    warnings.push("1等当せん口数が未確定（負数・小数は不可）のため翌回キャリーを予測できません。");
+    return empty;
+  }
+
+  const firstPrizePoolYen = salesYen * returnRate * share + carryoverYen;
+
+  if (winners === 0) {
+    warnings.push("1等0口＝1等原資が全額そのまま翌回へ繰り越されます。");
+    return {
+      capBound: false,
+      firstPrizePoolYen,
+      nextCarryoverYen: firstPrizePoolYen,
+      payoutPerWinnerYen: null,
+      warnings,
+    };
+  }
+
+  if (capYen === null) {
+    warnings.push("1等上限が不明なため、上限による繰越（超過分ロールオーバー）を判定できません。");
+    return { ...empty, firstPrizePoolYen };
+  }
+
+  const rawPerWinner = firstPrizePoolYen / winners;
+  const payoutPerWinnerYen = Math.min(rawPerWinner, capYen);
+  const capBound = rawPerWinner > capYen;
+  const nextCarryoverYen = firstPrizePoolYen - winners * payoutPerWinnerYen;
+
+  if (!capBound) {
+    warnings.push("上限に届かず1等原資は全額払い出し＝翌回キャリーは0円になります。");
+  }
+
+  return { capBound, firstPrizePoolYen, nextCarryoverYen, payoutPerWinnerYen, warnings };
+}
