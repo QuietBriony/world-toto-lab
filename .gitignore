@@ -53,4 +53,7 @@ workers/api/.dev.vars
 next-env.d.ts
 
 # local session / launch config (Claude Code, preview launch)
-.claude/
+# .claude はマシンローカル設定(settings.local.json 等)なので既定は無視。
+# ただし skills/ はプロジェクトスキル(監視ルーティンの手順書)なので repo で管理する。
+.claude/*
+!.claude/skills/
