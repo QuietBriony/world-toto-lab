@@ -18,7 +18,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 ROOT = Path(__file__).resolve().parents[1]
-PDF_NAME = "toto-1644-2000yen-sheet-20260808-v2-mobile.pdf"
+PDF_NAME = "toto-1644-2000yen-sheet-20260808-v3-mobile.pdf"
 PUBLIC_DIR = ROOT / "public" / "reports"
 
 # (No, 短縮カード名, KO)
@@ -71,6 +71,11 @@ def line(overrides: dict[int, int]) -> list[int]:
     return result
 
 
+def slot(outcome: int) -> str:
+    """選択肢ボタンの並び [1 0 2] に合わせ、押す位置だけ実字・他は · で示す。"""
+    return {1: "1 · ·", 0: "· 0 ·", 2: "· · 2"}[outcome]
+
+
 def sheet_table(start: int, end: int) -> Table:
     """口 start..end (1始まり・両端含む) のマークシート型テーブル。"""
     lines = [line(OVERRIDES[i - 1]) for i in range(start, end + 1)]
@@ -79,7 +84,7 @@ def sheet_table(start: int, end: int) -> Table:
     header = ["No", "カード", "KO"] + [f"口{i}" for i in range(start, end + 1)]
     rows: list[list[str]] = [header]
     for m_idx, (no, card, ko) in enumerate(MATCHES):
-        rows.append([no, card, ko] + [str(marks[m_idx]) for marks in lines])
+        rows.append([no, card, ko] + [slot(marks[m_idx]) for marks in lines])
     rows.append(["", "入力したら✓", ""] + ["□"] * n)
 
     t = Table(rows, colWidths=[7 * mm, 27 * mm, 16 * mm] + [12.8 * mm] * n, repeatRows=1)
@@ -87,7 +92,7 @@ def sheet_table(start: int, end: int) -> Table:
         ("FONTNAME", (0, 0), (-1, -1), "YuGothic"),
         ("FONTNAME", (0, 0), (-1, 0), "YuGothic-Bold"),
         ("FONTSIZE", (0, 0), (-1, -1), 8),
-        ("FONTSIZE", (3, 1), (-1, -2), 11.5),  # マーク数字は大きく
+        ("FONTSIZE", (3, 1), (-1, -2), 9.5),  # [1 0 2] 3スロット表示
         ("FONTSIZE", (0, -1), (-1, -1), 10),
         ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#999999")),
         ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#e8eef4")),
@@ -136,9 +141,11 @@ def build() -> Path:
     story.append(Paragraph("toto 第1644回　2,000円（20口）購入シート — スマホ入力用", title))
     story.append(Paragraph("締切: 本日 8/8（土） ネット <b>14:35</b>（コンビニ 12:45）", big))
     story.append(Paragraph(
-        "使い方: 購入画面で「シングル」を選び、<b>1列（＝1口）ずつ</b>上から下へ 13 試合をマーク → "
-        "その口をカートに入れたら列の下の ✓ を塗る → 次の列へ。"
-        "オレンジのマスだけが「口1（本命線）」と違う箇所。1=ホーム勝ち／0=その他（引分等）／2=ホーム負け。", body))
+        "使い方: 購入画面で「シングル」を選び、<b>1列（＝1口）ずつ</b>上から下へ試合順に選択 → "
+        "その口をカートに入れたら列の下の □ をチェック → 次の列へ。"
+        "各マスは選択肢の並び <b>［1・0・2］</b> に対応し、<b>数字が出ている位置のボタンを押す</b>"
+        "（左=1 ホーム勝ち／中=0 その他・引分等／右=2 ホーム負け）。"
+        "オレンジのマスだけが「口1（本命線）」と違う箇所。", body))
     story.append(Spacer(1, 5))
 
     story.append(Paragraph("口1〜10（口1=群衆本命線・口2〜口10は引き分け差し込み）", body))
