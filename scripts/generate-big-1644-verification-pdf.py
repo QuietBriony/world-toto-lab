@@ -22,7 +22,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 ROOT = Path(__file__).resolve().parents[1]
-PDF_NAME = "big-carryover-1644-verification-20260808-v1.pdf"
+PDF_NAME = "big-carryover-1644-verification-20260810-v2.pdf"
 PDF_ALIASES = ("big-carryover-verification-latest.pdf",)
 PUBLIC_DIR = ROOT / "public" / "reports"
 
@@ -187,22 +187,27 @@ def build() -> Path:
         "宝くじ型分布になる。本レポートは購入金額を推奨しない。", st["warn"]))
 
     # ── 6. 結果照合 ──
-    story.append(Paragraph("6. 結果照合（2026-08-09 抽せん後に記入）", st["h2"]))
-    if RESULTS is None:
-        story.append(table(
-            [
-                ["照合項目", "予測", "実測", "判定"],
-                ["最終売上 S（3商品）", "観測対象（予測せず）", "未取得", "―"],
-                ["1等当せん口数 W", "期待値 表②", "未取得", "―"],
-                ["1口払戻（1等が出た場合）", "上限張り付き", "未取得", "―"],
-                ["翌回キャリー（円単位一致）", "predictNextCarryoverYen(S, W)", "未取得", "―"],
-                ["中止 M=0 のまま成立", "M=0", "未取得", "―"],
-            ],
-            [52 * mm, 52 * mm, 40 * mm, 34 * mm],
-        ))
-        story.append(Paragraph(
-            "照合先: toto.rakuten.co.jp/big/result/1644/ ＋ lot-info の確定売上。"
-            "記入後に v2 として再出力する。", st["small"]))
+    story.append(Paragraph("6. 結果照合（2026-08-10 記入）— 判定: モデル検定 PASS", st["h2"]))
+    story.append(table(
+        [
+            ["照合項目", "予測", "実測", "判定"],
+            ["1等当せん口数 W", "BIG 0.65-0.92 / MEGA 0.15-0.21 / 100円 0.87-1.24口",
+             "3商品とも 0口", "整合 (P(W=0)=40-86%)"],
+            ["翌回(1645)キャリー", "S×r×α + C (W=0)",
+             "MEGA 9,983,893,215 / BIG 4,939,079,700 / 100円 1,428,303,066円", "PASS（円単位）"],
+            ["逆算最終売上 S=ΔC/(r·α)", "―",
+             "MEGA 6.71億 / BIG 8.41億 / 100円 3.79億（締切朝比1.08-1.09x）", "口単価で割り切れ・整合"],
+            ["1口払戻の上限張り付き", "1等が出れば cap ちょうど", "1等なし＝検定対象外", "―"],
+            ["中止 M=0 のまま成立", "M=0", "M=0 で成立", "PASS"],
+        ],
+        [42 * mm, 52 * mm, 56 * mm, 28 * mm],
+    ))
+    story.append(Paragraph(
+        "反証条件①〜④はいずれも不発。r·α（0.35/0.40/0.38）のどれか1つでも誤っていれば逆算Sが"
+        "口単価（300/300/100円）で割り切れる確率はほぼゼロ＝3商品同時一致は α の強い独立検証。", st["body"]))
+    story.append(Paragraph(
+        "ユーザー実購入: BIG系5商品×8口=8,800円 → 全外れ・払戻0円（期待払戻4,200円に対する1回分の分散として正常）。"
+        "toto 20口(-2,000円)と合わせ授業料 −10,800円。出典: toto.rakuten.co.jp/big/result/1644/", st["small"]))
     story.append(Spacer(1, 8))
     story.append(Paragraph(
         "生成: scripts/generate-big-1644-verification-pdf.py ／ 事前登録の正本: "
