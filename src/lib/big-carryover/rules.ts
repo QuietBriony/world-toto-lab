@@ -110,8 +110,30 @@ const backtestSource: BigRuleSource = {
   url: "https://store.toto-dream.com/dcs/subos/screen/pi05/spin014/PGSPIN01401LnkHoldCntLotResultLstBIG.form?holdCntId=1476",
 };
 
+// 当せん金の端数処理。法令の一次ソース（法改正のお知らせ）と、300円商品が30円単位になる実測。
+const payoutTruncationSource: BigRuleSource = {
+  checkedOn: "2026-08-17",
+  label: "toto公式『法律改正に伴う当せん金算出ルール等の変更のお知らせ』（2020-12-15）",
+  note:
+    "スポーツ振興投票の実施等に関する法律 第15条（端数処理）の改正。第1214回（2020-12-19 販売開始）から" +
+    "「一円未満の端数を切り捨てる」→「十円未満の端数を切り捨てる」。あわせて MEGA BIG のキャリーオーバー" +
+    "なし時の1等最高当せん金額が『7億2円』→『7億20円』へ変更（＝7億円ちょうどではない）。",
+  url: "https://www.toto-dream.com/information/20201215.html",
+};
+
+const payoutTruncationBacktestSource: BigRuleSource = {
+  checkedOn: "2026-08-17",
+  label: "公式回別結果ページ 端数処理バックテスト（第1644/1645回・全等級25件）",
+  note:
+    "実際の切り捨て単位は **口単価÷10**（BIG/MEGA BIG=30円・100円BIG=10円）。法文の『十円』は100円口あたりの" +
+    "単位で、300円の1口には3倍で効くと読むのが観測と整合する（10円単位を300円商品に当てると BIG 5等・6等等で外れる）。" +
+    "2〜6等の公表当せん金25件すべてが floor(売上×還元率×等級配分÷当せん口数 ÷ 単位)×単位 と1円単位で一致。" +
+    "第1645回（MEGA BIG 1口・100円BIG 2口が cap 張り付き）で、この切り捨てを入れないと翌回キャリーが +15円 / +2円 ずれる。",
+  url: "https://store.toto-dream.com/dcs/subos/screen/pi05/spin014/PGSPIN01401LnkHoldCntLotResultLstBIG.form?holdCntId=1645",
+};
+
 const commonUnresolvedRules = [
-  "2等以下の当せん金上限と端数処理を公式ルールで確認する（1等の1口上限は確定済み）",
+  "2等以下の当せん金上限を公式ルールで確認する（端数処理は解決済み＝口単価÷10 円単位で切り捨て）",
   "各等級の繰越対象フラグを公式ルールで確認する",
   // 「1等上限超過分の行き先」は実データで解決（翌回キャリーへロールオーバー・backtestSource 参照）。
   "不成立・中止が下位等級の判定と繰越に与える影響を確認する（最低成立試合数そのものは確定済み）",
@@ -142,10 +164,14 @@ export const bigOfficialRuleProfiles: Record<
       carryoverFormulaSource,
       voidThresholdSource,
       backtestSource,
+      payoutTruncationSource,
+      payoutTruncationBacktestSource,
     ],
     ticketPriceYen: 300,
     // 1等配分 0.80 は実データで確定（第1630/1633回の cap 超過ロールオーバーが円単位一致・公式算式「売上の40%」= r0.5×α0.80 と整合）。
-    // 旧値0.76は下位floorを過大評価する反保守だった。下位等の内訳は実現回(第1638回)からの近似で合計0.20（=下位還元 r(1−α)=0.099 と整合）。
+    // 旧値0.76は下位floorを過大評価する反保守だった。
+    // 下位等の内訳（0.07/0.02/0.03/0.03/0.05）も 2026-08-17 に実測確定: 端数切り捨て(30円単位)を入れると
+    // 第1644/1645回の2〜6等 公表当せん金10件が1円単位で再現される（calculator.test.ts で固定）。
     tiers: [
       tier({ allocationShare: 0.8, capYen: 600_000_000, missedCount: 0, odds: 4_782_969, tierName: "1等" }),
       tier({ allocationShare: 0.07, missedCount: 1, odds: 170_820, tierName: "2等" }),
@@ -158,11 +184,13 @@ export const bigOfficialRuleProfiles: Record<
       ...commonUnresolvedRules,
       // 1等原資率は実データで「売上の40%」= 還元率0.5×1等配分0.80 と確定（旧38%説は棄却）。
       // 残るのは下位等の内訳（合計0.20は確定、各等級の正確な配分は実現回1回ぶんの近似）。
-      "BIG下位等（2〜6等）の各配分割合を公式一次ソースで確認する（合計0.20と1等0.80は実測確定）",
+      "BIG下位等（2〜6等）の各配分割合を公式一次ソースで確認する（実測では2回分の全当せん金を1円単位で再現済み・残るのは一次ソース照合のみ）",
     ],
   },
   MEGA_BIG: {
-    capWithoutCarryoverYen: null,
+    // 7億20円。2020年の端数処理改正（1円未満→10円未満切り捨て）に伴い『7億2円』→『7億20円』へ
+    // 改定されたもの（payoutTruncationSource）。「7億2,000万円」説は桁の読み違いで誤り。
+    capWithoutCarryoverYen: 700_000_020,
     exactCombinationCount: 16_777_216,
     firstPrizeCapYen: 1_200_000_000,
     firstPrizeOdds: 16_777_216,
@@ -193,6 +221,8 @@ export const bigOfficialRuleProfiles: Record<
         url: "https://toto.rakuten.co.jp/big/mega/",
       },
       backtestSource,
+      payoutTruncationSource,
+      payoutTruncationBacktestSource,
     ],
     ticketPriceYen: 300,
     tiers: [
@@ -205,9 +235,8 @@ export const bigOfficialRuleProfiles: Record<
     ],
     unresolvedRules: [
       ...commonUnresolvedRules,
-      // 楽天toto は「1等最高7億円」、Yahoo! toto は「7億20円」と表記が割れる（後者は表記崩れの疑い）。
-      // キャリー回しか売買判断に使わないため真EVには影響しないが、確定するまで null のままにする。
-      "MEGA BIGの通常時(キャリーなし)1等上限を確認する（7億円か7億2,000万円かでソースが割れている）",
+      // 解決済み: 通常時(キャリーなし)1等上限は 7億20円。Yahoo! toto の「7億20円」が表記崩れではなく
+      // 正しく、楽天totoの「7億円」が丸め表記だった（toto公式の法改正お知らせで確定・payoutTruncationSource）。
       "MEGA BIGの配分70%・還元率50%を toto公式ドメインの一次ソースで再確認する（現状はパートナー2社が一致）",
     ],
   },
@@ -231,6 +260,8 @@ export const bigOfficialRuleProfiles: Record<
       carryoverFormulaSource,
       voidThresholdSource,
       backtestSource,
+      payoutTruncationSource,
+      payoutTruncationBacktestSource,
     ],
     ticketPriceYen: 100,
     tiers: [
