@@ -909,17 +909,53 @@ export function trueEvCeilingWithoutCancellations(
 // 真EVは期待値なので1回の結果では検証できない（当たっても外れても矛盾しない）。
 // これに対し翌回キャリーは、確定売上 S・1等当せん口数 W・上限 cap から
 //   1等原資プール P = S·r·α + C
-//   1口払戻       = min(P / W, cap)     ← 上限は按分「後」に掛かる（公式算式どおり）
-//   翌回キャリー  = P − W × min(P / W, cap)
+//   1口払戻       = min( floor_unit(P / W), cap )   ← 上限は按分「後」に掛かる（公式算式どおり）
+//   翌回キャリー  = W × ( floor_unit(P / W) − 1口払戻 )
 // と一意に決まり、公式発表と1円でも違えば r か α か上限セマンティクスが誤りだと分かる。
 // α（MEGA 0.70 / BIG 0.80 / 100円 0.76）はこの式を第1627/1630/1633/1638回に当てて確定させた。
 // 以後の回も同じ式で事前予測 → 結果照合し、モデルが腐っていないかを毎回検定する。
+//
+// ★端数処理（2026-08-17 確定・第1645回の cap-bound ロールオーバーで発覚）:
+// 1口払戻は unit（口単価÷10 = 30/30/10円）へ**切り捨て**られ、切り捨てられた端数 ×W は
+// 払い出されも繰り越されもせず消える。よって cap 張り付き回では
+//   翌回キャリー = P − W×cap ではなく W×(floor_unit(P/W) − cap)   （最大 W×(unit−1) 円だけ小さい）
+// W=0 の回は按分そのものが発生しないため切り捨ても起きず、P が丸ごと繰り越される
+// （第1644回の3商品・第1645回BIG のキャリーが unit の倍数になっていないことが実測の裏付け）。
+// この補正前は 第1627/1632/1633/1638回(100円BIG)で 4〜8円、第1645回(MEGA)で15円ずれていた。
+
+// ── 端数処理: 当せん金は「口単価 ÷ 10」単位に切り捨てられる ─────────────────
+// 根拠(法令): スポーツ振興投票の実施等に関する法律 第15条。第1214回(2020-12-19 販売開始)から
+// 「一円未満の端数を切り捨てる」→「**十円未満**の端数を切り捨てる」へ改正。
+//   https://www.toto-dream.com/information/20201215.html
+// 実測(2026-08-17): 100円商品は10円単位で法文どおりだが、**300円商品は30円単位**に切り捨てられる。
+// 法文の10円は100円口あたりの単位で、1口(300円)へは3倍で効くと読むのが観測と整合する。
+// 第1644/1645回の全等級 25件（BIG/MEGA BIG/100円BIG × 2〜6等）の公表当せん金が
+//   floor( 売上 × 還元率 × 等級配分 ÷ 当せん口数 ÷ unit ) × unit
+// と1円単位で一致（unit=30/30/10）。10円単位を300円商品に当てると BIG 5等・6等などで外れる。
+export const BIG_PAYOUT_TRUNCATION_DIVISOR = 10;
+
+/** 当せん金の切り捨て単位（円）。BIG/MEGA BIG=30、100円BIG=10。口単価不明なら null。 */
+export function bigPayoutTruncationUnitYen(ticketPriceYen: number | null | undefined): number | null {
+  const price = asPositiveNumber(ticketPriceYen);
+  return price === null ? null : price / BIG_PAYOUT_TRUNCATION_DIVISOR;
+}
+
+/** 当せん金を切り捨て単位へ丸める。単位不明ならそのまま返す（黙って0にしない）。 */
+export function truncateBigPayoutYen(
+  amountYen: number,
+  ticketPriceYen: number | null | undefined,
+): number {
+  const unit = bigPayoutTruncationUnitYen(ticketPriceYen);
+  return unit === null ? amountYen : Math.floor(amountYen / unit) * unit;
+}
 
 export type BigNextCarryoverPrediction = {
   capBound: boolean;
   firstPrizePoolYen: number | null;
   nextCarryoverYen: number | null;
   payoutPerWinnerYen: number | null;
+  /** 端数切り捨てで払い出されずに消えた額（円）。切り捨て単位が不明なら null。 */
+  truncatedRemainderYen: number | null;
   warnings: string[];
 };
 
@@ -928,6 +964,8 @@ export type BigNextCarryoverPrediction = {
  * 公式発表と円単位で突き合わせるためのモデル検定用関数であり、EV判定には使わない。
  *
  * @param input.firstPrizeWinnerCount 1等の当せん口数。0 なら原資は全額が翌回へ繰り越される。
+ * @param input.ticketPriceYen 端数切り捨て単位（÷10）の導出に使う口単価。未指定なら商品既定値。
+ *   custom は既定値が事実ではないため、未指定なら切り捨てを行わず警告する。
  * @returns 予測値一式。材料が欠けていれば各値 null（黙って0を返さない）。
  */
 export function predictNextCarryoverYen(input: {
@@ -938,6 +976,7 @@ export function predictNextCarryoverYen(input: {
   productType: BigCarryoverProductType;
   returnRate: number | null;
   salesYen: number | null;
+  ticketPriceYen?: number | null;
 }): BigNextCarryoverPrediction {
   const warnings: string[] = [];
   const empty: BigNextCarryoverPrediction = {
@@ -945,6 +984,7 @@ export function predictNextCarryoverYen(input: {
     firstPrizePoolYen: null,
     nextCarryoverYen: null,
     payoutPerWinnerYen: null,
+    truncatedRemainderYen: null,
     warnings,
   };
 
@@ -955,6 +995,10 @@ export function predictNextCarryoverYen(input: {
   const share =
     asFiniteNumber(input.firstPrizeShare) ?? BIG_FIRST_PRIZE_ALLOCATION_SHARE[input.productType];
   const winners = asFiniteNumber(input.firstPrizeWinnerCount);
+  // custom の既定口単価(300円)は「不明時の入力補助」であって事実ではないため、切り捨て単位には使わない。
+  const ticketPriceYen =
+    asPositiveNumber(input.ticketPriceYen) ??
+    (input.productType === "custom" ? null : bigCarryoverProductDefaults[input.productType].ticketPriceYen);
 
   if (salesYen === null || carryoverYen === null || returnRate === null || share === null) {
     warnings.push("売上・キャリー・還元率・1等配分のいずれかが不明で翌回キャリーを予測できません。");
@@ -965,15 +1009,19 @@ export function predictNextCarryoverYen(input: {
     return empty;
   }
 
-  const firstPrizePoolYen = salesYen * returnRate * share + carryoverYen;
+  // 原資は必ず円単位の整数（売上は口単価の倍数・配分は有限小数）。浮動小数の残差が
+  // 後段の切り捨てで1単位ぶんの誤差に化けるのを防ぐため、ここで円へ丸める。
+  const firstPrizePoolYen = Math.round(salesYen * returnRate * share + carryoverYen);
 
   if (winners === 0) {
+    // 按分が発生しない＝端数切り捨ても起きない。原資がそのまま（単位の倍数とは限らない額で）繰り越される。
     warnings.push("1等0口＝1等原資が全額そのまま翌回へ繰り越されます。");
     return {
       capBound: false,
       firstPrizePoolYen,
       nextCarryoverYen: firstPrizePoolYen,
       payoutPerWinnerYen: null,
+      truncatedRemainderYen: 0,
       warnings,
     };
   }
@@ -983,14 +1031,31 @@ export function predictNextCarryoverYen(input: {
     return { ...empty, firstPrizePoolYen };
   }
 
+  const truncationUnitYen = bigPayoutTruncationUnitYen(ticketPriceYen);
   const rawPerWinner = firstPrizePoolYen / winners;
-  const payoutPerWinnerYen = Math.min(rawPerWinner, capYen);
-  const capBound = rawPerWinner > capYen;
-  const nextCarryoverYen = firstPrizePoolYen - winners * payoutPerWinnerYen;
+  const truncatedPerWinner = truncateBigPayoutYen(rawPerWinner, ticketPriceYen);
+  const payoutPerWinnerYen = Math.min(truncatedPerWinner, capYen);
+  const capBound = truncatedPerWinner > capYen;
+  // 端数は払い出されず翌回へも繰り越されない（消える）。繰越は「切り捨て後」の残余のみ。
+  const nextCarryoverYen = winners * (truncatedPerWinner - payoutPerWinnerYen);
+  const truncatedRemainderYen =
+    truncationUnitYen === null ? null : firstPrizePoolYen - winners * truncatedPerWinner;
 
   if (!capBound) {
     warnings.push("上限に届かず1等原資は全額払い出し＝翌回キャリーは0円になります。");
   }
+  if (truncationUnitYen === null) {
+    warnings.push(
+      "口単価が不明なため当せん金の端数切り捨て（口単価÷10 円単位）を適用できず、翌回キャリーが最大 当せん口数×単位 円だけ過大に出ます。",
+    );
+  }
 
-  return { capBound, firstPrizePoolYen, nextCarryoverYen, payoutPerWinnerYen, warnings };
+  return {
+    capBound,
+    firstPrizePoolYen,
+    nextCarryoverYen,
+    payoutPerWinnerYen,
+    truncatedRemainderYen,
+    warnings,
+  };
 }
