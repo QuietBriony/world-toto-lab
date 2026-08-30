@@ -67,19 +67,19 @@ function makeMatch(partial: Partial<Match> = {}) {
   } as Match;
 }
 
-function makePick(partial: Partial<Pick> = {}) {
+function makePick(partial: Partial<Pick> = {}): Pick {
   return {
     createdAt: "",
     id: partial.id ?? "pick-1",
-    match: undefined,
     matchId: partial.matchId ?? "match-1",
     note: null,
     pick: partial.pick ?? "ONE",
     roundId: "round-1",
+    support: partial.support ?? { kind: "manual" },
     updatedAt: "",
     user: undefined,
     userId: partial.userId ?? "user-1",
-  } as Pick;
+  };
 }
 
 function makeCandidate(partial: Partial<CandidateTicket> = {}) {
