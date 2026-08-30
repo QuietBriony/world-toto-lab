@@ -19,7 +19,7 @@ const officialHtml = `
 `;
 
 function stubFetch(impl: () => Promise<Response>) {
-  const mock = vi.fn(impl);
+  const mock = vi.fn<typeof fetch>(async () => impl());
   vi.stubGlobal("fetch", mock);
   return mock;
 }
