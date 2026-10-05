@@ -86,11 +86,20 @@ describe("buildFeaturedWorldTotoMatchRows", () => {
     expect(m01?.officialVote2).not.toBeNull();
     expect(m01NoSignal?.officialVote2).toBeNull();
 
+    if (
+      m01?.modelProb1 == null ||
+      m01.modelProb2 == null ||
+      m01.officialVote1 == null ||
+      m01.officialVote2 == null
+    ) {
+      throw new Error("1637 第1試合のモデル確率と公衆票が揃っていません");
+    }
+
     // 市場はドイツ(2)を公衆より低く見るので、モデル本命(2)は公衆票(2)を下回る
     //（公衆過信を割り引いたモデル）。値はハードコードしない。
-    expect(m01!.modelProb2).toBeLessThan(m01!.officialVote2 as number);
+    expect(m01.modelProb2).toBeLessThan(m01.officialVote2);
     // Edge = モデル − 公衆 が underdog(エクアドル=1)で正＝公衆が過小評価していたことを surface。
-    expect(m01!.modelProb1 - (m01!.officialVote1 as number)).toBeGreaterThan(0);
+    expect(m01.modelProb1 - m01.officialVote1).toBeGreaterThan(0);
   });
 
   it("leaves rounds without a market overlay on the country-strength model (unchanged)", () => {

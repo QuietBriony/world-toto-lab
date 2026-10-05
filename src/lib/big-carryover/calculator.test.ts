@@ -9,9 +9,11 @@ import {
   BIG_FIRST_PRIZE_ALLOCATION_SHARE,
   BIG_VOID_CANCEL_THRESHOLD,
   bigCarryoverProductDefaults,
+  bigPayoutTruncationUnitYen,
   bigTrueEvStatusLabel,
   bigTrueEvUpperBound,
   bigVoidCancelThreshold,
+  truncateBigPayoutYen,
   calculateBigCarryover,
   calculateBigTrueEv,
   classifyBigCarryoverAnticipation,
@@ -485,11 +487,85 @@ describe("不変式: 真EV ≤ 還元率 + キャリー ÷ 最終売上", () => 
 describe("classifyBigCarryoverAnticipation（殺到＝織り込みの監視シグナル）", () => {
   const baseline = BIG_BASELINE_FINAL_SALES_YEN.MEGA_BIG!;
 
-  it("通常 MEGA BIG ベースラインは 6.95億相当（7億）で捕捉済み", () => {
-    expect(BIG_BASELINE_FINAL_SALES_YEN.MEGA_BIG).toBe(700_000_000);
+  // 公式回別結果ページ（store.toto-dream.com …holdCntId=N）の「売上金額」＝確定売上。
+  // 第1627〜1647回のうち **Jリーグ回のみ**（1629/1634/1636〜1643/1646 は代表戦・海外クラブ回
+  // なので除外、1635 は欠番）。全20回ぶんの材料は predictNextCarryoverYen のチェーン検定
+  // （前回の公表繰越＋今回の売上・1等口数 → 今回の公表繰越）54件を1円単位でPASSしている。
+  const jLeagueFinalSalesYen: Record<
+    "BIG" | "MEGA_BIG" | "100YEN_BIG",
+    [round: number, salesYen: number][]
+  > = {
+    BIG: [
+      [1627, 635_024_400], [1628, 658_616_100], [1630, 588_478_800],
+      [1631, 759_428_100], [1632, 661_732_200], [1633, 767_529_300],
+      [1644, 840_519_600], [1645, 766_363_800], [1647, 530_048_400],
+    ],
+    MEGA_BIG: [
+      [1627, 499_835_700], [1628, 497_542_200], [1630, 472_039_800],
+      [1631, 672_824_400], [1632, 552_605_100], [1633, 668_160_300],
+      [1644, 671_055_600], [1645, 678_493_800], [1647, 409_477_200],
+    ],
+    "100YEN_BIG": [
+      [1627, 280_466_800], [1628, 265_158_600], [1630, 260_885_000],
+      [1631, 356_230_200], [1632, 309_841_400], [1633, 360_415_200],
+      [1644, 379_069_800], [1645, 372_546_200], [1647, 240_864_900],
+    ],
+  };
+  const measuredProducts = ["BIG", "MEGA_BIG", "100YEN_BIG"] as const;
+
+  it("ベースラインは実測Jリーグ回の中央値を1,000万円単位に丸めた値（3商品とも実測で埋まっている）", () => {
+    for (const productType of measuredProducts) {
+      const sorted = jLeagueFinalSalesYen[productType].map(([, s]) => s).sort((a, b) => a - b);
+      expect(sorted.length % 2).toBe(1); // n=9（奇数）＝中央値は補間なしの実測1点
+      const median = sorted[Math.floor(sorted.length / 2)];
+      expect(BIG_BASELINE_FINAL_SALES_YEN[productType]).toBe(Math.round(median / 10_000_000) * 10_000_000);
+    }
+    expect(BIG_BASELINE_FINAL_SALES_YEN.BIG).toBe(660_000_000);
+    expect(BIG_BASELINE_FINAL_SALES_YEN.MEGA_BIG).toBe(550_000_000);
+    expect(BIG_BASELINE_FINAL_SALES_YEN["100YEN_BIG"]).toBe(310_000_000);
+    // custom は商品が特定できない＝どの実測系列にも紐づかないので意図的に null（unknown で返す）。
+    expect(BIG_BASELINE_FINAL_SALES_YEN.custom).toBeNull();
   });
 
-  it("通常回並みは calm、2倍で elevated、5倍以上(1476≈7倍)で flooded", () => {
+  it("実測の通常回は9回×3商品すべて calm（中央値比 0.7〜1.3倍に収まり閾値2倍に触れない）", () => {
+    for (const productType of measuredProducts) {
+      for (const [round, salesYen] of jLeagueFinalSalesYen[productType]) {
+        const assessment = classifyBigCarryoverAnticipation({
+          baselineFinalSalesYen: BIG_BASELINE_FINAL_SALES_YEN[productType],
+          currentSalesYen: salesYen,
+        });
+        expect(`${productType}/${round}: ${assessment.level}`).toBe(`${productType}/${round}: calm`);
+        expect(assessment.surgeRatio!).toBeGreaterThan(0.7);
+        expect(assessment.surgeRatio!).toBeLessThan(1.3);
+      }
+    }
+  });
+
+  it("大型キャリー回でも売上は膨らまない（第1647回 MEGA はキャリー93.2億で実測の最低売上）", () => {
+    // キャリー額と売上の相関は実測 r≈0。「キャリーが大きい回は売上も多いはず」という直感が
+    // ベースラインを吊り上げていたので、最反例を固定しておく。
+    const round1647 = classifyBigCarryoverAnticipation({
+      baselineFinalSalesYen: BIG_BASELINE_FINAL_SALES_YEN.MEGA_BIG,
+      currentSalesYen: 409_477_200,
+    });
+    expect(round1647.level).toBe("calm");
+    expect(round1647.surgeRatio!).toBeLessThan(1);
+  });
+
+  it("旧ベースライン7.00億は実測2.5倍の殺到を calm と誤認する（反保守の回帰防止）", () => {
+    const surged2_5x = 550_000_000 * 2.5; // 実測ベースラインの2.5倍 = 13.75億
+    expect(
+      classifyBigCarryoverAnticipation({ baselineFinalSalesYen: 700_000_000, currentSalesYen: surged2_5x }).level,
+    ).toBe("calm");
+    expect(
+      classifyBigCarryoverAnticipation({
+        baselineFinalSalesYen: BIG_BASELINE_FINAL_SALES_YEN.MEGA_BIG,
+        currentSalesYen: surged2_5x,
+      }).level,
+    ).toBe("elevated");
+  });
+
+  it("通常回並みは calm、2倍で elevated、5倍以上(1476≈8.5倍)で flooded", () => {
     expect(
       classifyBigCarryoverAnticipation({ baselineFinalSalesYen: baseline, currentSalesYen: baseline }).level,
     ).toBe("calm");
@@ -498,7 +574,7 @@ describe("classifyBigCarryoverAnticipation（殺到＝織り込みの監視シ�
     ).toBe("elevated");
     const flooded = classifyBigCarryoverAnticipation({
       baselineFinalSalesYen: baseline,
-      currentSalesYen: 4_710_000_000, // 1476 実売上 ≈ 6.7倍
+      currentSalesYen: 4_710_000_000, // 1476 実売上。実測ベースライン5.5億に対し ≈8.5倍
     });
     expect(flooded.level).toBe("flooded");
     expect(flooded.surgeRatio!).toBeGreaterThan(5);
@@ -518,38 +594,57 @@ describe("実データバックテストによる規程パラメータの実証�
   // 1等上限超過分は翌回キャリーへロールオーバーする。逆算は本番関数 predictNextCarryoverYen に
   // 昇格済み（テスト内に式を再実装すると、本体の改訂とズレて検定にならないため）。
   const rolloverExcess = (
+    productType: "BIG" | "MEGA_BIG" | "100YEN_BIG",
     salesYen: number,
     carryInYen: number,
-    capYen: number,
     winners: number,
-    firstPrizeShare: number,
+    firstPrizeShare = BIG_FIRST_PRIZE_ALLOCATION_SHARE[productType]!,
   ) =>
     predictNextCarryoverYen({
       carryoverYen: carryInYen,
-      firstPrizeCapYen: capYen,
+      firstPrizeCapYen: bigCarryoverProductDefaults[productType].firstPrizeCapYen,
       firstPrizeShare,
       firstPrizeWinnerCount: winners,
-      productType: "custom",
+      productType,
       returnRate: 0.5,
       salesYen,
     }).nextCarryoverYen;
 
-  it("BIG 1等配分0.80は第1630/1633回の上限超過ロールオーバーと円単位で一致する", () => {
-    const share = BIG_FIRST_PRIZE_ALLOCATION_SHARE.BIG!;
-    // 第1630回: 売上5.885億, 前回繰越3,388,562,460, 1等1口6億cap → 実際の翌回繰越3,023,953,980
-    expect(rolloverExcess(588_478_800, 3_388_562_460, 600_000_000, 1, share)).toBeCloseTo(3_023_953_980, -2);
-    // 第1633回: 売上7.675億, 前回繰越3,592,418,100 → 実際の翌回繰越3,299,429,820
-    expect(rolloverExcess(767_529_300, 3_592_418_100, 600_000_000, 1, share)).toBeCloseTo(3_299_429_820, -2);
-    // 旧値0.76だと第1630回で約1,177万円ずれる（＝0.80が正・0.76は誤り）。
-    expect(rolloverExcess(588_478_800, 3_388_562_460, 600_000_000, 1, 0.76)).not.toBeCloseTo(3_023_953_980, -6);
+  // 公式回別結果ページ（store.toto-dream.com …holdCntId=N）で確認した cap 張り付き回の全件。
+  // 前回繰越は「1つ前の回」の公表繰越額、翌回繰越は「その回」の公表繰越額。
+  // toBeCloseTo ではなく toBe で固定する: 旧実装は 100円BIG で 4〜8円ずれていたが、
+  // 許容差 -2/-3（±50〜±500円）の assert がそれを吸収して「円単位一致」に見せていた。
+  it.each`
+    round     | productType     | salesYen       | carryInYen       | winners | expected
+    ${1630}   | ${"BIG"}        | ${588_478_800} | ${3_388_562_460} | ${1}    | ${3_023_953_980}
+    ${1633}   | ${"BIG"}        | ${767_529_300} | ${3_592_418_100} | ${1}    | ${3_299_429_820}
+    ${1627}   | ${"100YEN_BIG"} | ${280_466_800} | ${830_439_682}   | ${3}    | ${337_017_060}
+    ${1632}   | ${"100YEN_BIG"} | ${309_841_400} | ${760_298_262}   | ${1}    | ${678_037_990}
+    ${1633}   | ${"100YEN_BIG"} | ${360_415_200} | ${678_037_990}   | ${1}    | ${614_995_760}
+    ${1638}   | ${"100YEN_BIG"} | ${380_017_200} | ${788_386_072}   | ${1}    | ${732_792_600}
+    ${1645}   | ${"MEGA_BIG"}   | ${678_493_800} | ${9_983_893_215} | ${1}    | ${9_021_366_030}
+    ${1645}   | ${"100YEN_BIG"} | ${372_546_200} | ${1_428_303_066} | ${2}    | ${1_169_870_620}
+  `(
+    "第$round回 $productType の上限超過ロールオーバーが公式発表と1円単位で一致する",
+    ({ productType, salesYen, carryInYen, winners, expected }) => {
+      expect(rolloverExcess(productType, salesYen, carryInYen, winners)).toBe(expected);
+    },
+  );
+
+  it("BIG 1等配分は0.80が正しく、旧値0.76では第1630回が約1,177万円ずれる", () => {
+    expect(rolloverExcess("BIG", 588_478_800, 3_388_562_460, 1, 0.76)).not.toBeCloseTo(3_023_953_980, -6);
   });
 
-  it("100円BIG 1等配分0.76は第1627/1638回の上限超過ロールオーバーと円単位で一致する", () => {
-    const share = BIG_FIRST_PRIZE_ALLOCATION_SHARE["100YEN_BIG"]!;
-    // 第1627回: 売上2.805億, 前回繰越830,439,682, 1等3口2億cap → 翌回337,017,060
-    expect(rolloverExcess(280_466_800, 830_439_682, 200_000_000, 3, share)).toBeCloseTo(337_017_060, -3);
-    // 第1638回: 売上3.800億, 前回繰越788,386,072, 1等1口2億 → 翌回732,792,600
-    expect(rolloverExcess(380_017_200, 788_386_072, 200_000_000, 1, share)).toBeCloseTo(732_792_600, -3);
+  it("1等0口の回は端数切り捨てが起きず、単位の倍数でない額がそのまま繰り越される", () => {
+    // 第1644回 MEGA BIG: 9,983,893,215 は 30 の倍数ではない（余り15）。W=0 では按分が発生せず
+    // 切り捨ても起きないことの実測の裏付け。ここを一律に切り捨てると 1645 の入力が壊れる。
+    const mega = rolloverExcess("MEGA_BIG", 671_055_600, 9_749_023_755, 0);
+    expect(mega).toBe(9_983_893_215);
+    expect(mega! % 30).toBe(15);
+    // 第1631回 100円BIG: 760,298,262 は 10 の倍数ではない（余り2）。
+    expect(rolloverExcess("100YEN_BIG", 356_230_200, 624_930_786, 0)).toBe(760_298_262);
+    // 第1645回 BIG: W=0 かつ偶然 30 の倍数 → 切り捨ての有無に関わらず一致する回。
+    expect(rolloverExcess("BIG", 766_363_800, 4_939_079_700, 0)).toBe(5_245_625_220);
   });
 
   it("1等0口の回は1等原資が全額そのまま翌回キャリーになる（超過分ではなくプール全額）", () => {
@@ -588,6 +683,84 @@ describe("実データバックテストによる規程パラメータの実証�
       salesYen: 588_478_800,
     });
     expect(noWinnerCount.nextCarryoverYen).toBeNull();
+  });
+
+  describe("当せん金の端数切り捨て（口単価÷10 円単位・2026-08-17 実測確定）", () => {
+    it("切り捨て単位は BIG/MEGA BIG=30円・100円BIG=10円", () => {
+      expect(bigPayoutTruncationUnitYen(bigCarryoverProductDefaults.BIG.ticketPriceYen)).toBe(30);
+      expect(bigPayoutTruncationUnitYen(bigCarryoverProductDefaults.MEGA_BIG.ticketPriceYen)).toBe(30);
+      expect(bigPayoutTruncationUnitYen(bigCarryoverProductDefaults["100YEN_BIG"].ticketPriceYen)).toBe(10);
+      // 単位不明なら黙って丸めず素通しする（0や誤単位で潰さない）。
+      expect(bigPayoutTruncationUnitYen(null)).toBeNull();
+      expect(truncateBigPayoutYen(1_234.5, null)).toBe(1_234.5);
+      expect(truncateBigPayoutYen(3_170.53, 300)).toBe(3_150);
+    });
+
+    // 公式回別結果ページの全等級を、rules.ts の等級配分 × 端数切り捨てだけで再現する。
+    // 25件中1件でも外れたら、配分 α か切り捨て単位のどちらかが誤り。
+    // ここが通ることは BIG 下位等の配分（0.07/0.02/0.03/0.03/0.05）の実測裏付けでもある。
+    const observedTierPayouts: Record<
+      "BIG" | "MEGA_BIG" | "100YEN_BIG",
+      { round: number; salesYen: number; tiers: [winners: number, payoutYen: number][] }[]
+    > = {
+      // tiers は 2等から順（1等は cap 張り付き/0口のため別テストで検定）
+      BIG: [
+        {
+          round: 1644,
+          salesYen: 840_519_600,
+          tiers: [[19, 1_548_300], [223, 37_680], [1_737, 7_230], [9_216, 1_350], [37_455, 540]],
+        },
+        {
+          round: 1645,
+          salesYen: 766_363_800,
+          tiers: [[15, 1_788_180], [205, 37_380], [1_575, 7_290], [8_607, 1_320], [34_155, 540]],
+        },
+      ],
+      MEGA_BIG: [
+        {
+          round: 1644,
+          salesYen: 671_055_600,
+          tiers: [[7, 6_710_550], [95, 70_620], [759, 13_260], [5_381, 3_090], [25_390, 780]],
+        },
+        {
+          round: 1645,
+          salesYen: 678_493_800,
+          tiers: [[8, 5_936_820], [75, 90_450], [744, 13_650], [5_350, 3_150], [25_887, 780]],
+        },
+      ],
+      "100YEN_BIG": [
+        {
+          round: 1644,
+          salesYen: 379_069_800,
+          tiers: [[22, 861_520], [299, 25_350], [2_356, 3_210], [12_750, 890]],
+        },
+        {
+          round: 1645,
+          salesYen: 372_546_200,
+          tiers: [[18, 1_034_850], [280, 26_610], [2_304, 3_230], [12_307, 900]],
+        },
+      ],
+    };
+
+    it.each(Object.keys(observedTierPayouts) as (keyof typeof observedTierPayouts)[])(
+      "%s の2等以下の公表当せん金を『原資÷口数を単位切り捨て』だけで全件再現する",
+      (productType) => {
+        const profile = bigOfficialRuleProfiles[productType];
+        for (const { round, salesYen, tiers } of observedTierPayouts[productType]) {
+          tiers.forEach(([winners, payoutYen], index) => {
+            const share = profile.tiers[index + 1].allocationShare; // +1 で1等を飛ばす
+            const predicted = truncateBigPayoutYen(
+              (salesYen * profile.returnRate * share) / winners,
+              profile.ticketPriceYen,
+            );
+            expect(
+              predicted,
+              `第${round}回 ${productType} ${index + 2}等（${winners}口）`,
+            ).toBe(payoutYen);
+          });
+        }
+      },
+    );
   });
 
   it("第1476回は原資全額払出で アグリゲートEV = 還元率 + C/S（不変式を実測で確認）", () => {

@@ -104,6 +104,7 @@ describe("goal3 helpers", () => {
           {
             actualResult: null,
             awayTeam: "",
+            fixtureMasterId: null,
             goal3FixtureNo: 1,
             goal3TeamRole: "home",
             homeTeam: "清水",
@@ -121,6 +122,7 @@ describe("goal3 helpers", () => {
           {
             actualResult: null,
             awayTeam: "",
+            fixtureMasterId: null,
             goal3FixtureNo: 1,
             goal3TeamRole: "away",
             homeTeam: "名古屋",

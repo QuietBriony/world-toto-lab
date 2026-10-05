@@ -5,8 +5,8 @@ import {
   toBaseRound,
   type RepositoryBackend,
 } from "@/lib/storage/repository-bridge";
-import type { Pick, RoundBundle } from "@/lib/storage/types";
-import type { Round, RoundWorkspaceRound } from "@/lib/types";
+import type { RoundBundle } from "@/lib/storage/types";
+import type { Pick, Round, RoundWorkspaceRound } from "@/lib/types";
 
 function makePick(overrides: Partial<Pick>): Pick {
   return {
@@ -70,10 +70,10 @@ function makeBackend(round: RoundWorkspaceRound) {
     listRounds: vi.fn(async () => [round]),
     getWorkspaceRound: vi.fn(async () => round),
     createRound: vi.fn(async () => "new-round-id"),
-    updateRound: vi.fn(async () => undefined),
+    updateRound: vi.fn<RepositoryBackend["updateRound"]>(async () => undefined),
     deleteRound: vi.fn(async () => undefined),
     bulkUpdateMatches: vi.fn(async () => undefined),
-    replacePicks: vi.fn(async () => undefined),
+    replacePicks: vi.fn<RepositoryBackend["replacePicks"]>(async () => undefined),
     replaceScoutReports: vi.fn(async () => undefined),
     replaceCandidateTickets: vi.fn(async () => undefined),
     upsertCandidateVote: vi.fn(async () => undefined),
