@@ -7,8 +7,8 @@ description: BIG/MEGA BIG の +EV(造船太郎)窓＝大型キャリー×試合�
 
 目的: スポーツくじ BIG / MEGA BIG で「1口の期待値がプラス(+EV)になる回」＝2024年第1476回で個人が7,350万円→2.2億円を出したのと同型の「窓」を見逃さず、買い向かうべき回が来たら締切前にアラートする。窓の引き金は「大型キャリーオーバー × 対象試合の中止(台風・荒天)」の掛け算。
 
-この手順書は repo 側が正。スケジュール登録・直近の観測値（比較用の生データ）はマシン側の
-scheduled-task ファイルが持つ。戦略の背景は [docs/big-carryover-playbook.md](../../../docs/big-carryover-playbook.md)、
+この手順書は repo 側が正。スケジュール登録はマシン側の scheduled-task ファイル、直近の観測値（比較用の生データ）は
+マシン側の状態ファイル `%LOCALAPPDATA%\Temp\claude\big-monitor-state\latest.md` が持つ（下の「カナリア」参照）。戦略の背景は [docs/big-carryover-playbook.md](../../../docs/big-carryover-playbook.md)、
 事前登録と照合は [docs/big-carryover-prediction-log.md](../../../docs/big-carryover-prediction-log.md)。
 
 ## 鉄則（過去に事故った点）
@@ -93,7 +93,10 @@ scheduled-task ファイルが持つ。戦略の背景は [docs/big-carryover-pl
 - 締切日時が既に過去
 - 回替わり時のモデル検定が FAIL（円単位不一致）
 
-比較用の「前回観測値」はマシン側の scheduled-task ファイルに保持し、毎回そこを更新する。
+比較用の「前回観測値」はマシン側の状態ファイル `%LOCALAPPDATA%\Temp\claude\big-monitor-state\latest.md` に保持する
+（定期モニタ・締切当日の単発チェックで共有）。実行の最初に Read し、最後に最新値で全体を Write して上書きする。
+**scheduled-task の SKILL.md（`.claude` 配下）は編集しない**＝allow 済みでも書き込みのたびに承認が出て無人実行が止まるため（2026-10-05 に移設）。
+過去の観測ログは各タスクフォルダの `history-20261005.md`（読み取り専用の保管庫）にある。状態ファイルが消えていたら、その回のカナリア比較は「状態ファイル欠損のため比較不能」と明記して報告する。
 
 ## 制約・前提
 
