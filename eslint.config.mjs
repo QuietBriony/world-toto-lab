@@ -16,6 +16,8 @@ const eslintConfig = defineConfig([
     "workers/**",
     "cloudflare/**",
     "functions/**",
+    // Claude Code の git worktree（入れ子の別チェックアウト）は各自の .next ビルド出力まで拾うため除外。
+    ".claude/worktrees/**",
   ]),
 ]);
 

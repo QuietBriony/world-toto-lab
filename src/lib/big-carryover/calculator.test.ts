@@ -487,11 +487,85 @@ describe("不変式: 真EV ≤ 還元率 + キャリー ÷ 最終売上", () => 
 describe("classifyBigCarryoverAnticipation（殺到＝織り込みの監視シグナル）", () => {
   const baseline = BIG_BASELINE_FINAL_SALES_YEN.MEGA_BIG!;
 
-  it("通常 MEGA BIG ベースラインは 6.95億相当（7億）で捕捉済み", () => {
-    expect(BIG_BASELINE_FINAL_SALES_YEN.MEGA_BIG).toBe(700_000_000);
+  // 公式回別結果ページ（store.toto-dream.com …holdCntId=N）の「売上金額」＝確定売上。
+  // 第1627〜1647回のうち **Jリーグ回のみ**（1629/1634/1636〜1643/1646 は代表戦・海外クラブ回
+  // なので除外、1635 は欠番）。全20回ぶんの材料は predictNextCarryoverYen のチェーン検定
+  // （前回の公表繰越＋今回の売上・1等口数 → 今回の公表繰越）54件を1円単位でPASSしている。
+  const jLeagueFinalSalesYen: Record<
+    "BIG" | "MEGA_BIG" | "100YEN_BIG",
+    [round: number, salesYen: number][]
+  > = {
+    BIG: [
+      [1627, 635_024_400], [1628, 658_616_100], [1630, 588_478_800],
+      [1631, 759_428_100], [1632, 661_732_200], [1633, 767_529_300],
+      [1644, 840_519_600], [1645, 766_363_800], [1647, 530_048_400],
+    ],
+    MEGA_BIG: [
+      [1627, 499_835_700], [1628, 497_542_200], [1630, 472_039_800],
+      [1631, 672_824_400], [1632, 552_605_100], [1633, 668_160_300],
+      [1644, 671_055_600], [1645, 678_493_800], [1647, 409_477_200],
+    ],
+    "100YEN_BIG": [
+      [1627, 280_466_800], [1628, 265_158_600], [1630, 260_885_000],
+      [1631, 356_230_200], [1632, 309_841_400], [1633, 360_415_200],
+      [1644, 379_069_800], [1645, 372_546_200], [1647, 240_864_900],
+    ],
+  };
+  const measuredProducts = ["BIG", "MEGA_BIG", "100YEN_BIG"] as const;
+
+  it("ベースラインは実測Jリーグ回の中央値を1,000万円単位に丸めた値（3商品とも実測で埋まっている）", () => {
+    for (const productType of measuredProducts) {
+      const sorted = jLeagueFinalSalesYen[productType].map(([, s]) => s).sort((a, b) => a - b);
+      expect(sorted.length % 2).toBe(1); // n=9（奇数）＝中央値は補間なしの実測1点
+      const median = sorted[Math.floor(sorted.length / 2)];
+      expect(BIG_BASELINE_FINAL_SALES_YEN[productType]).toBe(Math.round(median / 10_000_000) * 10_000_000);
+    }
+    expect(BIG_BASELINE_FINAL_SALES_YEN.BIG).toBe(660_000_000);
+    expect(BIG_BASELINE_FINAL_SALES_YEN.MEGA_BIG).toBe(550_000_000);
+    expect(BIG_BASELINE_FINAL_SALES_YEN["100YEN_BIG"]).toBe(310_000_000);
+    // custom は商品が特定できない＝どの実測系列にも紐づかないので意図的に null（unknown で返す）。
+    expect(BIG_BASELINE_FINAL_SALES_YEN.custom).toBeNull();
   });
 
-  it("通常回並みは calm、2倍で elevated、5倍以上(1476≈7倍)で flooded", () => {
+  it("実測の通常回は9回×3商品すべて calm（中央値比 0.7〜1.3倍に収まり閾値2倍に触れない）", () => {
+    for (const productType of measuredProducts) {
+      for (const [round, salesYen] of jLeagueFinalSalesYen[productType]) {
+        const assessment = classifyBigCarryoverAnticipation({
+          baselineFinalSalesYen: BIG_BASELINE_FINAL_SALES_YEN[productType],
+          currentSalesYen: salesYen,
+        });
+        expect(`${productType}/${round}: ${assessment.level}`).toBe(`${productType}/${round}: calm`);
+        expect(assessment.surgeRatio!).toBeGreaterThan(0.7);
+        expect(assessment.surgeRatio!).toBeLessThan(1.3);
+      }
+    }
+  });
+
+  it("大型キャリー回でも売上は膨らまない（第1647回 MEGA はキャリー93.2億で実測の最低売上）", () => {
+    // キャリー額と売上の相関は実測 r≈0。「キャリーが大きい回は売上も多いはず」という直感が
+    // ベースラインを吊り上げていたので、最反例を固定しておく。
+    const round1647 = classifyBigCarryoverAnticipation({
+      baselineFinalSalesYen: BIG_BASELINE_FINAL_SALES_YEN.MEGA_BIG,
+      currentSalesYen: 409_477_200,
+    });
+    expect(round1647.level).toBe("calm");
+    expect(round1647.surgeRatio!).toBeLessThan(1);
+  });
+
+  it("旧ベースライン7.00億は実測2.5倍の殺到を calm と誤認する（反保守の回帰防止）", () => {
+    const surged2_5x = 550_000_000 * 2.5; // 実測ベースラインの2.5倍 = 13.75億
+    expect(
+      classifyBigCarryoverAnticipation({ baselineFinalSalesYen: 700_000_000, currentSalesYen: surged2_5x }).level,
+    ).toBe("calm");
+    expect(
+      classifyBigCarryoverAnticipation({
+        baselineFinalSalesYen: BIG_BASELINE_FINAL_SALES_YEN.MEGA_BIG,
+        currentSalesYen: surged2_5x,
+      }).level,
+    ).toBe("elevated");
+  });
+
+  it("通常回並みは calm、2倍で elevated、5倍以上(1476≈8.5倍)で flooded", () => {
     expect(
       classifyBigCarryoverAnticipation({ baselineFinalSalesYen: baseline, currentSalesYen: baseline }).level,
     ).toBe("calm");
@@ -500,7 +574,7 @@ describe("classifyBigCarryoverAnticipation（殺到＝織り込みの監視シ�
     ).toBe("elevated");
     const flooded = classifyBigCarryoverAnticipation({
       baselineFinalSalesYen: baseline,
-      currentSalesYen: 4_710_000_000, // 1476 実売上 ≈ 6.7倍
+      currentSalesYen: 4_710_000_000, // 1476 実売上。実測ベースライン5.5億に対し ≈8.5倍
     });
     expect(flooded.level).toBe("flooded");
     expect(flooded.surgeRatio!).toBeGreaterThan(5);
