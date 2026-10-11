@@ -22,6 +22,8 @@ export type CapturedBigPrizeTierRule = {
 };
 
 export type BigOfficialRuleProfile = {
+  /** BIG777 特別開催回の1等上限（キャリーオーバーの有無に関わらず）。BIG777 の対象外商品は null。 */
+  big777FirstPrizeCapYen: number | null;
   capWithoutCarryoverYen: number | null;
   exactCombinationCount: number;
   firstPrizeCapYen: number | null;
@@ -132,12 +134,25 @@ const payoutTruncationBacktestSource: BigRuleSource = {
   url: "https://store.toto-dream.com/dcs/subos/screen/pi05/spin014/PGSPIN01401LnkHoldCntLotResultLstBIG.form?holdCntId=1645",
 };
 
+// 特別開催回「BIG777」（毎月7日を含む週）。BIG だけ1等上限が 7億7万7千円に上がる。
+const big777Source: BigRuleSource = {
+  checkedOn: "2026-10-12",
+  label: "JSC 報道発表『BIG777』（2025-06-23）＋ 公式回別結果 第1595/1660回",
+  note:
+    "販売概要の当せん金額の上限欄に「『ＢＩＧ７７７』特別開催回はキャリーオーバーの有無に関わらず最高７億７万７千円」。" +
+    "毎月7日を含む週の回が対象で、対象は300円の BIG のみ（MEGA BIG・100円BIG・BIG1000・mini BIG は対象外）。" +
+    "第1595回・第1660回の BIG 1等1口 = 700,077,000円で、翌回キャリーがこの上限で円単位一致（1等配分0.80は通常回のまま）。" +
+    "対象回は試合日程で前後しうるため、日付ではなく公式表示で判定する。",
+  url: "https://www.jpnsport.go.jp/sinko/Portals/0/sinko/sinko/pdf/happyou20250623.pdf",
+};
+
 const commonUnresolvedRules = [
   "2等以下の当せん金上限を公式ルールで確認する（端数処理は解決済み＝口単価÷10 円単位で切り捨て）",
   "各等級の繰越対象フラグを公式ルールで確認する",
   // 「1等上限超過分の行き先」は実データで解決（翌回キャリーへロールオーバー・backtestSource 参照）。
   "不成立・中止が下位等級の判定と繰越に与える影響を確認する（最低成立試合数そのものは確定済み）",
-  "特別開催回の上限・配分 override を通常回と分ける",
+  // BIG777 の上限は解決済み（big777Source）。残るのはそれ以外の特別開催回。
+  "BIG777 以外の特別開催回（お年玉BIG 等）の上限・配分 override を通常回と分ける",
 ] as const;
 
 export const bigOfficialRuleProfiles: Record<
@@ -145,6 +160,7 @@ export const bigOfficialRuleProfiles: Record<
   BigOfficialRuleProfile
 > = {
   BIG: {
+    big777FirstPrizeCapYen: 700_077_000,
     capWithoutCarryoverYen: 300_000_000,
     exactCombinationCount: 4_782_969,
     firstPrizeCapYen: 600_000_000,
@@ -166,6 +182,7 @@ export const bigOfficialRuleProfiles: Record<
       backtestSource,
       payoutTruncationSource,
       payoutTruncationBacktestSource,
+      big777Source,
     ],
     ticketPriceYen: 300,
     // 1等配分 0.80 は実データで確定（第1630/1633回の cap 超過ロールオーバーが円単位一致・公式算式「売上の40%」= r0.5×α0.80 と整合）。
@@ -190,6 +207,7 @@ export const bigOfficialRuleProfiles: Record<
   MEGA_BIG: {
     // 7億20円。2020年の端数処理改正（1円未満→10円未満切り捨て）に伴い『7億2円』→『7億20円』へ
     // 改定されたもの（payoutTruncationSource）。「7億2,000万円」説は桁の読み違いで誤り。
+    big777FirstPrizeCapYen: null, // BIG777 の対象外（BIG だけの企画）
     capWithoutCarryoverYen: 700_000_020,
     exactCombinationCount: 16_777_216,
     firstPrizeCapYen: 1_200_000_000,
@@ -241,6 +259,7 @@ export const bigOfficialRuleProfiles: Record<
     ],
   },
   "100YEN_BIG": {
+    big777FirstPrizeCapYen: null, // BIG777 の対象外（BIG だけの企画）
     capWithoutCarryoverYen: 100_000_000,
     exactCombinationCount: 4_782_969,
     firstPrizeCapYen: 200_000_000,
