@@ -90,6 +90,32 @@ export const bigCarryoverProductDefaults: Record<
   },
 };
 
+// ── 特別開催回「BIG777」の1等上限（2026-10-12・第1660回のモデル検定 FAIL で発覚）─────────
+// 一次ソース: JSC 報道発表（2025-06-23）の BIG 販売概要「当せん金額の上限」欄
+//   「『ＢＩＧ７７７』特別開催回はキャリーオーバーの有無に関わらず最高７億７万７千円」
+//   https://www.jpnsport.go.jp/sinko/Portals/0/sinko/sinko/pdf/happyou20250623.pdf
+// 毎月7日を含む週の回が対象で、対象は 300円の BIG だけ（MEGA BIG・100円BIG・BIG1000・mini BIG は対象外）。
+// 実測: 第1595回（2025-12-09〜13）・第1660回（2026-10-03〜10）の BIG 1等1口がいずれも 700,077,000円で、
+// 翌回キャリーはこの上限で円単位一致した（6億で計算すると W×100,077,000円 ずれる）。1等配分 0.80・
+// 下位等の配分は通常回のまま（第1660回の2等以下も通常配分で一致）。
+// どの回が対象かは試合日程で前後することがある（販売会社の告知）ため、日付から機械的に決めず、
+// 公式表示で確認した回だけ big777 として扱う。
+export const BIG777_FIRST_PRIZE_CAP_YEN = 700_077_000;
+
+/**
+ * その回の1等上限（1口あたり・キャリーオーバーあり時）。BIG777 特別開催回の BIG だけ 7億7万7千円に上がる。
+ * BIG 以外に big777 を指定しても通常上限を返す（BIG777 は BIG だけの企画）。
+ */
+export function bigFirstPrizeCapYen(
+  productType: BigCarryoverProductType,
+  options: { big777?: boolean } = {},
+): number | null {
+  if (options.big777 && productType === "BIG") {
+    return BIG777_FIRST_PRIZE_CAP_YEN;
+  }
+  return bigCarryoverProductDefaults[productType].firstPrizeCapYen;
+}
+
 export const bigTrueEvStatusLabel: Record<BigTrueEvStatus, string> = {
   complete: "真EV計算可",
   partial: "真EVは部分材料のみ",
@@ -762,6 +788,8 @@ export function buildBigCarryoverSalesScenarios(
 // この交点は cap・odds・キャリー・想定売上で動くので、prose に書かず毎回ここで解く。
 
 export type BigProductCandidate = {
+  /** BIG777 特別開催回なら true（BIG の1等上限が 7億7万7千円になる。BIG 以外では無視）。 */
+  big777?: boolean;
   carryoverYen: number | null;
   productType: BigCarryoverProductType;
   /** シナリオごとの想定最終売上。締切前に中止が公表されうる回は殺到（第1476回は通常の約7倍）を織り込んで大きく、締切後中止パスは平常のまま。 */
@@ -784,7 +812,7 @@ function trueEvInputForCandidate(
   const defaults = bigCarryoverProductDefaults[candidate.productType];
   return {
     carryoverYen: candidate.carryoverYen,
-    firstPrizeCapYen: defaults.firstPrizeCapYen,
+    firstPrizeCapYen: bigFirstPrizeCapYen(candidate.productType, { big777: candidate.big777 }),
     firstPrizeShare: BIG_FIRST_PRIZE_ALLOCATION_SHARE[candidate.productType],
     productType: candidate.productType,
     projectedFinalSalesYen: candidate.projectedFinalSalesYen,
@@ -906,18 +934,21 @@ export function breakevenCancellationProbability(input: {
 // 帰結: このレーンのエッジは「キャリーの大きさ」ではなく **中止による確率ブースト**が
 // 100%の源泉。キャリーは中止が起きた時の payout を上限まで満たす燃料にすぎない。
 // 「キャリー◯◯億で過去最高」は買い判断の根拠にならない。
+// BIG777 特別開催回（上限 7億7万7千円）でも BIG は 0.488 + 0.100 = 0.588 で、結論は変わらない。
 
 /**
  * 中止0試合のときに構造上到達しうる1口真EVの上限。キャリー額・売上に依存しない。
+ * @param options.big777 BIG777 特別開催回なら true（BIG の上限を 7億7万7千円で計算する）。
  * @returns 真EVの天井(倍率)。商品構造か配分が不明なら null。
  */
 export function trueEvCeilingWithoutCancellations(
   productType: BigCarryoverProductType,
   returnRate: number | null,
+  options: { big777?: boolean } = {},
 ): number | null {
   const defaults = bigCarryoverProductDefaults[productType];
   const share = BIG_FIRST_PRIZE_ALLOCATION_SHARE[productType];
-  const cap = asPositiveNumber(defaults.firstPrizeCapYen);
+  const cap = asPositiveNumber(bigFirstPrizeCapYen(productType, options));
   const odds = asPositiveNumber(defaults.firstPrizeOdds);
   const price = asPositiveNumber(defaults.ticketPriceYen);
   const rate = asFiniteNumber(returnRate);
@@ -986,6 +1017,8 @@ export type BigNextCarryoverPrediction = {
  * 確定した1回の結果（売上・1等当せん口数）から翌回キャリーオーバー額を予測する。
  * 公式発表と円単位で突き合わせるためのモデル検定用関数であり、EV判定には使わない。
  *
+ * @param input.firstPrizeCapYen その回の1等上限（1口あたり）。BIG777 特別開催回の BIG は
+ *   `bigFirstPrizeCapYen("BIG", { big777: true })` を渡す（通常の6億で検定すると W×100,077,000円ずれる）。
  * @param input.firstPrizeWinnerCount 1等の当せん口数。0 なら原資は全額が翌回へ繰り越される。
  * @param input.ticketPriceYen 端数切り捨て単位（÷10）の導出に使う口単価。未指定なら商品既定値。
  *   custom は既定値が事実ではないため、未指定なら切り捨てを行わず警告する。

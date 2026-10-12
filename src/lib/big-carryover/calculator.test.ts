@@ -5,10 +5,12 @@ import { describe, expect, it } from "vitest";
 
 import {
   absoluteSalesCeilingForPositiveEv,
+  BIG777_FIRST_PRIZE_CAP_YEN,
   BIG_BASELINE_FINAL_SALES_YEN,
   BIG_FIRST_PRIZE_ALLOCATION_SHARE,
   BIG_VOID_CANCEL_THRESHOLD,
   bigCarryoverProductDefaults,
+  bigFirstPrizeCapYen,
   bigPayoutTruncationUnitYen,
   bigTrueEvStatusLabel,
   bigTrueEvUpperBound,
@@ -941,5 +943,92 @@ describe("BIG 商品選択（どれを買うか）", () => {
     })[0];
     expect(noCancel.trueEvMultiple!).toBeLessThan(1);
     expect(oneCancel.trueEvMultiple!).toBeGreaterThan(1);
+  });
+});
+
+describe("特別開催回 BIG777 の1等上限（2026-10-12・第1660回のモデル検定 FAIL で発覚）", () => {
+  // 公式回別結果ページ（store.toto-dream.com …holdCntId=N）の速報値。前回繰越は1つ前の回の公表繰越
+  // （第1660回の前は第1658回＝1659 は BIG 欠番）。どちらも BIG 1等1口 = 700,077,000円。
+  const big777Rounds = [
+    { round: 1595, carryInYen: 5_233_487_400, salesYen: 762_210_300, expected: 4_838_294_520 },
+    { round: 1660, carryInYen: 5_001_651_420, salesYen: 764_363_700, expected: 4_607_319_900 },
+  ];
+  const predictBig = (carryInYen: number, salesYen: number, firstPrizeCapYen: number | null) =>
+    predictNextCarryoverYen({
+      carryoverYen: carryInYen,
+      firstPrizeCapYen,
+      firstPrizeWinnerCount: 1,
+      productType: "BIG",
+      returnRate: 0.5,
+      salesYen,
+    });
+
+  it.each(big777Rounds)(
+    "第$round回 BIG は BIG777 上限で翌回キャリーが公式発表と1円単位で一致する",
+    ({ carryInYen, salesYen, expected }) => {
+      const p = predictBig(carryInYen, salesYen, bigFirstPrizeCapYen("BIG", { big777: true }));
+      expect(p.nextCarryoverYen).toBe(expected);
+      expect(p.payoutPerWinnerYen).toBe(700_077_000);
+      expect(p.capBound).toBe(true);
+    },
+  );
+
+  it.each(big777Rounds)(
+    "第$round回 を通常上限6億で検定すると、ちょうど上限差 100,077,000円 ずれる（FAIL の指紋）",
+    ({ carryInYen, salesYen, expected }) => {
+      const p = predictBig(carryInYen, salesYen, bigFirstPrizeCapYen("BIG"));
+      expect(p.nextCarryoverYen! - expected).toBe(BIG777_FIRST_PRIZE_CAP_YEN - 600_000_000);
+    },
+  );
+
+  it("BIG777 は BIG だけの企画で、MEGA BIG・100円BIG の上限は変わらない", () => {
+    expect(bigFirstPrizeCapYen("BIG", { big777: true })).toBe(700_077_000);
+    expect(bigFirstPrizeCapYen("BIG")).toBe(600_000_000);
+    expect(bigFirstPrizeCapYen("MEGA_BIG", { big777: true })).toBe(1_200_000_000);
+    expect(bigFirstPrizeCapYen("100YEN_BIG", { big777: true })).toBe(200_000_000);
+    expect(bigFirstPrizeCapYen("custom", { big777: true })).toBeNull();
+  });
+
+  it("rules.ts の BIG777 上限と一致し、対象外の商品は null", () => {
+    expect(bigOfficialRuleProfiles.BIG.big777FirstPrizeCapYen).toBe(BIG777_FIRST_PRIZE_CAP_YEN);
+    expect(bigOfficialRuleProfiles.MEGA_BIG.big777FirstPrizeCapYen).toBeNull();
+    expect(bigOfficialRuleProfiles["100YEN_BIG"].big777FirstPrizeCapYen).toBeNull();
+  });
+
+  it("BIG777 でも中止0試合の回は +EV にならない（BIG の天井 0.518 → 0.588）", () => {
+    const ceiling = trueEvCeilingWithoutCancellations("BIG", 0.5, { big777: true });
+    expect(ceiling).toBeCloseTo(0.5879, 4);
+    expect(ceiling!).toBeLessThan(1);
+    expect(trueEvCeilingWithoutCancellations("MEGA_BIG", 0.5, { big777: true })).toBe(
+      trueEvCeilingWithoutCancellations("MEGA_BIG", 0.5),
+    );
+  });
+
+  it("cap 張り付き域の BIG は1等EVが上限比で上がるが、殺到して張り付かない域では変わらない", () => {
+    const evAt = (scenario: "calm" | "surge", big777: boolean) =>
+      rankBigProductsByTrueEv([{ ...candidate("BIG", scenario), big777 }], {
+        cancelledMatches: 1,
+        returnRate: 0.5,
+      })[0];
+    const calmNormal = evAt("calm", false);
+    const calmSpecial = evAt("calm", true);
+    expect(calmSpecial.estimatedFirstPrizePayoutYen).toBe(700_077_000);
+    expect(calmSpecial.firstPrizeEvMultiple! / calmNormal.firstPrizeEvMultiple!).toBeCloseTo(
+      700_077_000 / 600_000_000,
+      6,
+    );
+    // 殺到シナリオでは同時当選で1口が6億を割る＝上限が効かず BIG777 でも EV は同じ。
+    expect(evAt("surge", true).trueEvMultiple).toBe(evAt("surge", false).trueEvMultiple);
+  });
+
+  it("BIG777 回でも BIG↔MEGA BIG の交点は M=2 のまま（M=1 までは BIG が有利）", () => {
+    for (const scenario of ["calm", "surge"] as const) {
+      const crossover = bigProductCrossoverCancellations({
+        challenger: candidate("MEGA_BIG", scenario),
+        incumbent: { ...candidate("BIG", scenario), big777: true },
+        returnRate: 0.5,
+      });
+      expect(crossover).toBe(2);
+    }
   });
 });
