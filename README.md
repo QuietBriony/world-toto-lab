@@ -74,6 +74,11 @@ GitHub Pages は静的配信なので、build 後に増える Round を動的ル
 - Cloudflare D1 + Workers（共有保存 API）
 - GitHub Pages static export
 
+予測の検証方針と研究用のローカル採点コマンドは
+[toto予測を確かめる方法](docs/research/toto-validation.md) にまとめています。
+市場との比較、確率の過信、高配当への依存を確認するためのもので、
+実際の予想精度や収益性を実証した結果ではありません。
+
 ## できること
 
 ### 1. Dashboard / Round 一覧
