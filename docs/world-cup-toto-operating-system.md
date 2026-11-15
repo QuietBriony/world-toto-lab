@@ -33,6 +33,12 @@ The stack is usable, but the optimization layer is still early.
 
 ## Backtest Contract
 
+For frozen-input scoring, market baselines, calibration, payout concentration,
+and forward-validation requirements, follow
+[toto validation](./research/toto-validation.md).
+Replaying current logic after seeing results is exploratory; keep it separate
+from predictions actually saved before the sales deadline.
+
 Each closed round should store enough data to answer:
 
 1. What was the actual result signature?

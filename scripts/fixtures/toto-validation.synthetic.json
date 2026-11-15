@@ -1,0 +1,30 @@
+{
+  "description": "Invented fixtures and paper returns only; no historical performance evidence.",
+  "protocol": {
+    "experimentId": "synthetic-example",
+    "ruleVersion": "synthetic-v1",
+    "trainingDataThrough": "2026-01-01T00:00:00Z",
+    "frozenAt": "2026-01-02T00:00:00Z"
+  },
+  "predictions": [
+    {
+      "matchId": "synthetic-league-20260103-A-B",
+      "roundId": "synthetic-round-1",
+      "latestInputAt": "2026-01-03T08:00:00Z",
+      "savedAt": "2026-01-03T08:01:00Z",
+      "decisionAt": "2026-01-03T09:00:00Z",
+      "kickoffAt": "2026-01-03T10:00:00Z",
+      "model": { "1": 0.5, "0": 0.3, "2": 0.2 },
+      "market": { "1": 0.6, "0": 0.25, "2": 0.15 },
+      "official": { "1": 0.7, "0": 0.2, "2": 0.1 },
+      "selectedOutcome": "0",
+      "actualOutcome": "1",
+      "resultConfirmedAt": "2026-01-03T13:00:00Z"
+    }
+  ],
+  "returns": [
+    { "roundId": "synthetic-round-1", "costYen": 100, "payoutYen": 0, "settlement": "official" },
+    { "roundId": "synthetic-round-2", "costYen": 100, "payoutYen": 300, "settlement": "approximate" },
+    { "roundId": "synthetic-no-selection", "costYen": 0, "payoutYen": 0, "settlement": "official" }
+  ]
+}
